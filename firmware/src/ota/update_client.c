@@ -10,14 +10,14 @@
 static const char *TAG = "PUBMOTE-OTA";
 
 #define GITHUB_API "https://api.github.com"
-#define GITHUB_REPO "contactsimonwilson/pubremote"
+#define GITHUB_REPO "techfoundrynz/pubmote"
 #define MAX_HTTP_OUTPUT_BUFFER 8192
 
 // Escaped version of release_query.gql
 static const char *GITHUB_ASSET_QUERY =
     "{"
     "\"query\": \"{"
-    "repository(owner: \\\"contactsimonwilson\\\", name: \\\"PubRemote\\\") {"
+    "repository(owner: \\\"techfoundrynz\\\", name: \\\"Pubmote\\\") {"
     "stable: latestRelease {"
     "name "
     "tagName "

@@ -1,5 +1,5 @@
 {
-  repository(owner: "contactsimonwilson", name: "PubRemote") {
+  repository(owner: "techfoundrynz", name: "Pubmote") {
     stable: latestRelease {  # Latest stable release
       name
       tagName

@@ -1,6 +1,6 @@
 version: "1.0.0"
 description: ESP LCD Touch FT3168 - touch controller FT3168
-url: https://github.com/contactsimonwilson/PubRemote/components/esp_lcd_touch_cst816s
+url: https://github.com/techfoundrynz/Pubmote/components/esp_lcd_touch_cst816s
 dependencies:
   idf: ">=4.4.2"
   esp_lcd_touch:

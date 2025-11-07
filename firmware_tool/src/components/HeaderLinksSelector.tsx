@@ -13,7 +13,7 @@ export function HeaderLinksSelector() {
         <Dropdown
         options={[
           {
-            value: "https://github.com/contactsimonwilson/PubRemote",
+            value: "https://github.com/techfoundrynz/Pubmote",
             tooltip: `Pubmote GitHub repository`,
             icon: <SiGithub className="h-4 w-4" />,
             label: (

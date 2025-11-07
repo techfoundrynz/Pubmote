@@ -3,7 +3,7 @@ import { FirmwareVersion, ReleaseType } from '../types';
 import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
-const GITHUB_REPO = 'contactsimonwilson/pubremote';
+const GITHUB_REPO = 'techfoundrynz/pubmote';
 const GITHUB_API = 'https://api.github.com';
 
 interface GitHubRelease {
