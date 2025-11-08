@@ -361,7 +361,7 @@ void resize_footer_buttons(lv_obj_t *footer) {
   // Resize each button
   for (uint32_t i = 0; i < button_count; i++) {
     lv_obj_t *button = lv_obj_get_child(footer, i);
-    if (button != NULL && lv_obj_check_type(button, &lv_btn_class) &&
+    if (button != NULL && lv_obj_check_type(button, &lv_button_class) &&
         lv_obj_has_flag(button, LV_OBJ_FLAG_HIDDEN) == false) {
       final_button_count++;
     }
@@ -392,7 +392,7 @@ void resize_footer_buttons(lv_obj_t *footer) {
   // Resize each button again, now that we know the final count
   for (uint32_t i = 0; i < button_count; i++) {
     lv_obj_t *button = lv_obj_get_child(footer, i);
-    if (button != NULL && lv_obj_check_type(button, &lv_btn_class) &&
+    if (button != NULL && lv_obj_check_type(button, &lv_button_class) &&
         lv_obj_has_flag(button, LV_OBJ_FLAG_HIDDEN) == false) {
       lv_obj_set_width(button, button_width);
     }

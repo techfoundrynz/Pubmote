@@ -1,15 +1,16 @@
 #include "screens/stats_screen.h"
+#include "core/lv_obj_event.h"
 #include "esp_log.h"
 #include "remote/display.h"
 #include "remote/remoteinputs.h"
 #include "remote/vehicle_state.h"
 #include "utilities/screen_utils.h"
 #include <colors.h>
-#include <core/lv_event.h>
 #include <math.h>
 #include <remote/connection.h>
 #include <remote/settings.h>
 #include <remote/stats.h>
+#include <string.h>
 #include <utilities/conversion_utils.h>
 
 static const char *TAG = "PUBREMOTE-STATS_SCREEN";
@@ -494,7 +495,7 @@ static void update_footpad_display() {
 }
 
 static void stats_update_screen_display() {
-  if (LVGL_lock(LV_DISP_DEF_REFR_PERIOD)) {
+  if (LVGL_lock(LV_DEF_REFR_PERIOD)) {
     if (device_settings.distance_units == DISTANCE_UNITS_METRIC) {
       lv_label_set_text(ui_PrimaryStatUnit, KILOMETERS_PER_HOUR_LABEL);
     }

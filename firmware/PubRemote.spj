@@ -166,6 +166,12 @@
                 "InheritedType": 6
               },
               {
+                "nid": 1060,
+                "strtype": "IMAGE/Inner_align",
+                "strval": "CENTER",
+                "InheritedType": 3
+              },
+              {
                 "part": "lv.PART.MAIN",
                 "childs": [],
                 "nid": 126237365,
@@ -2894,12 +2900,6 @@
                         "InheritedType": 10
                       },
                       {
-                        "nid": 2052970978,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
-                      },
-                      {
                         "part": "lv.PART.MAIN",
                         "childs": [
                           {
@@ -3215,12 +3215,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 1040,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [
                               {
@@ -3228,6 +3222,12 @@
                                 "strtype": "_style/StyleState",
                                 "strval": "DEFAULT",
                                 "childs": [
+                                  {
+                                    "nid": 10430,
+                                    "strtype": "_style/Text_Align",
+                                    "strval": "CENTER",
+                                    "InheritedType": 3
+                                  },
                                   {
                                     "nid": 10450,
                                     "strtype": "_style/Text_Font",
@@ -3294,8 +3294,8 @@
                         "flags": 50,
                         "strtype": "OBJECT/Size",
                         "intarray": [
-                          25,
-                          50
+                          85,
+                          1
                         ],
                         "InheritedType": 7
                       },
@@ -3405,8 +3405,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID40972318-217402S426341",
@@ -3548,12 +3547,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "KPH",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 2084016262,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -3710,12 +3703,6 @@
                         "strtype": "LABEL/Text",
                         "strval": "0.0",
                         "InheritedType": 10
-                      },
-                      {
-                        "nid": -1659847728,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
                       },
                       {
                         "part": "lv.PART.MAIN",
@@ -4090,12 +4077,6 @@
                                     "InheritedType": 10
                                   },
                                   {
-                                    "nid": 1804988933,
-                                    "strtype": "LABEL/Recolor",
-                                    "strval": "False",
-                                    "InheritedType": 2
-                                  },
-                                  {
                                     "part": "lv.PART.MAIN",
                                     "childs": [],
                                     "nid": -749956109,
@@ -4444,12 +4425,6 @@
                                     "strtype": "LABEL/Text",
                                     "strval": "Duty Cycle: 0%",
                                     "InheritedType": 10
-                                  },
-                                  {
-                                    "nid": -2113207224,
-                                    "strtype": "LABEL/Recolor",
-                                    "strval": "False",
-                                    "InheritedType": 2
                                   },
                                   {
                                     "part": "lv.PART.MAIN",
@@ -4803,12 +4778,6 @@
                                     "InheritedType": 10
                                   },
                                   {
-                                    "nid": -2113207224,
-                                    "strtype": "LABEL/Recolor",
-                                    "strval": "False",
-                                    "InheritedType": 2
-                                  },
-                                  {
                                     "part": "lv.PART.MAIN",
                                     "childs": [],
                                     "nid": 502857765,
@@ -5158,12 +5127,6 @@
                                     "strtype": "LABEL/Text",
                                     "strval": "Trip: -",
                                     "InheritedType": 10
-                                  },
-                                  {
-                                    "nid": -2113207224,
-                                    "strtype": "LABEL/Recolor",
-                                    "strval": "False",
-                                    "InheritedType": 2
                                   },
                                   {
                                     "part": "lv.PART.MAIN",
@@ -5968,12 +5931,6 @@
                         "InheritedType": 10
                       },
                       {
-                        "nid": -1322544491,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
-                      },
-                      {
                         "part": "lv.PART.MAIN",
                         "childs": [
                           {
@@ -6536,6 +6493,17 @@
                       255
                     ],
                     "InheritedType": 7
+                  },
+                  {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -6971,12 +6939,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 344228570,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": -485699825,
@@ -7318,12 +7280,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 344228570,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": -485699825,
@@ -7659,12 +7615,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 344228570,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": -485699825,
@@ -7992,12 +7942,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Settings",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 105661378,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -8341,12 +8285,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": -58032530,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 1515684021,
@@ -8686,12 +8624,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Pairing",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": -480189000,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -9036,12 +8968,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 344228570,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": -485699825,
@@ -9382,12 +9308,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Shutdown",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 79131479,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -10165,6 +10085,17 @@
                       255
                     ],
                     "InheritedType": 7
+                  },
+                  {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -10930,12 +10861,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 1804988933,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": -749956109,
@@ -11595,12 +11520,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Double-press action",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 1804988933,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -12264,12 +12183,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 1804988933,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": -749956109,
@@ -12931,12 +12844,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": -2113207224,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 502857765,
@@ -13592,12 +13499,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Temp units",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": -2113207224,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -14257,12 +14158,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": -2113207224,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 502857765,
@@ -14919,12 +14814,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": -2113207224,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 502857765,
@@ -15246,52 +15135,68 @@
                             "InheritedType": 1
                           },
                           {
+                            "nid": 1010,
+                            "strtype": "ARC/Arc",
+                            "InheritedType": 1
+                          },
+                          {
+                            "nid": 1020,
+                            "strtype": "ARC/Range",
+                            "intarray": [
+                              0,
+                              100
+                            ],
+                            "InheritedType": 7
+                          },
+                          {
+                            "nid": 1030,
+                            "strtype": "ARC/Value",
+                            "integer": 50,
+                            "InheritedType": 6
+                          },
+                          {
+                            "nid": 1040,
+                            "strtype": "ARC/Bg_angles",
+                            "intarray": [
+                              120,
+                              60
+                            ],
+                            "InheritedType": 7
+                          },
+                          {
+                            "nid": 1050,
+                            "strtype": "ARC/Mode",
+                            "strval": "NORMAL",
+                            "InheritedType": 3
+                          },
+                          {
+                            "nid": 1060,
+                            "strtype": "ARC/Rotation",
+                            "InheritedType": 6
+                          },
+                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
-                            "nid": 1010,
-                            "strtype": "COLORWHEEL/Style_main",
+                            "nid": 1070,
+                            "strtype": "ARC/Style_main",
                             "strval": "lv.PART.MAIN, Rectangle, Pad, Arc, Transform",
                             "InheritedType": 11
                           },
                           {
-                            "part": "lv.PART.KNOB",
-                            "childs": [
-                              {
-                                "nid": 10000,
-                                "strtype": "_style/StyleState",
-                                "strval": "DEFAULT",
-                                "childs": [
-                                  {
-                                    "nid": 11110,
-                                    "strtype": "_style/Padding",
-                                    "intarray": [
-                                      10,
-                                      10,
-                                      10,
-                                      10
-                                    ],
-                                    "InheritedType": 7
-                                  }
-                                ],
-                                "InheritedType": 1
-                              }
-                            ],
-                            "nid": 1020,
-                            "strtype": "COLORWHEEL/Style_knob",
-                            "strval": "lv.PART.KNOB, Rectangle, Pad",
+                            "part": "lv.PART.INDICATOR",
+                            "childs": [],
+                            "nid": 1080,
+                            "strtype": "ARC/Style_indicator",
+                            "strval": "lv.PART.INDICATOR, Rectangle, Pad, Arc",
                             "InheritedType": 11
                           },
                           {
-                            "nid": 1030,
-                            "strtype": "COLORWHEEL/Mode",
-                            "strval": "HUE",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1040,
-                            "strtype": "COLORWHEEL/Fixed_mode",
-                            "strval": "False",
-                            "InheritedType": 2
+                            "part": "lv.PART.KNOB",
+                            "childs": [],
+                            "nid": 1090,
+                            "strtype": "ARC/Style_knob",
+                            "strval": "lv.PART.KNOB, Rectangle, Pad",
+                            "InheritedType": 11
                           },
                           {
                             "disabled": false,
@@ -15359,7 +15264,7 @@
                             "InheritedType": 4
                           }
                         ],
-                        "saved_objtypeKey": "COLORWHEEL"
+                        "saved_objtypeKey": "ARC"
                       },
                       {
                         "guid": "GUID7163499-826416S7563322",
@@ -15492,12 +15397,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Theme color",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": -2113207224,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -16041,12 +15940,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": -2113207224,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 502857765,
@@ -16531,12 +16424,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Save",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 1479804673,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -17237,6 +17124,17 @@
                       255
                     ],
                     "InheritedType": 7
+                  },
+                  {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -17592,12 +17490,6 @@
                         "InheritedType": 10
                       },
                       {
-                        "nid": 1040,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
-                      },
-                      {
                         "part": "lv.PART.MAIN",
                         "childs": [
                           {
@@ -17919,12 +17811,6 @@
                         "InheritedType": 10
                       },
                       {
-                        "nid": 62004747,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
-                      },
-                      {
                         "part": "lv.PART.MAIN",
                         "childs": [
                           {
@@ -18081,12 +17967,6 @@
                         "strtype": "LABEL/Text",
                         "strval": "Your pairing code",
                         "InheritedType": 10
-                      },
-                      {
-                        "nid": -619580407,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
                       },
                       {
                         "part": "lv.PART.MAIN",
@@ -18397,12 +18277,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Cancel",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 2021756096,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -19065,6 +18939,17 @@
                       255
                     ],
                     "InheritedType": 7
+                  },
+                  {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -19424,12 +19309,6 @@
                         "strtype": "LABEL/Text",
                         "strval": "X: 0.0 | Y: 0.0",
                         "InheritedType": 10
-                      },
-                      {
-                        "nid": -1793443698,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
                       },
                       {
                         "part": "lv.PART.MAIN",
@@ -20101,12 +19980,6 @@
                                     "InheritedType": 10
                                   },
                                   {
-                                    "nid": 1040,
-                                    "strtype": "LABEL/Recolor",
-                                    "strval": "False",
-                                    "InheritedType": 2
-                                  },
-                                  {
                                     "part": "lv.PART.MAIN",
                                     "childs": [],
                                     "nid": 1050,
@@ -20518,12 +20391,6 @@
                                     "InheritedType": 10
                                   },
                                   {
-                                    "nid": 1040,
-                                    "strtype": "LABEL/Recolor",
-                                    "strval": "False",
-                                    "InheritedType": 2
-                                  },
-                                  {
                                     "part": "lv.PART.MAIN",
                                     "childs": [],
                                     "nid": 1050,
@@ -20927,12 +20794,6 @@
                                     "strtype": "LABEL/Text",
                                     "strval": "Invert XY",
                                     "InheritedType": 10
-                                  },
-                                  {
-                                    "nid": 1040,
-                                    "strtype": "LABEL/Recolor",
-                                    "strval": "False",
-                                    "InheritedType": 2
                                   },
                                   {
                                     "part": "lv.PART.MAIN",
@@ -22616,12 +22477,6 @@
                         "InheritedType": 10
                       },
                       {
-                        "nid": 1591597493,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
-                      },
-                      {
                         "part": "lv.PART.MAIN",
                         "childs": [
                           {
@@ -22959,12 +22814,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Cancel",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 782976384,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -23373,12 +23222,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Start",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 1231506471,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -24031,6 +23874,17 @@
                       255
                     ],
                     "InheritedType": 7
+                  },
+                  {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -24552,12 +24406,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 1040,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 1050,
@@ -24704,12 +24552,6 @@
                                 "strtype": "LABEL/Text",
                                 "strval": "Check for updates",
                                 "InheritedType": 10
-                              },
-                              {
-                                "nid": 2021756096,
-                                "strtype": "LABEL/Recolor",
-                                "strval": "False",
-                                "InheritedType": 2
                               },
                               {
                                 "part": "lv.PART.MAIN",
@@ -25274,12 +25116,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 1040,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 1050,
@@ -25717,12 +25553,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Back",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 2021756096,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -26366,6 +26196,17 @@
                       255
                     ],
                     "InheritedType": 7
+                  },
+                  {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -26884,12 +26725,6 @@
                         "strtype": "LABEL/Text",
                         "strval": "Click next to scan for networks",
                         "InheritedType": 10
-                      },
-                      {
-                        "nid": -619580407,
-                        "strtype": "LABEL/Recolor",
-                        "strval": "False",
-                        "InheritedType": 2
                       },
                       {
                         "part": "lv.PART.MAIN",
@@ -27418,12 +27253,6 @@
                             "InheritedType": 10
                           },
                           {
-                            "nid": 782976384,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
-                          },
-                          {
                             "part": "lv.PART.MAIN",
                             "childs": [],
                             "nid": 1067808367,
@@ -27829,12 +27658,6 @@
                             "strtype": "LABEL/Text",
                             "strval": "Next",
                             "InheritedType": 10
-                          },
-                          {
-                            "nid": 1231506471,
-                            "strtype": "LABEL/Recolor",
-                            "strval": "False",
-                            "InheritedType": 2
                           },
                           {
                             "part": "lv.PART.MAIN",
@@ -28488,6 +28311,17 @@
                     "InheritedType": 7
                   },
                   {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
                     "nid": 10450,
                     "strtype": "_style/Text_Font",
                     "strval": "Inter_14",
@@ -29062,12 +28896,6 @@
                     "InheritedType": 10
                   },
                   {
-                    "nid": 1040,
-                    "strtype": "LABEL/Recolor",
-                    "strval": "False",
-                    "InheritedType": 2
-                  },
-                  {
                     "part": "lv.PART.MAIN",
                     "childs": [
                       {
@@ -29224,12 +29052,6 @@
                     "strtype": "LABEL/Text",
                     "strval": "0%",
                     "InheritedType": 10
-                  },
-                  {
-                    "nid": 1040,
-                    "strtype": "LABEL/Recolor",
-                    "strval": "False",
-                    "InheritedType": 2
                   },
                   {
                     "part": "lv.PART.MAIN",
@@ -29487,6 +29309,17 @@
                       255
                     ],
                     "InheritedType": 7
+                  },
+                  {
+                    "nid": 10410,
+                    "strtype": "_style/Text_Color",
+                    "intarray": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -29729,9 +29562,9 @@
     "shape": "CIRCLE",
     "multilang": "DISABLE",
     "description": "",
-    "board": "ESP32-S3-USB-OTG",
+    "board": "Custom",
     "board_version": "1.0.0",
-    "editor_version": "1.5.3",
+    "editor_version": "1.5.4",
     "image": "",
     "export_temp_image": false,
     "force_export_images": false,
@@ -29742,28 +29575,18 @@
     "theme_dark": true,
     "theme_color1": 5,
     "theme_color2": 0,
-    "uiExportFolderPath": "...\\src\\ui",
-    "projectExportFolderPath": ".../",
     "custom_variable_prefix": "uic",
-    "backup_cnt": 1438,
+    "backup_cnt": 1442,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
-    "lvgl_version": "8.3.11",
+    "lvgl_version": "9.2.2",
     "callfuncsexport": "C_FILE",
     "imageexport": "SOURCE",
     "lvgl_include_path": "",
-    "drive_stdio": "-",
-    "drive_stdio_path": "",
-    "drive_posix": "-",
-    "drive_posix_path": "",
-    "drive_win32": "-",
-    "drive_win32_path": "",
-    "drive_fatfs": "-",
-    "drive_fatfs_path": "",
     "naming": "Name",
     "naming_force_lowercase": false,
     "naming_add_subcomponent": false,
-    "nidcnt": 1000429,
+    "nidcnt": 1000635,
     "BitDepth": 16,
     "Name": "SquareLine_Project"
   }

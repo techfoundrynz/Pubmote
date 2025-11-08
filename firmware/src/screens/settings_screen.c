@@ -44,7 +44,7 @@ void settings_screen_load_start(lv_event_t *e) {
     lv_dropdown_set_selected(ui_StartupSound, device_settings.startup_sound);
 
     // Theme color
-    lv_colorwheel_set_rgb(ui_ThemeColor, lv_color_hex(device_settings.theme_color));
+    // lv_colorwheel_set_rgb(ui_ThemeColor, lv_color_hex(device_settings.theme_color)); // TODO
 
     // Dark text
     if (device_settings.dark_text == DARK_TEXT_ENABLED) {
@@ -101,8 +101,8 @@ void startup_sound_select_change(lv_event_t *e) {
 }
 
 void theme_color_picker_change(lv_event_t *e) {
-  lv_color_t val = lv_colorwheel_get_rgb(ui_ThemeColor);
-  device_settings.theme_color = lv_color_to32(val);
+  // lv_color_t val = lv_colorwheel_get_rgb(ui_ThemeColor);
+  // device_settings.theme_color = lv_color_to32(val); // TODO
   reload_theme();
 }
 

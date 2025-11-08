@@ -8,6 +8,7 @@
 #include <esp_wifi_types.h>
 #include <nvs.h>
 #include <remote/stats.h>
+#include <string.h>
 
 static const char *TAG = "PUBREMOTE-ESPNOW";
 static bool is_initialized = false;

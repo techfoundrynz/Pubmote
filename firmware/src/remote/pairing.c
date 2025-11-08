@@ -5,6 +5,7 @@
 #include "espnow.h"
 #include "settings.h"
 #include <esp_now.h>
+#include <string.h>
 #include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-PAIRING";

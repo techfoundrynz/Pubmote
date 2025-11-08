@@ -299,7 +299,7 @@ static void update_task(void *pvParameters) {
     default:
       break;
     }
-    vTaskDelay(pdMS_TO_TICKS(LV_DISP_DEF_REFR_PERIOD));
+    vTaskDelay(pdMS_TO_TICKS(LV_DEF_REFR_PERIOD));
   }
 
   // Cleanup
