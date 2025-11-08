@@ -91,11 +91,23 @@ typedef enum {
 } StatsDoublePressAction;
 
 #define DEFAULT_PAIRING_SECRET_CODE -1
+#define MAX_PAIRED_DEVICES 5
+
+typedef struct {
+  uint8_t mac[ESP_NOW_ETH_ALEN];
+  uint8_t channel;
+  uint32_t secret_code;
+} PairedDevice;
 
 typedef struct {
   uint32_t secret_code;
+  // Selected/default device (for compatibility with existing code paths)
   uint8_t remote_addr[ESP_NOW_ETH_ALEN];
   uint8_t channel;
+  // Multi-device support
+  PairedDevice devices[MAX_PAIRED_DEVICES];
+  uint8_t device_count; // number of valid entries in devices
+  int8_t default_index; // -1 if none selected
 } PairingSettings;
 
 typedef struct {
@@ -130,5 +142,25 @@ bool is_pocket_mode_enabled();
 extern CalibrationSettings calibration_settings;
 extern DeviceSettings device_settings;
 extern PairingSettings pairing_settings;
+
+// Returns true if the given mac matches any paired device
+bool is_paired_mac(const uint8_t *mac);
+
+// Set the default device by index (0..device_count-1); updates remote_addr/channel accordingly
+void set_default_device_index(int8_t idx);
+
+// Delete a paired device by index; compacts list and updates default selection/state
+bool delete_paired_device_index(uint8_t idx);
+
+// Helpers for multi-device management
+uint8_t get_paired_device_count();
+int8_t get_default_device_index();
+bool get_paired_device(uint8_t idx, PairedDevice *out_device);
+
+// Set active/default paired device and persist
+bool set_active_paired_device(uint8_t idx);
+
+// Update the secret code on the current default device
+bool set_current_default_device_secret(uint32_t secret_code);
 
 #endif
