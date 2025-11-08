@@ -3223,6 +3223,12 @@
                                 "strval": "DEFAULT",
                                 "childs": [
                                   {
+                                    "nid": 10430,
+                                    "strtype": "_style/Text_Align",
+                                    "strval": "CENTER",
+                                    "InheritedType": 3
+                                  },
+                                  {
                                     "nid": 10450,
                                     "strtype": "_style/Text_Font",
                                     "strval": "Inter_Bold_14",
@@ -3288,8 +3294,8 @@
                         "flags": 50,
                         "strtype": "OBJECT/Size",
                         "intarray": [
-                          25,
-                          50
+                          85,
+                          1
                         ],
                         "InheritedType": 7
                       },
@@ -3399,8 +3405,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID40972318-217402S426341",
@@ -29571,7 +29576,7 @@
     "theme_color1": 5,
     "theme_color2": 0,
     "custom_variable_prefix": "uic",
-    "backup_cnt": 1438,
+    "backup_cnt": 1442,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
     "lvgl_version": "9.2.2",

@@ -304,8 +304,8 @@ void ui_StatsScreen_screen_init(void) {
 
   ui_RemoteModeContainer = lv_obj_create(ui_StatsBody);
   lv_obj_remove_style_all(ui_RemoteModeContainer);
-  lv_obj_set_width(ui_RemoteModeContainer, lv_pct(25));
-  lv_obj_set_height(ui_RemoteModeContainer, LV_SIZE_CONTENT); /// 50
+  lv_obj_set_width(ui_RemoteModeContainer, lv_pct(85));
+  lv_obj_set_height(ui_RemoteModeContainer, LV_SIZE_CONTENT); /// 1
   lv_obj_set_align(ui_RemoteModeContainer, LV_ALIGN_CENTER);
   lv_obj_set_flex_flow(ui_RemoteModeContainer, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(ui_RemoteModeContainer, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -324,6 +324,7 @@ void ui_StatsScreen_screen_init(void) {
   lv_obj_set_align(ui_RemoteModeText, LV_ALIGN_CENTER);
   lv_label_set_long_mode(ui_RemoteModeText, LV_LABEL_LONG_SCROLL_CIRCULAR);
   lv_label_set_text(ui_RemoteModeText, "POCKET MODE");
+  lv_obj_set_style_text_align(ui_RemoteModeText, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_font(ui_RemoteModeText, &ui_font_Inter_Bold_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
   ui_PrimaryStat = lv_label_create(ui_StatsBody);
