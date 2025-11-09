@@ -40,11 +40,11 @@ static RGB rgb = {255, 255, 255};
 static void configure_led(void) {
   // LED strip general initialization, according to your led board design
   led_strip_config_t strip_config = {
-      .strip_gpio_num = LED_DATA,               // The GPIO that connected to the LED strip's data line
-      .max_leds = LED_COUNT,                    // The number of LEDs in the strip,
-      .led_pixel_format = LED_PIXEL_FORMAT_GRB, // Pixel format of your LED strip
-      .led_model = LED_MODEL_WS2812,            // LED strip model
-      .flags.invert_out = false,                // whether to invert the output signal
+      .strip_gpio_num = LED_DATA, // The GPIO that connected to the LED strip's data line
+      .max_leds = LED_COUNT,      // The number of LEDs in the strip,
+      .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB, // Pixel format of your LED strip
+      .led_model = LED_MODEL_WS2812,                               // LED strip model
+      .flags.invert_out = false,                                   // whether to invert the output signal
   };
 
   // LED strip backend configuration: RMT
