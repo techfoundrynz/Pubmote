@@ -2,6 +2,7 @@
 #include "display.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "espnow.h"
 #include "nvs_flash.h"
 #include "remote/adc.h"
 #include "string.h"
@@ -57,7 +58,114 @@ PairingSettings pairing_settings = {
     .remote_addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, // Use 0xFF for -1 as uint8_t is unsigned
     .secret_code = DEFAULT_PAIRING_SECRET_CODE,
     .channel = 1,
+    .devices = {0},
+    .device_count = 0,
+    .default_index = -1,
 };
+
+static int find_paired_index(const uint8_t mac[ESP_NOW_ETH_ALEN]) {
+  for (int i = 0; i < pairing_settings.device_count; i++) {
+    if (is_same_mac(pairing_settings.devices[i].mac, (uint8_t *)mac)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+bool is_paired_mac(const uint8_t *mac) {
+  return find_paired_index(mac) >= 0;
+}
+
+void set_default_device_index(int8_t idx) {
+  if (idx >= 0 && idx < pairing_settings.device_count) {
+    pairing_settings.default_index = idx;
+    memcpy(pairing_settings.remote_addr, pairing_settings.devices[idx].mac, ESP_NOW_ETH_ALEN);
+    pairing_settings.channel = pairing_settings.devices[idx].channel;
+  }
+}
+
+static void ensure_current_in_device_list_and_set_default() {
+  // Ensure current remote_addr/channel are in the devices list and set as default
+  if (pairing_settings.device_count > MAX_PAIRED_DEVICES) {
+    pairing_settings.device_count = MAX_PAIRED_DEVICES;
+  }
+  int idx = find_paired_index(pairing_settings.remote_addr);
+  if (idx < 0) {
+    // Add new if space, else replace the oldest (index 0)
+    if (pairing_settings.device_count < MAX_PAIRED_DEVICES) {
+      idx = pairing_settings.device_count++;
+    }
+    else {
+      idx = 0;
+    }
+    memcpy(pairing_settings.devices[idx].mac, pairing_settings.remote_addr, ESP_NOW_ETH_ALEN);
+    pairing_settings.devices[idx].secret_code = pairing_settings.secret_code;
+  }
+  pairing_settings.devices[idx].channel = pairing_settings.channel;
+  set_default_device_index(idx);
+}
+
+bool delete_paired_device_index(uint8_t idx) {
+  if (idx >= pairing_settings.device_count) {
+    return false;
+  }
+
+  // Shift elements left to remove idx
+  if (idx < pairing_settings.device_count - 1) {
+    memmove(&pairing_settings.devices[idx], &pairing_settings.devices[idx + 1],
+            (pairing_settings.device_count - idx - 1) * sizeof(PairedDevice));
+  }
+  pairing_settings.device_count--;
+
+  // Adjust default index
+  if (pairing_settings.default_index == (int8_t)idx) {
+    if (pairing_settings.device_count > 0) {
+      pairing_settings.default_index = 0;
+      memcpy(pairing_settings.remote_addr, pairing_settings.devices[0].mac, ESP_NOW_ETH_ALEN);
+      pairing_settings.channel = pairing_settings.devices[0].channel;
+    }
+    else {
+      pairing_settings.default_index = -1;
+      memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
+      pairing_settings.channel = 1;
+    }
+  }
+  else if (pairing_settings.default_index > (int8_t)idx) {
+    pairing_settings.default_index -= 1;
+  }
+
+  // Persist changes
+  save_pairing_data();
+  return true;
+}
+
+uint8_t get_paired_device_count() {
+  return pairing_settings.device_count;
+}
+
+int8_t get_default_device_index() {
+  return pairing_settings.default_index;
+}
+
+bool get_paired_device(uint8_t idx, PairedDevice *out_device) {
+  if (out_device == NULL) {
+    return false;
+  }
+  if (idx >= pairing_settings.device_count) {
+    return false;
+  }
+  *out_device = pairing_settings.devices[idx];
+  return true;
+}
+
+bool set_active_paired_device(uint8_t idx) {
+  if (idx >= pairing_settings.device_count) {
+    return false;
+  }
+  set_default_device_index((int8_t)idx);
+  save_pairing_data();
+  return true;
+}
 
 static esp_err_t nvs_write(const char *key, void *value, nvs_type_t type, size_t length) {
   nvs_handle_t nvs_handle;
@@ -327,6 +435,21 @@ esp_err_t save_wifi_ssid(const char *ssid) {
   return ESP_OK;
 }
 
+bool set_current_default_device_secret(uint32_t secret_code) {
+  if (pairing_settings.default_index >= 0 && pairing_settings.default_index < pairing_settings.device_count) {
+    pairing_settings.devices[pairing_settings.default_index].secret_code = secret_code;
+    pairing_settings.secret_code = secret_code; // keep legacy field in sync
+    return true;
+  }
+  int idx = find_paired_index(pairing_settings.remote_addr);
+  if (idx >= 0) {
+    pairing_settings.devices[idx].secret_code = secret_code;
+    pairing_settings.secret_code = secret_code;
+    return true;
+  }
+  return false;
+}
+
 esp_err_t save_wifi_password(const char *password) {
   ESP_LOGI(TAG, "Saving Wi-Fi password: %s", password);
   int password_length = strlen(password);
@@ -410,21 +533,33 @@ char *get_wifi_password() {
 
 esp_err_t save_pairing_data() {
   ESP_LOGI(TAG, "Saving pairing data...");
-  esp_err_t err = nvs_write_int("secret_code", pairing_settings.secret_code);
+  // Ensure device list reflects current default
+  ensure_current_in_device_list_and_set_default();
+
+  // Save multi-device info
+  esp_err_t err = nvs_write_int("paired_count", pairing_settings.device_count);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Error saving secret code!");
+    ESP_LOGE(TAG, "Error saving paired device count!");
     return err;
   }
 
-  err = nvs_write_int("channel", pairing_settings.channel);
+  err = nvs_write_int("default_index", (int32_t)pairing_settings.default_index);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Error saving channel!");
+    ESP_LOGE(TAG, "Error saving default device index!");
     return err;
   }
 
-  err = nvs_write_blob("remote_addr", pairing_settings.remote_addr, sizeof(pairing_settings.remote_addr));
+  // Version the blob format to support future migrations
+  err = nvs_write_int("paired_blob_ver", 2);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Error saving remote address!");
+    ESP_LOGE(TAG, "Error saving paired devices blob version!");
+    return err;
+  }
+
+  // Store full fixed-size array for simplicity
+  err = nvs_write_blob("paired_devices", pairing_settings.devices, sizeof(pairing_settings.devices));
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Error saving paired devices blob!");
     return err;
   }
 
@@ -536,17 +671,48 @@ esp_err_t settings_init() {
       nvs_read_int("invert_y", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : INVERT_Y_AXIS;
 
   // Reading pairing settings
-  pairing_settings.secret_code = nvs_read_int("secret_code", &temp_setting_value) == ESP_OK ? temp_setting_value : -1;
+  uint32_t count_read = 0;
+  if (nvs_read_int("paired_count", &count_read) == ESP_OK && count_read <= MAX_PAIRED_DEVICES) {
+    pairing_settings.device_count = (uint8_t)count_read;
+  }
+  else {
+    pairing_settings.device_count = 0;
+  }
 
-  pairing_settings.channel = nvs_read_int("channel", &temp_setting_value) == ESP_OK ? (uint8_t)temp_setting_value : 1;
+  uint32_t di_val = 0;
+  if (nvs_read_int("default_index", &di_val) == ESP_OK) {
+    pairing_settings.default_index = (int32_t)di_val;
+  }
+  else {
+    pairing_settings.default_index = pairing_settings.device_count > 0 ? 0 : -1;
+  }
 
-  uint8_t remote_addr[ESP_NOW_ETH_ALEN];
-  err = nvs_read_blob("remote_addr", &remote_addr, sizeof(remote_addr));
-  if (err == ESP_OK) {
-    memcpy(pairing_settings.remote_addr, remote_addr, sizeof(remote_addr));
+  uint32_t blob_ver = 0;
+  if (nvs_read_int("paired_blob_ver", &blob_ver) != ESP_OK || blob_ver != 2) {
+    pairing_settings.device_count = 0;
+    pairing_settings.default_index = -1;
+  }
+  else {
+    PairedDevice devices_tmp[MAX_PAIRED_DEVICES];
+    esp_err_t derr = nvs_read_blob("paired_devices", devices_tmp, sizeof(devices_tmp));
+    if (derr == ESP_OK) {
+      memcpy(pairing_settings.devices, devices_tmp, sizeof(devices_tmp));
+    }
+    else {
+      pairing_settings.device_count = 0;
+      pairing_settings.default_index = -1;
+    }
+  }
+
+  if (pairing_settings.default_index >= 0 && pairing_settings.default_index < pairing_settings.device_count) {
+    memcpy(pairing_settings.remote_addr, pairing_settings.devices[pairing_settings.default_index].mac,
+           ESP_NOW_ETH_ALEN);
+    pairing_settings.channel = pairing_settings.devices[pairing_settings.default_index].channel;
+    pairing_settings.secret_code = pairing_settings.devices[pairing_settings.default_index].secret_code;
   }
   else {
     memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
+    pairing_settings.channel = 1;
   }
 
   return ESP_OK;
