@@ -22,7 +22,8 @@ static const char *TAG = "PUBREMOTE-TRANSMITTER";
 static int64_t last_send_time = 0;
 static TaskHandle_t transmitter_task_handle = NULL;
 
-static void on_data_sent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+static void on_data_sent(const esp_now_send_info_t *tx_info, esp_now_send_status_t status) {
+  const uint8_t *mac_addr = tx_info->des_addr;
   // This callback runs in WiFi task context!
   if (status == ESP_NOW_SEND_SUCCESS) {
     ESP_LOGD(TAG, "Data sent successfully to %02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2],

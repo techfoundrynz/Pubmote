@@ -12,6 +12,7 @@
 #include "rom/gpio.h"
 #include "settings.h"
 #include "time.h"
+#include <button_gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -232,7 +233,7 @@ static void button_double_click_cb(void *arg, void *usr_data) {
 }
 
 static button_callback_t registered_long_press_hold_cb = NULL;
-static void button_long_press_hold_cb(void *arg, void *usr_data) {
+static void button_long_press_hold_cb(void *button_handle, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON LONG PRESS HOLD");
   bool handled = false;
 
@@ -244,14 +245,20 @@ static void button_long_press_hold_cb(void *arg, void *usr_data) {
 void buttons_init() {
 #if JOYSTICK_BUTTON_ENABLED
   // create gpio button
-  button_config_t gpio_btn_cfg = {
-      .type = BUTTON_TYPE_GPIO,
+  const button_config_t btn_cfg = {
       .long_press_time = CONFIG_BUTTON_LONG_PRESS_TIME_MS,
       .short_press_time = CONFIG_BUTTON_SHORT_PRESS_TIME_MS,
-      .gpio_button_config =
+  };
+
+  const button_gpio_config_t btn_gpio_cfg = {
+      .gpio_num = PRIMARY_BUTTON,
+      .active_level = JOYSTICK_BUTTON_LEVEL,
+  };
+
+  button_event_args_t btn_args = {
+      .long_press =
           {
-              .gpio_num = PRIMARY_BUTTON,
-              .active_level = JOYSTICK_BUTTON_LEVEL,
+              .press_time = CONFIG_BUTTON_LONG_PRESS_TIME_MS,
           },
   };
 
@@ -260,16 +267,16 @@ void buttons_init() {
     return;
   }
 
-  gpio_btn_handle = iot_button_create(&gpio_btn_cfg);
+  iot_button_new_gpio_device(&btn_cfg, &btn_gpio_cfg, &gpio_btn_handle);
   if (gpio_btn_handle == NULL) {
     ESP_LOGE(TAG, "Button create failed");
   }
 
-  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_DOWN, button_down_cb, NULL);
-  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_UP, button_up_cb, NULL);
-  iot_button_register_cb(gpio_btn_handle, BUTTON_SINGLE_CLICK, button_single_click_cb, NULL);
-  iot_button_register_cb(gpio_btn_handle, BUTTON_DOUBLE_CLICK, button_double_click_cb, NULL);
-  iot_button_register_cb(gpio_btn_handle, BUTTON_LONG_PRESS_HOLD, button_long_press_hold_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_DOWN, &btn_args, button_down_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_UP, &btn_args, button_up_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_SINGLE_CLICK, &btn_args, button_single_click_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_DOUBLE_CLICK, &btn_args, button_double_click_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_LONG_PRESS_HOLD, &btn_args, button_long_press_hold_cb, NULL);
 #endif
 }
 

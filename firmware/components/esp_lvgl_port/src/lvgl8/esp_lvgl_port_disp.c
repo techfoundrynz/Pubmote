@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -146,7 +146,9 @@ lv_display_t *lvgl_port_add_disp_rgb(const lvgl_port_display_cfg_t *disp_cfg, co
         };
 
         const esp_lcd_rgb_panel_event_callbacks_t bb_cbs = {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 2)
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+            .on_frame_buf_complete = lvgl_port_flush_rgb_vsync_ready_callback,
+#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 2)
             .on_bounce_frame_finish = lvgl_port_flush_rgb_vsync_ready_callback,
 #endif
         };
@@ -177,6 +179,11 @@ esp_err_t lvgl_port_remove_disp(lv_disp_t *disp)
     lv_disp_remove(disp);
 
     if (disp_drv) {
+        if (disp_drv->draw_ctx) {
+            disp_drv->draw_ctx_deinit(disp_drv, disp_drv->draw_ctx);
+            lv_mem_free(disp_drv->draw_ctx);
+            disp_drv->draw_ctx = NULL;
+        }
         if (disp_drv->draw_buf && disp_drv->draw_buf->buf1) {
             free(disp_drv->draw_buf->buf1);
             disp_drv->draw_buf->buf1 = NULL;
