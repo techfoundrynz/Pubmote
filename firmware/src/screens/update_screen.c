@@ -144,8 +144,7 @@ static void update_status_label() {
     lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Retry");
     break;
   case UPDATE_STEP_NO_WIFI:
-    lv_label_set_text(ui_UpdateBodyLabel,
-                      "No WiFi credentials found. Please configure them at https://pubmote.techfoundry.nz");
+    lv_label_set_text(ui_UpdateBodyLabel, "No WiFi credentials found. Please configure them at https://pubmote.com");
     lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ui_UpdateSecondaryActionButtonLabel, "Exit");
     break;

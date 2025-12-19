@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-and-deploy:
-    if: github.repository == 'contactsimonwilson/PubRemote'
+    if: github.repository == 'techfoundrynz/Pubmote'
 
     runs-on: ubuntu-latest
     
@@ -40,6 +40,6 @@ jobs:
           # Where static files are.
           build_dir: ./firmware_tool/dist
           # Which branch to push files.
-          cname: pubmote.techfoundry.nz
+          cname: pubmote.com
 
           

@@ -7,23 +7,23 @@
 #define UI_CHARGESCREEN_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-  // SCREEN: ui_ChargeScreen
-  extern void ui_ChargeScreen_screen_init(void);
-  extern void ui_ChargeScreen_screen_destroy(void);
-  extern void ui_event_ChargeScreen(lv_event_t *e);
-  extern lv_obj_t *ui_ChargeScreen;
-  extern lv_obj_t *ui_ChargeLevelDial;
-  extern lv_obj_t *ui_ChargeInfoContainer;
-  extern lv_obj_t *ui_ChargeInfoPrimaryLabel;
-  extern lv_obj_t *ui_ChargeInfoLevelLabel;
-  // CUSTOM VARIABLES
+// SCREEN: ui_ChargeScreen
+extern void ui_ChargeScreen_screen_init(void);
+extern void ui_ChargeScreen_screen_destroy(void);
+extern void ui_event_ChargeScreen(lv_event_t * e);
+extern lv_obj_t * ui_ChargeScreen;
+extern lv_obj_t * ui_ChargeLevelDial;
+extern lv_obj_t * ui_ChargeInfoContainer;
+extern lv_obj_t * ui_ChargeInfoPrimaryLabel;
+extern lv_obj_t * ui_ChargeInfoLevelLabel;
+// CUSTOM VARIABLES
 
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif
 
 #endif
+

@@ -7,20 +7,20 @@
 #define UI_SPLASHSCREEN_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-  // SCREEN: ui_SplashScreen
-  extern void ui_SplashScreen_screen_init(void);
-  extern void ui_SplashScreen_screen_destroy(void);
-  extern void ui_event_SplashScreen(lv_event_t *e);
-  extern lv_obj_t *ui_SplashScreen;
-  extern lv_obj_t *ui_SplashScreenLogo;
-  // CUSTOM VARIABLES
+// SCREEN: ui_SplashScreen
+extern void ui_SplashScreen_screen_init(void);
+extern void ui_SplashScreen_screen_destroy(void);
+extern void ui_event_SplashScreen(lv_event_t * e);
+extern lv_obj_t * ui_SplashScreen;
+extern lv_obj_t * ui_SplashScreenLogo;
+// CUSTOM VARIABLES
 
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif
 
 #endif
+

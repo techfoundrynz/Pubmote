@@ -36,15 +36,25 @@ static RGB rgb = {255, 255, 255};
 
   #define ANIMATION_DELAY_MS 10 // Delay for the LED animation task
   #define BRIGHTNESS_STEP 5     // Step size for brightness adjustment
+  #define TRANSITION_DURATION_US 200000 // 200ms transition
+
+static RGB last_displayed_color = {0, 0, 0};
+static RGB transition_start_color = {0, 0, 0};
+static int64_t transition_start_time = 0;
+
+static void trigger_transition() {
+    transition_start_color = last_displayed_color;
+    transition_start_time = esp_timer_get_time();
+}
 
 static void configure_led(void) {
   // LED strip general initialization, according to your led board design
   led_strip_config_t strip_config = {
-      .strip_gpio_num = LED_DATA,               // The GPIO that connected to the LED strip's data line
-      .max_leds = LED_COUNT,                    // The number of LEDs in the strip,
-      .led_pixel_format = LED_PIXEL_FORMAT_GRB, // Pixel format of your LED strip
-      .led_model = LED_MODEL_WS2812,            // LED strip model
-      .flags.invert_out = false,                // whether to invert the output signal
+      .strip_gpio_num = LED_DATA, // The GPIO that connected to the LED strip's data line
+      .max_leds = LED_COUNT,      // The number of LEDs in the strip,
+      .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB, // Pixel format of your LED strip
+      .led_model = LED_MODEL_WS2812,                               // LED strip model
+      .flags.invert_out = false,                                   // whether to invert the output signal
   };
 
   // LED strip backend configuration: RMT
@@ -95,12 +105,29 @@ static void apply_led_effect() {
     return;
   }
 
-  RGB new_col = adjustBrightness(rgb, current_brightness / 255.0);
+  // Calculate the target color based on current settings
+  RGB target_color = adjustBrightness(rgb, current_brightness / 255.0);
+  RGB final_color = target_color;
+
+  // Check if we happen to be in a transition
+  int64_t now = esp_timer_get_time();
+  if (now < transition_start_time + TRANSITION_DURATION_US) {
+      float progress = (float)(now - transition_start_time) / TRANSITION_DURATION_US;
+      if (progress < 0.0f) progress = 0.0f;
+      if (progress > 1.0f) progress = 1.0f;
+      
+      // Interpolate
+      final_color.r = (uint8_t)(transition_start_color.r + (target_color.r - transition_start_color.r) * progress);
+      final_color.g = (uint8_t)(transition_start_color.g + (target_color.g - transition_start_color.g) * progress);
+      final_color.b = (uint8_t)(transition_start_color.b + (target_color.b - transition_start_color.b) * progress);
+  }
+
+  last_displayed_color = final_color;
 
   esp_err_t err = ESP_OK;
 
   for (int i = 0; i < LED_COUNT; i++) {
-    esp_err_t new_err = led_strip_set_pixel(led_strip, i, new_col.r, new_col.g, new_col.b);
+    esp_err_t new_err = led_strip_set_pixel(led_strip, i, final_color.r, final_color.g, final_color.b);
     if (new_err != ESP_OK) {
       err = new_err; // Capture the last error
     }
@@ -199,7 +226,7 @@ static void no_effect() {
 static esp_timer_handle_t led_startup_off_timer = NULL;
 
 static void startup_effect_stop() {
-  led_set_effect_none();
+  led_set_effect_default();
 
   if (led_startup_off_timer != NULL) {
     esp_timer_delete(led_startup_off_timer);
@@ -261,6 +288,7 @@ static void led_task(void *pvParameters) {
 
 void led_set_effect_solid(uint32_t color) {
 #if LED_ENABLED
+  trigger_transition();
   rgb = hex_to_rgb(color);
   current_effect = LED_EFFECT_SOLID;
   current_brightness = brightness_level;
@@ -269,6 +297,7 @@ void led_set_effect_solid(uint32_t color) {
 
 void led_set_effect_pulse(uint32_t color) {
 #if LED_ENABLED
+  trigger_transition();
   rgb = hex_to_rgb(color);
   current_effect = LED_EFFECT_PULSE;
   current_brightness = 0;
@@ -277,6 +306,7 @@ void led_set_effect_pulse(uint32_t color) {
 
 void led_set_effect_rainbow() {
 #if LED_ENABLED
+  trigger_transition();
   current_effect = LED_EFFECT_RAINBOW;
   current_brightness = brightness_level;
 #endif
@@ -284,8 +314,15 @@ void led_set_effect_rainbow() {
 
 void led_set_effect_none() {
 #if LED_ENABLED
+  trigger_transition();
   current_effect = LED_EFFECT_NONE;
   current_brightness = 0;
+#endif
+}
+
+void led_set_effect_default() {
+#if LED_ENABLED
+  led_set_effect_solid(device_settings.theme_color);
 #endif
 }
 
@@ -316,6 +353,7 @@ void led_deinit() {
 
 void led_set_brightness(uint8_t brightness) {
 #if LED_ENABLED
+  trigger_transition();
   brightness_level = brightness;
   apply_led_effect();
 #endif

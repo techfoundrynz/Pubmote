@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   check_tag_up_to_date:
-    if: github.repository == 'contactsimonwilson/PubRemote'
+    if: github.repository == 'techfoundrynz/Pubmote'
     runs-on: ubuntu-latest
 
     outputs:
@@ -63,7 +63,7 @@ jobs:
           exit 0
 
   delete_old_release:
-    if: ${{ github.repository == 'contactsimonwilson/PubRemote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
+    if: ${{ github.repository == 'techfoundrynz/Pubmote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
     needs: check_tag_up_to_date
 
     permissions:
@@ -100,7 +100,7 @@ jobs:
 
   build_and_release:
     # Access the output from the previous job
-    if: ${{ github.repository == 'contactsimonwilson/PubRemote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
+    if: ${{ github.repository == 'techfoundrynz/Pubmote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
     needs: [check_tag_up_to_date, delete_old_release]
 
     permissions:

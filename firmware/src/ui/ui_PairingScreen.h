@@ -7,29 +7,29 @@
 #define UI_PAIRINGSCREEN_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-  // SCREEN: ui_PairingScreen
-  extern void ui_PairingScreen_screen_init(void);
-  extern void ui_PairingScreen_screen_destroy(void);
-  extern void ui_event_PairingScreen(lv_event_t *e);
-  extern lv_obj_t *ui_PairingScreen;
-  extern lv_obj_t *ui_PairingContent;
-  extern lv_obj_t *ui_PairingHeader;
-  extern lv_obj_t *ui_PairingHeaderLabel;
-  extern lv_obj_t *ui_PairingBody;
-  extern lv_obj_t *ui_PairingCode;
-  extern lv_obj_t *ui_PairingCodeLabel;
-  extern lv_obj_t *ui_PairingFooter;
-  extern void ui_event_PairingMainActionButton(lv_event_t *e);
-  extern lv_obj_t *ui_PairingMainActionButton;
-  extern lv_obj_t *ui_PairingMainActionButtonLabel;
-  // CUSTOM VARIABLES
+// SCREEN: ui_PairingScreen
+extern void ui_PairingScreen_screen_init(void);
+extern void ui_PairingScreen_screen_destroy(void);
+extern void ui_event_PairingScreen(lv_event_t * e);
+extern lv_obj_t * ui_PairingScreen;
+extern lv_obj_t * ui_PairingContent;
+extern lv_obj_t * ui_PairingHeader;
+extern lv_obj_t * ui_PairingHeaderLabel;
+extern lv_obj_t * ui_PairingBody;
+extern lv_obj_t * ui_PairingCode;
+extern lv_obj_t * ui_PairingCodeLabel;
+extern lv_obj_t * ui_PairingFooter;
+extern void ui_event_PairingMainActionButton(lv_event_t * e);
+extern lv_obj_t * ui_PairingMainActionButton;
+extern lv_obj_t * ui_PairingMainActionButtonLabel;
+// CUSTOM VARIABLES
 
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif
 
 #endif
+

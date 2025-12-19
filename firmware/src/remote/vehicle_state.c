@@ -99,7 +99,7 @@ static void monitor_task(void *pvParameters) {
       }
       else {
         ESP_LOGD(TAG, "Duty cycle normal: %d%%", remoteStats.dutyCycle);
-        led_set_effect_none();
+        led_set_effect_default();
         haptic_stop_vibration();
         buzzer_stop();
       }

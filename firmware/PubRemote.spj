@@ -3223,12 +3223,6 @@
                                 "strval": "DEFAULT",
                                 "childs": [
                                   {
-                                    "nid": 10430,
-                                    "strtype": "_style/Text_Align",
-                                    "strval": "CENTER",
-                                    "InheritedType": 3
-                                  },
-                                  {
                                     "nid": 10450,
                                     "strtype": "_style/Text_Font",
                                     "strval": "Inter_Bold_14",
@@ -3294,8 +3288,8 @@
                         "flags": 50,
                         "strtype": "OBJECT/Size",
                         "intarray": [
-                          85,
-                          1
+                          25,
+                          50
                         ],
                         "InheritedType": 7
                       },
@@ -3405,7 +3399,8 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER"
+                    "saved_objtypeKey": "CONTAINER",
+                    "tree_closed": true
                   },
                   {
                     "guid": "GUID40972318-217402S426341",
@@ -6490,17 +6485,6 @@
                       0,
                       0,
                       0,
-                      255
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
                       255
                     ],
                     "InheritedType": 7
@@ -10082,17 +10066,6 @@
                       0,
                       0,
                       0,
-                      255
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
                       255
                     ],
                     "InheritedType": 7
@@ -17124,17 +17097,6 @@
                       255
                     ],
                     "InheritedType": 7
-                  },
-                  {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
-                      255
-                    ],
-                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -18936,17 +18898,6 @@
                       0,
                       0,
                       0,
-                      255
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
                       255
                     ],
                     "InheritedType": 7
@@ -23874,17 +23825,6 @@
                       255
                     ],
                     "InheritedType": 7
-                  },
-                  {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
-                      255
-                    ],
-                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -26196,17 +26136,6 @@
                       255
                     ],
                     "InheritedType": 7
-                  },
-                  {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
-                      255
-                    ],
-                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -28311,17 +28240,6 @@
                     "InheritedType": 7
                   },
                   {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
-                      255
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
                     "nid": 10450,
                     "strtype": "_style/Text_Font",
                     "strval": "Inter_14",
@@ -29309,17 +29227,6 @@
                       255
                     ],
                     "InheritedType": 7
-                  },
-                  {
-                    "nid": 10410,
-                    "strtype": "_style/Text_Color",
-                    "intarray": [
-                      255,
-                      255,
-                      255,
-                      255
-                    ],
-                    "InheritedType": 7
                   }
                 ],
                 "InheritedType": 1
@@ -29586,7 +29493,7 @@
     "naming": "Name",
     "naming_force_lowercase": false,
     "naming_add_subcomponent": false,
-    "nidcnt": 1000635,
+    "nidcnt": 1000631,
     "BitDepth": 16,
     "Name": "SquareLine_Project"
   }

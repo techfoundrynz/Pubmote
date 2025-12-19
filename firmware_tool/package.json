@@ -1,7 +1,7 @@
 {
   "name": "pubmote-firmware-tool",
   "private": true,
-  "homepage": "https://contactsimonwilson.github.io/pubremote",
+  "homepage": "https://techfoundrynz.github.io/pubmote",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

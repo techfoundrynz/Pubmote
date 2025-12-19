@@ -22,12 +22,12 @@ static const char *TAG = "PUBREMOTE-CHARGE_DRIVER_SY6970";
 static XPowersPPM PPM;
 
 static int sy6970_read_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, uint8_t len) {
-  esp_err_t result = i2c_read_with_mutex(device_addr, reg_addr, data, len, 500);
+  esp_err_t result = i2c_read(device_addr, reg_addr, data, len, 500);
   return (result == ESP_OK) ? 0 : -1; // XPowersLib expects 0=success, -1=failure
 }
 
 static int sy6970_write_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, uint8_t len) {
-  esp_err_t result = i2c_write_with_mutex(device_addr, reg_addr, data, len, 500);
+  esp_err_t result = i2c_write(device_addr, reg_addr, data, len, 500);
   return (result == ESP_OK) ? 0 : -1; // XPowersLib expects 0=success, -1=failure
 }
 
@@ -86,8 +86,8 @@ static esp_err_t sy6970_init() {
   PPM.setSysPowerDownVoltage(3500); // Default
   PPM.setInputCurrentLimit(1500);
   PPM.setChargeTargetVoltage(4208);
-  PPM.setPrechargeCurr(640);
-  PPM.setChargerConstantCurr(2048);
+  PPM.setPrechargeCurr(128);
+  PPM.setChargerConstantCurr(1024);
   PPM.enableAutoDetectionDPDM(); // Enable DPDM auto-detection
   PPM.enableHVDCP(); // Enable HVDCP detection
   PPM.setHighVoltageRequestedRange(PowersSY6970::REQUEST_9V); // Set high voltage request to 9V
@@ -195,6 +195,10 @@ extern "C" RemotePowerState sy6970_get_power_state() {
 
   state.isPowered = PPM.isVbusIn();
   state.isFault = PPM.getFaultStatus() != 0;
+
+  if (state.isFault) {
+    ESP_LOGW(TAG, "SY6970 fault detected! Fault status: 0x%02X. Charge status: %s", PPM.getFaultStatus(), PPM.getChargeStatusString());
+  }
 
 
   ESP_LOGD(TAG, "\nVBUS: %s %04dmV\nVBAT: %04dmV\nVSYS: %04dmV\nBus state: %s\nCharge state: %s\nCharge Current: %04dmA",
