@@ -1,0 +1,16 @@
+<project name="pubmote">
+	<targets>
+		<target name="disp_466x466">
+			<display width="466" height="466" radius="233" />
+		</target>
+		<target name="disp_240x240">
+			<display width="240" height="240" radius="120" />
+		</target>
+		<target name="disp_410x502">
+			<display width="410" height="502" radius="20" />
+		</target>
+		<target name="disp_280x456">
+			<display width="280" height="456" radius="20" />
+		</target>
+	</targets>
+</project>
