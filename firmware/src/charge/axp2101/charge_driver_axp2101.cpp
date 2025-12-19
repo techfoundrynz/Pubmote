@@ -22,12 +22,12 @@ static const char *TAG = "PUBREMOTE-CHARGE_DRIVER_AXP2101";
 static XPowersPMU PMU;
 
 static int axp2101_read_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, uint8_t len) {
-  esp_err_t result = i2c_read_with_mutex(device_addr, reg_addr, data, len, 500);
+  esp_err_t result = i2c_read(device_addr, reg_addr, data, len, 500);
   return (result == ESP_OK) ? 0 : -1; // XPowersLib expects 0=success, -1=failure
 }
 
 static int axp2101_write_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, uint8_t len) {
-  esp_err_t result = i2c_write_with_mutex(device_addr, reg_addr, data, len, 500);
+  esp_err_t result = i2c_write(device_addr, reg_addr, data, len, 500);
   return (result == ESP_OK) ? 0 : -1; // XPowersLib expects 0=success, -1=failure
 }
 

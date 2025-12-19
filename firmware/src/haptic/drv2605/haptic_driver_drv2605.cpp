@@ -26,12 +26,12 @@ static bool haptic_initialized = false;
 
 static bool drv2605_write_reg(uint8_t reg_addr, const uint8_t *data, size_t len)
 {
-    esp_err_t result = i2c_write_with_mutex(DRV2605_ADDR, reg_addr, (uint8_t*)data, len, 500);
+    esp_err_t result = i2c_write(DRV2605_ADDR, reg_addr, (uint8_t*)data, len, 500);
     return (result == ESP_OK);
 }
 
 bool drv2605_read_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t* data, size_t len) {
-    esp_err_t result = i2c_read_with_mutex(device_addr, reg_addr, data, len, 500);
+    esp_err_t result = i2c_read(device_addr, reg_addr, data, len, 500);
     return (result == ESP_OK);
 }
 
@@ -190,6 +190,8 @@ bool drv2605_is_active() {
     return  haptic_initialized;
 }
 
+#define DRV2606_MAX_INIT_WAIT_MS 300
+#define DRV2605_INIT_POLL_INTERVAL_MS 20
 esp_err_t drv2605_haptic_driver_init() {
     ESP_LOGI(TAG, "Initializing DRV2605 haptic driver");
     
@@ -199,8 +201,19 @@ esp_err_t drv2605_haptic_driver_init() {
         haptic_initialized = false;
         return ret;
     }
+
+    int waited_ms = 0;
+    while (!haptic_initialized) {
+        if (waited_ms >= DRV2606_MAX_INIT_WAIT_MS) {
+            ESP_LOGE(TAG, "DRV2605 calibration timeout");
+            break;
+        }
+        ESP_LOGI(TAG, "Waiting for DRV2605 calibration to complete...");
+        waited_ms += DRV2605_INIT_POLL_INTERVAL_MS;
+        vTaskDelay(pdMS_TO_TICKS(DRV2605_INIT_POLL_INTERVAL_MS));
+    }
     
-    ESP_LOGI(TAG, "DRV2605 haptic driver initialized successfully");
+    ESP_LOGI(TAG, "DRV2605 haptic driver initialized successfully. Took %d ms", waited_ms);
     return ESP_OK;
 }
 

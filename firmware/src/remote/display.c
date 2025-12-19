@@ -28,7 +28,7 @@
 #if TP_CST816S
   #include "esp_lcd_touch_cst816s.h"
 #elif TP_FT3168
-  #include "esp_lcd_touch_ft3168.h"
+  #include "esp_lcd_touch_ft5x06.h"
 #elif TP_CST9217
   #include "esp_lcd_touch_cst9217.h"
 #endif
@@ -53,6 +53,7 @@
   #error "ST7789 not supported"
 #endif
 
+#include "remote/haptic.h"
 #include "remoteinputs.h"
 
 static const char *TAG = "PUBREMOTE-DISPLAY";
@@ -74,6 +75,22 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define MAX_TRAN_SIZE ((int)LV_HOR_RES * BUFFER_LINES * sizeof(uint16_t))
 
 #define SCREEN_TEST_UI 0
+
+#if TOUCH_ENABLED
+static void feedback_cb(struct _lv_indev_drv_t *indev_drv, uint8_t code) {
+  if (code == LV_EVENT_PRESSED) {
+    lv_indev_t *indev = lv_indev_get_act();
+    if (indev) {
+      lv_obj_t *act_obj = lv_indev_get_obj_act();
+      if (act_obj != NULL && lv_obj_check_type(act_obj, &lv_btn_class)) {
+        if (!lv_obj_has_state(act_obj, LV_STATE_DISABLED)) {
+          //  haptic_vibrate(HAPTIC_SINGLE_CLICK); // Optional: vibrate on button press
+        }
+      }
+    }
+  }
+}
+#endif
 
 /* LCD IO and panel */
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
@@ -300,7 +317,7 @@ static esp_err_t app_touch_init(void) {
   #if TP_CST816S
   esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CST816S_CONFIG();
   #elif TP_FT3168
-  esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_FT3168_CONFIG();
+  esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_FT5x06_CONFIG();
   #elif TP_CST9217
   esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CST9217_CONFIG();
   #endif
@@ -329,7 +346,7 @@ static esp_err_t app_touch_init(void) {
   ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_cst816s(tp_io_handle, &tp_cfg, &touch_handle));
   #elif TP_FT3168
   ESP_LOGI(TAG, "Initialize touch controller FT3168");
-  ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_ft3168(tp_io_handle, &tp_cfg, &touch_handle));
+  ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_ft5x06(tp_io_handle, &tp_cfg, &touch_handle));
   #elif TP_CST9217
   ESP_LOGI(TAG, "Initialize touch controller CST9217");
   ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_cst9217(tp_io_handle, &tp_cfg, &touch_handle));
@@ -339,25 +356,17 @@ static esp_err_t app_touch_init(void) {
 }
 
 static void lv_touch_cb(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
-  if (i2c_lock(10)) {
-    // Call the original read callback
-    if (original_read_cb) {
-      original_read_cb(indev_drv, data);
-      static bool was_pressed = false;
-      bool was_press = (data->state == LV_INDEV_STATE_PRESSED);
-      if (was_press && !was_pressed) {
-        // Reset the sleep timer when touch is pressed
-        reset_sleep_timer();
-      }
+  // Call the original read callback
+  if (original_read_cb) {
+    original_read_cb(indev_drv, data);
+    static bool was_pressed = false;
+    bool was_press = (data->state == LV_INDEV_STATE_PRESSED);
+    if (was_press && !was_pressed) {
+      // Reset the sleep timer when touch is pressed
+      reset_sleep_timer();
+    }
 
-      was_pressed = was_press;
-      i2c_unlock();
-    }
-    else {
-      ESP_LOGE(TAG, "Original read callback is NULL");
-      i2c_unlock();
-      return;
-    }
+    was_pressed = was_press;
   }
 }
 
@@ -439,6 +448,7 @@ static esp_err_t app_lvgl_init(void) {
   original_read_cb = lvgl_touch_indev->driver->read_cb;
   // Replace the read callback with our own wrapped with mutex control
   indev_drv_touch->read_cb = lv_touch_cb;
+  indev_drv_touch->feedback_cb = feedback_cb;
 
   //  lv_indev_add_event_cb(lvgl_touch_indev, lv_touch_cb, LV_EVENT_ALL, NULL); //LVGL9
 #endif

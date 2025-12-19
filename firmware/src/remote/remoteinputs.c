@@ -9,6 +9,7 @@
 #include "freertos/task.h"
 #include "iot_button.h"
 #include "powermanagement.h"
+#include "remote/haptic.h"
 #include "rom/gpio.h"
 #include "settings.h"
 #include "time.h"
@@ -200,6 +201,8 @@ static void button_down_cb(void *arg, void *usr_data) {
     handled = registered_button_down_cb();
   }
 
+  haptic_vibrate(HAPTIC_SINGLE_CLICK);
+
   if (!handled) {
     remote_data.bt_c = 1;
   }
@@ -240,6 +243,8 @@ static void button_long_press_hold_cb(void *button_handle, void *usr_data) {
   if (registered_long_press_hold_cb) {
     handled = registered_long_press_hold_cb();
   }
+
+  haptic_vibrate(HAPTIC_SOFT_BUZZ);
 }
 
 void buttons_init() {

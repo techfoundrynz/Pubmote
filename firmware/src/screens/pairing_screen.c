@@ -32,5 +32,5 @@ void pairing_screen_loaded(lv_event_t *e) {
 
 void pairing_screen_unload_start(lv_event_t *e) {
   ESP_LOGI(TAG, "Pairing screen unload start");
-  led_set_effect_none();
+  led_set_effect_default();
 }

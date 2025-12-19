@@ -19,7 +19,7 @@
 #endif
 
 #if defined(ACC2_POWER) && !defined(ACC2_POWER_DEFAULT_LEVEL)
-  #define ACC2_POWER_DEFAULT 60 // Default to 60% brightness
+  #define ACC2_POWER_DEFAULT 30 // Default to x% brightness
 #endif
 
 // i2c configuration
