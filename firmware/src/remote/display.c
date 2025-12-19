@@ -77,16 +77,19 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define SCREEN_TEST_UI 0
 
 #if TOUCH_ENABLED
-static void feedback_cb(struct _lv_indev_drv_t *indev_drv, uint8_t code) {
+static void input_event_cb(lv_event_t *e) {
+  ESP_LOGW(TAG, "Input event received");
+  lv_event_code_t code = lv_event_get_code(e);
   if (code == LV_EVENT_PRESSED) {
-    lv_indev_t *indev = lv_indev_get_act();
+    reset_sleep_timer();
+    lv_indev_t *indev = lv_event_get_target(e);
     if (indev) {
-      // lv_obj_t *act_obj = lv_indev_get_obj_act();
-      // if (act_obj != NULL && lv_obj_check_type(act_obj, &lv_btn_class)) {
-      //   if (!lv_obj_has_state(act_obj, LV_STATE_DISABLED)) {
-      //     //  haptic_vibrate(HAPTIC_SINGLE_CLICK); // Optional: vibrate on button press
-      //   }
-      // }
+      lv_obj_t *act_obj = lv_indev_get_active_obj();
+      if (act_obj && lv_obj_check_type(act_obj, &lv_button_class)) {
+        if (!lv_obj_has_state(act_obj, LV_STATE_DISABLED)) {
+          haptic_vibrate(HAPTIC_SINGLE_CLICK);
+        }
+      }
     }
   }
 }
@@ -96,8 +99,6 @@ static void feedback_cb(struct _lv_indev_drv_t *indev_drv, uint8_t code) {
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
 static esp_lcd_panel_handle_t lcd_panel = NULL;
 #if TOUCH_ENABLED
-typedef void (*lv_indev_read_cb_t)(lv_indev_t *indev, lv_indev_data_t *data);
-static lv_indev_read_cb_t original_read_cb = NULL;
 static esp_lcd_touch_handle_t touch_handle = NULL;
 #endif
 
@@ -359,21 +360,6 @@ static esp_err_t app_touch_init(void) {
   return ESP_OK;
 }
 
-static void lv_touch_cb(lv_indev_t *indev, lv_indev_data_t *data) {
-  // Call the original read callback
-  if (original_read_cb) {
-    original_read_cb(indev, data);
-    static bool was_pressed = false;
-    bool was_press = (data->state == LV_INDEV_STATE_PRESSED);
-    if (was_press && !was_pressed) {
-      // Reset the sleep timer when touch is pressed
-      reset_sleep_timer();
-    }
-
-    was_pressed = was_press;
-  }
-}
-
 #endif // TOUCH_ENABLED
 
 void display_set_rotation(ScreenRotation rot) {
@@ -428,7 +414,7 @@ static esp_err_t app_lvgl_init(void) {
                                                 .buff_spiram = false,
                                                 .full_refresh = false,
                                                 .direct_mode = false,
-                                                .swap_bytes = false,
+                                                .swap_bytes = true,
 #if SW_ROTATE
   // .sw_rotate = true, // TODO - figure out why this causes mem issues
 #endif
@@ -448,10 +434,7 @@ static esp_err_t app_lvgl_init(void) {
       .handle = touch_handle,
   };
   lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
-
-  // Replace the read callback with our own wrapped with mutex control
-  original_read_cb = lv_indev_get_read_cb(lvgl_touch_indev);
-  lv_indev_set_read_cb(lvgl_touch_indev, lv_touch_cb);
+  // lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_PRESSED, NULL);
 #endif
 
   // Initialize the encoder driver
