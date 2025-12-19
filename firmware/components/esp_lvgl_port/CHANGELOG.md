@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.7.0
+
+### Features
+
+- Added support for multi-touch gestures.
+
+## 2.6.3
+
+### Fixes
+- Improved and fixed deinit function (remove semaphor) - https://github.com/espressif/esp-bsp/issues/673
+
 ## 2.6.2
 
 - Changed minimum IDF version to IDF5.1
