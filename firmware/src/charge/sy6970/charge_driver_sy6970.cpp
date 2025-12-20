@@ -32,42 +32,41 @@ static int sy6970_write_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t *data
 }
 
 static esp_err_t set_ir_compensation(uint8_t resistance_mohm, uint8_t clamp_mv) {
-    // Validate inputs
-    if (resistance_mohm > 140) {
-        ESP_LOGE(TAG, "Error: Resistance too high, max 140mΩ");
-        return ESP_FAIL;
-    }
-    if (clamp_mv > 224) {
-        ESP_LOGE(TAG, "Error: Clamp too high, max 224mV"); 
-        return ESP_FAIL;
-    }
-    
-    // Calculate register values
-    uint8_t bat_comp = resistance_mohm / 20;
-    uint8_t vclamp = clamp_mv / 32;
-    uint8_t treg = 3; // Keep 120°C default
-    
-    // Read current register to preserve other settings
-    uint8_t current_reg08 = PPM.readRegister(0x08);
-    
-    // Update only the IR compensation bits
-    uint8_t new_reg08 = (current_reg08 & 0x03) | (bat_comp << 5) | (vclamp << 2);
-    
-    // Write back
-    bool success = PPM.writeRegister(0x08, new_reg08);
-    
-    if (success) {
-        ESP_LOGI(TAG, "IR Compensation set: %dmΩ, Clamp: %dmV\n", 
-                     bat_comp * 20, vclamp * 32);
-    }
-    
-    return success ? ESP_OK : ESP_FAIL;
+  // Validate inputs
+  if (resistance_mohm > 140) {
+    ESP_LOGE(TAG, "Error: Resistance too high, max 140mΩ");
+    return ESP_FAIL;
+  }
+  if (clamp_mv > 224) {
+    ESP_LOGE(TAG, "Error: Clamp too high, max 224mV");
+    return ESP_FAIL;
+  }
+
+  // Calculate register values
+  uint8_t bat_comp = resistance_mohm / 20;
+  uint8_t vclamp = clamp_mv / 32;
+  uint8_t treg = 3; // Keep 120°C default
+
+  // Read current register to preserve other settings
+  uint8_t current_reg08 = PPM.readRegister(0x08);
+
+  // Update only the IR compensation bits
+  uint8_t new_reg08 = (current_reg08 & 0x03) | (bat_comp << 5) | (vclamp << 2);
+
+  // Write back
+  bool success = PPM.writeRegister(0x08, new_reg08);
+
+  if (success) {
+    ESP_LOGI(TAG, "IR Compensation set: %dmΩ, Clamp: %dmV\n", bat_comp * 20, vclamp * 32);
+  }
+
+  return success ? ESP_OK : ESP_FAIL;
 }
 
 esp_err_t sy6970_enter_protection_mode() {
-    ESP_LOGI(TAG, "Entering shipping mode (power down)");
-    PPM.shutdown();
-    return ESP_OK;
+  ESP_LOGI(TAG, "Entering shipping mode (power down)");
+  PPM.shutdown();
+  return ESP_OK;
 }
 
 /**
@@ -88,10 +87,10 @@ static esp_err_t sy6970_init() {
   PPM.setChargeTargetVoltage(4208);
   PPM.setPrechargeCurr(128);
   PPM.setChargerConstantCurr(1024);
-  PPM.enableAutoDetectionDPDM(); // Enable DPDM auto-detection
-  PPM.enableHVDCP(); // Enable HVDCP detection
+  PPM.enableAutoDetectionDPDM();                              // Enable DPDM auto-detection
+  PPM.enableHVDCP();                                          // Enable HVDCP detection
   PPM.setHighVoltageRequestedRange(PowersSY6970::REQUEST_9V); // Set high voltage request to 9V
-  PPM.enableMeasure(); // ADC must be enabled before reading voltages
+  PPM.enableMeasure();                                        // ADC must be enabled before reading voltages
   PPM.enableCharge();
   set_ir_compensation(60, 96); // Set IR compensation to 60mOhm and 96mV clamp
 
@@ -113,15 +112,14 @@ extern "C" esp_err_t sy6970_charge_driver_init() {
 }
 
 #if SY6970_DEBUG
-static char* uint8_to_bits_static(uint8_t value) {
-    static char buffer[9];  // 8 bits + null terminator
-    for (int i = 7; i >= 0; i--) {
-        buffer[7-i] = ((value >> i) & 1) ? '1' : '0';
-    }
-    buffer[8] = '\0';
-    return buffer;
+static char *uint8_to_bits_static(uint8_t value) {
+  static char buffer[9]; // 8 bits + null terminator
+  for (int i = 7; i >= 0; i--) {
+    buffer[7 - i] = ((value >> i) & 1) ? '1' : '0';
+  }
+  buffer[8] = '\0';
+  return buffer;
 }
-
 
 static void log_registers() {
   uint8_t reg1 = PPM.readRegister(POWERS_PPM_REG_01H);
@@ -169,7 +167,8 @@ static void log_registers() {
 
 extern "C" RemotePowerState sy6970_get_power_state() {
   PPM.feedWatchdog();
-  RemotePowerState state = {.voltage = 0, .chargeState = CHARGE_STATE_UNKNOWN, .current = 0, .isPowered = false, .isFault = false};
+  RemotePowerState state = {
+      .voltage = 0, .chargeState = CHARGE_STATE_UNKNOWN, .current = 0, .isPowered = false, .isFault = false};
   state.voltage = PPM.getBattVoltage();
   state.current = PPM.getChargeCurrent();
 
@@ -197,16 +196,17 @@ extern "C" RemotePowerState sy6970_get_power_state() {
   state.isFault = PPM.getFaultStatus() != 0;
 
   if (state.isFault) {
-    ESP_LOGW(TAG, "SY6970 fault detected! Fault status: 0x%02X. Charge status: %s", PPM.getFaultStatus(), PPM.getChargeStatusString());
+    // ESP_LOGW(TAG, "SY6970 fault detected! Fault status: 0x%02X. Charge status: %s", PPM.getFaultStatus(),
+    // PPM.getChargeStatusString());
   }
 
-
-  ESP_LOGD(TAG, "\nVBUS: %s %04dmV\nVBAT: %04dmV\nVSYS: %04dmV\nBus state: %s\nCharge state: %s\nCharge Current: %04dmA",
+  ESP_LOGD(TAG,
+           "\nVBUS: %s %04dmV\nVBAT: %04dmV\nVSYS: %04dmV\nBus state: %s\nCharge state: %s\nCharge Current: %04dmA",
            PPM.isVbusIn() ? "Connected" : "Disconnect", PPM.getVbusVoltage(), PPM.getBattVoltage(),
            PPM.getSystemVoltage(), PPM.getBusStatusString(), PPM.getChargeStatusString(), PPM.getChargeCurrent());
-  #if SY6970_DEBUG
-    log_registers();
-  #endif
+#if SY6970_DEBUG
+  log_registers();
+#endif
 
   return state;
 }

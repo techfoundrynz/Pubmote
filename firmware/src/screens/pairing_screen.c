@@ -4,13 +4,13 @@
 #include <remote/connection.h>
 #include <remote/display.h>
 #include <remote/receiver.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-PAIRING_SCREEN";
 
 bool is_pairing_screen_active() {
   lv_obj_t *active_screen = lv_scr_act();
-  return active_screen == ui_PairingScreen;
+  // return active_screen == ui_PairingScreen;
+  return false;
 }
 
 // Event handlers
@@ -19,7 +19,7 @@ void pairing_screen_load_start(lv_event_t *e) {
   led_set_effect_rainbow();
   if (LVGL_lock(0)) {
     apply_ui_scale(NULL);
-    create_navigation_group(ui_PairingFooter);
+    // create_navigation_group(ui_PairingFooter);
     LVGL_unlock();
   }
 }

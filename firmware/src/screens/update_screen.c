@@ -13,7 +13,7 @@
 #include "utilities/string_utils.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <ui/ui.h>
+// #include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-UPDATE_SCREEN";
 
@@ -52,7 +52,8 @@ static UpdateType selected_update_type = UPDATE_TYPE_STABLE;
 
 bool is_update_screen_active() {
   lv_obj_t *active_screen = lv_scr_act();
-  return active_screen == ui_UpdateScreen;
+  // return active_screen == ui_UpdateScreen;
+  return false;
 }
 
 static void change_update_selection(lv_event_t *e) {
@@ -72,38 +73,38 @@ static void update_status_label() {
   static char *wifi_ssid;
 
   // Reset visibility
-  lv_obj_clear_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_clear_flag(ui_UpdateSecondaryActionButton, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(ui_UpdateSecondaryActionButtonLabel, "Cancel");
-  lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Next");
-  lv_label_set_text(ui_UpdateBodyLabel, "");
+  // lv_obj_clear_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
+  // lv_obj_clear_flag(ui_UpdateSecondaryActionButton, LV_OBJ_FLAG_HIDDEN);
+  // lv_label_set_text(ui_UpdateSecondaryActionButtonLabel, "Cancel");
+  // lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Next");
+  // lv_label_set_text(ui_UpdateBodyLabel, "");
 
   if (current_update_step == UPDATE_STEP_UPDATE_AVAILABLE) {
     // Show dropdown
-    lv_obj_clear_flag(ui_UpdateBodyDropdown, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_clear_flag(ui_UpdateBodyDropdown, LV_OBJ_FLAG_HIDDEN);
   }
   else {
     // Hide dropdown
-    lv_obj_add_flag(ui_UpdateBodyDropdown, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_UpdateBodyDropdown, LV_OBJ_FLAG_HIDDEN);
   }
 
   switch (current_update_step) {
   case UPDATE_STEP_START:
     wifi_ssid = get_wifi_ssid();
-    lv_label_set_text_fmt(ui_UpdateBodyLabel, "Click next to connect to %s", wifi_ssid);
+    // lv_label_set_text_fmt(ui_UpdateBodyLabel, "Click next to connect to %s", wifi_ssid);
     break;
   case UPDATE_STEP_CONNECTING:
     wifi_ssid = get_wifi_ssid();
-    lv_label_set_text_fmt(ui_UpdateBodyLabel, "Connecting to %s...", wifi_ssid);
-    lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
+    // lv_label_set_text_fmt(ui_UpdateBodyLabel, "Connecting to %s...", wifi_ssid);
+    // lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
     break;
   case UPDATE_STEP_CHECKING_UPDATE:
-    lv_label_set_text(ui_UpdateBodyLabel, "Checking for updates...");
-    lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
+    // lv_label_set_text(ui_UpdateBodyLabel, "Checking for updates...");
+    // lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
     break;
   case UPDATE_STEP_UPDATE_AVAILABLE:
-    lv_label_set_text(ui_UpdateBodyLabel, "Choose update");
-    lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Next");
+    // lv_label_set_text(ui_UpdateBodyLabel, "Choose update");
+    // lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Next");
     // Add lvgl dropdown
     char *available_options = strdup("");
 
@@ -120,44 +121,44 @@ static void update_status_label() {
       free(old);
     }
 
-    lv_dropdown_set_options(ui_UpdateBodyDropdown, available_options);
+    // lv_dropdown_set_options(ui_UpdateBodyDropdown, available_options);
     free(available_options);
     // set change callback to change_update_selection
-    lv_obj_add_event_cb(ui_UpdateBodyDropdown, change_update_selection, LV_EVENT_VALUE_CHANGED, NULL);
+    // lv_obj_add_event_cb(ui_UpdateBodyDropdown, change_update_selection, LV_EVENT_VALUE_CHANGED, NULL);
     break;
   case UPDATE_STEP_NO_UPDATE:
-    lv_label_set_text(ui_UpdateBodyLabel, "No updates available");
-    lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Exit");
-    lv_obj_add_flag(ui_UpdateSecondaryActionButton, LV_OBJ_FLAG_HIDDEN);
+    // lv_label_set_text(ui_UpdateBodyLabel, "No updates available");
+    // lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Exit");
+    // lv_obj_add_flag(ui_UpdateSecondaryActionButton, LV_OBJ_FLAG_HIDDEN);
     break;
   case UPDATE_STEP_IN_PROGRESS:
-    lv_label_set_text(ui_UpdateBodyLabel, "Downloading update...");
-    lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
+    // lv_label_set_text(ui_UpdateBodyLabel, "Downloading update...");
+    // lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
     break;
   case UPDATE_STEP_COMPLETE:
-    lv_label_set_text(ui_UpdateBodyLabel, "Update complete");
-    lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Reboot");
-    lv_obj_add_flag(ui_UpdateSecondaryActionButton, LV_OBJ_FLAG_HIDDEN);
+    // lv_label_set_text(ui_UpdateBodyLabel, "Update complete");
+    // lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Reboot");
+    // lv_obj_add_flag(ui_UpdateSecondaryActionButton, LV_OBJ_FLAG_HIDDEN);
     break;
   case UPDATE_STEP_ERROR:
-    lv_label_set_text(ui_UpdateBodyLabel, "An error occurred during the update process");
-    lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Retry");
+    // lv_label_set_text(ui_UpdateBodyLabel, "An error occurred during the update process");
+    // lv_label_set_text(ui_UpdatePrimaryActionButtonLabel, "Retry");
     break;
   case UPDATE_STEP_NO_WIFI:
-    lv_label_set_text(ui_UpdateBodyLabel, "No WiFi credentials found. Please configure them at https://pubmote.com");
-    lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(ui_UpdateSecondaryActionButtonLabel, "Exit");
+    // lv_label_set_text(ui_UpdateBodyLabel, "No WiFi credentials found. Please configure them at https://pubmote.com");
+    // lv_obj_add_flag(ui_UpdatePrimaryActionButton, LV_OBJ_FLAG_HIDDEN);
+    // lv_label_set_text(ui_UpdateSecondaryActionButtonLabel, "Exit");
     break;
   default:
-    lv_label_set_text(ui_UpdateBodyLabel, "Unknown update step");
+    // lv_label_set_text(ui_UpdateBodyLabel, "Unknown update step");
     break;
   }
-  resize_footer_buttons(ui_UpdateFooter); // Resize footer buttons
+  // resize_footer_buttons(ui_UpdateFooter); // Resize footer buttons
 }
 
 static void simple_progress_callback(const char *status) {
   if (LVGL_lock(0)) {
-    lv_label_set_text(ui_UpdateBodyLabel, status);
+    // lv_label_set_text(ui_UpdateBodyLabel, status);
     LVGL_unlock();
   }
 }
@@ -322,7 +323,7 @@ void update_screen_load_start(lv_event_t *e) {
 
   if (LVGL_lock(0)) {
     apply_ui_scale(NULL);
-    create_navigation_group(ui_UpdateFooter);
+    // create_navigation_group(ui_UpdateFooter);
     LVGL_unlock();
   }
 }
@@ -352,7 +353,7 @@ void update_primary_button_press(lv_event_t *e) {
     break;
   case UPDATE_STEP_NO_UPDATE:
     if (LVGL_lock(0)) {
-      _ui_screen_change(&ui_MenuScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 200, 0, &ui_MenuScreen_screen_init);
+      // _ui_screen_change(&ui_MenuScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 200, 0, &ui_MenuScreen_screen_init);
       LVGL_unlock();
     }
     break;

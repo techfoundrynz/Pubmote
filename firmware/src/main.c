@@ -26,7 +26,6 @@
 #include "remote/time.h"
 #include "remote/transmitter.h"
 #include "remote/vehicle_state.h"
-#include "ui/ui.h"
 #include <stdio.h>
 #include <string.h>
 
