@@ -1,0 +1,47 @@
+/**
+ * @file pubmote_ui.h
+ */
+
+#ifndef PUBMOTE_UI_H
+#define PUBMOTE_UI_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*********************
+ *      INCLUDES
+ *********************/
+
+#include "pubmote_ui_gen.h"
+
+/*********************
+ *      DEFINES
+ *********************/
+
+/**********************
+ *      TYPEDEFS
+ **********************/
+
+/**********************
+ * GLOBAL VARIABLES
+ **********************/
+
+/**********************
+ * GLOBAL PROTOTYPES
+ **********************/
+
+/**
+ * Initialize the component library
+ */
+void pubmote_ui_init(const char * asset_path);
+
+/**********************
+ *      MACROS
+ **********************/
+
+#ifdef __cplusplus
+} /*extern "C"*/
+#endif
+
+#endif /*PUBMOTE_UI_H*/

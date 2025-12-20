@@ -8,7 +8,7 @@
  *********************/
 
 #include "stat_col_gen.h"
-#include "pubmote.h"
+#include "pubmote_ui.h"
 
 /*********************
  *      DEFINES

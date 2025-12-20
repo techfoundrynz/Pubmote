@@ -8,7 +8,7 @@
  *********************/
 
 #include "switch_gen.h"
-#include "pubmote.h"
+#include "pubmote_ui.h"
 
 /*********************
  *      DEFINES

@@ -17,9 +17,9 @@
 #include "hal/ledc_types.h"
 #include "lvgl.h"
 #include "powermanagement.h"
+#include "pubmote_ui.h"
 #include "remote/i2c.h"
 #include "settings.h"
-#include "ui/ui.h"
 #include "utilities/screen_utils.h"
 #include "utilities/theme_utils.h"
 #include <stdio.h>
@@ -73,8 +73,6 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define BUFFER_LINES ((int)(LV_VER_RES / 10))
 #define BUFFER_SIZE (LV_HOR_RES * BUFFER_LINES)
 #define MAX_TRAN_SIZE ((int)LV_HOR_RES * BUFFER_LINES * sizeof(uint16_t))
-
-#define SCREEN_TEST_UI 0
 
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
@@ -463,49 +461,12 @@ lv_indev_t *get_touch() {
 }
 #endif
 
-#if SCREEN_TEST_UI
-static void event_handler(lv_event_t *e) {
-  lv_event_code_t code = lv_event_get_code(e);
-
-  if (code == LV_EVENT_CLICKED) {
-    LV_LOG_USER("Clicked");
-    ESP_LOGI(TAG, "Clicked");
-    LVGL_lock(0);
-    ui_init();
-    LVGL_unlock();
-  }
-  else if (code == LV_EVENT_VALUE_CHANGED) {
-    LV_LOG_USER("Toggled");
-  }
-}
-#endif
-
 static esp_err_t display_ui() {
   ESP_LOGI(TAG, "Display UI");
 
   if (LVGL_lock(0)) {
-    reload_theme();
-#if SCREEN_TEST_UI // Useful for debugging mutexes and any sl generated code
-    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xFF69B4), LV_PART_MAIN);
-    lv_obj_t *btn = lv_btn_create(lv_scr_act());
-    lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(btn, event_handler, LV_EVENT_ALL, NULL);
-
-    lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_text(label, "Hello world");
-    lv_obj_center(label);
-    // lv_demo_widgets();
-#else
-    // ui_init(); // Generated SL UI
-    // Use generated ui_init() function here without theme apply
-    ui____initial_actions0 = lv_obj_create(NULL);
-    ui_SplashScreen_screen_init();
-    ui_StatsScreen_screen_init();
-    ui_MenuScreen_screen_init();
-    lv_disp_load_scr(ui_SplashScreen);
-    apply_ui_scale(ui_StatsScreen);
-    apply_ui_scale(ui_MenuScreen);
-#endif
+    pubmote_ui_init("");
+    lv_screen_load(elements_create()); // Load the main screen
     LVGL_unlock();
     // Delay backlight turn on to avoid flickering
     vTaskDelay(pdMS_TO_TICKS(250));

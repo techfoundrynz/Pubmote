@@ -87,26 +87,28 @@
 	</images>
 
 	<fonts>
-		<tiny_ttf name="geist_semibold_12" size="12" as_file="true" src_path="fonts/Geist/Geist-SemiBold.ttf" />
-		<tiny_ttf name="geist_semibold_14" size="14" as_file="true" src_path="fonts/Geist/Geist-SemiBold.ttf" />
-		<tiny_ttf name="geist_bold_16" size="16" as_file="true" src_path="fonts/Geist/Geist-SemiBold.ttf" />
-		<tiny_ttf name="geist_semibold_20" size="20" as_file="true" src_path="fonts/Geist/Geist-SemiBold.ttf" />
-		<tiny_ttf name="geist_semibold_28" size="28" as_file="true" src_path="fonts/Geist/Geist-SemiBold.ttf" />
-		<tiny_ttf name="geist_regular_12" size="12" as_file="true" src_path="fonts/Geist/Geist-Regular.ttf" />
-		<tiny_ttf name="geist_regular_14" size="14" as_file="true" src_path="fonts/Geist/Geist-Regular.ttf" />
-		<tiny_ttf name="geist_light_60" size="60" as_file="true" src_path="fonts/Geist/Geist-Light.ttf" />
-		<tiny_ttf name="literata_80" size="80" as_file="true" src_path="fonts/Literata/Literata-Bold.ttf" />
-		<tiny_ttf
+		<bin name="geist_semibold_12" size="12" as_file="false" src_path="fonts/Geist/Geist-SemiBold.ttf" bpp="8" />
+		<bin name="geist_semibold_14" size="14" as_file="false" src_path="fonts/Geist/Geist-SemiBold.ttf" bpp="8" />
+		<bin name="geist_bold_16" size="16" as_file="false" src_path="fonts/Geist/Geist-SemiBold.ttf" bpp="8" />
+		<bin name="geist_semibold_20" size="20" as_file="false" src_path="fonts/Geist/Geist-SemiBold.ttf" bpp="8" />
+		<bin name="geist_semibold_28" size="28" as_file="false" src_path="fonts/Geist/Geist-SemiBold.ttf" bpp="8" />
+		<bin name="geist_regular_12" size="12" as_file="false" src_path="fonts/Geist/Geist-Regular.ttf" bpp="8" />
+		<bin name="geist_regular_14" size="14" as_file="false" src_path="fonts/Geist/Geist-Regular.ttf" bpp="8" />
+		<bin name="geist_light_60" size="60" as_file="false" src_path="fonts/Geist/Geist-Light.ttf" bpp="8" />
+		<bin name="literata_80" size="80" as_file="false" src_path="fonts/Literata/Literata-Bold.ttf" bpp="8" />
+		<bin
 			name="abril_fatface_80"
 			size="80"
 			as_file="true"
 			src_path="fonts/AbrilFatface/AbrilFatface-Regular.ttf"
+			bpp="8"
 		/>
-		<tiny_ttf
+		<bin
 			name="big_shoulders_80"
 			size="80"
 			as_file="true"
 			src_path="fonts/BigShoulders/BigShoulders-Bold.ttf"
+			bpp="8"
 		/>
 	</fonts>
 </globals>

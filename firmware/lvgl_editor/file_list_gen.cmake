@@ -25,5 +25,14 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/weather/location_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/weather/weather_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/elements_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/pubmote_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/pubmote.c)
+  ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_semibold_12_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_semibold_14_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_bold_16_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_semibold_20_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_semibold_28_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_regular_12_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_regular_14_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_light_60_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/literata_80_data.c)

@@ -1,4 +1,4 @@
-<project name="pubmote">
+<project name="pubmote_ui">
 	<targets>
 		<target name="disp_466x466">
 			<display width="466" height="466" radius="233" />
