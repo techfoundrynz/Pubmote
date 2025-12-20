@@ -127,22 +127,12 @@ extern lv_font_t * big_shoulders_80;
  * Images
  *----------------*/
 
-extern const void * icon_plus;
-extern const void * icon_minus;
 extern const void * light_temp_arc_bg;
 extern const void * icon_heart;
-extern const void * icon_play;
-extern const void * icon_pause;
-extern const void * icon_skip_back;
-extern const void * icon_skip_forward;
 extern const void * icon_volume_max;
 extern const void * icon_volume_min;
 extern const void * icon_volume_none;
 extern const void * song_cover_1;
-extern const void * weather_location_1_bg;
-extern const void * weather_location_2_bg;
-extern const void * icon_cloudy;
-extern const void * icon_sunny;
 extern const void * icon_pin;
 extern const void * icon_theme;
 
@@ -151,9 +141,6 @@ extern const void * icon_theme;
  *----------------*/
 
 extern lv_subject_t dark_theme;
-extern lv_subject_t move_goal_target;
-extern lv_subject_t location1_temp;
-extern lv_subject_t location2_temp;
 extern lv_subject_t thermostat_on;
 extern lv_subject_t thermostat_temp;
 extern lv_subject_t room_temp;
@@ -164,9 +151,6 @@ extern lv_subject_t speaker;
 extern lv_subject_t speaker_vol;
 extern lv_subject_t light_temperature;
 extern lv_subject_t light_temperature_temp;
-extern lv_subject_t song_played;
-extern lv_subject_t song_liked;
-extern lv_subject_t song_playing;
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -206,14 +190,8 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/basic/table/table_gen.h"
 #include "components/cards/alarm/alarm_gen.h"
 #include "components/cards/light_temperature/light_temperature_gen.h"
-#include "components/cards/move_goal/move_goal_gen.h"
-#include "components/cards/move_goal/stat_col_gen.h"
-#include "components/cards/music_player/music_player_gen.h"
 #include "components/cards/speaker_volume/speaker_volume_gen.h"
 #include "components/cards/theme_swtcher/theme_switcher_gen.h"
-#include "components/cards/thermostat/thermostat_gen.h"
-#include "components/cards/weather/location_gen.h"
-#include "components/cards/weather/weather_gen.h"
 #include "screens/elements_gen.h"
 
 #ifdef __cplusplus

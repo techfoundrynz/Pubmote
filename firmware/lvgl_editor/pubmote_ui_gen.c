@@ -76,22 +76,12 @@ lv_font_t * big_shoulders_80;
  * Images
  *----------------*/
 
-const void * icon_plus;
-const void * icon_minus;
 const void * light_temp_arc_bg;
 const void * icon_heart;
-const void * icon_play;
-const void * icon_pause;
-const void * icon_skip_back;
-const void * icon_skip_forward;
 const void * icon_volume_max;
 const void * icon_volume_min;
 const void * icon_volume_none;
 const void * song_cover_1;
-const void * weather_location_1_bg;
-const void * weather_location_2_bg;
-const void * icon_cloudy;
-const void * icon_sunny;
 const void * icon_pin;
 const void * icon_theme;
 
@@ -100,9 +90,6 @@ const void * icon_theme;
  *----------------*/
 
 lv_subject_t dark_theme;
-lv_subject_t move_goal_target;
-lv_subject_t location1_temp;
-lv_subject_t location2_temp;
 lv_subject_t thermostat_on;
 lv_subject_t thermostat_temp;
 lv_subject_t room_temp;
@@ -113,9 +100,6 @@ lv_subject_t speaker;
 lv_subject_t speaker_vol;
 lv_subject_t light_temperature;
 lv_subject_t light_temperature_temp;
-lv_subject_t song_played;
-lv_subject_t song_liked;
-lv_subject_t song_playing;
 
 /**********************
  *      MACROS
@@ -187,22 +171,10 @@ void pubmote_ui_init_gen(const char * asset_path)
     /*----------------
      * Images
      *----------------*/
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_plus.png");
-    icon_plus = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_minus.png");
-    icon_minus = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/light_temp_arc_bg.png");
     light_temp_arc_bg = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_heart.png");
     icon_heart = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_play.png");
-    icon_play = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_pause.png");
-    icon_pause = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_skip_back.png");
-    icon_skip_back = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_skip_forward.png");
-    icon_skip_forward = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_volume_max.png");
     icon_volume_max = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_volume_min.png");
@@ -211,14 +183,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     icon_volume_none = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/song_cover_1.png");
     song_cover_1 = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/weather_location_1_bg.png");
-    weather_location_1_bg = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/weather_location_2_bg.png");
-    weather_location_2_bg = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_cloudy.png");
-    icon_cloudy = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_sunny.png");
-    icon_sunny = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_pin.png");
     icon_pin = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_theme.png");
@@ -228,11 +192,6 @@ void pubmote_ui_init_gen(const char * asset_path)
      * Subjects
      *----------------*/
     lv_subject_init_int(&dark_theme, 0);
-    lv_subject_init_int(&move_goal_target, 800);
-    lv_subject_set_min_value_int(&move_goal_target, 0);
-    lv_subject_set_max_value_int(&move_goal_target, 2000);
-    lv_subject_init_int(&location1_temp, 25);
-    lv_subject_init_int(&location2_temp, 34);
     lv_subject_init_int(&thermostat_on, 1);
     lv_subject_init_int(&thermostat_temp, 16);
     lv_subject_init_int(&room_temp, 24);
@@ -243,9 +202,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_subject_init_int(&speaker_vol, 40);
     lv_subject_init_int(&light_temperature, 1);
     lv_subject_init_int(&light_temperature_temp, 3000);
-    lv_subject_init_int(&song_played, 130);
-    lv_subject_init_int(&song_liked, 0);
-    lv_subject_init_int(&song_playing, 0);
 
     /*----------------
      * Translations
@@ -269,9 +225,6 @@ void pubmote_ui_init_gen(const char * asset_path)
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "dark_theme", &dark_theme);
-    lv_xml_register_subject(NULL, "move_goal_target", &move_goal_target);
-    lv_xml_register_subject(NULL, "location1_temp", &location1_temp);
-    lv_xml_register_subject(NULL, "location2_temp", &location2_temp);
     lv_xml_register_subject(NULL, "thermostat_on", &thermostat_on);
     lv_xml_register_subject(NULL, "thermostat_temp", &thermostat_temp);
     lv_xml_register_subject(NULL, "room_temp", &room_temp);
@@ -282,9 +235,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "speaker_vol", &speaker_vol);
     lv_xml_register_subject(NULL, "light_temperature", &light_temperature);
     lv_xml_register_subject(NULL, "light_temperature_temp", &light_temperature_temp);
-    lv_xml_register_subject(NULL, "song_played", &song_played);
-    lv_xml_register_subject(NULL, "song_liked", &song_liked);
-    lv_xml_register_subject(NULL, "song_playing", &song_playing);
 
     /* Register callbacks */
 #endif
@@ -293,22 +243,12 @@ void pubmote_ui_init_gen(const char * asset_path)
      * While running in the editor skip this step to update the preview when the XML changes */
 #if LV_USE_XML && !defined(LV_EDITOR_PREVIEW)
     /* Register images */
-    lv_xml_register_image(NULL, "icon_plus", icon_plus);
-    lv_xml_register_image(NULL, "icon_minus", icon_minus);
     lv_xml_register_image(NULL, "light_temp_arc_bg", light_temp_arc_bg);
     lv_xml_register_image(NULL, "icon_heart", icon_heart);
-    lv_xml_register_image(NULL, "icon_play", icon_play);
-    lv_xml_register_image(NULL, "icon_pause", icon_pause);
-    lv_xml_register_image(NULL, "icon_skip_back", icon_skip_back);
-    lv_xml_register_image(NULL, "icon_skip_forward", icon_skip_forward);
     lv_xml_register_image(NULL, "icon_volume_max", icon_volume_max);
     lv_xml_register_image(NULL, "icon_volume_min", icon_volume_min);
     lv_xml_register_image(NULL, "icon_volume_none", icon_volume_none);
     lv_xml_register_image(NULL, "song_cover_1", song_cover_1);
-    lv_xml_register_image(NULL, "weather_location_1_bg", weather_location_1_bg);
-    lv_xml_register_image(NULL, "weather_location_2_bg", weather_location_2_bg);
-    lv_xml_register_image(NULL, "icon_cloudy", icon_cloudy);
-    lv_xml_register_image(NULL, "icon_sunny", icon_sunny);
     lv_xml_register_image(NULL, "icon_pin", icon_pin);
     lv_xml_register_image(NULL, "icon_theme", icon_theme);
 #endif

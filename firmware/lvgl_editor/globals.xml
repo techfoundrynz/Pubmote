@@ -41,11 +41,6 @@
 	<subjects>
 		<int name="dark_theme" value="0" help="0:light 1:dark" />
 
-		<int name="move_goal_target" value="800" min_value="0" max_value="2000" />
-
-		<int name="location1_temp" value="25" />
-		<int name="location2_temp" value="34" />
-
 		<int name="thermostat_on" value="1" help="0:disabled, 1:enabled" />
 		<int name="thermostat_temp" value="16" help="The target temperature set on the thermostat" />
 		<int name="room_temp" value="24" help="The current temperature" />
@@ -59,29 +54,15 @@
 
 		<int name="light_temperature" value="1" help="0:disabled 1:enabled" />
 		<int name="light_temperature_temp" value="3000" />
-
-		<int name="song_played" value="130" />
-		<int name="song_liked" value="0" />
-		<int name="song_playing" value="0" />
 	</subjects>
 
 	<images>
-		<file name="icon_plus" figma_node_id="24:32" src_path="images/icon_plus.png" />
-		<file name="icon_minus" figma_node_id="24:37" src_path="images/icon_minus.png" />
 		<file name="light_temp_arc_bg" figma_node_id="57:31" src_path="images/light_temp_arc_bg.png" />
 		<file name="icon_heart" figma_node_id="24:20" src_path="images/icon_heart.png" />
-		<file name="icon_play" figma_node_id="24:8" src_path="images/icon_play.png" />
-		<file name="icon_pause" figma_node_id="91:34" src_path="images/icon_pause.png" />
-		<file name="icon_skip_back" figma_node_id="24:14" src_path="images/icon_skip_back.png" />
-		<file name="icon_skip_forward" figma_node_id="24:17" src_path="images/icon_skip_forward.png" />
 		<file name="icon_volume_max" figma_node_id="24:25" src_path="images/icon_volume_max.png" />
 		<file name="icon_volume_min" figma_node_id="91:40" src_path="images/icon_volume_min.png" />
 		<file name="icon_volume_none" figma_node_id="91:37" src_path="images/icon_volume_none.png" />
 		<file name="song_cover_1" figma_node_id="16:465" src_path="images/song_cover_1.png" />
-		<file name="weather_location_1_bg" figma_node_id="57:28" src_path="images/weather_location_1_bg.png" />
-		<file name="weather_location_2_bg" figma_node_id="91:50" src_path="images/weather_location_2_bg.png" />
-		<file name="icon_cloudy" figma_node_id="27:36" src_path="images/icon_cloudy.png" />
-		<file name="icon_sunny" figma_node_id="91:43" src_path="images/icon_sunny.png" />
 		<file name="icon_pin" figma_node_id="25:65" src_path="images/icon_pin.png" />
 		<file name="icon_theme" figma_node_id="15:28" src_path="images/icon_theme.png" />
 	</images>

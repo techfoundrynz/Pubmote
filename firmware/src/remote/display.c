@@ -70,13 +70,12 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define LVGL_TASK_CPU_AFFINITY (portNUM_PROCESSORS - 1)
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
 #define LVGL_TASK_PRIORITY 20
-#define BUFFER_LINES ((int)(LV_VER_RES / 10))
+#define BUFFER_LINES ((int)(LV_VER_RES / 20))
 #define BUFFER_SIZE (LV_HOR_RES * BUFFER_LINES)
 #define MAX_TRAN_SIZE ((int)LV_HOR_RES * BUFFER_LINES * sizeof(uint16_t))
 
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
-  ESP_LOGW(TAG, "Input event received");
   lv_event_code_t code = lv_event_get_code(e);
   if (code == LV_EVENT_PRESSED) {
     reset_sleep_timer();
@@ -85,7 +84,7 @@ static void input_event_cb(lv_event_t *e) {
       lv_obj_t *act_obj = lv_indev_get_active_obj();
       if (act_obj && lv_obj_check_type(act_obj, &lv_button_class)) {
         if (!lv_obj_has_state(act_obj, LV_STATE_DISABLED)) {
-          haptic_vibrate(HAPTIC_SINGLE_CLICK);
+          // haptic_vibrate(HAPTIC_SINGLE_CLICK);
         }
       }
     }
@@ -421,7 +420,10 @@ static esp_err_t app_lvgl_init(void) {
   lvgl_disp = lvgl_port_add_disp(&disp_cfg);
 
 #if ROUNDER_CALLBACK
-  lv_display_add_event_cb(lvgl_disp, LVGL_port_rounder_callback, LV_EVENT_INVALIDATE_AREA, NULL);
+  if (lvgl_port_lock(0)) {
+    lv_display_add_event_cb(lvgl_disp, LVGL_port_rounder_callback, LV_EVENT_INVALIDATE_AREA, NULL);
+    lvgl_port_unlock();
+  }
 #endif
 
   // display_set_rotation(device_settings.screen_rotation); // TODO - figure out why this causes mem issues
@@ -431,14 +433,26 @@ static esp_err_t app_lvgl_init(void) {
       .disp = lvgl_disp,
       .handle = touch_handle,
   };
-  lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
-  // lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_PRESSED, NULL);
+  if (LVGL_lock(0)) {
+    lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
+    if (lvgl_touch_indev) {
+      ESP_LOGI(TAG, "Touch input added successfully: %p", lvgl_touch_indev);
+      lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_ALL, NULL);
+    }
+    else {
+      ESP_LOGE(TAG, "Failed to add touch input!");
+    }
+    LVGL_unlock();
+  }
 #endif
 
   // Initialize the encoder driver
-  lvgl_encoder_indev = lv_indev_create();
-  lv_indev_set_type(lvgl_encoder_indev, LV_INDEV_TYPE_ENCODER);
-  lv_indev_set_read_cb(lvgl_encoder_indev, encoder_read_cb);
+  if (LVGL_lock(0)) {
+    lvgl_encoder_indev = lv_indev_create();
+    lv_indev_set_type(lvgl_encoder_indev, LV_INDEV_TYPE_ENCODER);
+    lv_indev_set_read_cb(lvgl_encoder_indev, encoder_read_cb);
+    LVGL_unlock();
+  }
 
   return ESP_OK;
 }

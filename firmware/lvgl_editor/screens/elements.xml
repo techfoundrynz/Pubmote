@@ -7,13 +7,13 @@
 		<bind_style subject="dark_theme" name="style_light" ref_value="0" />
 		<bind_style subject="dark_theme" name="style_dark" ref_value="1" />
 
-		<row width="100%" style_flex_cross_place="center" style_pad_all="#unit_md">
+		<row width="100%" style_flex_cross_place="center" style_pad_all="#unit_md" style_pad_left="150">
 			<bind_style subject="dark_theme" name="style_light" ref_value="0" />
 			<bind_style subject="dark_theme" name="style_dark" ref_value="1" />
 			<theme_switcher flex_grow="1" />
-			<button label="Play Animation" width="content">
+			<!-- <button label="Play Animation" width="content">
 				<play_timeline_event target="alarm_0" timeline="open" />
-			</button>
+			</button> -->
 		</row>
 
 		<div
@@ -23,12 +23,9 @@
 			style_flex_track_place="center"
 			style_pad_row="#unit_xl"
 		>
+			<button label="Test" width="50%" height="100" />
 			<alarm />
-			<thermostat />
-			<move_goal />
-			<weather />
 			<light_temperature />
-			<music_player />
 			<speaker_volume />
 		</div>
 	</view>

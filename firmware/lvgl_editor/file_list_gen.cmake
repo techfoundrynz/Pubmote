@@ -16,14 +16,8 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/table/table_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/alarm/alarm_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/light_temperature/light_temperature_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/move_goal/move_goal_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/move_goal/stat_col_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/music_player/music_player_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/speaker_volume/speaker_volume_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/theme_swtcher/theme_switcher_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/thermostat/thermostat_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/weather/location_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/weather/weather_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/elements_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui.c
