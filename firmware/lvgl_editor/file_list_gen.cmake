@@ -27,6 +27,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/screens/settings_screen_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/splash_screen_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/stats_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/update_screen_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_semibold_12_data.c

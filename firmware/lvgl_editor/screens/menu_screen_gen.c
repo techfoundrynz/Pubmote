@@ -60,21 +60,26 @@ lv_obj_t * menu_screen_create(void)
     lv_obj_set_flag(div_0, LV_OBJ_FLAG_SCROLL_ONE, true);
     lv_obj_t * button_0 = button_create(div_0, "Back");
     lv_obj_set_height(button_0, 64);
+    lv_obj_add_screen_load_event(button_0, LV_EVENT_CLICKED, stats_screen, LV_SCREEN_LOAD_ANIM_MOVE_TOP, 200, 0);
     
     lv_obj_t * button_1 = button_create(div_0, "Enable Pocket Mode");
     lv_obj_set_height(button_1, 64);
     
     lv_obj_t * button_2 = button_create(div_0, "Settings");
     lv_obj_set_height(button_2, 64);
+    lv_obj_add_screen_create_event(button_2, LV_EVENT_CLICKED, settings_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
     
     lv_obj_t * button_3 = button_create(div_0, "Calibration");
     lv_obj_set_height(button_3, 64);
+    lv_obj_add_screen_create_event(button_3, LV_EVENT_CLICKED, calibration_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
     
     lv_obj_t * button_4 = button_create(div_0, "Pairing");
     lv_obj_set_height(button_4, 64);
+    lv_obj_add_screen_create_event(button_4, LV_EVENT_CLICKED, pairing_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
     
     lv_obj_t * button_5 = button_create(div_0, "About");
     lv_obj_set_height(button_5, 64);
+    lv_obj_add_screen_create_event(button_5, LV_EVENT_CLICKED, about_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
     
     lv_obj_t * button_6 = button_create(div_0, "Shutdown");
     lv_obj_set_height(button_6, 64);

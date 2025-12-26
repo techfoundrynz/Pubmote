@@ -39,7 +39,7 @@ extern "C" {
 
 #define LIGHT lv_color_hex(0xffffff)
 
-#define DARK lv_color_hex(0x000000)
+#define DARK lv_color_hex(0x0e0e0e)
 
 #define SURFACE_PRIMARY_LIGHT lv_color_hex(0x0e0e0e)
 
@@ -204,6 +204,7 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "screens/settings_screen_gen.h"
 #include "screens/splash_screen_gen.h"
 #include "screens/stats_screen_gen.h"
+#include "screens/update_screen_gen.h"
 
 #ifdef __cplusplus
 } /*extern "C"*/

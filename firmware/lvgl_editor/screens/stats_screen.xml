@@ -42,7 +42,7 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<lv_label text="header" />
+				<lv_label text="header" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				flex_flow="column"
@@ -51,8 +51,8 @@
 				style_flex_track_place="center"
 				height="60%"
 			>
-				<lv_label text="45KPH" style_text_font="geist_semibold_28" />
-				<lv_label text="25% Duty Cycle" />
+				<lv_label text="45KPH" style_text_color="0xFFFFFF" style_text_font="geist_semibold_28" />
+				<lv_label text="25% Duty Cycle" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				flex_flow="column"
@@ -61,7 +61,7 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<lv_label text="footer" />
+				<lv_label text="footer" style_text_color="0xFFFFFF" />
 			</div>
 		</div>
 	</view>

@@ -13,12 +13,27 @@
 			scroll_snap_y="center"
 			scroll_one="true"
 		>
-			<button label="Back" height="64px" />
+			<button label="Back" height="64px">
+				<screen_load_event screen="stats_screen" trigger="clicked" anim_type="move_top" duration="200" />
+			</button>
 			<button label="Enable Pocket Mode" height="64px" />
-			<button label="Settings" height="64px" />
-			<button label="Calibration" height="64px" />
-			<button label="Pairing" height="64px" />
-			<button label="About" height="64px" />
+			<button label="Settings" height="64px">
+				<screen_create_event screen="settings_screen" trigger="clicked" anim_type="move_left" duration="200" />
+			</button>
+			<button label="Calibration" height="64px">
+				<screen_create_event
+					screen="calibration_screen"
+					trigger="clicked"
+					anim_type="move_left"
+					duration="200"
+				/>
+			</button>
+			<button label="Pairing" height="64px">
+				<screen_create_event screen="pairing_screen" trigger="clicked" anim_type="move_left" duration="200" />
+			</button>
+			<button label="About" height="64px">
+				<screen_create_event screen="about_screen" trigger="clicked" anim_type="move_left" duration="200" />
+			</button>
 			<button label="Shutdown" height="64px" />
 		</div>
 	</view>
