@@ -58,6 +58,7 @@ lv_obj_t * stats_create(void)
     if (stats == NULL) stats = lv_obj_create(NULL);
     lv_obj_t * lv_obj_0 = stats;
     lv_obj_set_name_static(lv_obj_0, "stats_#");
+    lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
 
     lv_obj_t * lv_arc_0 = lv_arc_create(lv_obj_0);
     lv_arc_set_start_angle(lv_arc_0, 120);

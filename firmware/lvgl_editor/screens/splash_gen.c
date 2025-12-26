@@ -44,6 +44,7 @@ lv_obj_t * splash_create(void)
 
     lv_obj_t * lv_obj_0 = lv_obj_create(NULL);
     lv_obj_set_name_static(lv_obj_0, "splash_#");
+    lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
 
     lv_obj_t * lv_image_0 = lv_image_create(lv_obj_0);
     lv_image_set_src(lv_image_0, splash);

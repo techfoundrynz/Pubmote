@@ -190,7 +190,7 @@ void pubmote_ui_init_gen(const char * asset_path)
     icon_pin = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_theme.png");
     icon_theme = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "../assets/splash.png");
+    lv_snprintf(buf, 256, "%s%s", asset_path, "images/splash.png");
     splash = lv_strdup(buf);
 
     /*----------------

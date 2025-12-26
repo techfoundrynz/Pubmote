@@ -195,8 +195,12 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/cards/light_temperature/light_temperature_gen.h"
 #include "components/cards/speaker_volume/speaker_volume_gen.h"
 #include "components/cards/theme_swtcher/theme_switcher_gen.h"
+#include "screens/about_gen.h"
+#include "screens/calibration_gen.h"
 #include "screens/elements_gen.h"
 #include "screens/menu_gen.h"
+#include "screens/pairing_gen.h"
+#include "screens/settings_gen.h"
 #include "screens/splash_gen.h"
 #include "screens/stats_gen.h"
 

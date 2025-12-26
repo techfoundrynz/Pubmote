@@ -18,8 +18,12 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/light_temperature/light_temperature_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/speaker_volume/speaker_volume_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/theme_swtcher/theme_switcher_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/about_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/calibration_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/elements_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/menu_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/pairing_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/settings_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/splash_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/stats_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui_gen.c

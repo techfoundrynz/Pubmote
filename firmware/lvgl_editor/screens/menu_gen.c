@@ -44,6 +44,7 @@ lv_obj_t * menu_create(void)
 
     lv_obj_t * lv_obj_0 = lv_obj_create(NULL);
     lv_obj_set_name_static(lv_obj_0, "menu_#");
+    lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
 
     lv_obj_t * div_0 = div_create(lv_obj_0);
     lv_obj_set_flag(div_0, LV_OBJ_FLAG_SCROLLABLE, false);
