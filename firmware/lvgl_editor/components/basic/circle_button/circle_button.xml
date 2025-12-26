@@ -1,6 +1,6 @@
 <component>
 	<api>
-		<prop name="icon" type="image" default="icon_plus" />
+		<prop name="icon" type="image" default="icon_heart" />
 	</api>
 	<styles>
 		<!-- Styles added by default -->

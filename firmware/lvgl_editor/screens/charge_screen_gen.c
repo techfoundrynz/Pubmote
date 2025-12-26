@@ -79,7 +79,7 @@ lv_obj_t * charge_screen_create(void)
     lv_obj_t * lv_label_0 = lv_label_create(div_0);
     lv_label_set_text(lv_label_0, "Charging: 99%");
     lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(lv_label_0, geist_semibold_28, 0);
+    lv_obj_set_style_text_font(lv_label_0, inter_24, 0);
 
     LV_TRACE_OBJ_CREATE("finished");
 

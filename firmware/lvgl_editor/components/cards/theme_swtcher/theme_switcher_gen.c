@@ -54,7 +54,7 @@ lv_obj_t * theme_switcher_create(lv_obj_t * parent)
 
         lv_style_init(&checkbox_main);
         lv_style_set_radius(&checkbox_main, 0);
-        lv_style_set_text_font(&checkbox_main, geist_semibold_14);
+        lv_style_set_text_font(&checkbox_main, inter_14);
 
         lv_style_init(&checkbox_indicator);
         lv_style_set_pad_all(&checkbox_indicator, 4);

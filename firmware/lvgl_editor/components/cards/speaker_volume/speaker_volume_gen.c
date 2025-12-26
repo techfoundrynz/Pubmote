@@ -80,7 +80,7 @@ lv_obj_t * speaker_volume_create(lv_obj_t * parent)
     lv_obj_t * lv_label_0 = lv_label_create(card_0);
     lv_label_bind_text(lv_label_0, &speaker_vol, NULL);
     lv_obj_set_width(lv_label_0, lv_pct(100));
-    lv_obj_set_style_text_font(lv_label_0, geist_semibold_28, 0);
+    lv_obj_set_style_text_font(lv_label_0, inter_bold_28, 0);
     lv_obj_set_style_text_letter_space(lv_label_0, -1, 0);
     lv_obj_add_style(lv_label_0, &style_disabled, LV_STATE_DISABLED);
     lv_obj_bind_state_if_eq(lv_label_0, &speaker, LV_STATE_DISABLED, 0);

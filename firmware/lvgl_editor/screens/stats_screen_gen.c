@@ -113,7 +113,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_t * lv_label_1 = lv_label_create(div_2);
     lv_label_set_text(lv_label_1, "45KPH");
     lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(lv_label_1, geist_semibold_28, 0);
+    lv_obj_set_style_text_font(lv_label_1, inter_bold_28, 0);
     
     lv_obj_t * lv_label_2 = lv_label_create(div_2);
     lv_label_set_text(lv_label_2, "25% Duty Cycle");

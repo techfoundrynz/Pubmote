@@ -26,7 +26,7 @@
 			<switch bind_checked="speaker" />
 		</card_header>
 
-		<lv_label bind_text="speaker_vol" width="100%" style_text_font="geist_semibold_28" style_text_letter_space="-1">
+		<lv_label bind_text="speaker_vol" width="100%" style_text_font="inter_bold_28" style_text_letter_space="-1">
 			<style name="style_disabled" selector="disabled" />
 			<bind_state_if_eq subject="speaker" ref_value="0" state="disabled" />
 		</lv_label>

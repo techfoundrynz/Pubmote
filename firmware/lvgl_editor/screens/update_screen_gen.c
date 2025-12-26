@@ -67,7 +67,7 @@ lv_obj_t * update_screen_create(void)
     lv_obj_set_style_flex_track_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_cross_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_t * lv_label_1 = lv_label_create(div_1);
-    lv_obj_set_style_text_font(lv_label_1, geist_semibold_28, 0);
+    lv_obj_set_style_text_font(lv_label_1, inter_bold_28, 0);
     lv_label_set_text(lv_label_1, "Update");
     lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
     
@@ -83,7 +83,7 @@ lv_obj_t * update_screen_create(void)
     lv_obj_set_style_flex_cross_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_t * button_0 = button_create(div_2, "Cancel");
     lv_obj_set_width(button_0, 80);
-    lv_obj_add_screen_create_event(button_0, LV_EVENT_CLICKED, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
+    lv_obj_add_screen_create_event(button_0, LV_EVENT_CLICKED, about_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
     
     lv_obj_t * button_1 = button_create(div_2, "Next");
     lv_obj_set_width(button_1, 80);

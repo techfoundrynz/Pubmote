@@ -8,7 +8,7 @@
 			text_color="#surface_primary_light"
 		/>
 		<style name="main_dark" text_color="#surface_primary_dark" />
-		<style name="checkbox_main" radius="0" text_font="geist_semibold_14" />
+		<style name="checkbox_main" radius="0" text_font="inter_14" />
 		<style
 			name="checkbox_indicator"
 			pad_all="4"

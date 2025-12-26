@@ -14,7 +14,7 @@
 			<lv_label text="Pairing" style_text_color="0xFFFFFF" />
 		</div>
 		<div style_flex_main_place="center" style_flex_track_place="center" style_flex_cross_place="center">
-			<lv_label style_text_font="geist_semibold_28" text="0000" style_text_color="0xFFFFFF" />
+			<lv_label style_text_font="inter_bold_28" text="0000" style_text_color="0xFFFFFF" />
 			<lv_label text="Your pairing code" style_text_color="0xFFFFFF" />
 		</div>
 		<div style_flex_main_place="center" style_flex_track_place="center" style_flex_cross_place="center">

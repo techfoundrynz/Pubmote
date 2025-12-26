@@ -29,7 +29,7 @@
 			style_flex_cross_place="center"
 			style_flex_track_place="center"
 		>
-			<lv_label text="Charging: 99%" style_text_color="0xFFFFFF" style_text_font="geist_semibold_28" />
+			<lv_label text="Charging: 99%" style_text_color="0xFFFFFF" style_text_font="inter_24" />
 		</div>
 	</view>
 </screen>

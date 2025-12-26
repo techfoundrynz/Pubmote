@@ -70,13 +70,16 @@ lv_obj_t * about_screen_create(void)
     lv_label_set_text(lv_label_1, "v1.2.0");
     lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
     
+    lv_obj_t * button_0 = button_create(div_1, "Check for updates");
+    lv_obj_add_screen_create_event(button_0, LV_EVENT_CLICKED, update_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
+    
     lv_obj_t * div_2 = div_create(lv_obj_0);
     lv_obj_set_style_flex_main_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_cross_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_t * button_0 = button_create(div_2, "Cancel");
-    lv_obj_set_width(button_0, 80);
-    lv_obj_add_screen_create_event(button_0, LV_EVENT_CLICKED, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
+    lv_obj_t * button_1 = button_create(div_2, "Cancel");
+    lv_obj_set_width(button_1, 80);
+    lv_obj_add_screen_create_event(button_1, LV_EVENT_CLICKED, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
 
     LV_TRACE_OBJ_CREATE("finished");
 

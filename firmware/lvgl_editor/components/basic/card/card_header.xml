@@ -8,7 +8,7 @@
 			name="style_main"
 			width="100%"
 			height="content"
-			text_font="geist_semibold_20"
+			text_font="inter_bold_24"
 			layout="flex"
 			flex_flow="row"
 			flex_main_place="space_between"

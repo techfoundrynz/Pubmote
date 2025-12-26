@@ -67,7 +67,7 @@ lv_obj_t * pairing_screen_create(void)
     lv_obj_set_style_flex_track_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_cross_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_t * lv_label_1 = lv_label_create(div_1);
-    lv_obj_set_style_text_font(lv_label_1, geist_semibold_28, 0);
+    lv_obj_set_style_text_font(lv_label_1, inter_bold_28, 0);
     lv_label_set_text(lv_label_1, "0000");
     lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
     

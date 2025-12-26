@@ -97,45 +97,42 @@ extern lv_obj_t * stats_screen;
 
 extern lv_style_t style_disabled;
 extern lv_style_t style_reset;
-extern lv_style_t figma_import_test;
 
 /*----------------
  * Fonts
  *----------------*/
 
-extern lv_font_t * geist_semibold_12;
+extern lv_font_t * inter_12;
 
-extern lv_font_t * geist_semibold_14;
+extern lv_font_t * inter_14;
 
-extern lv_font_t * geist_bold_16;
+extern lv_font_t * inter_16;
 
-extern lv_font_t * geist_semibold_20;
+extern lv_font_t * inter_24;
 
-extern lv_font_t * geist_semibold_28;
+extern lv_font_t * inter_28;
 
-extern lv_font_t * geist_regular_12;
+extern lv_font_t * inter_42;
 
-extern lv_font_t * geist_regular_14;
+extern lv_font_t * inter_bold_12;
 
-extern lv_font_t * geist_light_60;
+extern lv_font_t * inter_bold_14;
 
-extern lv_font_t * literata_80;
+extern lv_font_t * inter_bold_16;
 
-extern lv_font_t * abril_fatface_80;
+extern lv_font_t * inter_bold_24;
 
-extern lv_font_t * big_shoulders_80;
+extern lv_font_t * inter_bold_28;
+
+extern lv_font_t * inter_bold_42;
 
 /*----------------
  * Images
  *----------------*/
 
-extern const void * light_temp_arc_bg;
 extern const void * icon_heart;
-extern const void * icon_volume_max;
-extern const void * icon_volume_min;
-extern const void * icon_volume_none;
-extern const void * song_cover_1;
-extern const void * icon_pin;
+extern const void * icon_plus;
+extern const void * icon_minus;
 extern const void * icon_theme;
 extern const void * splash;
 
@@ -144,16 +141,10 @@ extern const void * splash;
  *----------------*/
 
 extern lv_subject_t dark_theme;
-extern lv_subject_t thermostat_on;
-extern lv_subject_t thermostat_temp;
-extern lv_subject_t room_temp;
-extern lv_subject_t alarm_on;
-extern lv_subject_t alarm_hour;
-extern lv_subject_t alarm_min;
+extern lv_subject_t theme_color;
 extern lv_subject_t speaker;
 extern lv_subject_t speaker_vol;
-extern lv_subject_t light_temperature;
-extern lv_subject_t light_temperature_temp;
+extern lv_subject_t settings_disp_brightness;
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -186,19 +177,15 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/basic/column/column_gen.h"
 #include "components/basic/div/div_gen.h"
 #include "components/basic/icon_button/icon_button_gen.h"
-#include "components/basic/roller/roller_gen.h"
 #include "components/basic/row/row_gen.h"
 #include "components/basic/slider/slider_gen.h"
 #include "components/basic/switch/switch_gen.h"
 #include "components/basic/table/table_gen.h"
-#include "components/cards/alarm/alarm_gen.h"
-#include "components/cards/light_temperature/light_temperature_gen.h"
 #include "components/cards/speaker_volume/speaker_volume_gen.h"
 #include "components/cards/theme_swtcher/theme_switcher_gen.h"
 #include "screens/about_screen_gen.h"
 #include "screens/calibration_screen_gen.h"
 #include "screens/charge_screen_gen.h"
-#include "screens/elements_gen.h"
 #include "screens/menu_screen_gen.h"
 #include "screens/pairing_screen_gen.h"
 #include "screens/settings_screen_gen.h"

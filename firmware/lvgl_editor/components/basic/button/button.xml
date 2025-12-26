@@ -16,7 +16,7 @@
 			width="100%"
 			pad_hor="#unit_lg"
 			pad_ver="#unit_md"
-			text_font="geist_bold_16"
+			text_font="inter_bold_16"
 			bg_color="#surface_primary_light"
 			text_color="#text_on_surface_primary_light"
 		/>
