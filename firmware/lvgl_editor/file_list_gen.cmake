@@ -19,6 +19,9 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/speaker_volume/speaker_volume_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/cards/theme_swtcher/theme_switcher_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/elements_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/menu_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/splash_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/stats_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/geist_semibold_12_data.c

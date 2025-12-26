@@ -39,6 +39,8 @@
  *  Permanent screens
  *-------------------*/
 
+lv_obj_t * stats = NULL;
+
 /*----------------
  * Global styles
  *----------------*/
@@ -84,6 +86,7 @@ const void * icon_volume_none;
 const void * song_cover_1;
 const void * icon_pin;
 const void * icon_theme;
+const void * splash;
 
 /*----------------
  * Subjects
@@ -187,6 +190,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     icon_pin = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_theme.png");
     icon_theme = lv_strdup(buf);
+    lv_snprintf(buf, 256, "%s%s", asset_path, "../assets/splash.png");
+    splash = lv_strdup(buf);
 
     /*----------------
      * Subjects
@@ -251,6 +256,7 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_image(NULL, "song_cover_1", song_cover_1);
     lv_xml_register_image(NULL, "icon_pin", icon_pin);
     lv_xml_register_image(NULL, "icon_theme", icon_theme);
+    lv_xml_register_image(NULL, "splash", splash);
 #endif
 
 #if LV_USE_XML == 0
@@ -259,6 +265,10 @@ void pubmote_ui_init_gen(const char * asset_path)
      *-------------------*/
     /* If XML is enabled it's assumed that the permanent screens are created
      * manaully from XML using lv_xml_create() */
+    /* To allow screens to reference each other, create them all before calling the sceen create functions */
+    stats = lv_obj_create(NULL);
+
+    stats_create();
 #endif
 }
 

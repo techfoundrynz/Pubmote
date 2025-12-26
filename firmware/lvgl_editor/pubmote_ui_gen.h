@@ -89,6 +89,8 @@ extern "C" {
  * Permanent screens
  *------------------*/
 
+extern lv_obj_t * stats;
+
 /*----------------
  * Global styles
  *----------------*/
@@ -135,6 +137,7 @@ extern const void * icon_volume_none;
 extern const void * song_cover_1;
 extern const void * icon_pin;
 extern const void * icon_theme;
+extern const void * splash;
 
 /*----------------
  * Subjects
@@ -193,6 +196,9 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/cards/speaker_volume/speaker_volume_gen.h"
 #include "components/cards/theme_swtcher/theme_switcher_gen.h"
 #include "screens/elements_gen.h"
+#include "screens/menu_gen.h"
+#include "screens/splash_gen.h"
+#include "screens/stats_gen.h"
 
 #ifdef __cplusplus
 } /*extern "C"*/

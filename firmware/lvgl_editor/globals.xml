@@ -65,6 +65,7 @@
 		<file name="song_cover_1" figma_node_id="16:465" src_path="images/song_cover_1.png" />
 		<file name="icon_pin" figma_node_id="25:65" src_path="images/icon_pin.png" />
 		<file name="icon_theme" figma_node_id="15:28" src_path="images/icon_theme.png" />
+		<file name="splash" src_path="images/splash.png" />
 	</images>
 
 	<fonts>
