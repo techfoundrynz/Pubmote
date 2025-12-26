@@ -1,9 +1,9 @@
 /**
- * @file settings_gen.h
+ * @file about_screen_gen.h
  */
 
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#ifndef ABOUT_SCREEN_H
+#define ABOUT_SCREEN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-lv_obj_t * settings_create(void);
+lv_obj_t * about_screen_create(void);
 
 /**********************
  *      MACROS
@@ -43,4 +43,4 @@ lv_obj_t * settings_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*SETTINGS_H*/
+#endif /*ABOUT_SCREEN_H*/

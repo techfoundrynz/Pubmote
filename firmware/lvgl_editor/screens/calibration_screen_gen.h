@@ -1,9 +1,9 @@
 /**
- * @file about_gen.h
+ * @file calibration_screen_gen.h
  */
 
-#ifndef ABOUT_H
-#define ABOUT_H
+#ifndef CALIBRATION_SCREEN_H
+#define CALIBRATION_SCREEN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-lv_obj_t * about_create(void);
+lv_obj_t * calibration_screen_create(void);
 
 /**********************
  *      MACROS
@@ -43,4 +43,4 @@ lv_obj_t * about_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*ABOUT_H*/
+#endif /*CALIBRATION_SCREEN_H*/

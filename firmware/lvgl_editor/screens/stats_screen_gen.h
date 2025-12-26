@@ -1,9 +1,9 @@
 /**
- * @file menu_gen.h
+ * @file stats_screen_gen.h
  */
 
-#ifndef MENU_H
-#define MENU_H
+#ifndef STATS_SCREEN_H
+#define STATS_SCREEN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-lv_obj_t * menu_create(void);
+lv_obj_t * stats_screen_create(void);
 
 /**********************
  *      MACROS
@@ -43,4 +43,4 @@ lv_obj_t * menu_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*MENU_H*/
+#endif /*STATS_SCREEN_H*/

@@ -72,8 +72,8 @@ lv_obj_t * elements_create(void)
     lv_obj_set_style_flex_track_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_pad_row(div_0, UNIT_XL, 0);
     lv_obj_t * button_0 = button_create(div_0, "Test");
-    lv_obj_set_width(button_0, lv_pct(50));
-    lv_obj_set_height(button_0, 100);
+    lv_obj_set_width(button_0, lv_pct(100));
+    lv_obj_set_height(button_0, 50);
     
     lv_obj_t * alarm_0 = alarm_create(div_0);
     

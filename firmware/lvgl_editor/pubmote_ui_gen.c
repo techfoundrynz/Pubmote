@@ -39,7 +39,7 @@
  *  Permanent screens
  *-------------------*/
 
-lv_obj_t * stats = NULL;
+lv_obj_t * stats_screen = NULL;
 
 /*----------------
  * Global styles
@@ -266,9 +266,9 @@ void pubmote_ui_init_gen(const char * asset_path)
     /* If XML is enabled it's assumed that the permanent screens are created
      * manaully from XML using lv_xml_create() */
     /* To allow screens to reference each other, create them all before calling the sceen create functions */
-    stats = lv_obj_create(NULL);
+    stats_screen = lv_obj_create(NULL);
 
-    stats_create();
+    stats_screen_create();
 #endif
 }
 

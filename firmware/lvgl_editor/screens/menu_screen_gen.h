@@ -1,9 +1,9 @@
 /**
- * @file splash_gen.h
+ * @file menu_screen_gen.h
  */
 
-#ifndef SPLASH_H
-#define SPLASH_H
+#ifndef MENU_SCREEN_H
+#define MENU_SCREEN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-lv_obj_t * splash_create(void);
+lv_obj_t * menu_screen_create(void);
 
 /**********************
  *      MACROS
@@ -43,4 +43,4 @@ lv_obj_t * splash_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*SPLASH_H*/
+#endif /*MENU_SCREEN_H*/

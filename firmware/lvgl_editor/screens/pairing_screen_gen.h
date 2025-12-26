@@ -1,9 +1,9 @@
 /**
- * @file stats_gen.h
+ * @file pairing_screen_gen.h
  */
 
-#ifndef STATS_H
-#define STATS_H
+#ifndef PAIRING_SCREEN_H
+#define PAIRING_SCREEN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-lv_obj_t * stats_create(void);
+lv_obj_t * pairing_screen_create(void);
 
 /**********************
  *      MACROS
@@ -43,4 +43,4 @@ lv_obj_t * stats_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*STATS_H*/
+#endif /*PAIRING_SCREEN_H*/

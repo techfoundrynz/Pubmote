@@ -1,5 +1,5 @@
 /**
- * @file stats_gen.c
+ * @file stats_screen_gen.c
  * @brief Template source file for LVGL objects
  */
 
@@ -7,7 +7,7 @@
  *      INCLUDES
  *********************/
 
-#include "stats_gen.h"
+#include "stats_screen_gen.h"
 #include "pubmote_ui.h"
 
 /*********************
@@ -30,7 +30,7 @@
  *   GLOBAL FUNCTIONS
  **********************/
 
-lv_obj_t * stats_create(void)
+lv_obj_t * stats_screen_create(void)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
@@ -55,9 +55,9 @@ lv_obj_t * stats_create(void)
         style_inited = true;
     }
 
-    if (stats == NULL) stats = lv_obj_create(NULL);
-    lv_obj_t * lv_obj_0 = stats;
-    lv_obj_set_name_static(lv_obj_0, "stats_#");
+    if (stats_screen == NULL) stats_screen = lv_obj_create(NULL);
+    lv_obj_t * lv_obj_0 = stats_screen;
+    lv_obj_set_name_static(lv_obj_0, "stats_screen_#");
     lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
 
     lv_obj_t * lv_arc_0 = lv_arc_create(lv_obj_0);

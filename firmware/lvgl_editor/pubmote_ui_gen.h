@@ -39,7 +39,7 @@ extern "C" {
 
 #define LIGHT lv_color_hex(0xffffff)
 
-#define DARK lv_color_hex(0x0e0e0e)
+#define DARK lv_color_hex(0x000000)
 
 #define SURFACE_PRIMARY_LIGHT lv_color_hex(0x0e0e0e)
 
@@ -89,7 +89,7 @@ extern "C" {
  * Permanent screens
  *------------------*/
 
-extern lv_obj_t * stats;
+extern lv_obj_t * stats_screen;
 
 /*----------------
  * Global styles
@@ -195,14 +195,15 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/cards/light_temperature/light_temperature_gen.h"
 #include "components/cards/speaker_volume/speaker_volume_gen.h"
 #include "components/cards/theme_swtcher/theme_switcher_gen.h"
-#include "screens/about_gen.h"
-#include "screens/calibration_gen.h"
+#include "screens/about_screen_gen.h"
+#include "screens/calibration_screen_gen.h"
+#include "screens/charge_screen_gen.h"
 #include "screens/elements_gen.h"
-#include "screens/menu_gen.h"
-#include "screens/pairing_gen.h"
-#include "screens/settings_gen.h"
-#include "screens/splash_gen.h"
-#include "screens/stats_gen.h"
+#include "screens/menu_screen_gen.h"
+#include "screens/pairing_screen_gen.h"
+#include "screens/settings_screen_gen.h"
+#include "screens/splash_screen_gen.h"
+#include "screens/stats_screen_gen.h"
 
 #ifdef __cplusplus
 } /*extern "C"*/

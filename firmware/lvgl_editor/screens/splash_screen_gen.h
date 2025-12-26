@@ -1,9 +1,9 @@
 /**
- * @file calibration_gen.h
+ * @file splash_screen_gen.h
  */
 
-#ifndef CALIBRATION_H
-#define CALIBRATION_H
+#ifndef SPLASH_SCREEN_H
+#define SPLASH_SCREEN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-lv_obj_t * calibration_create(void);
+lv_obj_t * splash_screen_create(void);
 
 /**********************
  *      MACROS
@@ -43,4 +43,4 @@ lv_obj_t * calibration_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*CALIBRATION_H*/
+#endif /*SPLASH_SCREEN_H*/

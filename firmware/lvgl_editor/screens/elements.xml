@@ -23,7 +23,7 @@
 			style_flex_track_place="center"
 			style_pad_row="#unit_xl"
 		>
-			<button label="Test" width="50%" height="100" />
+			<button label="Test" width="100%" height="50" />
 			<alarm />
 			<light_temperature />
 			<speaker_volume />
