@@ -9,6 +9,7 @@
 #include "pubmote_ui_gen.h"
 
 #if LV_USE_XML
+#include "widgets/input_preview_private_gen.h"
 #endif /* LV_USE_XML */
 
 /*********************
@@ -196,6 +197,7 @@ void pubmote_ui_init_gen(const char * asset_path)
 
 #if LV_USE_XML
     /* Register widgets */
+    input_preview_register();
 
     /* Register fonts */
     lv_xml_register_font(NULL, "inter_12", inter_12);

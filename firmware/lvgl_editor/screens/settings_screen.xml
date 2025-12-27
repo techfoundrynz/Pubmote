@@ -27,83 +27,109 @@
 		>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<lv_slider min_value="0" max_value="100" />
 				<lv_label text="Screen brightness" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<lv_dropdown options="a" />
 				<lv_label text="Double press action" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<lv_dropdown options="0 Deg" />
 				<lv_label text="Screen rotation" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<lv_dropdown options="Disabled" />
 				<lv_label text="Auto-off time" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<lv_dropdown options="Celcius" />
 				<lv_label text="Temp units" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<lv_dropdown options="Kilmeters" />
 				<lv_label text="Distance units" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<lv_dropdown options="None" />
 				<lv_label text="Startup sound" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
 				<lv_label text="Theme color" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				width="100%"
+				height="100%"
 				flex_flow="column"
-				style_flex_main_place="start"
+				style_flex_main_place="center"
 				style_flex_track_place="center"
 				style_flex_cross_place="center"
+				style_pad_row="20px"
 			>
+				<switch />
 				<lv_label text="Dark text" style_text_color="0xFFFFFF" />
 			</div>
 		</div>
