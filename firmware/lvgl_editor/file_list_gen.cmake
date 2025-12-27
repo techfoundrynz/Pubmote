@@ -9,6 +9,11 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/column/column_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/div/div_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/icon_button/icon_button_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/body_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/footer_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/header_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/page_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/title_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/row/row_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/slider/slider_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/switch/switch_gen.c

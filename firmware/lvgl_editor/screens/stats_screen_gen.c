@@ -91,12 +91,12 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_style_flex_main_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_cross_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_top(div_0, 50, 0);
-    lv_obj_set_style_pad_bottom(div_0, 50, 0);
+    lv_obj_set_style_pad_top(div_0, 78, 0);
+    lv_obj_set_style_pad_bottom(div_0, 20, 0);
     lv_obj_set_style_pad_hor(div_0, 48, 0);
     lv_obj_t * div_1 = div_create(div_0);
     lv_obj_set_flex_flow(div_1, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
+    lv_obj_set_style_flex_main_place(div_1, LV_FLEX_ALIGN_START, 0);
     lv_obj_set_style_flex_cross_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_height(div_1, lv_pct(20));
@@ -113,7 +113,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_t * lv_label_1 = lv_label_create(div_2);
     lv_label_set_text(lv_label_1, "45KPH");
     lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(lv_label_1, inter_bold_28, 0);
+    lv_obj_set_style_text_font(lv_label_1, inter_bold_42, 0);
     
     lv_obj_t * lv_label_2 = lv_label_create(div_2);
     lv_label_set_text(lv_label_2, "25% Duty Cycle");
@@ -121,7 +121,7 @@ lv_obj_t * stats_screen_create(void)
     
     lv_obj_t * div_3 = div_create(div_0);
     lv_obj_set_flex_flow(div_3, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_3, LV_FLEX_ALIGN_CENTER, 0);
+    lv_obj_set_style_flex_main_place(div_3, LV_FLEX_ALIGN_END, 0);
     lv_obj_set_style_flex_cross_place(div_3, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_3, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_height(div_3, lv_pct(20));

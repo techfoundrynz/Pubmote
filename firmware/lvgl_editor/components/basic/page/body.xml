@@ -1,0 +1,13 @@
+<component>
+	<api>
+		<prop name="height" default="Title" type="percentage" />
+	</api>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
+	<view height="50%" flex_flow="column" style_pad_column="20px" style_pad_all="20px">
+		<remove_style_all />
+		<title text="abc" />
+		<title text="abc" />
+	</view>
+</component>

@@ -31,13 +31,13 @@
 			style_flex_main_place="center"
 			style_flex_cross_place="center"
 			style_flex_track_place="center"
-			style_pad_top="50px"
-			style_pad_bottom="50px"
+			style_pad_top="78px"
+			style_pad_bottom="20px"
 			style_pad_hor="48px"
 		>
 			<div
 				flex_flow="column"
-				style_flex_main_place="center"
+				style_flex_main_place="start"
 				style_flex_cross_place="center"
 				style_flex_track_place="center"
 				height="20%"
@@ -51,12 +51,12 @@
 				style_flex_track_place="center"
 				height="60%"
 			>
-				<lv_label text="45KPH" style_text_color="0xFFFFFF" style_text_font="inter_bold_28" />
+				<lv_label text="45KPH" style_text_color="0xFFFFFF" style_text_font="inter_bold_42" />
 				<lv_label text="25% Duty Cycle" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				flex_flow="column"
-				style_flex_main_place="center"
+				style_flex_main_place="end"
 				style_flex_cross_place="center"
 				style_flex_track_place="center"
 				height="20%"

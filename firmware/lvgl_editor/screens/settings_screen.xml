@@ -10,14 +10,114 @@
 		style_flex_track_place="center"
 		style_pad_all="20px"
 	>
-		<div style_flex_main_place="center" style_flex_track_place="center" style_flex_cross_place="center">
+		<div style_flex_main_place="start" style_flex_track_place="center" style_flex_cross_place="center">
 			<lv_label text="Settings" style_text_color="0xFFFFFF" />
 		</div>
-		<div style_flex_main_place="center" style_flex_track_place="center" style_flex_cross_place="center">
-			<lv_label text="Screen Brightness" style_text_color="0xFFFFFF" />
+		<div
+			style_flex_main_place="start"
+			style_flex_track_place="center"
+			style_flex_cross_place="center"
+			scrollable="true"
+			scroll_snap_x="center"
+			scrollbar_mode="off"
+			flex_flow="row"
+			height="55%"
+			width="100%"
+			scroll_one="true"
+		>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Screen brightness" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Double press action" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Screen rotation" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Auto-off time" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Temp units" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Distance units" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Startup sound" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Theme color" style_text_color="0xFFFFFF" />
+			</div>
+			<div
+				width="100%"
+				flex_flow="column"
+				style_flex_main_place="start"
+				style_flex_track_place="center"
+				style_flex_cross_place="center"
+			>
+				<lv_label text="Dark text" style_text_color="0xFFFFFF" />
+			</div>
 		</div>
-		<div style_flex_main_place="center" style_flex_track_place="center" style_flex_cross_place="center">
+		<div
+			flex_flow="row"
+			style_flex_main_place="center"
+			style_flex_track_place="center"
+			style_flex_cross_place="center"
+			style_pad_column="10px"
+		>
 			<button width="80px" label="Cancel">
+				<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
+			</button>
+			<button width="80px" label="Save">
 				<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
 			</button>
 		</div>

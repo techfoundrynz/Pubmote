@@ -1,0 +1,12 @@
+<component>
+	<api>
+		<prop name="height" default="Title" type="percentage" />
+	</api>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
+	<view>
+		<remove_style_all />
+		<lv_label text="aaaaa" style_text_font="inter_bold_16" style_text_color="0xFFFFFF" />
+	</view>
+</component>
