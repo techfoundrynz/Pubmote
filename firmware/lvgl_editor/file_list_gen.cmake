@@ -4,6 +4,9 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/joystick_visual.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/joystick_visual_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/joystick_visual_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/bar/bar_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/button/button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/card/card_gen.c

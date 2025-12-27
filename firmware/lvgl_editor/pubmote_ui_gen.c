@@ -10,6 +10,7 @@
 
 #if LV_USE_XML
 #include "widgets/input_preview_private_gen.h"
+#include "widgets/joystick_visual_private_gen.h"
 #endif /* LV_USE_XML */
 
 /*********************
@@ -198,6 +199,7 @@ void pubmote_ui_init_gen(const char * asset_path)
 #if LV_USE_XML
     /* Register widgets */
     input_preview_register();
+    joystick_visual_register();
 
     /* Register fonts */
     lv_xml_register_font(NULL, "inter_12", inter_12);

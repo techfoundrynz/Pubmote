@@ -170,6 +170,7 @@ void pubmote_ui_init_gen(const char * asset_path);
 
 /*Include all the widget and components of this library*/
 #include "widgets/input_preview_gen.h"
+#include "widgets/joystick_visual_gen.h"
 #include "components/basic/bar/bar_gen.h"
 #include "components/basic/button/button_gen.h"
 #include "components/basic/card/card_gen.h"

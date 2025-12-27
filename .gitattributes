@@ -30,3 +30,4 @@
 *.pdf binary
 *.zip binary
 .vescpkg binary
+.wasm binary
