@@ -7,6 +7,12 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/speed_gauge/speed_gauge.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/speed_gauge/speed_gauge_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/speed_gauge/speed_gauge_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/utilization_gauge/utilization_gauge.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/utilization_gauge/utilization_gauge_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/utilization_gauge/utilization_gauge_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/bar/bar_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_outlined_gen.c

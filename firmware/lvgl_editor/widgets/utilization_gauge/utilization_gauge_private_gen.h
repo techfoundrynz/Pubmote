@@ -26,7 +26,6 @@ extern "C" {
  **********************/
 typedef struct {
     lv_arc_t obj;  /* Base widget to extend */
-    lv_subject_t * bind_duty_cycle;
 } utilization_gauge_t;
 
 extern const lv_obj_class_t utilization_gauge_class;

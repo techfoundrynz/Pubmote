@@ -40,19 +40,7 @@ extern "C" {
  * @return pointer to the created speed_gauge
  */
 lv_obj_t * speed_gauge_create(lv_obj_t * parent);
-/**
- * speed_gauge bind_speed
- * @param obj   pointer to a speed_gauge
- * @param bind_speed  bind_speed
- */
-void speed_gauge_bind_speed(lv_obj_t * speed_gauge, lv_subject_t * bind_speed);
-
-/**
- * speed_gauge bind_max_speed
- * @param obj   pointer to a speed_gauge
- * @param bind_max_speed  bind_max_speed
- */
-void speed_gauge_bind_max_speed(lv_obj_t * speed_gauge, lv_subject_t * bind_max_speed);
+;
 
 /**********************
  *      MACROS

@@ -1,7 +1,7 @@
 <component>
-	<api>
+	<!-- <api>
 		<prop name="bind_duty_cycle" type="subject" />
-	</api>
+	</api> -->
 	<consts>
 		<px name="thickness" value="24px" />
 	</consts>

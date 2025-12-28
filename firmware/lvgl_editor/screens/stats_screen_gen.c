@@ -47,11 +47,6 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_name_static(lv_obj_0, "stats_screen_#");
     lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
 
-    lv_obj_t * speed_gauge_0 = speed_gauge_create(lv_obj_0, &state_speed, &state_speed);
-    
-    lv_obj_t * utilization_gauge_0 = utilization_gauge_create(lv_obj_0, &state_duty_cycle);
-    lv_obj_set_style_pad_all(utilization_gauge_0, 40, 0);
-    
     lv_obj_t * div_0 = div_create(lv_obj_0);
     lv_obj_set_width(div_0, lv_pct(100));
     lv_obj_set_height(div_0, lv_pct(100));

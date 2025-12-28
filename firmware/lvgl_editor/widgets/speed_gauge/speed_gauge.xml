@@ -1,8 +1,8 @@
 <component>
-	<api>
+	<!-- <api>
 		<prop name="bind_speed" type="subject" />
 		<prop name="bind_max_speed" type="subject" />
-	</api>
+	</api> -->
 	<consts>
 		<px name="thickness" value="32px" />
 	</consts>
