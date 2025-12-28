@@ -89,10 +89,6 @@ extern lv_font_t inter_bold_72_data;
  * Images
  *----------------*/
 
-const void * icon_heart;
-const void * icon_plus;
-const void * icon_minus;
-const void * icon_theme;
 const void * splash;
 
 /*----------------
@@ -108,7 +104,6 @@ lv_subject_t motor_temp;
 lv_subject_t cont_temp;
 lv_subject_t trip_distance;
 lv_subject_t settings_disp_brightness;
-lv_subject_t settings_theme_color;
 lv_subject_t settings_dark_text;
 lv_subject_t settings_speed_label;
 lv_subject_t settings_temp_label;
@@ -185,14 +180,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     /*----------------
      * Images
      *----------------*/
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_heart.png");
-    icon_heart = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_plus.png");
-    icon_plus = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_minus.png");
-    icon_minus = lv_strdup(buf);
-    lv_snprintf(buf, 256, "%s%s", asset_path, "images/icon_theme.png");
-    icon_theme = lv_strdup(buf);
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/splash.png");
     splash = lv_strdup(buf);
 
@@ -208,14 +195,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_subject_init_int(&cont_temp, 40);
     lv_subject_init_float(&trip_distance, 5.2);
     lv_subject_init_int(&settings_disp_brightness, 100);
-    static char settings_theme_color_buf[UI_SUBJECT_STRING_LENGTH];
-    static char settings_theme_color_prev_buf[UI_SUBJECT_STRING_LENGTH];
-    lv_subject_init_string(&settings_theme_color,
-                           settings_theme_color_buf,
-                           settings_theme_color_prev_buf,
-                           UI_SUBJECT_STRING_LENGTH,
-                           "0xFF46A2"
-                          );
     lv_subject_init_int(&settings_dark_text, 0);
     static char settings_speed_label_buf[UI_SUBJECT_STRING_LENGTH];
     static char settings_speed_label_prev_buf[UI_SUBJECT_STRING_LENGTH];
@@ -270,7 +249,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "cont_temp", &cont_temp);
     lv_xml_register_subject(NULL, "trip_distance", &trip_distance);
     lv_xml_register_subject(NULL, "settings_disp_brightness", &settings_disp_brightness);
-    lv_xml_register_subject(NULL, "settings_theme_color", &settings_theme_color);
     lv_xml_register_subject(NULL, "settings_dark_text", &settings_dark_text);
     lv_xml_register_subject(NULL, "settings_speed_label", &settings_speed_label);
     lv_xml_register_subject(NULL, "settings_temp_label", &settings_temp_label);
@@ -282,10 +260,6 @@ void pubmote_ui_init_gen(const char * asset_path)
      * While running in the editor skip this step to update the preview when the XML changes */
 #if LV_USE_XML && !defined(LV_EDITOR_PREVIEW)
     /* Register images */
-    lv_xml_register_image(NULL, "icon_heart", icon_heart);
-    lv_xml_register_image(NULL, "icon_plus", icon_plus);
-    lv_xml_register_image(NULL, "icon_minus", icon_minus);
-    lv_xml_register_image(NULL, "icon_theme", icon_theme);
     lv_xml_register_image(NULL, "splash", splash);
 #endif
 

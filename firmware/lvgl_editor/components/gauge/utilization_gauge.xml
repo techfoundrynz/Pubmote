@@ -4,7 +4,7 @@
 	</previews>
 	<styles>
 		<style name="style_main" arc_width="24px" width="100%" height="100%" />
-		<style name="style_indicator" bg_color="$settings_theme_color" arc_width="24px" />
+		<style name="style_indicator" bg_color="#settings_theme_color" arc_width="24px" />
 		<style name="style_knob" opa="0%" />
 	</styles>
 	<view extends="lv_arc" disabled="true">

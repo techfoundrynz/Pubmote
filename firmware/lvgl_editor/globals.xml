@@ -38,6 +38,8 @@
 		<color name="theme_warn" value="0xFECC0B" />
 		<color name="theme_danger" value="0xFF8B3E" />
 		<color name="theme_critical" value="0xFF6369" />
+
+		<color name="settings_theme_color" value="0xFF46A2" />
 	</consts>
 
 	<styles>
@@ -58,17 +60,17 @@
 
 		<!-- settings -->
 		<int name="settings_disp_brightness" value="100" />
-		<string name="settings_theme_color" value="0xFF46A2" help="Theme color" />
+		<!-- <string name="settings_theme_color" value="0xFF46A2" help="Theme color" /> TEMP AS CONSTANT -->
 		<int name="settings_dark_text" value="0" help="Use black text for buttons" />
 		<string name="settings_speed_label" value="KPH" />
 		<string name="settings_temp_label" value="C" />
 	</subjects>
 
 	<images>
-		<file name="icon_heart" figma_node_id="24:20" src_path="images/icon_heart.png" />
+		<!-- <file name="icon_heart" figma_node_id="24:20" src_path="images/icon_heart.png" />
 		<file name="icon_plus" figma_node_id="24:25" src_path="images/icon_plus.png" />
 		<file name="icon_minus" figma_node_id="91:40" src_path="images/icon_minus.png" />
-		<file name="icon_theme" figma_node_id="15:28" src_path="images/icon_theme.png" />
+		<file name="icon_theme" figma_node_id="15:28" src_path="images/icon_theme.png" /> -->
 		<file name="splash" src_path="images/splash.png" />
 	</images>
 

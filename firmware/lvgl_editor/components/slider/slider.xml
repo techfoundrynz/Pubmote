@@ -16,8 +16,8 @@
 			height="#unit_sm"
 			width="100%"
 		/>
-		<style name="style_indicator" bg_color="$settings_theme_color" bg_opa="10%" radius="20" />
-		<style name="style_knob" bg_color="$settings_theme_color" bg_opa="100%" pad_all="#unit_sm" radius="20" />
+		<style name="style_indicator" bg_color="#settings_theme_color" bg_opa="10%" radius="20" />
+		<style name="style_knob" bg_color="#settings_theme_color" bg_opa="100%" pad_all="#unit_sm" radius="20" />
 	</styles>
 	<view extends="lv_slider" value="$value" min_value="$min_value" max_value="$max_value">
 		<remove_style_all />

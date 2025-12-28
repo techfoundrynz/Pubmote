@@ -17,10 +17,10 @@
 			pad_hor="#unit_lg"
 			pad_ver="#unit_md"
 			text_font="inter_bold_16"
-			bg_color="$settings_theme_color"
+			bg_color="#settings_theme_color"
 			text_color="#text_on_surface_primary_light"
 		/>
-		<style name="style_pressed" recolor_opa="#opa_muted" recolor="$settings_theme_color" />
+		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#settings_theme_color" />
 	</styles>
 
 	<view extends="lv_button">

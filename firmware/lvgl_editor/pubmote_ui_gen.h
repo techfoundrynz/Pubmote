@@ -85,6 +85,8 @@ extern "C" {
 
 #define THEME_CRITICAL lv_color_hex(0xFF6369)
 
+#define SETTINGS_THEME_COLOR lv_color_hex(0xFF46A2)
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -144,10 +146,6 @@ extern lv_font_t * inter_bold_72;
  * Images
  *----------------*/
 
-extern const void * icon_heart;
-extern const void * icon_plus;
-extern const void * icon_minus;
-extern const void * icon_theme;
 extern const void * splash;
 
 /*----------------
@@ -163,7 +161,6 @@ extern lv_subject_t motor_temp;
 extern lv_subject_t cont_temp;
 extern lv_subject_t trip_distance;
 extern lv_subject_t settings_disp_brightness;
-extern lv_subject_t settings_theme_color;
 extern lv_subject_t settings_dark_text;
 extern lv_subject_t settings_speed_label;
 extern lv_subject_t settings_temp_label;
