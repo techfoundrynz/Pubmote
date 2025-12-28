@@ -54,29 +54,24 @@ lv_obj_t * calibration_screen_create(void)
     lv_obj_set_style_flex_track_place(lv_obj_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_pad_all(lv_obj_0, 20, 0);
 
-    lv_obj_t * div_0 = div_create(lv_obj_0);
-    lv_obj_set_style_flex_main_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_t * lv_label_0 = lv_label_create(div_0);
-    lv_label_set_text(lv_label_0, "Calibration");
+    lv_obj_t * header_0 = header_create(lv_obj_0, "Calibration");
+    lv_obj_t * lv_label_0 = lv_label_create(header_0);
+    lv_label_set_text(lv_label_0, "X:0 | Y:0");
     lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
     
-    lv_obj_t * div_1 = div_create(lv_obj_0);
-    lv_obj_set_style_flex_main_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_t * lv_label_1 = lv_label_create(div_1);
-    lv_label_set_text(lv_label_1, "X:0 | Y:0");
-    lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_t * body_0 = body_create(lv_obj_0);
+    lv_obj_t * input_preview_0 = input_preview_create(body_0);
+    input_preview_set_size(input_preview_0, 200);
     
-    lv_obj_t * div_2 = div_create(lv_obj_0);
-    lv_obj_set_style_flex_main_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_t * button_0 = button_create(div_2, "Cancel");
+    lv_obj_t * footer_0 = footer_create(lv_obj_0, "Press start to begin calibration");
+    lv_obj_t * footer_buttons_0 = footer_buttons_create(footer_0);
+    lv_obj_t * button_0 = button_create(footer_buttons_0, "Cancel");
     lv_obj_set_width(button_0, 80);
     lv_obj_add_screen_create_event(button_0, LV_EVENT_CLICKED, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
+    
+    lv_obj_t * button_1 = button_create(footer_buttons_0, "Start");
+    lv_obj_set_width(button_1, 80);
+    lv_obj_add_screen_create_event(button_1, LV_EVENT_CLICKED, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
 
     LV_TRACE_OBJ_CREATE("finished");
 

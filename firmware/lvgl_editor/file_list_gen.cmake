@@ -1,12 +1,12 @@
 list(
   APPEND
   PROJECT_SOURCES
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview_xml_parser.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/joystick_visual.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/joystick_visual_xml_parser.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/joystick_visual_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/bar/bar_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/button/button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/card/card_gen.c
@@ -17,9 +17,9 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/icon_button/icon_button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/body_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/footer_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/footer_buttons_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/header_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/page_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/title_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/row/row_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/slider/slider_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/basic/switch/switch_gen.c
@@ -43,9 +43,12 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_24_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_28_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_42_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_64_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_72_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_12_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_14_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_16_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_24_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_28_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_42_data.c)
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_42_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_72_data.c)

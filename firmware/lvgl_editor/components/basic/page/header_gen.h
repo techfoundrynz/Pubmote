@@ -31,7 +31,7 @@ extern "C" {
  * GLOBAL PROTOTYPES
  **********************/
 
-lv_obj_t * header_create(lv_obj_t * parent, int32_t height);
+lv_obj_t * header_create(lv_obj_t * parent, const char * text);
 
 /**********************
  *      MACROS

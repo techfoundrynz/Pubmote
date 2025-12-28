@@ -114,6 +114,10 @@ extern lv_font_t * inter_28;
 
 extern lv_font_t * inter_42;
 
+extern lv_font_t * inter_64;
+
+extern lv_font_t * inter_72;
+
 extern lv_font_t * inter_bold_12;
 
 extern lv_font_t * inter_bold_14;
@@ -125,6 +129,8 @@ extern lv_font_t * inter_bold_24;
 extern lv_font_t * inter_bold_28;
 
 extern lv_font_t * inter_bold_42;
+
+extern lv_font_t * inter_bold_72;
 
 /*----------------
  * Images
@@ -169,8 +175,8 @@ void pubmote_ui_init_gen(const char * asset_path);
  **********************/
 
 /*Include all the widget and components of this library*/
-#include "widgets/input_preview_gen.h"
-#include "widgets/joystick_visual_gen.h"
+#include "widgets/battery_gauge/battery_gauge_gen.h"
+#include "widgets/input_preview/input_preview_gen.h"
 #include "components/basic/bar/bar_gen.h"
 #include "components/basic/button/button_gen.h"
 #include "components/basic/card/card_gen.h"
@@ -181,9 +187,9 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/basic/icon_button/icon_button_gen.h"
 #include "components/basic/page/body_gen.h"
 #include "components/basic/page/footer_gen.h"
+#include "components/basic/page/footer_buttons_gen.h"
 #include "components/basic/page/header_gen.h"
 #include "components/basic/page/page_gen.h"
-#include "components/basic/page/title_gen.h"
 #include "components/basic/row/row_gen.h"
 #include "components/basic/slider/slider_gen.h"
 #include "components/basic/switch/switch_gen.h"

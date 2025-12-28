@@ -9,8 +9,8 @@
 #include "pubmote_ui_gen.h"
 
 #if LV_USE_XML
-#include "widgets/input_preview_private_gen.h"
-#include "widgets/joystick_visual_private_gen.h"
+#include "widgets/battery_gauge/battery_gauge_private_gen.h"
+#include "widgets/input_preview/input_preview_private_gen.h"
 #endif /* LV_USE_XML */
 
 /*********************
@@ -66,6 +66,10 @@ lv_font_t * inter_28;
 extern lv_font_t inter_28_data;
 lv_font_t * inter_42;
 extern lv_font_t inter_42_data;
+lv_font_t * inter_64;
+extern lv_font_t inter_64_data;
+lv_font_t * inter_72;
+extern lv_font_t inter_72_data;
 lv_font_t * inter_bold_12;
 extern lv_font_t inter_bold_12_data;
 lv_font_t * inter_bold_14;
@@ -78,6 +82,8 @@ lv_font_t * inter_bold_28;
 extern lv_font_t inter_bold_28_data;
 lv_font_t * inter_bold_42;
 extern lv_font_t inter_bold_42_data;
+lv_font_t * inter_bold_72;
+extern lv_font_t inter_bold_72_data;
 
 /*----------------
  * Images
@@ -148,6 +154,10 @@ void pubmote_ui_init_gen(const char * asset_path)
     inter_28 = &inter_28_data;
     /* get font 'inter_42' from a C array */
     inter_42 = &inter_42_data;
+    /* get font 'inter_64' from a C array */
+    inter_64 = &inter_64_data;
+    /* get font 'inter_72' from a C array */
+    inter_72 = &inter_72_data;
     /* get font 'inter_bold_12' from a C array */
     inter_bold_12 = &inter_bold_12_data;
     /* get font 'inter_bold_14' from a C array */
@@ -160,6 +170,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     inter_bold_28 = &inter_bold_28_data;
     /* get font 'inter_bold_42' from a C array */
     inter_bold_42 = &inter_bold_42_data;
+    /* get font 'inter_bold_72' from a C array */
+    inter_bold_72 = &inter_bold_72_data;
 
 
     /*----------------
@@ -198,8 +210,8 @@ void pubmote_ui_init_gen(const char * asset_path)
 
 #if LV_USE_XML
     /* Register widgets */
+    battery_gauge_register();
     input_preview_register();
-    joystick_visual_register();
 
     /* Register fonts */
     lv_xml_register_font(NULL, "inter_12", inter_12);
@@ -208,12 +220,15 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "inter_24", inter_24);
     lv_xml_register_font(NULL, "inter_28", inter_28);
     lv_xml_register_font(NULL, "inter_42", inter_42);
+    lv_xml_register_font(NULL, "inter_64", inter_64);
+    lv_xml_register_font(NULL, "inter_72", inter_72);
     lv_xml_register_font(NULL, "inter_bold_12", inter_bold_12);
     lv_xml_register_font(NULL, "inter_bold_14", inter_bold_14);
     lv_xml_register_font(NULL, "inter_bold_16", inter_bold_16);
     lv_xml_register_font(NULL, "inter_bold_24", inter_bold_24);
     lv_xml_register_font(NULL, "inter_bold_28", inter_bold_28);
     lv_xml_register_font(NULL, "inter_bold_42", inter_bold_42);
+    lv_xml_register_font(NULL, "inter_bold_72", inter_bold_72);
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "dark_theme", &dark_theme);

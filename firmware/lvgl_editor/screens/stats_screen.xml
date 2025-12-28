@@ -42,7 +42,7 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<lv_label text="header" style_text_color="0xFFFFFF" />
+				<battery_gauge />
 			</div>
 			<div
 				flex_flow="column"
@@ -51,8 +51,18 @@
 				style_flex_track_place="center"
 				height="60%"
 			>
-				<lv_label text="45KPH" style_text_color="0xFFFFFF" style_text_font="inter_bold_42" />
-				<lv_label text="25% Duty Cycle" style_text_color="0xFFFFFF" />
+				<lv_label text="45" style_text_color="0xFFFFFF" style_text_font="inter_bold_72" overflow_visible="true">
+					<lv_label
+						text="KPH"
+						style_text_color="0xa9a9a9"
+						style_text_font="inter_bold_24"
+						align="bottom_right"
+						style_translate_x="40px"
+						style_translate_y="-15px"
+					/>
+				</lv_label>
+
+				<lv_label text="0% Duty Cycle" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				flex_flow="column"
@@ -61,7 +71,7 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<lv_label text="footer" style_text_color="0xFFFFFF" />
+				<lv_label text="0%" style_text_color="0xFFFFFF" />
 			</div>
 		</div>
 	</view>

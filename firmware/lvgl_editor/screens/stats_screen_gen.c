@@ -100,9 +100,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_style_flex_cross_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_height(div_1, lv_pct(20));
-    lv_obj_t * lv_label_0 = lv_label_create(div_1);
-    lv_label_set_text(lv_label_0, "header");
-    lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_t * battery_gauge_0 = battery_gauge_create(div_1);
     
     lv_obj_t * div_2 = div_create(div_0);
     lv_obj_set_flex_flow(div_2, LV_FLEX_FLOW_COLUMN);
@@ -110,13 +108,21 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_style_flex_cross_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_height(div_2, lv_pct(60));
-    lv_obj_t * lv_label_1 = lv_label_create(div_2);
-    lv_label_set_text(lv_label_1, "45KPH");
-    lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(lv_label_1, inter_bold_42, 0);
+    lv_obj_t * lv_label_0 = lv_label_create(div_2);
+    lv_label_set_text(lv_label_0, "45");
+    lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(lv_label_0, inter_bold_72, 0);
+    lv_obj_set_flag(lv_label_0, LV_OBJ_FLAG_OVERFLOW_VISIBLE, true);
+    lv_obj_t * lv_label_1 = lv_label_create(lv_label_0);
+    lv_label_set_text(lv_label_1, "KPH");
+    lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xa9a9a9), 0);
+    lv_obj_set_style_text_font(lv_label_1, inter_bold_24, 0);
+    lv_obj_set_align(lv_label_1, LV_ALIGN_BOTTOM_RIGHT);
+    lv_obj_set_style_translate_x(lv_label_1, 40, 0);
+    lv_obj_set_style_translate_y(lv_label_1, -15, 0);
     
     lv_obj_t * lv_label_2 = lv_label_create(div_2);
-    lv_label_set_text(lv_label_2, "25% Duty Cycle");
+    lv_label_set_text(lv_label_2, "0% Duty Cycle");
     lv_obj_set_style_text_color(lv_label_2, lv_color_hex(0xFFFFFF), 0);
     
     lv_obj_t * div_3 = div_create(div_0);
@@ -126,7 +132,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_style_flex_track_place(div_3, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_height(div_3, lv_pct(20));
     lv_obj_t * lv_label_3 = lv_label_create(div_3);
-    lv_label_set_text(lv_label_3, "footer");
+    lv_label_set_text(lv_label_3, "0%");
     lv_obj_set_style_text_color(lv_label_3, lv_color_hex(0xFFFFFF), 0);
 
     LV_TRACE_OBJ_CREATE("finished");

@@ -10,9 +10,7 @@
 		style_flex_track_place="center"
 		style_pad_all="20px"
 	>
-		<div style_flex_main_place="start" style_flex_track_place="center" style_flex_cross_place="center">
-			<lv_label text="Settings" style_text_color="0xFFFFFF" />
-		</div>
+		<header text="Settings" />
 		<div
 			style_flex_main_place="start"
 			style_flex_track_place="center"
@@ -46,7 +44,7 @@
 				style_flex_cross_place="center"
 				style_pad_row="20px"
 			>
-				<lv_dropdown options="a" />
+				<lv_dropdown options="aaa" />
 				<lv_label text="Double press action" style_text_color="0xFFFFFF" />
 			</div>
 			<div
@@ -94,7 +92,7 @@
 				style_flex_cross_place="center"
 				style_pad_row="20px"
 			>
-				<lv_dropdown options="Kilmeters" />
+				<lv_dropdown options="Kilometers" />
 				<lv_label text="Distance units" style_text_color="0xFFFFFF" />
 			</div>
 			<div
@@ -133,19 +131,15 @@
 				<lv_label text="Dark text" style_text_color="0xFFFFFF" />
 			</div>
 		</div>
-		<div
-			flex_flow="row"
-			style_flex_main_place="center"
-			style_flex_track_place="center"
-			style_flex_cross_place="center"
-			style_pad_column="10px"
-		>
-			<button width="80px" label="Cancel">
-				<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
-			</button>
-			<button width="80px" label="Save">
-				<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
-			</button>
-		</div>
+		<footer text="">
+			<footer_buttons>
+				<button width="80px" label="Cancel">
+					<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
+				</button>
+				<button width="80px" label="Save">
+					<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
+				</button>
+			</footer_buttons>
+		</footer>
 	</view>
 </screen>
