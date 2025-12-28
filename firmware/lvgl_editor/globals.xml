@@ -49,14 +49,14 @@
 
 	<subjects>
 		<!-- state -->
-		<int name="battery_percent" value="20" />
-		<int name="battery_charging" value="1" />
-		<int name="battery_state" value="1" />
-		<int name="speed" value="20" />
-		<int name="duty_cycle" value="10" />
-		<int name="motor_temp" value="35" />
-		<int name="cont_temp" value="40" />
-		<float name="trip_distance" value="5.2" />
+		<int name="state_battery_percent" value="20" />
+		<int name="state_battery_charging" value="1" />
+		<int name="state_battery_state" value="1" />
+		<int name="state_speed" value="20" />
+		<int name="state_duty_cycle" value="10" />
+		<int name="state_motor_temp" value="35" />
+		<int name="state_cont_temp" value="40" />
+		<float name="state_trip_distance" value="5.2" />
 
 		<!-- settings -->
 		<int name="settings_disp_brightness" value="100" />

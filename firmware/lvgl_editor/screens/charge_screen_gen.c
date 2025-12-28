@@ -60,7 +60,7 @@ lv_obj_t * charge_screen_create(void)
     lv_obj_set_height(lv_arc_0, lv_pct(100));
     lv_arc_set_min_value(lv_arc_0, 0);
     lv_arc_set_max_value(lv_arc_0, 100);
-    lv_arc_bind_value(lv_arc_0, &battery_percent);
+    lv_arc_bind_value(lv_arc_0, &state_battery_percent);
     lv_arc_set_start_angle(lv_arc_0, 90);
     lv_arc_set_end_angle(lv_arc_0, 89);
     lv_arc_set_bg_start_angle(lv_arc_0, 90);
@@ -83,7 +83,7 @@ lv_obj_t * charge_screen_create(void)
     lv_obj_set_style_text_font(lv_label_0, inter_bold_24, 0);
     
     lv_obj_t * lv_label_1 = lv_label_create(div_0);
-    lv_label_bind_text(lv_label_1, &battery_percent, "%d%%");
+    lv_label_bind_text(lv_label_1, &state_battery_percent, "%d%%");
     lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_font(lv_label_1, inter_24, 0);
 

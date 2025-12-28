@@ -13,7 +13,7 @@
 			bg_color="#surface_primary_light"
 			bg_opa="#opa_muted"
 			radius="20"
-			height="#unit_sm"
+			height="#unit_md"
 			width="100%"
 		/>
 		<style name="style_indicator" bg_color="#settings_theme_color" bg_opa="10%" radius="20" />

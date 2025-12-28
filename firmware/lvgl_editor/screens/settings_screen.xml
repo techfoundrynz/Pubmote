@@ -129,7 +129,7 @@
 				style_flex_cross_place="center"
 				style_pad_row="20px"
 			>
-				<switch />
+				<switch switched="settings_dark_text" />
 				<label text="Dark text" />
 			</div>
 		</div>

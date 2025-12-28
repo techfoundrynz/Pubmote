@@ -45,7 +45,7 @@ lv_obj_t * slider_create(lv_obj_t * parent, int32_t min_value, int32_t max_value
         lv_style_set_bg_color(&style_main, SURFACE_PRIMARY_LIGHT);
         lv_style_set_bg_opa(&style_main, OPA_MUTED);
         lv_style_set_radius(&style_main, 20);
-        lv_style_set_height(&style_main, UNIT_SM);
+        lv_style_set_height(&style_main, UNIT_MD);
         lv_style_set_width(&style_main, lv_pct(100));
 
         lv_style_init(&style_indicator);

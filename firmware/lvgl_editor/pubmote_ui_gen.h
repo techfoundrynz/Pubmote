@@ -152,14 +152,14 @@ extern const void * splash;
  * Subjects
  *----------------*/
 
-extern lv_subject_t battery_percent;
-extern lv_subject_t battery_charging;
-extern lv_subject_t battery_state;
-extern lv_subject_t speed;
-extern lv_subject_t duty_cycle;
-extern lv_subject_t motor_temp;
-extern lv_subject_t cont_temp;
-extern lv_subject_t trip_distance;
+extern lv_subject_t state_battery_percent;
+extern lv_subject_t state_battery_charging;
+extern lv_subject_t state_battery_state;
+extern lv_subject_t state_speed;
+extern lv_subject_t state_duty_cycle;
+extern lv_subject_t state_motor_temp;
+extern lv_subject_t state_cont_temp;
+extern lv_subject_t state_trip_distance;
 extern lv_subject_t settings_disp_brightness;
 extern lv_subject_t settings_dark_text;
 extern lv_subject_t settings_speed_label;
@@ -190,14 +190,14 @@ void pubmote_ui_init_gen(const char * asset_path);
 /*Include all the widget and components of this library*/
 #include "widgets/battery_gauge/battery_gauge_gen.h"
 #include "widgets/input_preview/input_preview_gen.h"
+#include "widgets/speed_gauge/speed_gauge_gen.h"
+#include "widgets/utilization_gauge/utilization_gauge_gen.h"
 #include "components/bar/bar_gen.h"
 #include "components/button/button_gen.h"
 #include "components/button/button_outlined_gen.h"
 #include "components/button/button_primary_gen.h"
 #include "components/circle_button/circle_button_gen.h"
 #include "components/div/div_gen.h"
-#include "components/gauge/speed_gauge_gen.h"
-#include "components/gauge/utilization_gauge_gen.h"
 #include "components/icon_button/icon_button_gen.h"
 #include "components/page/body_gen.h"
 #include "components/page/footer_gen.h"

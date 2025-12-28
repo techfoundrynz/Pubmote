@@ -7,25 +7,28 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/bar/bar_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/button/button_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/card/card_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/card/card_header_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/circle_button/circle_button_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/column/column_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/div/div_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/icon_button/icon_button_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/body_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/footer_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/footer_buttons_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/header_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/page/page_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/row/row_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/slider/slider_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/switch/switch_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/basic/table/table_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/speaker_volume/speaker_volume_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/cards/theme_swtcher/theme_switcher_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/speed_gauge/speed_gauge.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/speed_gauge/speed_gauge_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/speed_gauge/speed_gauge_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/utilization_gauge/utilization_gauge.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/utilization_gauge/utilization_gauge_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/utilization_gauge/utilization_gauge_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/bar/bar_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/button/button_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/button/button_outlined_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/button/button_primary_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/circle_button/circle_button_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/div/div_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/icon_button/icon_button_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/page/body_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_buttons_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/page/header_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/page/page_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/slider/slider_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/switch/switch_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/text/h1_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/text/label_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/about_screen_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/calibration_screen_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/charge_screen_gen.c

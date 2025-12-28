@@ -177,7 +177,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_set_style_flex_track_place(div_9, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_cross_place(div_9, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_pad_row(div_9, 20, 0);
-    lv_obj_t * switch_0 = switch_create(div_9);
+    lv_obj_t * switch_0 = switch_create(div_9, &settings_dark_text);
     
     lv_obj_t * label_8 = label_create(div_9, "Dark text");
     

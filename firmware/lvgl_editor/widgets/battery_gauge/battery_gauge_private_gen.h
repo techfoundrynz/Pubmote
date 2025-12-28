@@ -28,7 +28,8 @@ typedef struct {
     lv_obj_t obj;  /* Base widget to extend */
     lv_coord_t width;
     lv_coord_t height;
-    int32_t fill;
+    lv_subject_t * bind_percent;
+    lv_subject_t * bind_charge_state;
     lv_obj_t * lv_obj_0;
     lv_obj_t * lv_obj_1;
     lv_obj_t * lv_obj_2;

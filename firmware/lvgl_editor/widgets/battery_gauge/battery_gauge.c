@@ -49,7 +49,17 @@ void battery_gauge_event_hook(lv_event_t * e)
 
 }
 
-void battery_gauge_set_size(lv_obj_t * battery_gauge, int32_t size)
+void battery_gauge_set_width(lv_obj_t * battery_gauge, lv_coord_t width)
+{
+
+}
+
+void battery_gauge_set_height(lv_obj_t * battery_gauge, lv_coord_t height)
+{
+
+}
+
+void battery_gauge_set_fill(lv_obj_t * battery_gauge, int32_t fill)
 {
 
 }

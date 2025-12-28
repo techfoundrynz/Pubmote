@@ -1,20 +1,18 @@
 <component>
+	<api>
+		<prop name="switched" type="subject" />
+	</api>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
 	<styles>
-		<style name="switch_knob" pad_all="-4" shadow_opa="0" />
-		<style name="switch_knob_light" bg_color="#bg_primary_light" />
-		<style name="switch_knob_dark" bg_color="#bg_primary_dark" />
-		<style name="switch_main_light" bg_color="#surface_primary_light" bg_opa="24" />
-		<style name="switch_main_dark" bg_color="#surface_primary_dark" bg_opa="24" />
-		<style name="switch_indicator_light" bg_color="#surface_primary_light" />
-		<style name="switch_indicator_dark" bg_color="#surface_primary_dark" />
+		<style name="switch_knob" pad_all="-4" shadow_opa="0" bg_color="#bg_primary_light" />
+		<style name="switch_main" bg_color="#settings_theme_color" bg_opa="30" />
+		<style name="switch_indicator" bg_color="#settings_theme_color" />
 	</styles>
-	<view extends="lv_switch" width="48" height="32">
+	<view extends="lv_switch" width="50" height="30" bind_checked="$switched">
 		<style name="switch_knob" selector="knob" />
-		<style name="switch_knob_light" selector="knob" />
-		<style name="switch_main_light" selector="main" />
-		<style name="switch_indicator_light" selector="indicator|checked" />
-		<!-- <bind_style subject="dark_theme" ref_value="1" name="switch_knob_dark" selector="knob" />
-		<bind_style subject="dark_theme" ref_value="1" name="switch_main_dark" selector="main" />
-		<bind_style subject="dark_theme" ref_value="1" name="switch_indicator_dark" selector="indicator|checked" /> -->
+		<style name="switch_main" selector="main" />
+		<style name="switch_indicator" selector="indicator|checked" />
 	</view>
 </component>

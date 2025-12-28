@@ -57,9 +57,16 @@ void battery_gauge_set_height(lv_obj_t * battery_gauge, lv_coord_t height);
 /**
  * Percentage fill
  * @param obj   pointer to a battery_gauge
- * @param fill  Percentage fill
+ * @param bind_percent  Percentage fill
  */
-void battery_gauge_set_fill(lv_obj_t * battery_gauge, int32_t fill);
+void battery_gauge_bind_percent(lv_obj_t * battery_gauge, lv_subject_t * bind_percent);
+
+/**
+ * battery_gauge bind_charge_state
+ * @param obj   pointer to a battery_gauge
+ * @param bind_charge_state  bind_charge_state
+ */
+void battery_gauge_bind_charge_state(lv_obj_t * battery_gauge, lv_subject_t * bind_charge_state);
 
 /**********************
  *      MACROS

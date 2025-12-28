@@ -1,22 +1,7 @@
 <screen permanent="true">
 	<view style_bg_color="0x000000">
-		<speed_gauge
-			start_angle="120"
-			end_angle="60"
-			disabled="true"
-			min_value="0"
-			max_value="100"
-			bind_value="speed"
-		/>
-		<utilization_gauge
-			start_angle="120"
-			end_angle="60"
-			disabled="true"
-			min_value="0"
-			max_value="100"
-			bind_value="duty_cycle"
-			style_pad_all="40px"
-		/>
+		<speed_gauge bind_speed="state_speed" bind_max_speed="state_speed" />
+		<utilization_gauge bind_duty_cycle="state_duty_cycle" style_pad_all="40px" />
 		<div
 			width="100%"
 			height="100%"
@@ -36,7 +21,7 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<battery_gauge />
+				<battery_gauge bind_percent="state_battery_percent" bind_charge_state="state_battery_charging" />
 			</div>
 			<div
 				flex_flow="column"
@@ -46,22 +31,20 @@
 				height="60%"
 			>
 				<lv_label
-					bind_text="speed"
+					bind_text="state_speed"
 					style_text_color="0xFFFFFF"
 					style_text_font="inter_bold_72"
 					overflow_visible="true"
-				>
-					<lv_label
-						bind_text="settings_speed_label"
-						style_text_color="0xa9a9a9"
-						style_text_font="inter_bold_24"
-						align="bottom_right"
-						style_translate_x="40px"
-						style_translate_y="-15px"
-					/>
-				</lv_label>
+				/>
+				<lv_label
+					bind_text="settings_speed_label"
+					style_text_color="0xa9a9a9"
+					style_text_font="inter_bold_24"
+					style_x="40px"
+					style_y="25px"
+				/>
 
-				<lv_label bind_text="duty_cycle" bind_text-fmt="%d%% Duty Cycle" style_text_color="0xFFFFFF" />
+				<lv_label bind_text="state_duty_cycle" bind_text-fmt="%d%% Duty Cycle" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				flex_flow="column"

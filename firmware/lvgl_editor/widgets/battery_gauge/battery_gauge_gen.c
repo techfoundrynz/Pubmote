@@ -98,6 +98,7 @@ static void battery_gauge_constructor(const lv_obj_class_t * class_p, lv_obj_t *
     lv_obj_set_width(lv_obj_1, lv_pct(100));
     lv_obj_set_style_bg_opa(lv_obj_1, (255 * 100 / 100), 0);
     lv_obj_set_style_border_width(lv_obj_1, 0, 0);
+    lv_obj_set_align(lv_obj_1, LV_ALIGN_LEFT_MID);
     widget->lv_obj_1 = lv_obj_1;
     
     lv_obj_t * lv_obj_2 = lv_obj_create(obj);
