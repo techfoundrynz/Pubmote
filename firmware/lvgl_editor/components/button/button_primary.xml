@@ -1,0 +1,33 @@
+<component>
+	<previews>
+		<preview style_pad_all="4" />
+	</previews>
+
+	<api>
+		<prop name="label" type="string" default="Label" help="The text to be displayed on the button" />
+	</api>
+
+	<styles>
+		<!-- Styles added by default -->
+		<style
+			name="style_base"
+			radius="#unit_md"
+			bg_opa="100%"
+			width="100%"
+			pad_hor="#unit_lg"
+			pad_ver="#unit_md"
+			text_font="inter_bold_16"
+			bg_color="$settings_theme_color"
+			text_color="#text_on_surface_primary_light"
+		/>
+		<style name="style_pressed" recolor_opa="#opa_muted" recolor="$settings_theme_color" />
+	</styles>
+
+	<view extends="lv_button">
+		<remove_style_all />
+		<!-- Remove the default LVGL styles -->
+		<style name="style_base" />
+		<style name="style_pressed" selector="pressed" />
+		<lv_label text="$label" align="center" />
+	</view>
+</component>

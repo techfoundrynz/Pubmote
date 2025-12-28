@@ -77,6 +77,14 @@ extern "C" {
 
 #define ACCENT2_50_DARK lv_color_hex(0x4A473E)
 
+#define THEME_SUCCESS lv_color_hex(0x0EAD69)
+
+#define THEME_WARN lv_color_hex(0xFECC0B)
+
+#define THEME_DANGER lv_color_hex(0xFF8B3E)
+
+#define THEME_CRITICAL lv_color_hex(0xFF6369)
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -146,11 +154,19 @@ extern const void * splash;
  * Subjects
  *----------------*/
 
-extern lv_subject_t dark_theme;
-extern lv_subject_t theme_color;
-extern lv_subject_t speaker;
-extern lv_subject_t speaker_vol;
+extern lv_subject_t battery_percent;
+extern lv_subject_t battery_charging;
+extern lv_subject_t battery_state;
+extern lv_subject_t speed;
+extern lv_subject_t duty_cycle;
+extern lv_subject_t motor_temp;
+extern lv_subject_t cont_temp;
+extern lv_subject_t trip_distance;
 extern lv_subject_t settings_disp_brightness;
+extern lv_subject_t settings_theme_color;
+extern lv_subject_t settings_dark_text;
+extern lv_subject_t settings_speed_label;
+extern lv_subject_t settings_temp_label;
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -177,25 +193,24 @@ void pubmote_ui_init_gen(const char * asset_path);
 /*Include all the widget and components of this library*/
 #include "widgets/battery_gauge/battery_gauge_gen.h"
 #include "widgets/input_preview/input_preview_gen.h"
-#include "components/basic/bar/bar_gen.h"
-#include "components/basic/button/button_gen.h"
-#include "components/basic/card/card_gen.h"
-#include "components/basic/card/card_header_gen.h"
-#include "components/basic/circle_button/circle_button_gen.h"
-#include "components/basic/column/column_gen.h"
-#include "components/basic/div/div_gen.h"
-#include "components/basic/icon_button/icon_button_gen.h"
-#include "components/basic/page/body_gen.h"
-#include "components/basic/page/footer_gen.h"
-#include "components/basic/page/footer_buttons_gen.h"
-#include "components/basic/page/header_gen.h"
-#include "components/basic/page/page_gen.h"
-#include "components/basic/row/row_gen.h"
-#include "components/basic/slider/slider_gen.h"
-#include "components/basic/switch/switch_gen.h"
-#include "components/basic/table/table_gen.h"
-#include "components/cards/speaker_volume/speaker_volume_gen.h"
-#include "components/cards/theme_swtcher/theme_switcher_gen.h"
+#include "components/bar/bar_gen.h"
+#include "components/button/button_gen.h"
+#include "components/button/button_outlined_gen.h"
+#include "components/button/button_primary_gen.h"
+#include "components/circle_button/circle_button_gen.h"
+#include "components/div/div_gen.h"
+#include "components/gauge/speed_gauge_gen.h"
+#include "components/gauge/utilization_gauge_gen.h"
+#include "components/icon_button/icon_button_gen.h"
+#include "components/page/body_gen.h"
+#include "components/page/footer_gen.h"
+#include "components/page/footer_buttons_gen.h"
+#include "components/page/header_gen.h"
+#include "components/page/page_gen.h"
+#include "components/slider/slider_gen.h"
+#include "components/switch/switch_gen.h"
+#include "components/text/h1_gen.h"
+#include "components/text/label_gen.h"
 #include "screens/about_screen_gen.h"
 #include "screens/calibration_screen_gen.h"
 #include "screens/charge_screen_gen.h"

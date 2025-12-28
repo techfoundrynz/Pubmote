@@ -8,6 +8,8 @@
 		<int name="unit_md" value="12" />
 		<int name="unit_lg" value="18" />
 		<int name="unit_xl" value="24" />
+
+		<!-- TODO - remove -->
 		<percentage name="opa_muted" value="20%" />
 
 		<color name="light" value="0xffffff" />
@@ -30,6 +32,12 @@
 		<color name="accent2_dark" value="0x887A3D" />
 		<color name="accent2_50_light" value="0xf3f0e7" />
 		<color name="accent2_50_dark" value="0x4A473E" />
+
+		<!-- theme -->
+		<color name="theme_success" value="0x0EAD69" />
+		<color name="theme_warn" value="0xFECC0B" />
+		<color name="theme_danger" value="0xFF8B3E" />
+		<color name="theme_critical" value="0xFF6369" />
 	</consts>
 
 	<styles>
@@ -38,13 +46,22 @@
 	</styles>
 
 	<subjects>
-		<int name="dark_theme" value="0" help="0:light 1:dark" />
-		<string name="theme_color" value="0xFFFFFF" help="Theme color" />
+		<!-- state -->
+		<int name="battery_percent" value="20" />
+		<int name="battery_charging" value="1" />
+		<int name="battery_state" value="1" />
+		<int name="speed" value="20" />
+		<int name="duty_cycle" value="10" />
+		<int name="motor_temp" value="35" />
+		<int name="cont_temp" value="40" />
+		<float name="trip_distance" value="5.2" />
 
-		<int name="speaker" value="1" help="0:disabled 1:enabled" />
-		<int name="speaker_vol" value="40" />
-
+		<!-- settings -->
 		<int name="settings_disp_brightness" value="100" />
+		<string name="settings_theme_color" value="0xFF46A2" help="Theme color" />
+		<int name="settings_dark_text" value="0" help="Use black text for buttons" />
+		<string name="settings_speed_label" value="KPH" />
+		<string name="settings_temp_label" value="C" />
 	</subjects>
 
 	<images>

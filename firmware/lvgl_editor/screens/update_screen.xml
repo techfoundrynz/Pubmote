@@ -10,12 +10,13 @@
 		style_flex_track_place="center"
 		style_pad_all="20px"
 	>
-		<header text="Update" />
+		<header>
+			<h1 text="Update" />
+		</header>
 		<body>
-			<lv_label style_text_font="inter_bold_28" text="Update" style_text_color="0xFFFFFF" />
 			<lv_label text="Press next to begin" style_text_color="0xFFFFFF" />
 		</body>
-		<footer text="">
+		<footer>
 			<footer_buttons>
 				<button width="80px" label="Cancel">
 					<screen_create_event
@@ -25,7 +26,7 @@
 						duration="200"
 					/>
 				</button>
-				<button width="80px" label="Next" />
+				<button_primary width="80px" label="Next" />
 			</footer_buttons>
 		</footer>
 	</view>

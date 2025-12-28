@@ -1,0 +1,28 @@
+<component>
+	<api>
+		<prop name="min_value" type="int" default="0" />
+		<prop name="max_value" type="int" default="100" />
+		<prop name="value" type="int" default="50" />
+	</api>
+	<previews>
+		<preview style_pad_all="20" style_bg_color="0x000000" />
+	</previews>
+	<styles>
+		<style
+			name="style_main"
+			bg_color="#surface_primary_light"
+			bg_opa="#opa_muted"
+			radius="20"
+			height="#unit_sm"
+			width="100%"
+		/>
+		<style name="style_indicator" bg_color="$settings_theme_color" bg_opa="10%" radius="20" />
+		<style name="style_knob" bg_color="$settings_theme_color" bg_opa="100%" pad_all="#unit_sm" radius="20" />
+	</styles>
+	<view extends="lv_slider" value="$value" min_value="$min_value" max_value="$max_value">
+		<remove_style_all />
+		<style name="style_main" />
+		<style name="style_knob" selector="knob" />
+		<style name="style_indicator" selector="indicator" />
+	</view>
+</component>

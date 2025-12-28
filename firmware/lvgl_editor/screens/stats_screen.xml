@@ -1,28 +1,22 @@
 <screen permanent="true">
-	<styles>
-		<style name="arc_main" help="What is this style about?" arc_width="32px" width="100%" height="100%" />
-		<style name="arc_indicator" help="What is this style about?" arc_width="32px" />
-		<style name="arc_knob" help="What is this style about?" bg_opa="0" />
-	</styles>
 	<view style_bg_color="0x000000">
-		<lv_arc start_angle="120" end_angle="60" disabled="true" min_value="0" max_value="100" value="50">
-			<style name="arc_main" selector="main" />
-			<style name="arc_indicator" selector="indicator" />
-			<style name="arc_knob" selector="knob" />
-		</lv_arc>
-		<lv_arc
+		<speed_gauge
 			start_angle="120"
 			end_angle="60"
 			disabled="true"
 			min_value="0"
 			max_value="100"
-			value="50"
+			bind_value="speed"
+		/>
+		<utilization_gauge
+			start_angle="120"
+			end_angle="60"
+			disabled="true"
+			min_value="0"
+			max_value="100"
+			bind_value="duty_cycle"
 			style_pad_all="40px"
-		>
-			<style name="arc_main" selector="main" />
-			<style name="arc_indicator" selector="indicator" />
-			<style name="arc_knob" selector="knob" />
-		</lv_arc>
+		/>
 		<div
 			width="100%"
 			height="100%"
@@ -51,9 +45,14 @@
 				style_flex_track_place="center"
 				height="60%"
 			>
-				<lv_label text="45" style_text_color="0xFFFFFF" style_text_font="inter_bold_72" overflow_visible="true">
+				<lv_label
+					bind_text="speed"
+					style_text_color="0xFFFFFF"
+					style_text_font="inter_bold_72"
+					overflow_visible="true"
+				>
 					<lv_label
-						text="KPH"
+						bind_text="settings_speed_label"
 						style_text_color="0xa9a9a9"
 						style_text_font="inter_bold_24"
 						align="bottom_right"
@@ -62,7 +61,7 @@
 					/>
 				</lv_label>
 
-				<lv_label text="0% Duty Cycle" style_text_color="0xFFFFFF" />
+				<lv_label bind_text="duty_cycle" bind_text-fmt="%d%% Duty Cycle" style_text_color="0xFFFFFF" />
 			</div>
 			<div
 				flex_flow="column"

@@ -42,6 +42,7 @@ lv_obj_t * charge_screen_create(void)
     if (!style_inited) {
         lv_style_init(&charge_arc_indicator);
         lv_style_set_arc_width(&charge_arc_indicator, 24);
+        lv_style_set_arc_rounded(&charge_arc_indicator, false);
 
         lv_style_init(&charge_arc_knob);
         lv_style_set_bg_opa(&charge_arc_knob, 0);
@@ -59,7 +60,7 @@ lv_obj_t * charge_screen_create(void)
     lv_obj_set_height(lv_arc_0, lv_pct(100));
     lv_arc_set_min_value(lv_arc_0, 0);
     lv_arc_set_max_value(lv_arc_0, 100);
-    lv_arc_set_value(lv_arc_0, 50);
+    lv_arc_bind_value(lv_arc_0, &battery_percent);
     lv_arc_set_start_angle(lv_arc_0, 90);
     lv_arc_set_end_angle(lv_arc_0, 89);
     lv_arc_set_bg_start_angle(lv_arc_0, 90);
@@ -77,9 +78,14 @@ lv_obj_t * charge_screen_create(void)
     lv_obj_set_style_flex_cross_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_t * lv_label_0 = lv_label_create(div_0);
-    lv_label_set_text(lv_label_0, "Charging: 99%");
+    lv_label_set_text(lv_label_0, "Charging");
     lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(lv_label_0, inter_24, 0);
+    lv_obj_set_style_text_font(lv_label_0, inter_bold_24, 0);
+    
+    lv_obj_t * lv_label_1 = lv_label_create(div_0);
+    lv_label_bind_text(lv_label_1, &battery_percent, "%d%%");
+    lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(lv_label_1, inter_24, 0);
 
     LV_TRACE_OBJ_CREATE("finished");
 

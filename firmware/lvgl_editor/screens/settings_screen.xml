@@ -10,7 +10,9 @@
 		style_flex_track_place="center"
 		style_pad_all="20px"
 	>
-		<header text="Settings" />
+		<header>
+			<h1 text="Settings" />
+		</header>
 		<div
 			style_flex_main_place="start"
 			style_flex_track_place="center"
@@ -32,8 +34,8 @@
 				style_flex_cross_place="center"
 				style_pad_row="20px"
 			>
-				<lv_slider min_value="0" max_value="100" />
-				<lv_label text="Screen brightness" style_text_color="0xFFFFFF" />
+				<slider min_value="0" max_value="100" style_width="80%" />
+				<label text="Screen brightness" />
 			</div>
 			<div
 				width="100%"
@@ -45,7 +47,7 @@
 				style_pad_row="20px"
 			>
 				<lv_dropdown options="aaa" />
-				<lv_label text="Double press action" style_text_color="0xFFFFFF" />
+				<label text="Double press action" />
 			</div>
 			<div
 				width="100%"
@@ -57,7 +59,7 @@
 				style_pad_row="20px"
 			>
 				<lv_dropdown options="0 Deg" />
-				<lv_label text="Screen rotation" style_text_color="0xFFFFFF" />
+				<label text="Screen rotation" />
 			</div>
 			<div
 				width="100%"
@@ -69,7 +71,7 @@
 				style_pad_row="20px"
 			>
 				<lv_dropdown options="Disabled" />
-				<lv_label text="Auto-off time" style_text_color="0xFFFFFF" />
+				<label text="Auto-off time" />
 			</div>
 			<div
 				width="100%"
@@ -81,7 +83,7 @@
 				style_pad_row="20px"
 			>
 				<lv_dropdown options="Celcius" />
-				<lv_label text="Temp units" style_text_color="0xFFFFFF" />
+				<label text="Temp units" />
 			</div>
 			<div
 				width="100%"
@@ -93,7 +95,7 @@
 				style_pad_row="20px"
 			>
 				<lv_dropdown options="Kilometers" />
-				<lv_label text="Distance units" style_text_color="0xFFFFFF" />
+				<label text="Distance units" />
 			</div>
 			<div
 				width="100%"
@@ -105,7 +107,7 @@
 				style_pad_row="20px"
 			>
 				<lv_dropdown options="None" />
-				<lv_label text="Startup sound" style_text_color="0xFFFFFF" />
+				<label text="Startup sound" />
 			</div>
 			<div
 				width="100%"
@@ -116,7 +118,7 @@
 				style_flex_cross_place="center"
 				style_pad_row="20px"
 			>
-				<lv_label text="Theme color" style_text_color="0xFFFFFF" />
+				<label text="Theme color" />
 			</div>
 			<div
 				width="100%"
@@ -128,17 +130,17 @@
 				style_pad_row="20px"
 			>
 				<switch />
-				<lv_label text="Dark text" style_text_color="0xFFFFFF" />
+				<label text="Dark text" />
 			</div>
 		</div>
-		<footer text="">
+		<footer>
 			<footer_buttons>
 				<button width="80px" label="Cancel">
 					<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
 				</button>
-				<button width="80px" label="Save">
+				<button_primary width="80px" label="Save">
 					<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
-				</button>
+				</button_primary>
 			</footer_buttons>
 		</footer>
 	</view>

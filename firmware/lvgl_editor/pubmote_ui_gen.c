@@ -99,11 +99,19 @@ const void * splash;
  * Subjects
  *----------------*/
 
-lv_subject_t dark_theme;
-lv_subject_t theme_color;
-lv_subject_t speaker;
-lv_subject_t speaker_vol;
+lv_subject_t battery_percent;
+lv_subject_t battery_charging;
+lv_subject_t battery_state;
+lv_subject_t speed;
+lv_subject_t duty_cycle;
+lv_subject_t motor_temp;
+lv_subject_t cont_temp;
+lv_subject_t trip_distance;
 lv_subject_t settings_disp_brightness;
+lv_subject_t settings_theme_color;
+lv_subject_t settings_dark_text;
+lv_subject_t settings_speed_label;
+lv_subject_t settings_temp_label;
 
 /**********************
  *      MACROS
@@ -191,18 +199,40 @@ void pubmote_ui_init_gen(const char * asset_path)
     /*----------------
      * Subjects
      *----------------*/
-    lv_subject_init_int(&dark_theme, 0);
-    static char theme_color_buf[UI_SUBJECT_STRING_LENGTH];
-    static char theme_color_prev_buf[UI_SUBJECT_STRING_LENGTH];
-    lv_subject_init_string(&theme_color,
-                           theme_color_buf,
-                           theme_color_prev_buf,
-                           UI_SUBJECT_STRING_LENGTH,
-                           "0xFFFFFF"
-                          );
-    lv_subject_init_int(&speaker, 1);
-    lv_subject_init_int(&speaker_vol, 40);
+    lv_subject_init_int(&battery_percent, 20);
+    lv_subject_init_int(&battery_charging, 1);
+    lv_subject_init_int(&battery_state, 1);
+    lv_subject_init_int(&speed, 20);
+    lv_subject_init_int(&duty_cycle, 10);
+    lv_subject_init_int(&motor_temp, 35);
+    lv_subject_init_int(&cont_temp, 40);
+    lv_subject_init_float(&trip_distance, 5.2);
     lv_subject_init_int(&settings_disp_brightness, 100);
+    static char settings_theme_color_buf[UI_SUBJECT_STRING_LENGTH];
+    static char settings_theme_color_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&settings_theme_color,
+                           settings_theme_color_buf,
+                           settings_theme_color_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "0xFF46A2"
+                          );
+    lv_subject_init_int(&settings_dark_text, 0);
+    static char settings_speed_label_buf[UI_SUBJECT_STRING_LENGTH];
+    static char settings_speed_label_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&settings_speed_label,
+                           settings_speed_label_buf,
+                           settings_speed_label_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "KPH"
+                          );
+    static char settings_temp_label_buf[UI_SUBJECT_STRING_LENGTH];
+    static char settings_temp_label_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&settings_temp_label,
+                           settings_temp_label_buf,
+                           settings_temp_label_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "C"
+                          );
 
     /*----------------
      * Translations
@@ -231,11 +261,19 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "inter_bold_72", inter_bold_72);
 
     /* Register subjects */
-    lv_xml_register_subject(NULL, "dark_theme", &dark_theme);
-    lv_xml_register_subject(NULL, "theme_color", &theme_color);
-    lv_xml_register_subject(NULL, "speaker", &speaker);
-    lv_xml_register_subject(NULL, "speaker_vol", &speaker_vol);
+    lv_xml_register_subject(NULL, "battery_percent", &battery_percent);
+    lv_xml_register_subject(NULL, "battery_charging", &battery_charging);
+    lv_xml_register_subject(NULL, "battery_state", &battery_state);
+    lv_xml_register_subject(NULL, "speed", &speed);
+    lv_xml_register_subject(NULL, "duty_cycle", &duty_cycle);
+    lv_xml_register_subject(NULL, "motor_temp", &motor_temp);
+    lv_xml_register_subject(NULL, "cont_temp", &cont_temp);
+    lv_xml_register_subject(NULL, "trip_distance", &trip_distance);
     lv_xml_register_subject(NULL, "settings_disp_brightness", &settings_disp_brightness);
+    lv_xml_register_subject(NULL, "settings_theme_color", &settings_theme_color);
+    lv_xml_register_subject(NULL, "settings_dark_text", &settings_dark_text);
+    lv_xml_register_subject(NULL, "settings_speed_label", &settings_speed_label);
+    lv_xml_register_subject(NULL, "settings_temp_label", &settings_temp_label);
 
     /* Register callbacks */
 #endif
