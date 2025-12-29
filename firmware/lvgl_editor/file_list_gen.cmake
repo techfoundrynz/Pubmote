@@ -41,18 +41,4 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/screens/update_screen_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_12_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_14_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_16_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_24_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_28_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_42_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_64_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_72_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_12_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_14_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_16_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_24_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_28_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_42_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_72_data.c)
+  ${CMAKE_CURRENT_LIST_DIR}/images/splash_data.c)
