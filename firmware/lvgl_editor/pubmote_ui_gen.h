@@ -159,6 +159,7 @@ extern const void * splash;
 extern lv_subject_t state_battery_percent;
 extern lv_subject_t state_battery_status;
 extern lv_subject_t state_speed;
+extern lv_subject_t state_speed_fmt;
 extern lv_subject_t state_max_speed;
 extern lv_subject_t state_duty_cycle;
 extern lv_subject_t state_motor_temp;
@@ -195,6 +196,7 @@ void pubmote_ui_init_gen(const char * asset_path);
 
 /*Include all the widget and components of this library*/
 #include "widgets/battery_gauge/battery_gauge_gen.h"
+#include "widgets/dynamic_fmt_label/dynamic_fmt_label_gen.h"
 #include "widgets/input_preview/input_preview_gen.h"
 #include "widgets/speed_gauge/speed_gauge_gen.h"
 #include "widgets/utilization_gauge/utilization_gauge_gen.h"

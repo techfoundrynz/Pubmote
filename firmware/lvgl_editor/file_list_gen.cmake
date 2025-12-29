@@ -4,6 +4,9 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_gen.c

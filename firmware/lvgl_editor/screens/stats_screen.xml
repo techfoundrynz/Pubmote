@@ -31,9 +31,9 @@
 				style_flex_track_place="center"
 				height="60%"
 			>
-				<lv_label
+				<dynamic_fmt_label
 					bind_text="state_speed"
-					bind_text-fmt="%.1f"
+					bind_text_fmt="state_speed_fmt"
 					style_text_color="0xFFFFFF"
 					style_text_font="inter_bold_96"
 					overflow_visible="true"
@@ -48,8 +48,7 @@
 						y="-20px"
 						align="bottom_right"
 					/>
-				</lv_label>
-
+				</dynamic_fmt_label>
 				<lv_label bind_text="state_duty_cycle" bind_text-fmt="%d%% Duty Cycle" style_text_color="0xFFFFFF" />
 			</div>
 			<div
