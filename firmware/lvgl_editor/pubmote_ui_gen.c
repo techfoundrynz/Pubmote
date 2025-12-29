@@ -113,6 +113,8 @@ lv_subject_t state_cont_temp;
 lv_subject_t state_trip_distance;
 lv_subject_t state_adc1_active;
 lv_subject_t state_adc2_active;
+lv_subject_t state_pocket_mode;
+lv_subject_t state_factory_reset;
 lv_subject_t settings_disp_brightness;
 lv_subject_t settings_dark_text;
 lv_subject_t settings_speed_label;
@@ -219,6 +221,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_subject_init_float(&state_trip_distance, 0);
     lv_subject_init_int(&state_adc1_active, 0);
     lv_subject_init_int(&state_adc2_active, 0);
+    lv_subject_init_int(&state_pocket_mode, 0);
+    lv_subject_init_int(&state_factory_reset, 0);
     lv_subject_init_int(&settings_disp_brightness, 100);
     lv_subject_init_int(&settings_dark_text, 0);
     static char settings_speed_label_buf[UI_SUBJECT_STRING_LENGTH];
@@ -281,6 +285,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "state_trip_distance", &state_trip_distance);
     lv_xml_register_subject(NULL, "state_adc1_active", &state_adc1_active);
     lv_xml_register_subject(NULL, "state_adc2_active", &state_adc2_active);
+    lv_xml_register_subject(NULL, "state_pocket_mode", &state_pocket_mode);
+    lv_xml_register_subject(NULL, "state_factory_reset", &state_factory_reset);
     lv_xml_register_subject(NULL, "settings_disp_brightness", &settings_disp_brightness);
     lv_xml_register_subject(NULL, "settings_dark_text", &settings_dark_text);
     lv_xml_register_subject(NULL, "settings_speed_label", &settings_speed_label);
@@ -303,6 +309,7 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_event_cb(NULL, "menu_screen_loaded_cb", menu_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "menu_screen_unload_start_cb", menu_screen_unload_start_cb);
     lv_xml_register_event_cb(NULL, "menu_screen_unloaded_cb", menu_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "factory_reset", factory_reset);
     lv_xml_register_event_cb(NULL, "pairing_screen_load_start_cb", pairing_screen_load_start_cb);
     lv_xml_register_event_cb(NULL, "pairing_screen_loaded_cb", pairing_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "pairing_screen_unload_start_cb", pairing_screen_unload_start_cb);
@@ -423,6 +430,11 @@ void __attribute__((weak)) menu_screen_unloaded_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     LV_LOG("menu_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) factory_reset(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("factory_reset was called\n");
 }
 void __attribute__((weak)) pairing_screen_load_start_cb(lv_event_t * e)
 {

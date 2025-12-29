@@ -66,6 +66,8 @@
 		<float name="state_trip_distance" value="0" />
 		<int name="state_adc1_active" value="0" />
 		<int name="state_adc2_active" value="0" />
+		<int name="state_pocket_mode" value="0" />
+		<int name="state_factory_reset" value="0" />
 
 		<!-- settings -->
 		<int name="settings_disp_brightness" value="100" />
