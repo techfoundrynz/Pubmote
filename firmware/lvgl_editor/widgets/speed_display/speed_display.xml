@@ -1,0 +1,16 @@
+<widget>
+	<api>
+		<prop name="bind_speed" type="subject" />
+	</api>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
+	<view
+		extends="lv_label"
+		style_text_color="0xFFFFFF"
+		style_text_font="inter_bold_96"
+		overflow_visible="true"
+		width="100%"
+		style_text_align="center"
+	/>
+</widget>

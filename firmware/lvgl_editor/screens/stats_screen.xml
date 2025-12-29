@@ -33,17 +33,22 @@
 			>
 				<lv_label
 					bind_text="state_speed"
+					bind_text-fmt="%.1f"
 					style_text_color="0xFFFFFF"
 					style_text_font="inter_bold_96"
 					overflow_visible="true"
-				/>
-				<lv_label
-					bind_text="settings_speed_label"
-					style_text_color="0xa9a9a9"
-					style_text_font="inter_bold_24"
-					style_x="40px"
-					style_y="25px"
-				/>
+					width="100%"
+					style_text_align="center"
+				>
+					<lv_label
+						bind_text="settings_speed_label"
+						style_text_color="0xa9a9a9"
+						style_text_font="inter_bold_24"
+						x="-50px"
+						y="-20px"
+						align="bottom_right"
+					/>
+				</lv_label>
 
 				<lv_label bind_text="state_duty_cycle" bind_text-fmt="%d%% Duty Cycle" style_text_color="0xFFFFFF" />
 			</div>

@@ -85,17 +85,19 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_style_flex_track_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_height(div_2, lv_pct(60));
     lv_obj_t * lv_label_0 = lv_label_create(div_2);
-    lv_label_bind_text(lv_label_0, &state_speed, NULL);
+    lv_label_bind_text(lv_label_0, &state_speed, "%.1f");
     lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_font(lv_label_0, inter_bold_96, 0);
     lv_obj_set_flag(lv_label_0, LV_OBJ_FLAG_OVERFLOW_VISIBLE, true);
-    
-    lv_obj_t * lv_label_1 = lv_label_create(div_2);
+    lv_obj_set_width(lv_label_0, lv_pct(100));
+    lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_t * lv_label_1 = lv_label_create(lv_label_0);
     lv_label_bind_text(lv_label_1, &settings_speed_label, NULL);
     lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xa9a9a9), 0);
     lv_obj_set_style_text_font(lv_label_1, inter_bold_24, 0);
-    lv_obj_set_style_x(lv_label_1, 40, 0);
-    lv_obj_set_style_y(lv_label_1, 25, 0);
+    lv_obj_set_x(lv_label_1, -50);
+    lv_obj_set_y(lv_label_1, -20);
+    lv_obj_set_align(lv_label_1, LV_ALIGN_BOTTOM_RIGHT);
     
     lv_obj_t * lv_label_2 = lv_label_create(div_2);
     lv_label_bind_text(lv_label_2, &state_duty_cycle, "%d%% Duty Cycle");

@@ -200,8 +200,8 @@ void pubmote_ui_init_gen(const char * asset_path)
      *----------------*/
     lv_subject_init_int(&state_battery_percent, 0);
     lv_subject_init_int(&state_battery_status, 0);
-    lv_subject_init_int(&state_speed, 0);
-    lv_subject_init_int(&state_max_speed, 40);
+    lv_subject_init_float(&state_speed, 0);
+    lv_subject_init_float(&state_max_speed, 40);
     lv_subject_init_int(&state_duty_cycle, 0);
     lv_subject_init_int(&state_motor_temp, 0);
     lv_subject_init_int(&state_cont_temp, 0);

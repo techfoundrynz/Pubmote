@@ -51,8 +51,8 @@
 		<!-- state -->
 		<int name="state_battery_percent" value="0" />
 		<int name="state_battery_status" value="0" />
-		<int name="state_speed" value="0" />
-		<int name="state_max_speed" value="40" />
+		<float name="state_speed" value="0" />
+		<float name="state_max_speed" value="40" />
 		<int name="state_duty_cycle" value="0" />
 		<int name="state_motor_temp" value="0" />
 		<int name="state_cont_temp" value="0" />
