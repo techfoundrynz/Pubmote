@@ -65,9 +65,7 @@ lv_obj_t * speed_gauge_create(lv_obj_t * parent, lv_subject_t * bind_speed, lv_s
     lv_obj_set_name_static(dynamic_range_arc_0, "speed_gauge_#");
     lv_arc_set_min_value(dynamic_range_arc_0, 0);
     lv_arc_set_start_angle(dynamic_range_arc_0, 120);
-    lv_arc_set_bg_start_angle(dynamic_range_arc_0, 120);
     lv_arc_set_end_angle(dynamic_range_arc_0, 60);
-    lv_arc_set_bg_end_angle(dynamic_range_arc_0, 60);
     lv_obj_set_state(dynamic_range_arc_0, LV_STATE_DISABLED, true);
     dynamic_range_arc_bind_value(dynamic_range_arc_0, bind_speed);
     dynamic_range_arc_bind_max_value(dynamic_range_arc_0, bind_max_speed);

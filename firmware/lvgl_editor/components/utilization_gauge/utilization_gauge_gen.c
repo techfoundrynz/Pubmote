@@ -77,9 +77,7 @@ lv_obj_t * utilization_gauge_create(lv_obj_t * parent, lv_subject_t * bind_duty_
     lv_obj_set_name_static(lv_arc_0, "utilization_gauge_#");
     lv_arc_set_min_value(lv_arc_0, 0);
     lv_arc_set_start_angle(lv_arc_0, 120);
-    lv_arc_set_bg_start_angle(lv_arc_0, 120);
     lv_arc_set_end_angle(lv_arc_0, 60);
-    lv_arc_set_bg_end_angle(lv_arc_0, 60);
     lv_obj_set_state(lv_arc_0, LV_STATE_DISABLED, true);
     lv_arc_set_max_value(lv_arc_0, 100);
     lv_arc_set_mode(lv_arc_0, LV_ARC_MODE_REVERSE);
