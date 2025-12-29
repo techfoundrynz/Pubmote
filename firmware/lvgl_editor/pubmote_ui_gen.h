@@ -162,6 +162,7 @@ extern lv_subject_t state_speed;
 extern lv_subject_t state_speed_fmt;
 extern lv_subject_t state_max_speed;
 extern lv_subject_t state_duty_cycle;
+extern lv_subject_t state_vehicle_state;
 extern lv_subject_t state_motor_temp;
 extern lv_subject_t state_cont_temp;
 extern lv_subject_t state_trip_distance;
@@ -197,9 +198,8 @@ void pubmote_ui_init_gen(const char * asset_path);
 /*Include all the widget and components of this library*/
 #include "widgets/battery_gauge/battery_gauge_gen.h"
 #include "widgets/dynamic_fmt_label/dynamic_fmt_label_gen.h"
+#include "widgets/dynamic_range_arc/dynamic_range_arc_gen.h"
 #include "widgets/input_preview/input_preview_gen.h"
-#include "widgets/speed_gauge/speed_gauge_gen.h"
-#include "widgets/utilization_gauge/utilization_gauge_gen.h"
 #include "components/bar/bar_gen.h"
 #include "components/button/button_gen.h"
 #include "components/button/button_outlined_gen.h"
@@ -214,9 +214,11 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/page/header_gen.h"
 #include "components/page/page_gen.h"
 #include "components/slider/slider_gen.h"
+#include "components/speed_gauge/speed_gauge_gen.h"
 #include "components/switch/switch_gen.h"
 #include "components/text/h1_gen.h"
 #include "components/text/label_gen.h"
+#include "components/utilization_gauge/utilization_gauge_gen.h"
 #include "screens/about_screen_gen.h"
 #include "screens/calibration_screen_gen.h"
 #include "screens/charge_screen_gen.h"

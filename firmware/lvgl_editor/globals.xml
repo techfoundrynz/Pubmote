@@ -55,6 +55,7 @@
 		<string name="state_speed_fmt" value="%.1f" />
 		<float name="state_max_speed" value="40" />
 		<int name="state_duty_cycle" value="0" />
+		<int name="state_vehicle_state" value="0" />
 		<int name="state_motor_temp" value="0" />
 		<int name="state_cont_temp" value="0" />
 		<float name="state_trip_distance" value="0" />

@@ -1,7 +1,11 @@
 <screen permanent="true">
 	<view style_bg_color="0x000000">
 		<speed_gauge bind_speed="state_speed" bind_max_speed="state_max_speed" />
-		<utilization_gauge bind_duty_cycle="state_duty_cycle" style_pad_all="40px" />
+		<utilization_gauge
+			bind_duty_cycle="state_duty_cycle"
+			bind_vehicle_state="state_vehicle_state"
+			style_pad_all="40px"
+		/>
 		<footpad_indicator bind_left_active="state_adc1_active" bind_right_active="state_adc2_active" />
 		<div
 			width="100%"

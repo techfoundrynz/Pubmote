@@ -22,7 +22,7 @@
  *  STATIC PROTOTYPES
  **********************/
 
-static void update_value(dynamic_fmt_label_t * dynamic_fmt_label);
+static void update_display(dynamic_fmt_label_t * dynamic_fmt_label);
 static void value_observer_cb(lv_observer_t * obs, lv_subject_t * subject);
 static void fmt_observer_cb(lv_observer_t * obs, lv_subject_t * subject);
 
@@ -58,7 +58,7 @@ void dynamic_fmt_label_bind_text(lv_obj_t * dynamic_fmt_label, lv_subject_t * bi
     lv_subject_add_observer_obj(bind_text, value_observer_cb, dynamic_fmt_label, dynamic_fmt_label);
     dynamic_fmt_label_t * cont = (dynamic_fmt_label_t *)dynamic_fmt_label;
     cont->bind_text = bind_text;
-    update_value(cont);
+    update_display(cont);
 }
 
 void dynamic_fmt_label_bind_text_fmt(lv_obj_t * dynamic_fmt_label, lv_subject_t * bind_text_fmt)
@@ -66,14 +66,14 @@ void dynamic_fmt_label_bind_text_fmt(lv_obj_t * dynamic_fmt_label, lv_subject_t 
     lv_subject_add_observer_obj(bind_text_fmt, fmt_observer_cb, dynamic_fmt_label, dynamic_fmt_label);
     dynamic_fmt_label_t * cont = (dynamic_fmt_label_t *)dynamic_fmt_label;
     cont->bind_text_fmt = bind_text_fmt;
-    update_value(cont);
+    update_display(cont);
 }
 
 /**********************
  *   STATIC FUNCTIONS
  **********************/
 
-static void update_value(dynamic_fmt_label_t * dynamic_fmt_label) {
+static void update_display(dynamic_fmt_label_t * dynamic_fmt_label) {
     lv_subject_t * fmt_subject = dynamic_fmt_label->bind_text_fmt;
     lv_subject_t * val_subject = dynamic_fmt_label->bind_text;
 
@@ -113,10 +113,10 @@ static void update_value(dynamic_fmt_label_t * dynamic_fmt_label) {
 
 static void value_observer_cb(lv_observer_t * obs, lv_subject_t * subject)
 {
-    update_value((dynamic_fmt_label_t *)lv_observer_get_user_data(obs));
+    update_display((dynamic_fmt_label_t *)lv_observer_get_user_data(obs));
 }
 
 static void fmt_observer_cb(lv_observer_t * obs, lv_subject_t * subject)
 {
-    update_value((dynamic_fmt_label_t *)lv_observer_get_user_data(obs));
+    update_display((dynamic_fmt_label_t *)lv_observer_get_user_data(obs));
 }
