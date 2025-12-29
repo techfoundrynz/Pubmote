@@ -1,5 +1,10 @@
 <screen permanent="true">
 	<view style_bg_color="0x000000">
+		<event_cb trigger="screen_load_start" callback="stats_screen_load_start_cb" />
+		<event_cb trigger="screen_loaded" callback="stats_screen_loaded_cb" />
+		<event_cb trigger="screen_unload_start" callback="stats_screen_unload_start_cb" />
+		<event_cb trigger="screen_unloaded" callback="stats_screen_unloaded_cb" />
+		<event_cb trigger="gesture" callback="stats_screen_gesture_cb" />
 		<speed_gauge bind_speed="state_speed" bind_max_speed="state_max_speed" />
 		<utilization_gauge
 			bind_duty_cycle="state_duty_cycle"

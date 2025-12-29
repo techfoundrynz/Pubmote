@@ -10,6 +10,10 @@
 		style_flex_track_place="center"
 		style_pad_all="20px"
 	>
+		<event_cb trigger="screen_load_start" callback="update_screen_load_start_cb" />
+		<event_cb trigger="screen_loaded" callback="update_screen_loaded_cb" />
+		<event_cb trigger="screen_unload_start" callback="update_screen_unload_start_cb" />
+		<event_cb trigger="screen_unloaded" callback="update_screen_unloaded_cb" />
 		<header>
 			<h1 text="Update" />
 		</header>

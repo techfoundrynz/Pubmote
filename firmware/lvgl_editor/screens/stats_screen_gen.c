@@ -47,6 +47,11 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_name_static(lv_obj_0, "stats_screen_#");
     lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
 
+    lv_obj_add_event_cb(lv_obj_0, stats_screen_load_start_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
+    lv_obj_add_event_cb(lv_obj_0, stats_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
+    lv_obj_add_event_cb(lv_obj_0, stats_screen_unload_start_cb, LV_EVENT_SCREEN_UNLOAD_START, NULL);
+    lv_obj_add_event_cb(lv_obj_0, stats_screen_unloaded_cb, LV_EVENT_SCREEN_UNLOADED, NULL);
+    lv_obj_add_event_cb(lv_obj_0, stats_screen_gesture_cb, LV_EVENT_GESTURE, NULL);
     lv_obj_t * speed_gauge_0 = speed_gauge_create(lv_obj_0, &state_speed, &state_max_speed);
     
     lv_obj_t * utilization_gauge_0 = utilization_gauge_create(lv_obj_0, &state_duty_cycle, &state_vehicle_state);

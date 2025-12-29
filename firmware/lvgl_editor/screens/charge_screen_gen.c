@@ -54,6 +54,10 @@ lv_obj_t * charge_screen_create(void)
     lv_obj_set_name_static(lv_obj_0, "charge_screen_#");
     lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
 
+    lv_obj_add_event_cb(lv_obj_0, charge_screen_load_start_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
+    lv_obj_add_event_cb(lv_obj_0, charge_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
+    lv_obj_add_event_cb(lv_obj_0, charge_screen_unload_start_cb, LV_EVENT_SCREEN_UNLOAD_START, NULL);
+    lv_obj_add_event_cb(lv_obj_0, charge_screen_unloaded_cb, LV_EVENT_SCREEN_UNLOADED, NULL);
     lv_obj_t * lv_arc_0 = lv_arc_create(lv_obj_0);
     lv_obj_set_style_arc_width(lv_arc_0, 24, 0);
     lv_obj_set_width(lv_arc_0, lv_pct(100));

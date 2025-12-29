@@ -54,6 +54,10 @@ lv_obj_t * update_screen_create(void)
     lv_obj_set_style_flex_track_place(lv_obj_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_pad_all(lv_obj_0, 20, 0);
 
+    lv_obj_add_event_cb(lv_obj_0, update_screen_load_start_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
+    lv_obj_add_event_cb(lv_obj_0, update_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
+    lv_obj_add_event_cb(lv_obj_0, update_screen_unload_start_cb, LV_EVENT_SCREEN_UNLOAD_START, NULL);
+    lv_obj_add_event_cb(lv_obj_0, update_screen_unloaded_cb, LV_EVENT_SCREEN_UNLOADED, NULL);
     lv_obj_t * header_0 = header_create(lv_obj_0);
     lv_obj_t * h1_0 = h1_create(header_0, "Update");
     

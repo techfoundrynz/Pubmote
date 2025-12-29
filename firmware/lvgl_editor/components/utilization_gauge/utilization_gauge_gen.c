@@ -86,9 +86,9 @@ lv_obj_t * utilization_gauge_create(lv_obj_t * parent, lv_subject_t * bind_duty_
     lv_obj_add_style(lv_arc_0, &style_main, 0);
     lv_obj_add_style(lv_arc_0, &style_knob, LV_PART_KNOB);
     lv_obj_add_style(lv_arc_0, &style_indicator, LV_PART_INDICATOR);
-    lv_obj_bind_style(lv_arc_0, &style_indicator_warn, LV_PART_INDICATOR, bind_vehicle_state, 1);
-    lv_obj_bind_style(lv_arc_0, &style_indicator_danger, LV_PART_INDICATOR, bind_vehicle_state, 2);
-    lv_obj_bind_style(lv_arc_0, &style_indicator_critical, LV_PART_INDICATOR, bind_vehicle_state, 3);
+    lv_obj_bind_style(lv_arc_0, &style_indicator_warn, LV_PART_INDICATOR, bind_vehicle_state, VEHICLE_STATE_WARN);
+    lv_obj_bind_style(lv_arc_0, &style_indicator_danger, LV_PART_INDICATOR, bind_vehicle_state, VEHICLE_STATE_DANGER);
+    lv_obj_bind_style(lv_arc_0, &style_indicator_critical, LV_PART_INDICATOR, bind_vehicle_state, VEHICLE_STATE_CRITICAL);
 
     LV_TRACE_OBJ_CREATE("finished");
 

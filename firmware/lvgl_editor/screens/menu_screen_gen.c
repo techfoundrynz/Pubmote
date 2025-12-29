@@ -58,6 +58,10 @@ lv_obj_t * menu_screen_create(void)
     lv_obj_set_flex_grow(div_0, 1);
     lv_obj_set_scroll_snap_y(div_0, LV_SCROLL_SNAP_CENTER);
     lv_obj_set_flag(div_0, LV_OBJ_FLAG_SCROLL_ONE, true);
+    lv_obj_add_event_cb(div_0, menu_screen_load_start_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
+    lv_obj_add_event_cb(div_0, menu_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
+    lv_obj_add_event_cb(div_0, menu_screen_unload_start_cb, LV_EVENT_SCREEN_UNLOAD_START, NULL);
+    lv_obj_add_event_cb(div_0, menu_screen_unloaded_cb, LV_EVENT_SCREEN_UNLOADED, NULL);
     lv_obj_t * button_0 = button_create(div_0, "Back");
     lv_obj_set_height(button_0, 64);
     lv_obj_add_screen_load_event(button_0, LV_EVENT_CLICKED, stats_screen, LV_SCREEN_LOAD_ANIM_MOVE_TOP, 200, 0);

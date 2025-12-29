@@ -287,6 +287,40 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "settings_temp_label", &settings_temp_label);
 
     /* Register callbacks */
+    lv_xml_register_event_cb(NULL, "about_screen_load_start_cb", about_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "about_screen_loaded_cb", about_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "about_screen_unload_start_cb", about_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "about_screen_unloaded_cb", about_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "calibration_screen_load_start_cb", calibration_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "calibration_screen_loaded_cb", calibration_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "calibration_screen_unload_start_cb", calibration_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "calibration_screen_unloaded_cb", calibration_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "charge_screen_load_start_cb", charge_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "charge_screen_loaded_cb", charge_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "charge_screen_unload_start_cb", charge_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "charge_screen_unloaded_cb", charge_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "menu_screen_load_start_cb", menu_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "menu_screen_loaded_cb", menu_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "menu_screen_unload_start_cb", menu_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "menu_screen_unloaded_cb", menu_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "pairing_screen_load_start_cb", pairing_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "pairing_screen_loaded_cb", pairing_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "pairing_screen_unload_start_cb", pairing_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "pairing_screen_unloaded_cb", pairing_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_load_start_cb", settings_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_loaded_cb", settings_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_unload_start_cb", settings_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_unloaded_cb", settings_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "splash_screen_loaded_cb", splash_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "stats_screen_load_start_cb", stats_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "stats_screen_loaded_cb", stats_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "stats_screen_unload_start_cb", stats_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "stats_screen_unloaded_cb", stats_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "stats_screen_gesture_cb", stats_screen_gesture_cb);
+    lv_xml_register_event_cb(NULL, "update_screen_load_start_cb", update_screen_load_start_cb);
+    lv_xml_register_event_cb(NULL, "update_screen_loaded_cb", update_screen_loaded_cb);
+    lv_xml_register_event_cb(NULL, "update_screen_unload_start_cb", update_screen_unload_start_cb);
+    lv_xml_register_event_cb(NULL, "update_screen_unloaded_cb", update_screen_unloaded_cb);
 #endif
 
     /* Register all the global assets so that they won't be created again when globals.xml is parsed.
@@ -310,6 +344,178 @@ void pubmote_ui_init_gen(const char * asset_path)
 }
 
 /* Callbacks */
+#if defined(LV_EDITOR_PREVIEW)
+void __attribute__((weak)) about_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("about_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) about_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("about_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) about_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("about_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) about_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("about_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) calibration_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("calibration_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) calibration_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("calibration_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) calibration_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("calibration_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) calibration_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("calibration_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) charge_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("charge_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) charge_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("charge_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) charge_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("charge_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) charge_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("charge_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) menu_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("menu_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) menu_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("menu_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) menu_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("menu_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) menu_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("menu_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) pairing_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("pairing_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) pairing_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("pairing_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) pairing_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("pairing_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) pairing_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("pairing_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) splash_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("splash_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) stats_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("stats_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) stats_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("stats_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) stats_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("stats_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) stats_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("stats_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) stats_screen_gesture_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("stats_screen_gesture_cb was called\n");
+}
+void __attribute__((weak)) update_screen_load_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("update_screen_load_start_cb was called\n");
+}
+void __attribute__((weak)) update_screen_loaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("update_screen_loaded_cb was called\n");
+}
+void __attribute__((weak)) update_screen_unload_start_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("update_screen_unload_start_cb was called\n");
+}
+void __attribute__((weak)) update_screen_unloaded_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("update_screen_unloaded_cb was called\n");
+}
+#endif
 
 /**********************
  *   STATIC FUNCTIONS

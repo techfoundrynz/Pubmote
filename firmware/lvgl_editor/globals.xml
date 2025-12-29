@@ -40,6 +40,11 @@
 		<color name="theme_critical" value="0xFF6369" />
 
 		<color name="settings_theme_color" value="0xFF46A2" />
+
+		<int name="vehicle_state_normal" value="0" />
+		<int name="vehicle_state_warn" value="1" />
+		<int name="vehicle_state_danger" value="2" />
+		<int name="vehicle_state_critical" value="3" />
 	</consts>
 
 	<styles>

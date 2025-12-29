@@ -87,6 +87,14 @@ extern "C" {
 
 #define SETTINGS_THEME_COLOR lv_color_hex(0xFF46A2)
 
+#define VEHICLE_STATE_NORMAL 0
+
+#define VEHICLE_STATE_WARN 1
+
+#define VEHICLE_STATE_DANGER 2
+
+#define VEHICLE_STATE_CRITICAL 3
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -180,6 +188,41 @@ extern lv_subject_t settings_temp_label;
 /*----------------
  * Event Callbacks
  *----------------*/
+
+void about_screen_load_start_cb(lv_event_t * e);
+void about_screen_loaded_cb(lv_event_t * e);
+void about_screen_unload_start_cb(lv_event_t * e);
+void about_screen_unloaded_cb(lv_event_t * e);
+void calibration_screen_load_start_cb(lv_event_t * e);
+void calibration_screen_loaded_cb(lv_event_t * e);
+void calibration_screen_unload_start_cb(lv_event_t * e);
+void calibration_screen_unloaded_cb(lv_event_t * e);
+void charge_screen_load_start_cb(lv_event_t * e);
+void charge_screen_loaded_cb(lv_event_t * e);
+void charge_screen_unload_start_cb(lv_event_t * e);
+void charge_screen_unloaded_cb(lv_event_t * e);
+void menu_screen_load_start_cb(lv_event_t * e);
+void menu_screen_loaded_cb(lv_event_t * e);
+void menu_screen_unload_start_cb(lv_event_t * e);
+void menu_screen_unloaded_cb(lv_event_t * e);
+void pairing_screen_load_start_cb(lv_event_t * e);
+void pairing_screen_loaded_cb(lv_event_t * e);
+void pairing_screen_unload_start_cb(lv_event_t * e);
+void pairing_screen_unloaded_cb(lv_event_t * e);
+void settings_screen_load_start_cb(lv_event_t * e);
+void settings_screen_loaded_cb(lv_event_t * e);
+void settings_screen_unload_start_cb(lv_event_t * e);
+void settings_screen_unloaded_cb(lv_event_t * e);
+void splash_screen_loaded_cb(lv_event_t * e);
+void stats_screen_load_start_cb(lv_event_t * e);
+void stats_screen_loaded_cb(lv_event_t * e);
+void stats_screen_unload_start_cb(lv_event_t * e);
+void stats_screen_unloaded_cb(lv_event_t * e);
+void stats_screen_gesture_cb(lv_event_t * e);
+void update_screen_load_start_cb(lv_event_t * e);
+void update_screen_loaded_cb(lv_event_t * e);
+void update_screen_unload_start_cb(lv_event_t * e);
+void update_screen_unloaded_cb(lv_event_t * e);
 
 /**
  * Initialize the component library

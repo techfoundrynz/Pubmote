@@ -4,6 +4,10 @@
 		<style name="charge_arc_knob" bg_opa="0" />
 	</styles>
 	<view style_bg_color="0x000000">
+		<event_cb trigger="screen_load_start" callback="charge_screen_load_start_cb" />
+		<event_cb trigger="screen_loaded" callback="charge_screen_loaded_cb" />
+		<event_cb trigger="screen_unload_start" callback="charge_screen_unload_start_cb" />
+		<event_cb trigger="screen_unloaded" callback="charge_screen_unloaded_cb" />
 		<lv_arc
 			style_arc_width="24"
 			width="100%"

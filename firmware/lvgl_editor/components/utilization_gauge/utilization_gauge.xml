@@ -37,8 +37,23 @@
 		<style name="style_main" />
 		<style name="style_knob" selector="knob" />
 		<style name="style_indicator" selector="indicator" />
-		<bind_style subject="$bind_vehicle_state" selector="indicator" name="style_indicator_warn" ref_value="1" />
-		<bind_style subject="$bind_vehicle_state" selector="indicator" name="style_indicator_danger" ref_value="2" />
-		<bind_style subject="$bind_vehicle_state" selector="indicator" name="style_indicator_critical" ref_value="3" />
+		<bind_style
+			subject="$bind_vehicle_state"
+			selector="indicator"
+			name="style_indicator_warn"
+			ref_value="#vehicle_state_warn"
+		/>
+		<bind_style
+			subject="$bind_vehicle_state"
+			selector="indicator"
+			name="style_indicator_danger"
+			ref_value="#vehicle_state_danger"
+		/>
+		<bind_style
+			subject="$bind_vehicle_state"
+			selector="indicator"
+			name="style_indicator_critical"
+			ref_value="#vehicle_state_critical"
+		/>
 	</view>
 </component>
