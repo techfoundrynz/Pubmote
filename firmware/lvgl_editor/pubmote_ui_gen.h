@@ -128,6 +128,8 @@ extern lv_font_t * inter_64;
 
 extern lv_font_t * inter_72;
 
+extern lv_font_t * inter_96;
+
 extern lv_font_t * inter_bold_12;
 
 extern lv_font_t * inter_bold_14;
@@ -141,6 +143,8 @@ extern lv_font_t * inter_bold_28;
 extern lv_font_t * inter_bold_42;
 
 extern lv_font_t * inter_bold_72;
+
+extern lv_font_t * inter_bold_96;
 
 /*----------------
  * Images

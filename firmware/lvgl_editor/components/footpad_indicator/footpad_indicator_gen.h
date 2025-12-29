@@ -31,7 +31,7 @@ extern "C" {
  * GLOBAL PROTOTYPES
  **********************/
 
-lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_adc1, lv_subject_t * bind_adc2);
+lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_left_active, lv_subject_t * bind_right_active);
 
 /**********************
  *      MACROS

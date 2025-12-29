@@ -72,6 +72,8 @@ lv_font_t * inter_64;
 extern lv_font_t inter_64_data;
 lv_font_t * inter_72;
 extern lv_font_t inter_72_data;
+lv_font_t * inter_96;
+extern lv_font_t inter_96_data;
 lv_font_t * inter_bold_12;
 extern lv_font_t inter_bold_12_data;
 lv_font_t * inter_bold_14;
@@ -86,6 +88,8 @@ lv_font_t * inter_bold_42;
 extern lv_font_t inter_bold_42_data;
 lv_font_t * inter_bold_72;
 extern lv_font_t inter_bold_72_data;
+lv_font_t * inter_bold_96;
+extern lv_font_t inter_bold_96_data;
 
 /*----------------
  * Images
@@ -165,6 +169,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     inter_64 = &inter_64_data;
     /* get font 'inter_72' from a C array */
     inter_72 = &inter_72_data;
+    /* get font 'inter_96' from a C array */
+    inter_96 = &inter_96_data;
     /* get font 'inter_bold_12' from a C array */
     inter_bold_12 = &inter_bold_12_data;
     /* get font 'inter_bold_14' from a C array */
@@ -179,6 +185,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     inter_bold_42 = &inter_bold_42_data;
     /* get font 'inter_bold_72' from a C array */
     inter_bold_72 = &inter_bold_72_data;
+    /* get font 'inter_bold_96' from a C array */
+    inter_bold_96 = &inter_bold_96_data;
 
 
     /*----------------
@@ -239,6 +247,7 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "inter_42", inter_42);
     lv_xml_register_font(NULL, "inter_64", inter_64);
     lv_xml_register_font(NULL, "inter_72", inter_72);
+    lv_xml_register_font(NULL, "inter_96", inter_96);
     lv_xml_register_font(NULL, "inter_bold_12", inter_bold_12);
     lv_xml_register_font(NULL, "inter_bold_14", inter_bold_14);
     lv_xml_register_font(NULL, "inter_bold_16", inter_bold_16);
@@ -246,6 +255,7 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "inter_bold_28", inter_bold_28);
     lv_xml_register_font(NULL, "inter_bold_42", inter_bold_42);
     lv_xml_register_font(NULL, "inter_bold_72", inter_bold_72);
+    lv_xml_register_font(NULL, "inter_bold_96", inter_bold_96);
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "state_battery_percent", &state_battery_percent);

@@ -85,6 +85,7 @@
 		<bin name="inter_42" size="42" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
 		<bin name="inter_64" size="56" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
 		<bin name="inter_72" size="72" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_96" size="96" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
 
 		<bin name="inter_bold_12" size="12" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
 		<bin name="inter_bold_14" size="14" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
@@ -93,5 +94,6 @@
 		<bin name="inter_bold_28" size="28" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
 		<bin name="inter_bold_42" size="42" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
 		<bin name="inter_bold_72" size="72" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_96" size="96" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
 	</fonts>
 </globals>

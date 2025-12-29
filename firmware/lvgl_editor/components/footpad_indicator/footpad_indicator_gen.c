@@ -14,7 +14,7 @@
  *      DEFINES
  *********************/
 
-#define THICKNESS 24
+#define THICKNESS 12
 
 /**********************
  *      TYPEDEFS
@@ -32,54 +32,70 @@
  *   GLOBAL FUNCTIONS
  **********************/
 
-lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_adc1, lv_subject_t * bind_adc2)
+lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_left_active, lv_subject_t * bind_right_active)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
+    static lv_style_t style_main;
+    static lv_style_t style_arc;
     static lv_style_t style_indicator;
     static lv_style_t style_knob;
 
     static bool style_inited = false;
 
     if (!style_inited) {
+        lv_style_init(&style_main);
+        lv_style_set_width(&style_main, lv_pct(100));
+        lv_style_set_height(&style_main, lv_pct(100));
+
+        lv_style_init(&style_arc);
+        lv_style_set_arc_width(&style_arc, THICKNESS);
+        lv_style_set_arc_color(&style_arc, lv_color_hex(0x878787));
+        lv_style_set_width(&style_arc, lv_pct(100));
+        lv_style_set_height(&style_arc, lv_pct(100));
+        lv_style_set_arc_rounded(&style_arc, true);
+
         lv_style_init(&style_indicator);
-        lv_style_set_opa(&style_indicator, (255 * 0 / 100));
-        lv_style_set_arc_rounded(&style_indicator, true);
+        lv_style_set_arc_color(&style_indicator, SETTINGS_THEME_COLOR);
         lv_style_set_arc_width(&style_indicator, THICKNESS);
+        lv_style_set_arc_rounded(&style_indicator, true);
 
         lv_style_init(&style_knob);
-        lv_style_set_bg_opa(&style_knob, (255 * 0 / 100));
+        lv_style_set_opa(&style_knob, (255 * 0 / 100));
 
         style_inited = true;
     }
 
     lv_obj_t * lv_obj_0 = lv_obj_create(parent);
     lv_obj_set_name_static(lv_obj_0, "footpad_indicator_#");
-    lv_obj_set_width(lv_obj_0, lv_pct(100));
-    lv_obj_set_height(lv_obj_0, lv_pct(100));
 
     lv_obj_remove_style_all(lv_obj_0);
+    lv_obj_add_style(lv_obj_0, &style_main, 0);
     lv_obj_t * lv_arc_0 = lv_arc_create(lv_obj_0);
     lv_arc_set_min_value(lv_arc_0, 0);
-    lv_arc_set_max_value(lv_arc_0, 1);
     lv_arc_set_start_angle(lv_arc_0, 93);
+    lv_arc_set_bg_start_angle(lv_arc_0, 93);
     lv_arc_set_end_angle(lv_arc_0, 105);
-    lv_arc_set_value(lv_arc_0, 0);
+    lv_arc_set_bg_end_angle(lv_arc_0, 105);
     lv_obj_set_state(lv_arc_0, LV_STATE_DISABLED, true);
-    lv_obj_set_style_arc_width(lv_arc_0, THICKNESS, 0);
+    lv_arc_set_max_value(lv_arc_0, 1);
+    lv_arc_bind_value(lv_arc_0, bind_left_active);
+    lv_obj_add_style(lv_arc_0, &style_arc, 0);
+    lv_obj_add_style(lv_arc_0, &style_knob, LV_PART_KNOB);
     lv_obj_add_style(lv_arc_0, &style_indicator, LV_PART_INDICATOR);
-    lv_obj_add_style(lv_arc_0, &style_knob, LV_PART_INDICATOR);
     
     lv_obj_t * lv_arc_1 = lv_arc_create(lv_obj_0);
     lv_arc_set_min_value(lv_arc_1, 0);
-    lv_arc_set_max_value(lv_arc_1, 1);
     lv_arc_set_start_angle(lv_arc_1, 75);
+    lv_arc_set_bg_start_angle(lv_arc_1, 75);
     lv_arc_set_end_angle(lv_arc_1, 87);
-    lv_arc_set_value(lv_arc_1, 0);
+    lv_arc_set_bg_end_angle(lv_arc_1, 87);
     lv_obj_set_state(lv_arc_1, LV_STATE_DISABLED, true);
-    lv_obj_set_style_arc_width(lv_arc_1, THICKNESS, 0);
+    lv_arc_set_max_value(lv_arc_1, 1);
+    lv_arc_bind_value(lv_arc_1, bind_right_active);
+    lv_obj_add_style(lv_arc_1, &style_arc, 0);
+    lv_obj_add_style(lv_arc_1, &style_knob, LV_PART_KNOB);
     lv_obj_add_style(lv_arc_1, &style_indicator, LV_PART_INDICATOR);
-    lv_obj_add_style(lv_arc_1, &style_knob, LV_PART_INDICATOR);
 
     LV_TRACE_OBJ_CREATE("finished");
 

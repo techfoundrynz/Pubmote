@@ -97,7 +97,9 @@ static void speed_gauge_constructor(const lv_obj_class_t * class_p, lv_obj_t * o
     }
     lv_arc_set_min_value(obj, 0);
     lv_arc_set_start_angle(obj, 120);
+    lv_arc_set_bg_start_angle(obj, 120);
     lv_arc_set_end_angle(obj, 60);
+    lv_arc_set_bg_end_angle(obj, 60);
     lv_obj_set_state(obj, LV_STATE_DISABLED, true);
 
     lv_obj_add_style(obj, &style_main, 0);

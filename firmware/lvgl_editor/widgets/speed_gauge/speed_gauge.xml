@@ -21,7 +21,15 @@
 		<style name="style_indicator" arc_color="#settings_theme_color" arc_width="#thickness" arc_rounded="true" />
 		<style name="style_knob" opa="0%" />
 	</styles>
-	<view extends="lv_arc" min_value="0" start_angle="120" end_angle="60" disabled="true">
+	<view
+		extends="lv_arc"
+		min_value="0"
+		start_angle="120"
+		bg_start_angle="120"
+		end_angle="60"
+		bg_end_angle="60"
+		disabled="true"
+	>
 		<style name="style_main" />
 		<style name="style_knob" selector="knob" />
 		<style name="style_indicator" selector="indicator" />

@@ -49,10 +49,12 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_42_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_64_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_72_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_96_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_12_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_14_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_16_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_24_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_28_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_42_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_72_data.c)
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_72_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_bold_96_data.c)

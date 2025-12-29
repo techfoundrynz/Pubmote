@@ -2,7 +2,7 @@
 	<view style_bg_color="0x000000">
 		<speed_gauge bind_speed="state_speed" bind_max_speed="state_max_speed" />
 		<utilization_gauge bind_duty_cycle="state_duty_cycle" style_pad_all="40px" />
-		<!-- <footpad_indicator bind_adc1="state_adc1_active" bind_adc2="state_adc2_active" /> -->
+		<footpad_indicator bind_left_active="state_adc1_active" bind_right_active="state_adc2_active" />
 		<div
 			width="100%"
 			height="100%"
@@ -34,7 +34,7 @@
 				<lv_label
 					bind_text="state_speed"
 					style_text_color="0xFFFFFF"
-					style_text_font="inter_bold_72"
+					style_text_font="inter_bold_96"
 					overflow_visible="true"
 				/>
 				<lv_label

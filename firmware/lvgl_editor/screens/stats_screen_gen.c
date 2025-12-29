@@ -55,6 +55,8 @@ lv_obj_t * stats_screen_create(void)
     utilization_gauge_bind_duty_cycle(utilization_gauge_0, &state_duty_cycle);
     lv_obj_set_style_pad_all(utilization_gauge_0, 40, 0);
     
+    lv_obj_t * footpad_indicator_0 = footpad_indicator_create(lv_obj_0, &state_adc1_active, &state_adc2_active);
+    
     lv_obj_t * div_0 = div_create(lv_obj_0);
     lv_obj_set_width(div_0, lv_pct(100));
     lv_obj_set_height(div_0, lv_pct(100));
@@ -85,7 +87,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_t * lv_label_0 = lv_label_create(div_2);
     lv_label_bind_text(lv_label_0, &state_speed, NULL);
     lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(lv_label_0, inter_bold_72, 0);
+    lv_obj_set_style_text_font(lv_label_0, inter_bold_96, 0);
     lv_obj_set_flag(lv_label_0, LV_OBJ_FLAG_OVERFLOW_VISIBLE, true);
     
     lv_obj_t * lv_label_1 = lv_label_create(div_2);
