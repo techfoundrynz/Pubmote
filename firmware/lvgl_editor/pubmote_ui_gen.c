@@ -57,27 +57,41 @@ lv_style_t style_reset;
  *----------------*/
 
 lv_font_t * inter_12;
+extern lv_font_t inter_12_data;
 lv_font_t * inter_14;
+extern lv_font_t inter_14_data;
 lv_font_t * inter_16;
+extern lv_font_t inter_16_data;
 lv_font_t * inter_24;
+extern lv_font_t inter_24_data;
 lv_font_t * inter_28;
+extern lv_font_t inter_28_data;
 lv_font_t * inter_42;
+extern lv_font_t inter_42_data;
 lv_font_t * inter_64;
+extern lv_font_t inter_64_data;
 lv_font_t * inter_72;
+extern lv_font_t inter_72_data;
 lv_font_t * inter_bold_12;
+extern lv_font_t inter_bold_12_data;
 lv_font_t * inter_bold_14;
+extern lv_font_t inter_bold_14_data;
 lv_font_t * inter_bold_16;
+extern lv_font_t inter_bold_16_data;
 lv_font_t * inter_bold_24;
+extern lv_font_t inter_bold_24_data;
 lv_font_t * inter_bold_28;
+extern lv_font_t inter_bold_28_data;
 lv_font_t * inter_bold_42;
+extern lv_font_t inter_bold_42_data;
 lv_font_t * inter_bold_72;
+extern lv_font_t inter_bold_72_data;
 
 /*----------------
  * Images
  *----------------*/
 
 const void * splash;
-extern const void * splash_data;
 
 /*----------------
  * Subjects
@@ -135,57 +149,43 @@ void pubmote_ui_init_gen(const char * asset_path)
      * Fonts
      *----------------*/
 
-    /* create bin font 'inter_12' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_12");
-    inter_12 = lv_binfont_create(buf);
-    /* create bin font 'inter_14' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_14");
-    inter_14 = lv_binfont_create(buf);
-    /* create bin font 'inter_16' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_16");
-    inter_16 = lv_binfont_create(buf);
-    /* create bin font 'inter_24' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_24");
-    inter_24 = lv_binfont_create(buf);
-    /* create bin font 'inter_28' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_28");
-    inter_28 = lv_binfont_create(buf);
-    /* create bin font 'inter_42' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_42");
-    inter_42 = lv_binfont_create(buf);
-    /* create bin font 'inter_64' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_64");
-    inter_64 = lv_binfont_create(buf);
-    /* create bin font 'inter_72' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_72");
-    inter_72 = lv_binfont_create(buf);
-    /* create bin font 'inter_bold_12' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_bold_12");
-    inter_bold_12 = lv_binfont_create(buf);
-    /* create bin font 'inter_bold_14' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_bold_14");
-    inter_bold_14 = lv_binfont_create(buf);
-    /* create bin font 'inter_bold_16' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_bold_16");
-    inter_bold_16 = lv_binfont_create(buf);
-    /* create bin font 'inter_bold_24' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_bold_24");
-    inter_bold_24 = lv_binfont_create(buf);
-    /* create bin font 'inter_bold_28' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_bold_28");
-    inter_bold_28 = lv_binfont_create(buf);
-    /* create bin font 'inter_bold_42' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_bold_42");
-    inter_bold_42 = lv_binfont_create(buf);
-    /* create bin font 'inter_bold_72' from file */
-    lv_snprintf(buf, 256, "%s%s", asset_path, "fonts/Inter/inter_bold_72");
-    inter_bold_72 = lv_binfont_create(buf);
+    /* get font 'inter_12' from a C array */
+    inter_12 = &inter_12_data;
+    /* get font 'inter_14' from a C array */
+    inter_14 = &inter_14_data;
+    /* get font 'inter_16' from a C array */
+    inter_16 = &inter_16_data;
+    /* get font 'inter_24' from a C array */
+    inter_24 = &inter_24_data;
+    /* get font 'inter_28' from a C array */
+    inter_28 = &inter_28_data;
+    /* get font 'inter_42' from a C array */
+    inter_42 = &inter_42_data;
+    /* get font 'inter_64' from a C array */
+    inter_64 = &inter_64_data;
+    /* get font 'inter_72' from a C array */
+    inter_72 = &inter_72_data;
+    /* get font 'inter_bold_12' from a C array */
+    inter_bold_12 = &inter_bold_12_data;
+    /* get font 'inter_bold_14' from a C array */
+    inter_bold_14 = &inter_bold_14_data;
+    /* get font 'inter_bold_16' from a C array */
+    inter_bold_16 = &inter_bold_16_data;
+    /* get font 'inter_bold_24' from a C array */
+    inter_bold_24 = &inter_bold_24_data;
+    /* get font 'inter_bold_28' from a C array */
+    inter_bold_28 = &inter_bold_28_data;
+    /* get font 'inter_bold_42' from a C array */
+    inter_bold_42 = &inter_bold_42_data;
+    /* get font 'inter_bold_72' from a C array */
+    inter_bold_72 = &inter_bold_72_data;
 
 
     /*----------------
      * Images
      *----------------*/
-    splash = &splash_data;
+    lv_snprintf(buf, 256, "%s%s", asset_path, "images/splash.png");
+    splash = lv_strdup(buf);
 
     /*----------------
      * Subjects
