@@ -14,6 +14,11 @@
  *      DEFINES
  *********************/
 
+ #define STANDARD_COLOR 0xFFFFFF
+ #define WARN_COLOR 0xFECC0B
+ #define DANGER_COLOR 0xFF8B3E
+ #define CRITICAL_COLOR 0xFF6369
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -65,6 +70,18 @@ void utilization_gauge_bind_duty_cycle(lv_obj_t * utilization_gauge, lv_subject_
 
 static void update_value(lv_obj_t * utilization_gauge, int val) {
     lv_arc_set_value(utilization_gauge, val);
+
+    lv_color_t color = lv_color_hex(STANDARD_COLOR);
+
+    if (val >= 90) {
+        color = lv_color_hex(CRITICAL_COLOR);
+    } else if (val >= 80) {
+        color = lv_color_hex(DANGER_COLOR);
+    } else if (val >=70) {
+        color = lv_color_hex(WARN_COLOR);
+    }
+
+    lv_obj_set_style_arc_color(utilization_gauge, color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 }
 
 static void value_observer_cb(lv_observer_t * obs, lv_subject_t * subject)

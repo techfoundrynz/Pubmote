@@ -100,6 +100,7 @@ static void utilization_gauge_constructor(const lv_obj_class_t * class_p, lv_obj
     lv_arc_set_end_angle(obj, 60);
     lv_obj_set_state(obj, LV_STATE_DISABLED, true);
     lv_arc_set_max_value(obj, 100);
+    lv_arc_set_mode(obj, LV_ARC_MODE_REVERSE);
 
     lv_obj_add_style(obj, &style_main, 0);
     lv_obj_add_style(obj, &style_knob, LV_PART_KNOB);
