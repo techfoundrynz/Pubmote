@@ -18,8 +18,8 @@
 			<h1 text="Pairing" />
 		</header>
 		<body>
-			<lv_label style_text_font="inter_bold_28" text="0000" style_text_color="0xFFFFFF" />
-			<lv_label text="Your pairing code" style_text_color="0xFFFFFF" />
+			<lv_label style_text_font="inter_bold_72" text="0000" style_text_color="0xFFFFFF" />
+			<label text="Your pairing code" />
 		</body>
 		<footer>
 			<footer_buttons>

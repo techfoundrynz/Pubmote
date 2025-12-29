@@ -32,15 +32,15 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/text/h1_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/text/label_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/utilization_gauge/utilization_gauge_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/about_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/calibration_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/charge_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/menu_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/pairing_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/settings_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/splash_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/stats_screen_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/screens/update_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/about/about_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/calibration/calibration_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/charge/charge_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/menu/menu_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/pairing/pairing_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/settings/settings_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/splash/splash_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/stats/stats_screen_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/update/update_screen_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/pubmote_ui.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/inter_12_data.c
