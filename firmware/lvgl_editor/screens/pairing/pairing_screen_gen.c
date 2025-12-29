@@ -63,13 +63,11 @@ lv_obj_t * pairing_screen_create(void)
     
     lv_obj_t * body_0 = body_create(lv_obj_0);
     lv_obj_t * lv_label_0 = lv_label_create(body_0);
-    lv_obj_set_style_text_font(lv_label_0, inter_bold_28, 0);
+    lv_obj_set_style_text_font(lv_label_0, inter_bold_72, 0);
     lv_label_set_text(lv_label_0, "0000");
     lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
     
-    lv_obj_t * lv_label_1 = lv_label_create(body_0);
-    lv_label_set_text(lv_label_1, "Your pairing code");
-    lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_t * label_0 = label_create(body_0, "Your pairing code");
     
     lv_obj_t * footer_0 = footer_create(lv_obj_0);
     lv_obj_t * footer_buttons_0 = footer_buttons_create(footer_0);

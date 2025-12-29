@@ -480,7 +480,7 @@ static esp_err_t display_ui() {
 
   if (LVGL_lock(0)) {
     pubmote_ui_init("");
-    lv_screen_load(elements_create()); // Load the main screen
+    lv_screen_load(splash_screen_create()); // Load the main screen
     LVGL_unlock();
     // Delay backlight turn on to avoid flickering
     vTaskDelay(pdMS_TO_TICKS(250));

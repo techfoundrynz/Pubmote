@@ -213,7 +213,6 @@ void settings_screen_load_start_cb(lv_event_t * e);
 void settings_screen_loaded_cb(lv_event_t * e);
 void settings_screen_unload_start_cb(lv_event_t * e);
 void settings_screen_unloaded_cb(lv_event_t * e);
-void splash_screen_loaded_cb(lv_event_t * e);
 void stats_screen_load_start_cb(lv_event_t * e);
 void stats_screen_loaded_cb(lv_event_t * e);
 void stats_screen_unload_start_cb(lv_event_t * e);

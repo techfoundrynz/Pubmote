@@ -311,7 +311,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_event_cb(NULL, "settings_screen_loaded_cb", settings_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "settings_screen_unload_start_cb", settings_screen_unload_start_cb);
     lv_xml_register_event_cb(NULL, "settings_screen_unloaded_cb", settings_screen_unloaded_cb);
-    lv_xml_register_event_cb(NULL, "splash_screen_loaded_cb", splash_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_load_start_cb", stats_screen_load_start_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_loaded_cb", stats_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_unload_start_cb", stats_screen_unload_start_cb);
@@ -464,11 +463,6 @@ void __attribute__((weak)) settings_screen_unloaded_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     LV_LOG("settings_screen_unloaded_cb was called\n");
-}
-void __attribute__((weak)) splash_screen_loaded_cb(lv_event_t * e)
-{
-    LV_UNUSED(e);
-    LV_LOG("splash_screen_loaded_cb was called\n");
 }
 void __attribute__((weak)) stats_screen_load_start_cb(lv_event_t * e)
 {

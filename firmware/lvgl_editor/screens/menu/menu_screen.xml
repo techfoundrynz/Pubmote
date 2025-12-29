@@ -18,7 +18,7 @@
 			<event_cb trigger="screen_unload_start" callback="menu_screen_unload_start_cb" />
 			<event_cb trigger="screen_unloaded" callback="menu_screen_unloaded_cb" />
 			<button label="Back" height="64px">
-				<screen_load_event screen="stats_screen" trigger="clicked" anim_type="move_top" duration="200" />
+				<screen_load_event screen="stats_screen" trigger="clicked" anim_type="over_top" duration="200" />
 			</button>
 			<button label="Enable Pocket Mode" height="64px" />
 			<button label="Settings" height="64px">

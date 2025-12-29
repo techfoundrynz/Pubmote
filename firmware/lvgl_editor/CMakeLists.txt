@@ -14,8 +14,14 @@ endif()
 # This includes the generated list of .c files
 include(${CMAKE_CURRENT_LIST_DIR}/file_list_gen.cmake)
 
+# Custom code sources
+file(GLOB_RECURSE CUSTOM_CODE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/custom/*/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/custom/*/*.h"
+)
+
 # Create the UI sources as a library
-add_library(lib-ui ${PROJECT_SOURCES})
+add_library(lib-ui ${PROJECT_SOURCES} ${CUSTOM_CODE_SOURCES})
 
 # You may use this check to add configuration when compiling for the Editor preview,
 # or for your target.

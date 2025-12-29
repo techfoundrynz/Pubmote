@@ -1,6 +1,12 @@
 <screen permanent="false">
 	<view style_bg_color="0x000000">
-		<event_cb trigger="screen_loaded" callback="splash_screen_loaded_cb" />
+		<screen_load_event
+			screen="stats_screen"
+			trigger="screen_loaded"
+			anim_type="fade_in"
+			duration="200"
+			delay="500"
+		/>
 		<lv_image src="splash" width="100%" height="100%" />
 	</view>
 </screen>
