@@ -19,6 +19,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_primary_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/circle_button/circle_button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/div/div_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/footpad_indicator/footpad_indicator_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/icon_button/icon_button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/body_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_gen.c

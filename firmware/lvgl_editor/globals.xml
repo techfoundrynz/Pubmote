@@ -57,6 +57,8 @@
 		<int name="state_motor_temp" value="0" />
 		<int name="state_cont_temp" value="0" />
 		<float name="state_trip_distance" value="0" />
+		<int name="state_adc1_active" value="0" />
+		<int name="state_adc2_active" value="0" />
 
 		<!-- settings -->
 		<int name="settings_disp_brightness" value="100" />

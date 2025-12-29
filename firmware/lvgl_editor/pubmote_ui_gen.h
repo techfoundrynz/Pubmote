@@ -160,6 +160,8 @@ extern lv_subject_t state_duty_cycle;
 extern lv_subject_t state_motor_temp;
 extern lv_subject_t state_cont_temp;
 extern lv_subject_t state_trip_distance;
+extern lv_subject_t state_adc1_active;
+extern lv_subject_t state_adc2_active;
 extern lv_subject_t settings_disp_brightness;
 extern lv_subject_t settings_dark_text;
 extern lv_subject_t settings_speed_label;
@@ -198,6 +200,7 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/button/button_primary_gen.h"
 #include "components/circle_button/circle_button_gen.h"
 #include "components/div/div_gen.h"
+#include "components/footpad_indicator/footpad_indicator_gen.h"
 #include "components/icon_button/icon_button_gen.h"
 #include "components/page/body_gen.h"
 #include "components/page/footer_gen.h"
