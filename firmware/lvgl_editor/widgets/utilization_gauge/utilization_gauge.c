@@ -51,6 +51,7 @@ void utilization_gauge_event_hook(lv_event_t * e)
 
 void utilization_gauge_bind_duty_cycle(lv_obj_t * utilization_gauge, lv_subject_t * bind_duty_cycle)
 {
+LV_LOG_ERROR("GGGG");
 
 }
 

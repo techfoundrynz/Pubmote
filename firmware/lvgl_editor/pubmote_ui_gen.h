@@ -153,9 +153,9 @@ extern const void * splash;
  *----------------*/
 
 extern lv_subject_t state_battery_percent;
-extern lv_subject_t state_battery_charging;
-extern lv_subject_t state_battery_state;
+extern lv_subject_t state_battery_status;
 extern lv_subject_t state_speed;
+extern lv_subject_t state_max_speed;
 extern lv_subject_t state_duty_cycle;
 extern lv_subject_t state_motor_temp;
 extern lv_subject_t state_cont_temp;

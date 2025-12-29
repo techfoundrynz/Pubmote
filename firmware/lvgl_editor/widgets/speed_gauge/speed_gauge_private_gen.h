@@ -26,6 +26,8 @@ extern "C" {
  **********************/
 typedef struct {
     lv_arc_t obj;  /* Base widget to extend */
+    lv_subject_t * bind_speed;
+    lv_subject_t * bind_max_speed;
 } speed_gauge_t;
 
 extern const lv_obj_class_t speed_gauge_class;

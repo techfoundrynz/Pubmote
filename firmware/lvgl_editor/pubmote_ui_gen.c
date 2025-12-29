@@ -11,6 +11,8 @@
 #if LV_USE_XML
 #include "widgets/battery_gauge/battery_gauge_private_gen.h"
 #include "widgets/input_preview/input_preview_private_gen.h"
+#include "widgets/speed_gauge/speed_gauge_private_gen.h"
+#include "widgets/utilization_gauge/utilization_gauge_private_gen.h"
 #endif /* LV_USE_XML */
 
 /*********************
@@ -96,9 +98,9 @@ const void * splash;
  *----------------*/
 
 lv_subject_t state_battery_percent;
-lv_subject_t state_battery_charging;
-lv_subject_t state_battery_state;
+lv_subject_t state_battery_status;
 lv_subject_t state_speed;
+lv_subject_t state_max_speed;
 lv_subject_t state_duty_cycle;
 lv_subject_t state_motor_temp;
 lv_subject_t state_cont_temp;
@@ -186,14 +188,14 @@ void pubmote_ui_init_gen(const char * asset_path)
     /*----------------
      * Subjects
      *----------------*/
-    lv_subject_init_int(&state_battery_percent, 20);
-    lv_subject_init_int(&state_battery_charging, 1);
-    lv_subject_init_int(&state_battery_state, 1);
-    lv_subject_init_int(&state_speed, 20);
-    lv_subject_init_int(&state_duty_cycle, 10);
-    lv_subject_init_int(&state_motor_temp, 35);
-    lv_subject_init_int(&state_cont_temp, 40);
-    lv_subject_init_float(&state_trip_distance, 5.2);
+    lv_subject_init_int(&state_battery_percent, 0);
+    lv_subject_init_int(&state_battery_status, 0);
+    lv_subject_init_int(&state_speed, 0);
+    lv_subject_init_int(&state_max_speed, 40);
+    lv_subject_init_int(&state_duty_cycle, 0);
+    lv_subject_init_int(&state_motor_temp, 0);
+    lv_subject_init_int(&state_cont_temp, 0);
+    lv_subject_init_float(&state_trip_distance, 0);
     lv_subject_init_int(&settings_disp_brightness, 100);
     lv_subject_init_int(&settings_dark_text, 0);
     static char settings_speed_label_buf[UI_SUBJECT_STRING_LENGTH];
@@ -221,6 +223,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     /* Register widgets */
     battery_gauge_register();
     input_preview_register();
+    speed_gauge_register();
+    utilization_gauge_register();
 
     /* Register fonts */
     lv_xml_register_font(NULL, "inter_12", inter_12);
@@ -241,9 +245,9 @@ void pubmote_ui_init_gen(const char * asset_path)
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "state_battery_percent", &state_battery_percent);
-    lv_xml_register_subject(NULL, "state_battery_charging", &state_battery_charging);
-    lv_xml_register_subject(NULL, "state_battery_state", &state_battery_state);
+    lv_xml_register_subject(NULL, "state_battery_status", &state_battery_status);
     lv_xml_register_subject(NULL, "state_speed", &state_speed);
+    lv_xml_register_subject(NULL, "state_max_speed", &state_max_speed);
     lv_xml_register_subject(NULL, "state_duty_cycle", &state_duty_cycle);
     lv_xml_register_subject(NULL, "state_motor_temp", &state_motor_temp);
     lv_xml_register_subject(NULL, "state_cont_temp", &state_cont_temp);

@@ -63,6 +63,22 @@ void speed_gauge_xml_apply(lv_xml_parser_state_t * state, const char ** attrs)
     for(int i = 0; attrs[i]; i += 2) {
         const char * name = attrs[i];
         const char * value = attrs[i + 1];
+
+        if(lv_streq(name, "bind_speed")) {
+            lv_subject_t * subject = lv_xml_get_subject(&state->scope, value);
+            if(subject) {
+                speed_gauge_bind_speed(item, subject);
+            } else { 
+                LV_LOG_WARN("Subject \"%s\" not found for bind_speed", value);
+            }
+        } else if(lv_streq(name, "bind__maxspeed")) {
+            lv_subject_t * subject = lv_xml_get_subject(&state->scope, value);
+            if(subject) {
+                speed_gauge_bind_max_speed(item, subject);
+            } else { 
+                LV_LOG_WARN("Subject \"%s\" not found for bind_max_speed", value);
+            }
+        }
     }
 }
 

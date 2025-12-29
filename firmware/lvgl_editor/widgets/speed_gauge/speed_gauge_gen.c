@@ -83,26 +83,26 @@ static void speed_gauge_constructor(const lv_obj_class_t * class_p, lv_obj_t * o
         lv_style_set_arc_color(&style_main, lv_color_hex(0x878787));
         lv_style_set_width(&style_main, lv_pct(100));
         lv_style_set_height(&style_main, lv_pct(100));
+        lv_style_set_arc_rounded(&style_main, true);
 
         lv_style_init(&style_indicator);
         lv_style_set_arc_color(&style_indicator, SETTINGS_THEME_COLOR);
         lv_style_set_arc_width(&style_indicator, THICKNESS);
+        lv_style_set_arc_rounded(&style_indicator, true);
 
         lv_style_init(&style_knob);
         lv_style_set_opa(&style_knob, (255 * 0 / 100));
 
         style_inited = true;
     }
-    lv_obj_t * lv_arc_0 = lv_arc_create(obj);
-    lv_obj_set_name_static(lv_arc_0, "speed_gauge_#");
-    lv_arc_set_min_value(lv_arc_0, 0);
-    lv_arc_set_start_angle(lv_arc_0, 120);
-    lv_arc_set_end_angle(lv_arc_0, 60);
-    lv_obj_set_state(lv_arc_0, LV_STATE_DISABLED, true);
+    lv_arc_set_min_value(obj, 0);
+    lv_arc_set_start_angle(obj, 120);
+    lv_arc_set_end_angle(obj, 60);
+    lv_obj_set_state(obj, LV_STATE_DISABLED, true);
 
-    lv_obj_add_style(lv_arc_0, &style_main, 0);
-    lv_obj_add_style(lv_arc_0, &style_knob, LV_PART_KNOB);
-    lv_obj_add_style(lv_arc_0, &style_indicator, LV_PART_INDICATOR);
+    lv_obj_add_style(obj, &style_main, 0);
+    lv_obj_add_style(obj, &style_knob, LV_PART_KNOB);
+    lv_obj_add_style(obj, &style_indicator, LV_PART_INDICATOR);
 
 
     speed_gauge_constructor_hook(obj);

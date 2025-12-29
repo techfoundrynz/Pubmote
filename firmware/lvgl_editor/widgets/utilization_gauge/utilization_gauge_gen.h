@@ -40,7 +40,12 @@ extern "C" {
  * @return pointer to the created utilization_gauge
  */
 lv_obj_t * utilization_gauge_create(lv_obj_t * parent);
-;
+/**
+ * utilization_gauge bind_duty_cycle
+ * @param obj   pointer to a utilization_gauge
+ * @param bind_duty_cycle  bind_duty_cycle
+ */
+void utilization_gauge_bind_duty_cycle(lv_obj_t * utilization_gauge, lv_subject_t * bind_duty_cycle);
 
 /**********************
  *      MACROS
