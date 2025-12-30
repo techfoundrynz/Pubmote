@@ -9,10 +9,8 @@
 #include "pubmote_ui_gen.h"
 
 #if LV_USE_XML
-#include "widgets/battery_gauge/battery_gauge_private_gen.h"
 #include "widgets/dynamic_fmt_label/dynamic_fmt_label_private_gen.h"
 #include "widgets/dynamic_range_arc/dynamic_range_arc_private_gen.h"
-#include "widgets/input_preview/input_preview_private_gen.h"
 #endif /* LV_USE_XML */
 
 /*********************
@@ -248,10 +246,8 @@ void pubmote_ui_init_gen(const char * asset_path)
 
 #if LV_USE_XML
     /* Register widgets */
-    battery_gauge_register();
     dynamic_fmt_label_register();
     dynamic_range_arc_register();
-    input_preview_register();
 
     /* Register fonts */
     lv_xml_register_font(NULL, "inter_12", inter_12);

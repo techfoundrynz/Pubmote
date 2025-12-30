@@ -19,7 +19,7 @@
 			<label text="X:0 | Y:0" />
 		</header>
 		<body>
-			<input_preview size="200px" />
+			<input_visualization active="false" x="0%" y="0%" deadzone="40%" width="300px" height="300px" />
 		</body>
 		<footer>
 			<label text="Press start to begin calibration" />

@@ -1,19 +1,14 @@
 list(
   APPEND
   PROJECT_SOURCES
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge_xml_parser.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/battery_gauge/battery_gauge_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_range_arc/dynamic_range_arc.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_range_arc/dynamic_range_arc_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_range_arc/dynamic_range_arc_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_xml_parser.c
-  ${CMAKE_CURRENT_LIST_DIR}/widgets/input_preview/input_preview_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/bar/bar_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/battery_gauge/battery_gauge_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_outlined_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_primary_gen.c
@@ -21,6 +16,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/div/div_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/footpad_indicator/footpad_indicator_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/icon_button/icon_button_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/input_visualization/input_visualization_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/body_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_buttons_gen.c

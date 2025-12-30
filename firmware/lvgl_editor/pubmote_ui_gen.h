@@ -241,11 +241,10 @@ void pubmote_ui_init_gen(const char * asset_path);
  **********************/
 
 /*Include all the widget and components of this library*/
-#include "widgets/battery_gauge/battery_gauge_gen.h"
 #include "widgets/dynamic_fmt_label/dynamic_fmt_label_gen.h"
 #include "widgets/dynamic_range_arc/dynamic_range_arc_gen.h"
-#include "widgets/input_preview/input_preview_gen.h"
 #include "components/bar/bar_gen.h"
+#include "components/battery_gauge/battery_gauge_gen.h"
 #include "components/button/button_gen.h"
 #include "components/button/button_outlined_gen.h"
 #include "components/button/button_primary_gen.h"
@@ -253,6 +252,7 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/div/div_gen.h"
 #include "components/footpad_indicator/footpad_indicator_gen.h"
 #include "components/icon_button/icon_button_gen.h"
+#include "components/input_visualization/input_visualization_gen.h"
 #include "components/page/body_gen.h"
 #include "components/page/footer_gen.h"
 #include "components/page/footer_buttons_gen.h"
