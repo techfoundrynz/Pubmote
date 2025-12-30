@@ -73,7 +73,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_style_flex_track_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_pad_top(div_0, 78, 0);
     lv_obj_set_style_pad_bottom(div_0, 20, 0);
-    lv_obj_set_style_pad_hor(div_0, 48, 0);
+    lv_obj_set_style_pad_hor(div_0, 65, 0);
     lv_obj_t * div_1 = div_create(div_0);
     lv_obj_set_flex_flow(div_1, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_flex_main_place(div_1, LV_FLEX_ALIGN_START, 0);

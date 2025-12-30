@@ -25,7 +25,7 @@
 			style_flex_track_place="center"
 			style_pad_top="78px"
 			style_pad_bottom="20px"
-			style_pad_hor="48px"
+			style_pad_hor="65px"
 		>
 			<div
 				flex_flow="column"
@@ -58,7 +58,7 @@
 						bind_text="settings_speed_label"
 						style_text_color="0xa9a9a9"
 						style_text_font="inter_bold_24"
-						x="-50px"
+						x="-30px"
 						y="-20px"
 						align="bottom_right"
 					/>
