@@ -30,7 +30,7 @@
  *   GLOBAL FUNCTIONS
  **********************/
 
-lv_obj_t * switch_create(lv_obj_t * parent, lv_subject_t * switched)
+lv_obj_t * switch_create(lv_obj_t * parent, lv_subject_t * bind_checked)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
@@ -60,7 +60,7 @@ lv_obj_t * switch_create(lv_obj_t * parent, lv_subject_t * switched)
     lv_obj_set_name_static(lv_switch_0, "switch_#");
     lv_obj_set_width(lv_switch_0, 50);
     lv_obj_set_height(lv_switch_0, 30);
-    lv_obj_bind_checked(lv_switch_0, switched);
+    lv_obj_bind_checked(lv_switch_0, bind_checked);
 
     lv_obj_add_style(lv_switch_0, &switch_knob, LV_PART_KNOB);
     lv_obj_add_style(lv_switch_0, &switch_main, LV_PART_MAIN);

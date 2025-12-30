@@ -1,4 +1,7 @@
 <screen permanent="true">
+	<styles>
+		<style name="style_battery_gauge" width="15%" height="35%" />
+	</styles>
 	<view style_bg_color="0x000000">
 		<event_cb trigger="screen_load_start" callback="stats_screen_load_start_cb" />
 		<event_cb trigger="screen_loaded" callback="stats_screen_loaded_cb" />
@@ -31,7 +34,9 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<battery_gauge bind_percent="state_battery_percent" bind_charge_state="state_battery_status" />
+				<battery_gauge bind_percent="state_battery_percent" bind_charge_state="state_battery_status">
+					<style name="style_battery_gauge" />
+				</battery_gauge>
 			</div>
 			<div
 				flex_flow="column"

@@ -33,6 +33,7 @@
  **********************/
 
 #include "custom/stats_screen/stats_screen.h"
+#include "custom/settings_screen/settings_screen.h"
 
 void pubmote_ui_init(const char * asset_path)
 {
@@ -42,6 +43,7 @@ void pubmote_ui_init(const char * asset_path)
     /* Add your own custom code here if needed */
     // Force linker to include custom code
     stats_screen_custom_init();
+    settings_screen_custom_init();
 }
 
 /**********************

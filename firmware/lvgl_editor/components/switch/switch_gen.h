@@ -31,7 +31,7 @@ extern "C" {
  * GLOBAL PROTOTYPES
  **********************/
 
-lv_obj_t * switch_create(lv_obj_t * parent, lv_subject_t * switched);
+lv_obj_t * switch_create(lv_obj_t * parent, lv_subject_t * bind_checked);
 
 /**********************
  *      MACROS

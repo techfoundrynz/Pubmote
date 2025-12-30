@@ -1,6 +1,6 @@
 <component>
 	<api>
-		<prop name="switched" type="subject" />
+		<prop name="bind_checked" type="subject" />
 	</api>
 	<previews>
 		<preview style_bg_color="0x000000" />
@@ -10,7 +10,7 @@
 		<style name="switch_main" bg_color="#settings_theme_color" bg_opa="30" />
 		<style name="switch_indicator" bg_color="#settings_theme_color" />
 	</styles>
-	<view extends="lv_switch" width="50" height="30" bind_checked="$switched">
+	<view extends="lv_switch" width="50" height="30" bind_checked="$bind_checked">
 		<style name="switch_knob" selector="knob" />
 		<style name="switch_main" selector="main" />
 		<style name="switch_indicator" selector="indicator|checked" />

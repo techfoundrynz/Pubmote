@@ -31,7 +31,7 @@ extern "C" {
  * GLOBAL PROTOTYPES
  **********************/
 
-lv_obj_t * battery_gauge_create(lv_obj_t * parent, lv_coord_t width, lv_coord_t height, lv_subject_t * bind_percent, lv_subject_t * bind_charge_state);
+lv_obj_t * battery_gauge_create(lv_obj_t * parent, lv_subject_t * bind_percent, lv_subject_t * bind_charge_state);
 
 /**********************
  *      MACROS

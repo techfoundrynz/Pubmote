@@ -178,7 +178,6 @@ extern lv_subject_t state_adc1_active;
 extern lv_subject_t state_adc2_active;
 extern lv_subject_t state_pocket_mode;
 extern lv_subject_t state_factory_reset;
-extern lv_subject_t settings_disp_brightness;
 extern lv_subject_t settings_dark_text;
 extern lv_subject_t settings_speed_label;
 extern lv_subject_t settings_temp_label;
@@ -216,6 +215,15 @@ void settings_screen_load_start_cb(lv_event_t * e);
 void settings_screen_loaded_cb(lv_event_t * e);
 void settings_screen_unload_start_cb(lv_event_t * e);
 void settings_screen_unloaded_cb(lv_event_t * e);
+void settings_screen_brightness_slider_change_cb(lv_event_t * e);
+void settings_screen_double_press_action_dropdown_change_cb(lv_event_t * e);
+void settings_screen_screen_rotation_dropdown_change_cb(lv_event_t * e);
+void settings_screen_shutdown_time_dropdown_change_cb(lv_event_t * e);
+void settings_screen_temp_units_dropdown_change_cb(lv_event_t * e);
+void settings_screen_distance_units_dropdown_change_cb(lv_event_t * e);
+void settings_screen_startup_sound_dropdown_change_cb(lv_event_t * e);
+void settings_screen_cancel_cb(lv_event_t * e);
+void settings_screen_save_cb(lv_event_t * e);
 void stats_screen_load_start_cb(lv_event_t * e);
 void stats_screen_loaded_cb(lv_event_t * e);
 void stats_screen_unload_start_cb(lv_event_t * e);
@@ -258,6 +266,7 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/page/footer_buttons_gen.h"
 #include "components/page/header_gen.h"
 #include "components/page/page_gen.h"
+#include "components/settings_screen/settings_screen_page_gen.h"
 #include "components/slider/slider_gen.h"
 #include "components/speed_gauge/speed_gauge_gen.h"
 #include "components/switch/switch_gen.h"

@@ -34,10 +34,13 @@ lv_obj_t * settings_screen_create(void)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
+    static lv_style_t style_dropdown;
 
     static bool style_inited = false;
 
     if (!style_inited) {
+        lv_style_init(&style_dropdown);
+        lv_style_set_width(&style_dropdown, lv_pct(50));
 
         style_inited = true;
     }
@@ -72,127 +75,81 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_set_height(div_0, lv_pct(55));
     lv_obj_set_width(div_0, lv_pct(100));
     lv_obj_set_flag(div_0, LV_OBJ_FLAG_SCROLL_ONE, true);
-    lv_obj_t * div_1 = div_create(div_0);
-    lv_obj_set_width(div_1, lv_pct(100));
-    lv_obj_set_height(div_1, lv_pct(100));
-    lv_obj_set_flex_flow(div_1, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_1, 20, 0);
-    lv_obj_t * slider_0 = slider_create(div_1, 0, 100, 50);
-    lv_obj_set_style_width(slider_0, lv_pct(80), 0);
+    lv_obj_t * settings_screen_page_0 = settings_screen_page_create(div_0);
+    lv_obj_t * screen_brightness_slider = slider_create(settings_screen_page_0, 0, 100, 50);
+    lv_obj_set_name(screen_brightness_slider, "screen_brightness_slider");
+    lv_obj_set_style_width(screen_brightness_slider, lv_pct(70), 0);
     
-    lv_obj_t * label_0 = label_create(div_1, "Screen brightness");
+    lv_obj_add_event_cb(settings_screen_page_0, settings_screen_brightness_slider_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_t * label_0 = label_create(settings_screen_page_0, "Screen brightness");
     
-    lv_obj_t * div_2 = div_create(div_0);
-    lv_obj_set_width(div_2, lv_pct(100));
-    lv_obj_set_height(div_2, lv_pct(100));
-    lv_obj_set_flex_flow(div_2, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_2, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_2, 20, 0);
-    lv_obj_t * lv_dropdown_0 = lv_dropdown_create(div_2);
-    lv_dropdown_set_options(lv_dropdown_0, "aaa");
+    lv_obj_t * settings_screen_page_1 = settings_screen_page_create(div_0);
+    lv_obj_t * double_press_action_dropdown = lv_dropdown_create(settings_screen_page_1);
+    lv_obj_set_name(double_press_action_dropdown, "double_press_action_dropdown");
+    lv_obj_add_event_cb(double_press_action_dropdown, settings_screen_double_press_action_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_style(double_press_action_dropdown, &style_dropdown, 0);
     
-    lv_obj_t * label_1 = label_create(div_2, "Double press action");
+    lv_obj_t * label_1 = label_create(settings_screen_page_1, "Double press action");
     
-    lv_obj_t * div_3 = div_create(div_0);
-    lv_obj_set_width(div_3, lv_pct(100));
-    lv_obj_set_height(div_3, lv_pct(100));
-    lv_obj_set_flex_flow(div_3, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_3, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_3, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_3, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_3, 20, 0);
-    lv_obj_t * lv_dropdown_1 = lv_dropdown_create(div_3);
-    lv_dropdown_set_options(lv_dropdown_1, "0 Deg");
+    lv_obj_t * settings_screen_page_2 = settings_screen_page_create(div_0);
+    lv_obj_t * screen_rotation_dropdown = lv_dropdown_create(settings_screen_page_2);
+    lv_obj_set_name(screen_rotation_dropdown, "screen_rotation_dropdown");
+    lv_obj_add_event_cb(screen_rotation_dropdown, settings_screen_screen_rotation_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_style(screen_rotation_dropdown, &style_dropdown, 0);
     
-    lv_obj_t * label_2 = label_create(div_3, "Screen rotation");
+    lv_obj_t * label_2 = label_create(settings_screen_page_2, "Screen rotation");
     
-    lv_obj_t * div_4 = div_create(div_0);
-    lv_obj_set_width(div_4, lv_pct(100));
-    lv_obj_set_height(div_4, lv_pct(100));
-    lv_obj_set_flex_flow(div_4, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_4, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_4, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_4, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_4, 20, 0);
-    lv_obj_t * lv_dropdown_2 = lv_dropdown_create(div_4);
-    lv_dropdown_set_options(lv_dropdown_2, "Disabled");
+    lv_obj_t * settings_screen_page_3 = settings_screen_page_create(div_0);
+    lv_obj_t * shutdown_time_dropdown = lv_dropdown_create(settings_screen_page_3);
+    lv_obj_set_name(shutdown_time_dropdown, "shutdown_time_dropdown");
+    lv_obj_add_event_cb(shutdown_time_dropdown, settings_screen_shutdown_time_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_style(shutdown_time_dropdown, &style_dropdown, 0);
     
-    lv_obj_t * label_3 = label_create(div_4, "Auto-off time");
+    lv_obj_t * label_3 = label_create(settings_screen_page_3, "Auto-off time");
     
-    lv_obj_t * div_5 = div_create(div_0);
-    lv_obj_set_width(div_5, lv_pct(100));
-    lv_obj_set_height(div_5, lv_pct(100));
-    lv_obj_set_flex_flow(div_5, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_5, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_5, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_5, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_5, 20, 0);
-    lv_obj_t * lv_dropdown_3 = lv_dropdown_create(div_5);
-    lv_dropdown_set_options(lv_dropdown_3, "Celcius");
+    lv_obj_t * settings_screen_page_4 = settings_screen_page_create(div_0);
+    lv_obj_t * temp_units_dropdown = lv_dropdown_create(settings_screen_page_4);
+    lv_obj_set_name(temp_units_dropdown, "temp_units_dropdown");
+    lv_obj_add_event_cb(temp_units_dropdown, settings_screen_temp_units_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_style(temp_units_dropdown, &style_dropdown, 0);
     
-    lv_obj_t * label_4 = label_create(div_5, "Temp units");
+    lv_obj_t * label_4 = label_create(settings_screen_page_4, "Temp units");
     
-    lv_obj_t * div_6 = div_create(div_0);
-    lv_obj_set_width(div_6, lv_pct(100));
-    lv_obj_set_height(div_6, lv_pct(100));
-    lv_obj_set_flex_flow(div_6, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_6, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_6, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_6, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_6, 20, 0);
-    lv_obj_t * lv_dropdown_4 = lv_dropdown_create(div_6);
-    lv_dropdown_set_options(lv_dropdown_4, "Kilometers");
+    lv_obj_t * settings_screen_page_5 = settings_screen_page_create(div_0);
+    lv_obj_t * distance_units_dropdown = lv_dropdown_create(settings_screen_page_5);
+    lv_obj_set_name(distance_units_dropdown, "distance_units_dropdown");
+    lv_obj_add_event_cb(distance_units_dropdown, settings_screen_distance_units_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_style(distance_units_dropdown, &style_dropdown, 0);
     
-    lv_obj_t * label_5 = label_create(div_6, "Distance units");
+    lv_obj_t * label_5 = label_create(settings_screen_page_5, "Distance units");
     
-    lv_obj_t * div_7 = div_create(div_0);
-    lv_obj_set_width(div_7, lv_pct(100));
-    lv_obj_set_height(div_7, lv_pct(100));
-    lv_obj_set_flex_flow(div_7, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_7, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_7, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_7, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_7, 20, 0);
-    lv_obj_t * lv_dropdown_5 = lv_dropdown_create(div_7);
-    lv_dropdown_set_options(lv_dropdown_5, "None");
+    lv_obj_t * settings_screen_page_6 = settings_screen_page_create(div_0);
+    lv_obj_t * startup_sound_dropdown = lv_dropdown_create(settings_screen_page_6);
+    lv_obj_set_name(startup_sound_dropdown, "startup_sound_dropdown");
+    lv_obj_add_event_cb(startup_sound_dropdown, settings_screen_startup_sound_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_style(startup_sound_dropdown, &style_dropdown, 0);
     
-    lv_obj_t * label_6 = label_create(div_7, "Startup sound");
+    lv_obj_t * label_6 = label_create(settings_screen_page_6, "Startup sound");
     
-    lv_obj_t * div_8 = div_create(div_0);
-    lv_obj_set_width(div_8, lv_pct(100));
-    lv_obj_set_height(div_8, lv_pct(100));
-    lv_obj_set_flex_flow(div_8, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_8, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_8, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_8, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_8, 20, 0);
-    lv_obj_t * label_7 = label_create(div_8, "Theme color");
+    lv_obj_t * settings_screen_page_7 = settings_screen_page_create(div_0);
+    lv_obj_t * label_7 = label_create(settings_screen_page_7, "Theme color");
     
-    lv_obj_t * div_9 = div_create(div_0);
-    lv_obj_set_width(div_9, lv_pct(100));
-    lv_obj_set_height(div_9, lv_pct(100));
-    lv_obj_set_flex_flow(div_9, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(div_9, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_track_place(div_9, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_flex_cross_place(div_9, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_row(div_9, 20, 0);
-    lv_obj_t * switch_0 = switch_create(div_9, &settings_dark_text);
+    lv_obj_t * settings_screen_page_8 = settings_screen_page_create(div_0);
+    lv_obj_t * switch_0 = switch_create(settings_screen_page_8, &settings_dark_text);
+    lv_obj_add_subject_toggle_event(switch_0, &settings_dark_text, LV_EVENT_CLICKED);
     
-    lv_obj_t * label_8 = label_create(div_9, "Dark text");
+    lv_obj_t * label_8 = label_create(settings_screen_page_8, "Dark text");
     
     lv_obj_t * footer_0 = footer_create(lv_obj_0);
     lv_obj_t * footer_buttons_0 = footer_buttons_create(footer_0);
     lv_obj_t * button_0 = button_create(footer_buttons_0, "Cancel");
     lv_obj_set_width(button_0, 80);
+    lv_obj_add_event_cb(button_0, settings_screen_cancel_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_add_screen_create_event(button_0, LV_EVENT_CLICKED, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
     
     lv_obj_t * button_primary_0 = button_primary_create(footer_buttons_0, "Save");
     lv_obj_set_width(button_primary_0, 80);
+    lv_obj_add_event_cb(button_primary_0, settings_screen_save_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_add_screen_create_event(button_primary_0, LV_EVENT_CLICKED, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0);
 
     LV_TRACE_OBJ_CREATE("finished");

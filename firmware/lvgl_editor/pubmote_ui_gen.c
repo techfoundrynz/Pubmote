@@ -113,7 +113,6 @@ lv_subject_t state_adc1_active;
 lv_subject_t state_adc2_active;
 lv_subject_t state_pocket_mode;
 lv_subject_t state_factory_reset;
-lv_subject_t settings_disp_brightness;
 lv_subject_t settings_dark_text;
 lv_subject_t settings_speed_label;
 lv_subject_t settings_temp_label;
@@ -221,7 +220,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_subject_init_int(&state_adc2_active, 0);
     lv_subject_init_int(&state_pocket_mode, 0);
     lv_subject_init_int(&state_factory_reset, 0);
-    lv_subject_init_int(&settings_disp_brightness, 100);
     lv_subject_init_int(&settings_dark_text, 0);
     static char settings_speed_label_buf[UI_SUBJECT_STRING_LENGTH];
     static char settings_speed_label_prev_buf[UI_SUBJECT_STRING_LENGTH];
@@ -283,7 +281,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "state_adc2_active", &state_adc2_active);
     lv_xml_register_subject(NULL, "state_pocket_mode", &state_pocket_mode);
     lv_xml_register_subject(NULL, "state_factory_reset", &state_factory_reset);
-    lv_xml_register_subject(NULL, "settings_disp_brightness", &settings_disp_brightness);
     lv_xml_register_subject(NULL, "settings_dark_text", &settings_dark_text);
     lv_xml_register_subject(NULL, "settings_speed_label", &settings_speed_label);
     lv_xml_register_subject(NULL, "settings_temp_label", &settings_temp_label);
@@ -314,6 +311,15 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_event_cb(NULL, "settings_screen_loaded_cb", settings_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "settings_screen_unload_start_cb", settings_screen_unload_start_cb);
     lv_xml_register_event_cb(NULL, "settings_screen_unloaded_cb", settings_screen_unloaded_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_brightness_slider_change_cb", settings_screen_brightness_slider_change_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_double_press_action_dropdown_change_cb", settings_screen_double_press_action_dropdown_change_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_screen_rotation_dropdown_change_cb", settings_screen_screen_rotation_dropdown_change_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_shutdown_time_dropdown_change_cb", settings_screen_shutdown_time_dropdown_change_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_temp_units_dropdown_change_cb", settings_screen_temp_units_dropdown_change_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_distance_units_dropdown_change_cb", settings_screen_distance_units_dropdown_change_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_startup_sound_dropdown_change_cb", settings_screen_startup_sound_dropdown_change_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_cancel_cb", settings_screen_cancel_cb);
+    lv_xml_register_event_cb(NULL, "settings_screen_save_cb", settings_screen_save_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_load_start_cb", stats_screen_load_start_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_loaded_cb", stats_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_unload_start_cb", stats_screen_unload_start_cb);
@@ -471,6 +477,51 @@ void __attribute__((weak)) settings_screen_unloaded_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     LV_LOG("settings_screen_unloaded_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_brightness_slider_change_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_brightness_slider_change_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_double_press_action_dropdown_change_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_double_press_action_dropdown_change_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_screen_rotation_dropdown_change_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_screen_rotation_dropdown_change_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_shutdown_time_dropdown_change_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_shutdown_time_dropdown_change_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_temp_units_dropdown_change_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_temp_units_dropdown_change_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_distance_units_dropdown_change_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_distance_units_dropdown_change_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_startup_sound_dropdown_change_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_startup_sound_dropdown_change_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_cancel_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_cancel_cb was called\n");
+}
+void __attribute__((weak)) settings_screen_save_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("settings_screen_save_cb was called\n");
 }
 void __attribute__((weak)) stats_screen_load_start_cb(lv_event_t * e)
 {

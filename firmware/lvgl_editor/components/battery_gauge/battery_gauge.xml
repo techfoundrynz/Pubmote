@@ -1,18 +1,17 @@
 <component>
 	<api>
-		<prop name="width" type="px" default="80px" help="Widget width" />
-		<prop name="height" type="px" default="80px" help="Widget height" />
 		<prop name="bind_percent" type="subject" help="Percentage fill" />
 		<prop name="bind_charge_state" type="subject" />
 	</api>
 	<previews>
 		<preview style_bg_color="0x000000" />
 	</previews>
-	<view width="100px" height="40px" style_bg_opa="0">
+	<view>
+		<remove_style_all />
 		<lv_obj
-			width="95px"
-			height="40px"
-			style_border_width="4px"
+			width="95%"
+			height="100%"
+			style_border_width="4%"
 			style_border_color="0xffffff"
 			style_bg_opa="0%"
 			style_radius="5px"
@@ -30,8 +29,8 @@
 		</lv_obj>
 		<!-- tip -->
 		<lv_obj
-			width="5px"
-			height="15px"
+			width="5%"
+			height="30%"
 			style_bg_color="0xFFFFFF"
 			align="right_mid"
 			style_border_width="0px"

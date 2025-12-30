@@ -22,6 +22,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_buttons_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/header_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/page_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/settings_screen/settings_screen_page_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/slider/slider_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/speed_gauge/speed_gauge_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/switch/switch_gen.c

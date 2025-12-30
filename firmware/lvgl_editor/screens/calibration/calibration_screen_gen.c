@@ -65,8 +65,8 @@ lv_obj_t * calibration_screen_create(void)
     
     lv_obj_t * body_0 = body_create(lv_obj_0);
     lv_obj_t * input_visualization_0 = input_visualization_create(body_0, lv_pct(0), lv_pct(0), lv_pct(40), false);
-    lv_obj_set_width(input_visualization_0, 300);
-    lv_obj_set_height(input_visualization_0, 300);
+    lv_obj_set_width(input_visualization_0, 150);
+    lv_obj_set_height(input_visualization_0, 150);
     
     lv_obj_t * footer_0 = footer_create(lv_obj_0);
     lv_obj_t * label_1 = label_create(footer_0, "Press start to begin calibration");
