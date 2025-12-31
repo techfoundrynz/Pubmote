@@ -6,8 +6,8 @@
 		<preview style_bg_color="0x000000" />
 	</previews>
 	<styles>
-		<style name="switch_knob" pad_all="-4" shadow_opa="0" bg_color="#bg_primary_light" />
-		<style name="switch_main" bg_color="#settings_theme_color" bg_opa="30" />
+		<style name="switch_knob" pad_all="-4" shadow_opa="0" bg_color="#theme_structure5" />
+		<style name="switch_main" bg_color="#settings_theme_color" bg_opa="40" />
 		<style name="switch_indicator" bg_color="#settings_theme_color" />
 	</styles>
 	<view extends="lv_switch" width="50" height="30" bind_checked="$bind_checked">

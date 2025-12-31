@@ -44,11 +44,11 @@ lv_obj_t * switch_create(lv_obj_t * parent, lv_subject_t * bind_checked)
         lv_style_init(&switch_knob);
         lv_style_set_pad_all(&switch_knob, -4);
         lv_style_set_shadow_opa(&switch_knob, 0);
-        lv_style_set_bg_color(&switch_knob, BG_PRIMARY_LIGHT);
+        lv_style_set_bg_color(&switch_knob, THEME_STRUCTURE5);
 
         lv_style_init(&switch_main);
         lv_style_set_bg_color(&switch_main, SETTINGS_THEME_COLOR);
-        lv_style_set_bg_opa(&switch_main, 30);
+        lv_style_set_bg_opa(&switch_main, 40);
 
         lv_style_init(&switch_indicator);
         lv_style_set_bg_color(&switch_indicator, SETTINGS_THEME_COLOR);

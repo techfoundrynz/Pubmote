@@ -48,7 +48,7 @@ lv_obj_t * utilization_gauge_create(lv_obj_t * parent, lv_subject_t * bind_duty_
     if (!style_inited) {
         lv_style_init(&style_main);
         lv_style_set_arc_width(&style_main, THICKNESS);
-        lv_style_set_arc_color(&style_main, lv_color_hex(0x878787));
+        lv_style_set_arc_color(&style_main, THEME_STRUCTURE2);
         lv_style_set_width(&style_main, lv_pct(100));
         lv_style_set_height(&style_main, lv_pct(100));
         lv_style_set_arc_rounded(&style_main, true);

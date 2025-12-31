@@ -85,6 +85,20 @@ extern "C" {
 
 #define THEME_CRITICAL lv_color_hex(0xFF6369)
 
+#define THEME_TEXT lv_color_hex(0xFFFFFF)
+
+#define THEME_BG lv_color_hex(0x000000)
+
+#define THEME_STRUCTURE1 lv_color_hex(0x000000)
+
+#define THEME_STRUCTURE2 lv_color_hex(0x242424)
+
+#define THEME_STRUCTURE3 lv_color_hex(0x5a5a5a)
+
+#define THEME_STRUCTURE4 lv_color_hex(0x9d9d9d)
+
+#define THEME_STRUCTURE5 lv_color_hex(0xffffff)
+
 #define SETTINGS_THEME_COLOR lv_color_hex(0xFF46A2)
 
 #define VEHICLE_STATE_NORMAL 0
@@ -94,6 +108,8 @@ extern "C" {
 #define VEHICLE_STATE_DANGER 2
 
 #define VEHICLE_STATE_CRITICAL 3
+
+#define THEME_DEFAULT_BUTTON_FONT "inter_bold_16"
 
 /**********************
  *      TYPEDEFS
@@ -164,6 +180,8 @@ extern const void * splash;
  * Subjects
  *----------------*/
 
+extern lv_subject_t state_connection_state;
+extern lv_subject_t state_connection_state_label;
 extern lv_subject_t state_battery_percent;
 extern lv_subject_t state_battery_status;
 extern lv_subject_t state_speed;
@@ -178,6 +196,8 @@ extern lv_subject_t state_adc1_active;
 extern lv_subject_t state_adc2_active;
 extern lv_subject_t state_pocket_mode;
 extern lv_subject_t state_factory_reset;
+extern lv_subject_t state_has_wifi_creds;
+extern lv_subject_t state_update_step;
 extern lv_subject_t settings_dark_text;
 extern lv_subject_t settings_speed_label;
 extern lv_subject_t settings_temp_label;
@@ -256,17 +276,17 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/button/button_gen.h"
 #include "components/button/button_outlined_gen.h"
 #include "components/button/button_primary_gen.h"
-#include "components/circle_button/circle_button_gen.h"
 #include "components/div/div_gen.h"
 #include "components/footpad_indicator/footpad_indicator_gen.h"
-#include "components/icon_button/icon_button_gen.h"
+#include "components/horizontal_pager/horizontal_page_gen.h"
+#include "components/horizontal_pager/horizontal_pager_gen.h"
 #include "components/input_visualization/input_visualization_gen.h"
 #include "components/page/body_gen.h"
 #include "components/page/footer_gen.h"
 #include "components/page/footer_buttons_gen.h"
 #include "components/page/header_gen.h"
 #include "components/page/page_gen.h"
-#include "components/settings_screen/settings_screen_page_gen.h"
+#include "components/roller/roller_gen.h"
 #include "components/slider/slider_gen.h"
 #include "components/speed_gauge/speed_gauge_gen.h"
 #include "components/switch/switch_gen.h"

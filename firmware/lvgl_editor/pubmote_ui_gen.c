@@ -99,6 +99,8 @@ const void * splash;
  * Subjects
  *----------------*/
 
+lv_subject_t state_connection_state;
+lv_subject_t state_connection_state_label;
 lv_subject_t state_battery_percent;
 lv_subject_t state_battery_status;
 lv_subject_t state_speed;
@@ -113,6 +115,8 @@ lv_subject_t state_adc1_active;
 lv_subject_t state_adc2_active;
 lv_subject_t state_pocket_mode;
 lv_subject_t state_factory_reset;
+lv_subject_t state_has_wifi_creds;
+lv_subject_t state_update_step;
 lv_subject_t settings_dark_text;
 lv_subject_t settings_speed_label;
 lv_subject_t settings_temp_label;
@@ -199,6 +203,15 @@ void pubmote_ui_init_gen(const char * asset_path)
     /*----------------
      * Subjects
      *----------------*/
+    lv_subject_init_int(&state_connection_state, 0);
+    static char state_connection_state_label_buf[UI_SUBJECT_STRING_LENGTH];
+    static char state_connection_state_label_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&state_connection_state_label,
+                           state_connection_state_label_buf,
+                           state_connection_state_label_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "Disconnected"
+                          );
     lv_subject_init_int(&state_battery_percent, 0);
     lv_subject_init_int(&state_battery_status, 0);
     lv_subject_init_float(&state_speed, 0);
@@ -220,6 +233,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_subject_init_int(&state_adc2_active, 0);
     lv_subject_init_int(&state_pocket_mode, 0);
     lv_subject_init_int(&state_factory_reset, 0);
+    lv_subject_init_int(&state_has_wifi_creds, 0);
+    lv_subject_init_int(&state_update_step, 0);
     lv_subject_init_int(&settings_dark_text, 0);
     static char settings_speed_label_buf[UI_SUBJECT_STRING_LENGTH];
     static char settings_speed_label_prev_buf[UI_SUBJECT_STRING_LENGTH];
@@ -267,6 +282,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "inter_bold_96", inter_bold_96);
 
     /* Register subjects */
+    lv_xml_register_subject(NULL, "state_connection_state", &state_connection_state);
+    lv_xml_register_subject(NULL, "state_connection_state_label", &state_connection_state_label);
     lv_xml_register_subject(NULL, "state_battery_percent", &state_battery_percent);
     lv_xml_register_subject(NULL, "state_battery_status", &state_battery_status);
     lv_xml_register_subject(NULL, "state_speed", &state_speed);
@@ -281,6 +298,8 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "state_adc2_active", &state_adc2_active);
     lv_xml_register_subject(NULL, "state_pocket_mode", &state_pocket_mode);
     lv_xml_register_subject(NULL, "state_factory_reset", &state_factory_reset);
+    lv_xml_register_subject(NULL, "state_has_wifi_creds", &state_has_wifi_creds);
+    lv_xml_register_subject(NULL, "state_update_step", &state_update_step);
     lv_xml_register_subject(NULL, "settings_dark_text", &settings_dark_text);
     lv_xml_register_subject(NULL, "settings_speed_label", &settings_speed_label);
     lv_xml_register_subject(NULL, "settings_temp_label", &settings_temp_label);

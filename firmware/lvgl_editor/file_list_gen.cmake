@@ -12,17 +12,17 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_outlined_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_primary_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/circle_button/circle_button_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/div/div_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/footpad_indicator/footpad_indicator_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/icon_button/icon_button_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/horizontal_pager/horizontal_page_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/horizontal_pager/horizontal_pager_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/input_visualization/input_visualization_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/body_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/footer_buttons_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/header_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/page_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/settings_screen/settings_screen_page_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/roller/roller_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/slider/slider_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/speed_gauge/speed_gauge_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/switch/switch_gen.c

@@ -36,10 +36,7 @@
 #include "custom/settings_screen/settings_screen.h"
 
 static void speed_format_observer(lv_observer_t * observer, lv_subject_t * subject) {
-    LV_LOG_ERROR("CB");
     float speed = lv_subject_get_float(subject);
-    // log type of speed
-    LV_LOG_ERROR("Speed value: %f", speed);
     
     // Update format based on speed value
     if (speed < 10.0f) {
@@ -47,6 +44,25 @@ static void speed_format_observer(lv_observer_t * observer, lv_subject_t * subje
     } else {
         lv_subject_copy_string(&state_speed_fmt, "%.0f");
     }
+}
+
+static void connection_state_observer(lv_observer_t * observer, lv_subject_t * subject) {
+    int32_t state = lv_subject_get_int(subject);
+
+    switch (state)
+    {
+    case 0:
+        lv_subject_copy_string(&state_connection_state_label, "Disconnected");
+        break;
+    case 1:
+        lv_subject_copy_string(&state_connection_state_label, "Connected");
+        break;
+    case 2:
+        lv_subject_copy_string(&state_connection_state_label, "Reconnecting");
+        break;
+    default:
+        break;
+    }    
 }
 
 void pubmote_ui_init(const char * asset_path)
@@ -62,6 +78,9 @@ void pubmote_ui_init(const char * asset_path)
     // Bind speed formatting subject to speed subject
     lv_subject_add_observer(&state_speed, speed_format_observer, NULL);
     speed_format_observer(NULL, &state_speed);
+    // Bind connection state label subject to connection state subject
+    lv_subject_add_observer(&state_connection_state, connection_state_observer, NULL);
+    connection_state_observer(NULL, &state_connection_state);
 }
 
 /**********************

@@ -36,24 +36,20 @@ lv_obj_t * bar_create(lv_obj_t * parent)
 
     static lv_style_t style_main;
     static lv_style_t style_indicator;
-    static lv_style_t style_dark;
 
     static bool style_inited = false;
 
     if (!style_inited) {
         lv_style_init(&style_main);
-        lv_style_set_bg_color(&style_main, SURFACE_PRIMARY_LIGHT);
+        lv_style_set_bg_color(&style_main, THEME_STRUCTURE4);
         lv_style_set_bg_opa(&style_main, OPA_MUTED);
         lv_style_set_radius(&style_main, 20);
         lv_style_set_height(&style_main, UNIT_SM);
 
         lv_style_init(&style_indicator);
-        lv_style_set_bg_color(&style_indicator, SURFACE_PRIMARY_LIGHT);
+        lv_style_set_bg_color(&style_indicator, THEME_STRUCTURE4);
         lv_style_set_bg_opa(&style_indicator, (255 * 100 / 100));
         lv_style_set_radius(&style_indicator, 20);
-
-        lv_style_init(&style_dark);
-        lv_style_set_bg_color(&style_dark, SURFACE_PRIMARY_DARK);
 
         style_inited = true;
     }

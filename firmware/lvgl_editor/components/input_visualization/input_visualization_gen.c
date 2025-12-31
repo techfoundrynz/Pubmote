@@ -80,7 +80,7 @@ lv_obj_t * input_visualization_create(lv_obj_t * parent, int32_t x, int32_t y, i
     lv_obj_set_name(deadzone_indicator, "deadzone_indicator");
     lv_obj_set_width(deadzone_indicator, lv_pct(40));
     lv_obj_set_height(deadzone_indicator, lv_pct(40));
-    lv_obj_set_style_border_color(deadzone_indicator, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_border_color(deadzone_indicator, THEME_STRUCTURE5, 0);
     lv_obj_set_style_border_width(deadzone_indicator, DEADZONE_THICKNESS, 0);
     lv_obj_set_style_bg_opa(deadzone_indicator, 0, 0);
     lv_obj_set_style_radius(deadzone_indicator, lv_pct(50), 0);
@@ -100,7 +100,7 @@ lv_obj_t * input_visualization_create(lv_obj_t * parent, int32_t x, int32_t y, i
     lv_obj_set_name(indicator_y, "indicator_y");
     lv_obj_set_height(indicator_y, lv_pct(100));
     lv_obj_set_width(indicator_y, THICKNESS);
-    lv_obj_set_style_bg_color(indicator_y, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_bg_color(indicator_y, THEME_STRUCTURE5, 0);
     lv_obj_set_align(indicator_y, LV_ALIGN_CENTER);
     lv_obj_set_style_bg_opa(indicator_y, (255 * 100 / 100), 0);
     lv_obj_set_style_border_width(indicator_y, 0, 0);
@@ -109,7 +109,7 @@ lv_obj_t * input_visualization_create(lv_obj_t * parent, int32_t x, int32_t y, i
     lv_obj_set_name(indicator_x, "indicator_x");
     lv_obj_set_height(indicator_x, THICKNESS);
     lv_obj_set_width(indicator_x, lv_pct(100));
-    lv_obj_set_style_bg_color(indicator_x, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_bg_color(indicator_x, THEME_STRUCTURE5, 0);
     lv_obj_set_align(indicator_x, LV_ALIGN_CENTER);
     lv_obj_set_style_bg_opa(indicator_x, (255 * 100 / 100), 0);
     lv_obj_set_style_border_width(indicator_x, 0, 0);

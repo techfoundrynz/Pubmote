@@ -39,7 +39,7 @@ lv_obj_t * h1_create(lv_obj_t * parent, const char * text)
     lv_obj_set_height(lv_label_0, LV_SIZE_CONTENT);
     lv_obj_set_width(lv_label_0, LV_SIZE_CONTENT);
     lv_label_set_text(lv_label_0, text);
-    lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(lv_label_0, THEME_TEXT, 0);
     lv_obj_set_style_text_font(lv_label_0, inter_bold_16, 0);
 
     LV_TRACE_OBJ_CREATE("finished");

@@ -42,7 +42,7 @@ lv_obj_t * slider_create(lv_obj_t * parent, int32_t min_value, int32_t max_value
 
     if (!style_inited) {
         lv_style_init(&style_main);
-        lv_style_set_bg_color(&style_main, SURFACE_PRIMARY_LIGHT);
+        lv_style_set_bg_color(&style_main, THEME_STRUCTURE5);
         lv_style_set_bg_opa(&style_main, OPA_MUTED);
         lv_style_set_radius(&style_main, 20);
         lv_style_set_height(&style_main, UNIT_MD);
@@ -50,7 +50,7 @@ lv_obj_t * slider_create(lv_obj_t * parent, int32_t min_value, int32_t max_value
 
         lv_style_init(&style_indicator);
         lv_style_set_bg_color(&style_indicator, SETTINGS_THEME_COLOR);
-        lv_style_set_bg_opa(&style_indicator, (255 * 10 / 100));
+        lv_style_set_bg_opa(&style_indicator, (255 * 40 / 100));
         lv_style_set_radius(&style_indicator, 20);
 
         lv_style_init(&style_knob);

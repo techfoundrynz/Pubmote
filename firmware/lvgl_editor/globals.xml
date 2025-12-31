@@ -9,7 +9,6 @@
 		<int name="unit_lg" value="18" />
 		<int name="unit_xl" value="24" />
 
-		<!-- TODO - remove -->
 		<percentage name="opa_muted" value="20%" />
 
 		<color name="light" value="0xffffff" />
@@ -39,12 +38,23 @@
 		<color name="theme_danger" value="0xFF8B3E" />
 		<color name="theme_critical" value="0xFF6369" />
 
+		<color name="theme_text" value="0xFFFFFF" />
+		<color name="theme_bg" value="0x000000" />
+
+		<color name="theme_structure1" value="0x000000" />
+		<color name="theme_structure2" value="0x242424" />
+		<color name="theme_structure3" value="0x5a5a5a" />
+		<color name="theme_structure4" value="0x9d9d9d" />
+		<color name="theme_structure5" value="0xffffff" />
+
 		<color name="settings_theme_color" value="0xFF46A2" />
 
 		<int name="vehicle_state_normal" value="0" />
 		<int name="vehicle_state_warn" value="1" />
 		<int name="vehicle_state_danger" value="2" />
 		<int name="vehicle_state_critical" value="3" />
+
+		<string name="theme_default_button_font" value="inter_bold_16" />
 	</consts>
 
 	<styles>
@@ -54,12 +64,16 @@
 
 	<subjects>
 		<!-- state -->
+		<!-- 0 = disconnected, 1 = connected, 2 = reconnecting -->
+		<int name="state_connection_state" value="0" />
+		<string name="state_connection_state_label" value="Disconnected" />
 		<int name="state_battery_percent" value="0" />
 		<int name="state_battery_status" value="0" />
 		<float name="state_speed" value="0" />
 		<string name="state_speed_fmt" value="%.1f" />
 		<float name="state_max_speed" value="40" />
 		<int name="state_duty_cycle" value="0" />
+		<!-- 0 = normal, 1 = warning, 2 = danger, 3 = critical -->
 		<int name="state_vehicle_state" value="0" />
 		<int name="state_motor_temp" value="0" />
 		<int name="state_cont_temp" value="0" />
@@ -68,6 +82,8 @@
 		<int name="state_adc2_active" value="0" />
 		<int name="state_pocket_mode" value="0" />
 		<int name="state_factory_reset" value="0" />
+		<int name="state_has_wifi_creds" value="0" />
+		<int name="state_update_step" value="0" />
 
 		<!-- settings -->
 		<!-- <string name="settings_theme_color" value="0xFF46A2" help="Theme color" /> TEMP AS CONSTANT -->

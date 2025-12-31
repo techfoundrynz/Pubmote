@@ -3,7 +3,7 @@
 		<style name="style_dropdown" width="50%" />
 	</styles>
 	<view
-		style_bg_color="0x000000"
+		style_bg_color="#theme_bg"
 		width="100%"
 		height="100%"
 		scrollable="false"
@@ -11,7 +11,7 @@
 		style_flex_main_place="space_between"
 		style_flex_cross_place="center"
 		style_flex_track_place="center"
-		style_pad_all="20px"
+		style_pad_all="0px"
 	>
 		<event_cb trigger="screen_load_start" callback="settings_screen_load_start_cb" />
 		<event_cb trigger="screen_loaded" callback="settings_screen_loaded_cb" />
@@ -20,24 +20,13 @@
 		<header>
 			<h1 text="Settings" />
 		</header>
-		<div
-			style_flex_main_place="start"
-			style_flex_track_place="center"
-			style_flex_cross_place="center"
-			scrollable="true"
-			scroll_snap_x="center"
-			scrollbar_mode="off"
-			flex_flow="row"
-			height="55%"
-			width="100%"
-			scroll_one="true"
-		>
-			<settings_screen_page>
+		<horizontal_pager height="55%">
+			<horizontal_page>
 				<slider name="screen_brightness_slider" min_value="0" max_value="100" style_width="70%" />
 				<event_cb trigger="value_changed" callback="settings_screen_brightness_slider_change_cb" />
 				<label text="Screen brightness" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<lv_dropdown name="double_press_action_dropdown">
 					<event_cb
 						trigger="value_changed"
@@ -46,52 +35,52 @@
 					<style name="style_dropdown" />
 				</lv_dropdown>
 				<label text="Double press action" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<lv_dropdown name="screen_rotation_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_screen_rotation_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</lv_dropdown>
 				<label text="Screen rotation" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<lv_dropdown name="shutdown_time_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_shutdown_time_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</lv_dropdown>
 				<label text="Auto-off time" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<lv_dropdown name="temp_units_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_temp_units_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</lv_dropdown>
 				<label text="Temp units" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<lv_dropdown name="distance_units_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_distance_units_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</lv_dropdown>
 				<label text="Distance units" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<lv_dropdown name="startup_sound_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_startup_sound_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</lv_dropdown>
 				<label text="Startup sound" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<label text="Theme color" />
-			</settings_screen_page>
-			<settings_screen_page>
+			</horizontal_page>
+			<horizontal_page>
 				<switch bind_checked="settings_dark_text">
 					<subject_toggle_event subject="settings_dark_text" trigger="clicked" />
 				</switch>
 				<label text="Dark text" />
-			</settings_screen_page>
-		</div>
+			</horizontal_page>
+		</horizontal_pager>
 		<footer>
 			<footer_buttons>
 				<button width="80px" label="Cancel">

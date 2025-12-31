@@ -2,7 +2,7 @@
 	<styles>
 		<style name="style_battery_gauge" width="15%" height="35%" />
 	</styles>
-	<view style_bg_color="0x000000">
+	<view style_bg_color="#theme_bg">
 		<event_cb trigger="screen_load_start" callback="stats_screen_load_start_cb" />
 		<event_cb trigger="screen_loaded" callback="stats_screen_loaded_cb" />
 		<event_cb trigger="screen_unload_start" callback="stats_screen_unload_start_cb" />
@@ -23,7 +23,7 @@
 			style_flex_main_place="center"
 			style_flex_cross_place="center"
 			style_flex_track_place="center"
-			style_pad_top="78px"
+			style_pad_top="80px"
 			style_pad_bottom="20px"
 			style_pad_hor="65px"
 		>
@@ -48,22 +48,56 @@
 				<dynamic_fmt_label
 					bind_text="state_speed"
 					bind_text_fmt="state_speed_fmt"
-					style_text_color="0xFFFFFF"
+					style_text_color="#theme_text"
 					style_text_font="inter_bold_96"
 					overflow_visible="true"
 					width="100%"
 					style_text_align="center"
+					align="center"
+					style_pad_top="-25px"
 				>
 					<lv_label
 						bind_text="settings_speed_label"
-						style_text_color="0xa9a9a9"
+						style_text_color="#theme_structure4"
 						style_text_font="inter_bold_24"
 						x="-30px"
 						y="-20px"
 						align="bottom_right"
 					/>
 				</dynamic_fmt_label>
-				<lv_label bind_text="state_duty_cycle" bind_text-fmt="%d%% Duty Cycle" style_text_color="0xFFFFFF" />
+				<lv_label
+					bind_text="state_connection_state_label"
+					style_text_color="#theme_text"
+					style_text_font="inter_24"
+				>
+					<bind_flag_if_not_eq subject="state_connection_state" ref_value="0" flag="hidden" />
+				</lv_label>
+				<lv_label
+					bind_text="state_connection_state_label"
+					style_text_color="#theme_text"
+					style_text_font="inter_24"
+				>
+					<bind_flag_if_not_eq subject="state_connection_state" ref_value="2" flag="hidden" />
+				</lv_label>
+				<horizontal_pager>
+					<bind_flag_if_not_eq subject="state_connection_state" ref_value="1" flag="hidden" />
+					<horizontal_page height="content">
+						<lv_label
+							bind_text="state_duty_cycle"
+							bind_text-fmt="%d%% Duty Cycle"
+							style_text_color="#theme_text"
+							style_text_font="inter_24"
+						/>
+					</horizontal_page>
+					<horizontal_page height="content">
+						<lv_label
+							bind_text="state_motor_temp"
+							bind_text-fmt="M: %.1f | C: %.1f"
+							style_text_color="#theme_text"
+							style_text_font="inter_24"
+						/>
+					</horizontal_page>
+				</horizontal_pager>
 			</div>
 			<div
 				flex_flow="column"
@@ -72,7 +106,7 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<lv_label text="0%" style_text_color="0xFFFFFF" />
+				<label text="0%" style_text_font="inter_24" />
 			</div>
 		</div>
 	</view>

@@ -42,13 +42,13 @@ lv_obj_t * battery_gauge_create(lv_obj_t * parent, lv_subject_t * bind_percent, 
     lv_obj_set_width(lv_obj_1, lv_pct(95));
     lv_obj_set_height(lv_obj_1, lv_pct(100));
     lv_obj_set_style_border_width(lv_obj_1, lv_pct(4), 0);
-    lv_obj_set_style_border_color(lv_obj_1, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_border_color(lv_obj_1, THEME_STRUCTURE5, 0);
     lv_obj_set_style_bg_opa(lv_obj_1, (255 * 0 / 100), 0);
     lv_obj_set_style_radius(lv_obj_1, 5, 0);
     lv_obj_set_style_pad_all(lv_obj_1, 0, 0);
     lv_obj_t * lv_obj_2 = lv_obj_create(lv_obj_1);
     lv_obj_set_style_radius(lv_obj_2, 0, 0);
-    lv_obj_set_style_bg_color(lv_obj_2, lv_color_hex(0x42ca00), 0);
+    lv_obj_set_style_bg_color(lv_obj_2, THEME_SUCCESS, 0);
     lv_obj_set_height(lv_obj_2, lv_pct(100));
     lv_obj_set_width(lv_obj_2, lv_pct(100));
     lv_obj_set_style_bg_opa(lv_obj_2, (255 * 100 / 100), 0);
@@ -58,7 +58,7 @@ lv_obj_t * battery_gauge_create(lv_obj_t * parent, lv_subject_t * bind_percent, 
     lv_obj_t * lv_obj_3 = lv_obj_create(lv_obj_0);
     lv_obj_set_width(lv_obj_3, lv_pct(5));
     lv_obj_set_height(lv_obj_3, lv_pct(30));
-    lv_obj_set_style_bg_color(lv_obj_3, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_color(lv_obj_3, THEME_STRUCTURE5, 0);
     lv_obj_set_align(lv_obj_3, LV_ALIGN_RIGHT_MID);
     lv_obj_set_style_border_width(lv_obj_3, 0, 0);
     lv_obj_set_style_radius(lv_obj_3, 0, 0);

@@ -2,32 +2,23 @@
 	<previews>
 		<preview style_pad_all="4" style_bg_color="0x000000" />
 	</previews>
-
 	<api>
-		<prop name="label" type="string" default="Label" help="The text to be displayed on the button" />
+		<prop name="label" type="string" default="Label" />
 	</api>
-
 	<styles>
 		<style
 			name="style_base"
-			radius="#unit_md"
 			bg_opa="100%"
 			width="100%"
-			pad_hor="#unit_lg"
-			pad_ver="#unit_md"
-			text_font="inter_bold_16"
-			bg_color="0x000000"
+			bg_color="#theme_bg"
 			border_width="3px"
-			border_color="0xFFFFFF"
-			text_color="#text_on_surface_primary_light"
+			border_color="#theme_structure5"
+			text_color="#theme_text"
 		/>
-		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#surface_primary_dark" />
+		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#theme_structure5" />
 	</styles>
-
-	<view extends="lv_button">
-		<remove_style_all />
+	<view extends="button">
 		<style name="style_base" />
 		<style name="style_pressed" selector="pressed" />
-		<lv_label text="$label" align="center" />
 	</view>
 </component>

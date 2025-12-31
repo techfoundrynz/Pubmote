@@ -44,7 +44,7 @@ lv_obj_t * calibration_screen_create(void)
 
     lv_obj_t * lv_obj_0 = lv_obj_create(NULL);
     lv_obj_set_name_static(lv_obj_0, "calibration_screen_#");
-    lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(lv_obj_0, THEME_BG, 0);
     lv_obj_set_width(lv_obj_0, lv_pct(100));
     lv_obj_set_height(lv_obj_0, lv_pct(100));
     lv_obj_set_flag(lv_obj_0, LV_OBJ_FLAG_SCROLLABLE, false);
@@ -52,7 +52,7 @@ lv_obj_t * calibration_screen_create(void)
     lv_obj_set_style_flex_main_place(lv_obj_0, LV_FLEX_ALIGN_SPACE_BETWEEN, 0);
     lv_obj_set_style_flex_cross_place(lv_obj_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(lv_obj_0, LV_FLEX_ALIGN_CENTER, 0);
-    lv_obj_set_style_pad_all(lv_obj_0, 20, 0);
+    lv_obj_set_style_pad_all(lv_obj_0, 0, 0);
 
     lv_obj_add_event_cb(lv_obj_0, calibration_screen_load_start_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
     lv_obj_add_event_cb(lv_obj_0, calibration_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);

@@ -44,7 +44,7 @@ lv_obj_t * splash_screen_create(void)
 
     lv_obj_t * lv_obj_0 = lv_obj_create(NULL);
     lv_obj_set_name_static(lv_obj_0, "splash_screen_#");
-    lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(lv_obj_0, THEME_BG, 0);
 
     lv_obj_add_screen_load_event(lv_obj_0, LV_EVENT_SCREEN_LOADED, stats_screen, LV_SCREEN_LOAD_ANIM_FADE_IN, 200, 500);
     lv_obj_t * lv_image_0 = lv_image_create(lv_obj_0);

@@ -34,15 +34,22 @@ lv_obj_t * charge_screen_create(void)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
+    static lv_style_t charge_arc_main;
     static lv_style_t charge_arc_indicator;
     static lv_style_t charge_arc_knob;
 
     static bool style_inited = false;
 
     if (!style_inited) {
+        lv_style_init(&charge_arc_main);
+        lv_style_set_arc_width(&charge_arc_main, 24);
+        lv_style_set_arc_rounded(&charge_arc_main, false);
+        lv_style_set_arc_color(&charge_arc_main, THEME_STRUCTURE2);
+
         lv_style_init(&charge_arc_indicator);
         lv_style_set_arc_width(&charge_arc_indicator, 24);
         lv_style_set_arc_rounded(&charge_arc_indicator, false);
+        lv_style_set_arc_color(&charge_arc_indicator, SETTINGS_THEME_COLOR);
 
         lv_style_init(&charge_arc_knob);
         lv_style_set_bg_opa(&charge_arc_knob, 0);
@@ -52,7 +59,7 @@ lv_obj_t * charge_screen_create(void)
 
     lv_obj_t * lv_obj_0 = lv_obj_create(NULL);
     lv_obj_set_name_static(lv_obj_0, "charge_screen_#");
-    lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(lv_obj_0, THEME_BG, 0);
 
     lv_obj_add_event_cb(lv_obj_0, charge_screen_load_start_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
     lv_obj_add_event_cb(lv_obj_0, charge_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
@@ -70,6 +77,7 @@ lv_obj_t * charge_screen_create(void)
     lv_arc_set_bg_start_angle(lv_arc_0, 90);
     lv_arc_set_bg_end_angle(lv_arc_0, 89);
     lv_obj_set_state(lv_arc_0, LV_STATE_DISABLED, true);
+    lv_obj_add_style(lv_arc_0, &charge_arc_main, LV_STATE_DEFAULT);
     lv_obj_add_style(lv_arc_0, &charge_arc_indicator, LV_PART_INDICATOR);
     lv_obj_add_style(lv_arc_0, &charge_arc_knob, LV_PART_KNOB);
     
@@ -81,14 +89,15 @@ lv_obj_t * charge_screen_create(void)
     lv_obj_set_style_flex_main_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_cross_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_0, LV_FLEX_ALIGN_CENTER, 0);
+    lv_obj_set_style_pad_row(div_0, UNIT_SM, 0);
     lv_obj_t * lv_label_0 = lv_label_create(div_0);
     lv_label_set_text(lv_label_0, "Charging");
-    lv_obj_set_style_text_color(lv_label_0, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(lv_label_0, THEME_TEXT, 0);
     lv_obj_set_style_text_font(lv_label_0, inter_bold_24, 0);
     
     lv_obj_t * lv_label_1 = lv_label_create(div_0);
     lv_label_bind_text(lv_label_1, &state_battery_percent, "%d%%");
-    lv_obj_set_style_text_color(lv_label_1, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(lv_label_1, THEME_TEXT, 0);
     lv_obj_set_style_text_font(lv_label_1, inter_24, 0);
 
     LV_TRACE_OBJ_CREATE("finished");

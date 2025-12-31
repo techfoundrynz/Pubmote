@@ -10,7 +10,7 @@
 		height="content"
 		width="content"
 		text="$text"
-		style_text_color="0xFFFFFF"
+		style_text_color="#theme_text"
 		style_text_font="inter_bold_16"
 	/>
 </component>

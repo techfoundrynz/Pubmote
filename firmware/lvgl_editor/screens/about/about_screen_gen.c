@@ -44,7 +44,7 @@ lv_obj_t * about_screen_create(void)
 
     lv_obj_t * lv_obj_0 = lv_obj_create(NULL);
     lv_obj_set_name_static(lv_obj_0, "about_screen_#");
-    lv_obj_set_style_bg_color(lv_obj_0, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(lv_obj_0, THEME_BG, 0);
     lv_obj_set_width(lv_obj_0, lv_pct(100));
     lv_obj_set_height(lv_obj_0, lv_pct(100));
     lv_obj_set_flag(lv_obj_0, LV_OBJ_FLAG_SCROLLABLE, false);

@@ -1,5 +1,5 @@
 <screen permanent="false">
-	<view style_bg_color="0x000000">
+	<view style_bg_color="#theme_bg">
 		<screen_load_event
 			screen="stats_screen"
 			trigger="screen_loaded"

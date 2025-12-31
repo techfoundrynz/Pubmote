@@ -14,7 +14,7 @@
  *      DEFINES
  *********************/
 
-#define THICKNESS 12
+#define THICKNESS 14
 
 /**********************
  *      TYPEDEFS
@@ -50,7 +50,7 @@ lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_left_
 
         lv_style_init(&style_arc);
         lv_style_set_arc_width(&style_arc, THICKNESS);
-        lv_style_set_arc_color(&style_arc, lv_color_hex(0x878787));
+        lv_style_set_arc_color(&style_arc, THEME_STRUCTURE2);
         lv_style_set_width(&style_arc, lv_pct(100));
         lv_style_set_height(&style_arc, lv_pct(100));
         lv_style_set_arc_rounded(&style_arc, true);

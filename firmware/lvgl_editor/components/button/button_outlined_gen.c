@@ -41,37 +41,29 @@ lv_obj_t * button_outlined_create(lv_obj_t * parent, const char * label)
 
     if (!style_inited) {
         lv_style_init(&style_base);
-        lv_style_set_radius(&style_base, UNIT_MD);
         lv_style_set_bg_opa(&style_base, (255 * 100 / 100));
         lv_style_set_width(&style_base, lv_pct(100));
-        lv_style_set_pad_hor(&style_base, UNIT_LG);
-        lv_style_set_pad_ver(&style_base, UNIT_MD);
-        lv_style_set_text_font(&style_base, inter_bold_16);
-        lv_style_set_bg_color(&style_base, lv_color_hex(0x000000));
+        lv_style_set_bg_color(&style_base, THEME_BG);
         lv_style_set_border_width(&style_base, 3);
-        lv_style_set_border_color(&style_base, lv_color_hex(0xFFFFFF));
-        lv_style_set_text_color(&style_base, TEXT_ON_SURFACE_PRIMARY_LIGHT);
+        lv_style_set_border_color(&style_base, THEME_STRUCTURE5);
+        lv_style_set_text_color(&style_base, THEME_TEXT);
 
         lv_style_init(&style_pressed);
         lv_style_set_recolor_opa(&style_pressed, OPA_MUTED);
-        lv_style_set_recolor(&style_pressed, SURFACE_PRIMARY_DARK);
+        lv_style_set_recolor(&style_pressed, THEME_STRUCTURE5);
 
         style_inited = true;
     }
 
-    lv_obj_t * lv_button_0 = lv_button_create(parent);
-    lv_obj_set_name_static(lv_button_0, "button_outlined_#");
+    lv_obj_t * button_0 = button_create(parent, "Label");
+    lv_obj_set_name_static(button_0, "button_outlined_#");
 
-    lv_obj_remove_style_all(lv_button_0);
-    lv_obj_add_style(lv_button_0, &style_base, 0);
-    lv_obj_add_style(lv_button_0, &style_pressed, LV_STATE_PRESSED);
-    lv_obj_t * lv_label_0 = lv_label_create(lv_button_0);
-    lv_label_set_text(lv_label_0, label);
-    lv_obj_set_align(lv_label_0, LV_ALIGN_CENTER);
+    lv_obj_add_style(button_0, &style_base, 0);
+    lv_obj_add_style(button_0, &style_pressed, LV_STATE_PRESSED);
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    return lv_button_0;
+    return button_0;
 }
 
 /**********************
