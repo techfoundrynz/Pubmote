@@ -56,13 +56,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_add_event_cb(lv_obj_0, stats_screen_unload_start_cb, LV_EVENT_SCREEN_UNLOAD_START, NULL);
     lv_obj_add_event_cb(lv_obj_0, stats_screen_unloaded_cb, LV_EVENT_SCREEN_UNLOADED, NULL);
     lv_obj_add_event_cb(lv_obj_0, stats_screen_gesture_cb, LV_EVENT_GESTURE, NULL);
-    lv_obj_t * speed_gauge_0 = speed_gauge_create(lv_obj_0, &state_speed, &state_max_speed);
-    
-    lv_obj_t * utilization_gauge_0 = utilization_gauge_create(lv_obj_0, &state_duty_cycle, &state_vehicle_state);
-    lv_obj_set_style_pad_all(utilization_gauge_0, 40, 0);
-    
-    lv_obj_t * footpad_indicator_0 = footpad_indicator_create(lv_obj_0, &state_adc1_active, &state_adc2_active);
-    
+    lv_obj_add_screen_create_event(lv_obj_0, LV_EVENT_GESTURE, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
     lv_obj_t * div_0 = div_create(lv_obj_0);
     lv_obj_set_width(div_0, lv_pct(100));
     lv_obj_set_height(div_0, lv_pct(100));
@@ -143,6 +137,13 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_height(div_3, lv_pct(20));
     lv_obj_t * label_0 = label_create(div_3, "0%");
     lv_obj_set_style_text_font(label_0, inter_24, 0);
+    
+    lv_obj_t * speed_gauge_0 = speed_gauge_create(lv_obj_0, &state_speed, &state_max_speed);
+    
+    lv_obj_t * utilization_gauge_0 = utilization_gauge_create(lv_obj_0, &state_duty_cycle, &state_vehicle_state);
+    lv_obj_set_style_pad_all(utilization_gauge_0, 40, 0);
+    
+    lv_obj_t * footpad_indicator_0 = footpad_indicator_create(lv_obj_0, &state_adc1_active, &state_adc2_active);
 
     LV_TRACE_OBJ_CREATE("finished");
 

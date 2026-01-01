@@ -29,6 +29,7 @@
 		disabled="true"
 		bind_value="$bind_speed"
 		bind_max_value="$bind_max_speed"
+		clickable="false"
 	>
 		<style name="style_main" />
 		<style name="style_knob" selector="knob" />

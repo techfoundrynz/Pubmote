@@ -22,7 +22,7 @@
 		<style name="style_indicator" arc_color="#settings_theme_color" arc_width="#thickness" arc_rounded="true" />
 		<style name="style_knob" opa="0%" />
 	</styles>
-	<view>
+	<view clickable="false">
 		<remove_style_all />
 		<style name="style_main" />
 		<lv_arc
@@ -34,6 +34,7 @@
 			disabled="true"
 			max_value="1"
 			bind_value="$bind_left_active"
+			clickable="false"
 		>
 			<style name="style_arc" />
 			<style name="style_knob" selector="knob" />
@@ -48,6 +49,7 @@
 			disabled="true"
 			max_value="1"
 			bind_value="$bind_right_active"
+			clickable="false"
 		>
 			<style name="style_arc" />
 			<style name="style_knob" selector="knob" />

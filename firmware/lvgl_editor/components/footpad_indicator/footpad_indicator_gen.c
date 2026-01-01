@@ -68,6 +68,7 @@ lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_left_
 
     lv_obj_t * lv_obj_0 = lv_obj_create(parent);
     lv_obj_set_name_static(lv_obj_0, "footpad_indicator_#");
+    lv_obj_set_flag(lv_obj_0, LV_OBJ_FLAG_CLICKABLE, false);
 
     lv_obj_remove_style_all(lv_obj_0);
     lv_obj_add_style(lv_obj_0, &style_main, 0);
@@ -80,6 +81,7 @@ lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_left_
     lv_obj_set_state(lv_arc_0, LV_STATE_DISABLED, true);
     lv_arc_set_max_value(lv_arc_0, 1);
     lv_arc_bind_value(lv_arc_0, bind_left_active);
+    lv_obj_set_flag(lv_arc_0, LV_OBJ_FLAG_CLICKABLE, false);
     lv_obj_add_style(lv_arc_0, &style_arc, 0);
     lv_obj_add_style(lv_arc_0, &style_knob, LV_PART_KNOB);
     lv_obj_add_style(lv_arc_0, &style_indicator, LV_PART_INDICATOR);
@@ -93,6 +95,7 @@ lv_obj_t * footpad_indicator_create(lv_obj_t * parent, lv_subject_t * bind_left_
     lv_obj_set_state(lv_arc_1, LV_STATE_DISABLED, true);
     lv_arc_set_max_value(lv_arc_1, 1);
     lv_arc_bind_value(lv_arc_1, bind_right_active);
+    lv_obj_set_flag(lv_arc_1, LV_OBJ_FLAG_CLICKABLE, false);
     lv_obj_add_style(lv_arc_1, &style_arc, 0);
     lv_obj_add_style(lv_arc_1, &style_knob, LV_PART_KNOB);
     lv_obj_add_style(lv_arc_1, &style_indicator, LV_PART_INDICATOR);

@@ -69,6 +69,7 @@ lv_obj_t * speed_gauge_create(lv_obj_t * parent, lv_subject_t * bind_speed, lv_s
     lv_obj_set_state(dynamic_range_arc_0, LV_STATE_DISABLED, true);
     dynamic_range_arc_bind_value(dynamic_range_arc_0, bind_speed);
     dynamic_range_arc_bind_max_value(dynamic_range_arc_0, bind_max_speed);
+    lv_obj_set_flag(dynamic_range_arc_0, LV_OBJ_FLAG_CLICKABLE, false);
 
     lv_obj_add_style(dynamic_range_arc_0, &style_main, 0);
     lv_obj_add_style(dynamic_range_arc_0, &style_knob, LV_PART_KNOB);

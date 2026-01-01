@@ -15,8 +15,8 @@ void stats_screen_gesture_cb(lv_event_t *e) {
       stats_screen = lv_event_get_current_target(e);
     }
 
-    lv_obj_t *menu_scr = menu_screen_create();
     lv_indev_wait_release(lv_indev_active());
+    lv_obj_t *menu_scr = menu_screen_create();
     if (menu_scr) {
       lv_screen_load_anim(menu_scr, LV_SCREEN_LOAD_ANIM_OVER_BOTTOM, 200, 0, false);
       // LV_LOG_ERROR("DOWN GESTURE DETECTED - Loading Menu");

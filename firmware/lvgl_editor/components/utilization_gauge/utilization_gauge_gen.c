@@ -82,6 +82,7 @@ lv_obj_t * utilization_gauge_create(lv_obj_t * parent, lv_subject_t * bind_duty_
     lv_arc_set_max_value(lv_arc_0, 100);
     lv_arc_set_mode(lv_arc_0, LV_ARC_MODE_REVERSE);
     lv_arc_bind_value(lv_arc_0, bind_duty_cycle);
+    lv_obj_set_flag(lv_arc_0, LV_OBJ_FLAG_CLICKABLE, false);
 
     lv_obj_add_style(lv_arc_0, &style_main, 0);
     lv_obj_add_style(lv_arc_0, &style_knob, LV_PART_KNOB);

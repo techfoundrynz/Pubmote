@@ -33,6 +33,7 @@
 		max_value="100"
 		mode="reverse"
 		bind_value="$bind_duty_cycle"
+		clickable="false"
 	>
 		<style name="style_main" />
 		<style name="style_knob" selector="knob" />
