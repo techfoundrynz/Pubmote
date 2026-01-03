@@ -35,12 +35,16 @@ lv_obj_t * settings_screen_create(void)
     LV_TRACE_OBJ_CREATE("begin");
 
     static lv_style_t style_dropdown;
+    static lv_style_t style_slider;
 
     static bool style_inited = false;
 
     if (!style_inited) {
         lv_style_init(&style_dropdown);
         lv_style_set_width(&style_dropdown, lv_pct(50));
+
+        lv_style_init(&style_slider);
+        lv_style_set_width(&style_slider, lv_pct(70));
 
         style_inited = true;
     }
@@ -69,13 +73,13 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * horizontal_page_0 = horizontal_page_create(horizontal_pager_0);
     lv_obj_t * screen_brightness_slider = slider_create(horizontal_page_0, 0, 100, 50);
     lv_obj_set_name(screen_brightness_slider, "screen_brightness_slider");
-    lv_obj_set_style_width(screen_brightness_slider, lv_pct(70), 0);
+    lv_obj_add_style(screen_brightness_slider, &style_slider, 0);
+    lv_obj_add_event_cb(screen_brightness_slider, settings_screen_brightness_slider_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     
-    lv_obj_add_event_cb(horizontal_page_0, settings_screen_brightness_slider_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_t * label_0 = label_create(horizontal_page_0, "Screen brightness");
     
     lv_obj_t * horizontal_page_1 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * double_press_action_dropdown = lv_dropdown_create(horizontal_page_1);
+    lv_obj_t * double_press_action_dropdown = dropdown_create(horizontal_page_1, "Option 1", 0);
     lv_obj_set_name(double_press_action_dropdown, "double_press_action_dropdown");
     lv_obj_add_event_cb(double_press_action_dropdown, settings_screen_double_press_action_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(double_press_action_dropdown, &style_dropdown, 0);
@@ -83,7 +87,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_1 = label_create(horizontal_page_1, "Double press action");
     
     lv_obj_t * horizontal_page_2 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * screen_rotation_dropdown = lv_dropdown_create(horizontal_page_2);
+    lv_obj_t * screen_rotation_dropdown = dropdown_create(horizontal_page_2, "Option 1", 0);
     lv_obj_set_name(screen_rotation_dropdown, "screen_rotation_dropdown");
     lv_obj_add_event_cb(screen_rotation_dropdown, settings_screen_screen_rotation_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(screen_rotation_dropdown, &style_dropdown, 0);
@@ -91,7 +95,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_2 = label_create(horizontal_page_2, "Screen rotation");
     
     lv_obj_t * horizontal_page_3 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * shutdown_time_dropdown = lv_dropdown_create(horizontal_page_3);
+    lv_obj_t * shutdown_time_dropdown = dropdown_create(horizontal_page_3, "Option 1", 0);
     lv_obj_set_name(shutdown_time_dropdown, "shutdown_time_dropdown");
     lv_obj_add_event_cb(shutdown_time_dropdown, settings_screen_shutdown_time_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(shutdown_time_dropdown, &style_dropdown, 0);
@@ -99,7 +103,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_3 = label_create(horizontal_page_3, "Auto-off time");
     
     lv_obj_t * horizontal_page_4 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * temp_units_dropdown = lv_dropdown_create(horizontal_page_4);
+    lv_obj_t * temp_units_dropdown = dropdown_create(horizontal_page_4, "Option 1", 0);
     lv_obj_set_name(temp_units_dropdown, "temp_units_dropdown");
     lv_obj_add_event_cb(temp_units_dropdown, settings_screen_temp_units_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(temp_units_dropdown, &style_dropdown, 0);
@@ -107,7 +111,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_4 = label_create(horizontal_page_4, "Temp units");
     
     lv_obj_t * horizontal_page_5 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * distance_units_dropdown = lv_dropdown_create(horizontal_page_5);
+    lv_obj_t * distance_units_dropdown = dropdown_create(horizontal_page_5, "Option 1", 0);
     lv_obj_set_name(distance_units_dropdown, "distance_units_dropdown");
     lv_obj_add_event_cb(distance_units_dropdown, settings_screen_distance_units_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(distance_units_dropdown, &style_dropdown, 0);
@@ -115,7 +119,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_5 = label_create(horizontal_page_5, "Distance units");
     
     lv_obj_t * horizontal_page_6 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * startup_sound_dropdown = lv_dropdown_create(horizontal_page_6);
+    lv_obj_t * startup_sound_dropdown = dropdown_create(horizontal_page_6, "Option 1", 0);
     lv_obj_set_name(startup_sound_dropdown, "startup_sound_dropdown");
     lv_obj_add_event_cb(startup_sound_dropdown, settings_screen_startup_sound_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(startup_sound_dropdown, &style_dropdown, 0);
@@ -123,6 +127,9 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_6 = label_create(horizontal_page_6, "Startup sound");
     
     lv_obj_t * horizontal_page_7 = horizontal_page_create(horizontal_pager_0);
+    lv_obj_t * color_picker_0 = color_picker_create(horizontal_page_7);
+    lv_obj_add_style(color_picker_0, &style_slider, 0);
+    
     lv_obj_t * label_7 = label_create(horizontal_page_7, "Theme color");
     
     lv_obj_t * horizontal_page_8 = horizontal_page_create(horizontal_pager_0);

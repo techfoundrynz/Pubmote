@@ -68,7 +68,7 @@ static void connection_state_observer(lv_observer_t * observer, lv_subject_t * s
 void pubmote_ui_init(const char * asset_path)
 {
     pubmote_ui_init_gen(asset_path);
-    LV_LOG_ERROR("Pubmote UI initialized");
+    LV_LOG_USER("Pubmote UI initialized");
 
     /* Add your own custom code here if needed */
     // Force linker to include custom code

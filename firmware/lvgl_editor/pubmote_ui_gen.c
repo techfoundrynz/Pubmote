@@ -9,6 +9,7 @@
 #include "pubmote_ui_gen.h"
 
 #if LV_USE_XML
+#include "widgets/color_picker/color_picker_private_gen.h"
 #include "widgets/dynamic_fmt_label/dynamic_fmt_label_private_gen.h"
 #include "widgets/dynamic_range_arc/dynamic_range_arc_private_gen.h"
 #endif /* LV_USE_XML */
@@ -120,6 +121,7 @@ lv_subject_t state_update_step;
 lv_subject_t settings_dark_text;
 lv_subject_t settings_speed_label;
 lv_subject_t settings_temp_label;
+lv_subject_t settings_color_h;
 
 /**********************
  *      MACROS
@@ -252,6 +254,7 @@ void pubmote_ui_init_gen(const char * asset_path)
                            UI_SUBJECT_STRING_LENGTH,
                            "C"
                           );
+    lv_subject_init_int(&settings_color_h, 0);
 
     /*----------------
      * Translations
@@ -259,6 +262,7 @@ void pubmote_ui_init_gen(const char * asset_path)
 
 #if LV_USE_XML
     /* Register widgets */
+    color_picker_register();
     dynamic_fmt_label_register();
     dynamic_range_arc_register();
 
@@ -303,6 +307,7 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "settings_dark_text", &settings_dark_text);
     lv_xml_register_subject(NULL, "settings_speed_label", &settings_speed_label);
     lv_xml_register_subject(NULL, "settings_temp_label", &settings_temp_label);
+    lv_xml_register_subject(NULL, "settings_color_h", &settings_color_h);
 
     /* Register callbacks */
     lv_xml_register_event_cb(NULL, "about_screen_load_start_cb", about_screen_load_start_cb);
@@ -343,7 +348,6 @@ void pubmote_ui_init_gen(const char * asset_path)
     lv_xml_register_event_cb(NULL, "stats_screen_loaded_cb", stats_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_unload_start_cb", stats_screen_unload_start_cb);
     lv_xml_register_event_cb(NULL, "stats_screen_unloaded_cb", stats_screen_unloaded_cb);
-    lv_xml_register_event_cb(NULL, "stats_screen_gesture_cb", stats_screen_gesture_cb);
     lv_xml_register_event_cb(NULL, "update_screen_load_start_cb", update_screen_load_start_cb);
     lv_xml_register_event_cb(NULL, "update_screen_loaded_cb", update_screen_loaded_cb);
     lv_xml_register_event_cb(NULL, "update_screen_unload_start_cb", update_screen_unload_start_cb);
@@ -561,11 +565,6 @@ void __attribute__((weak)) stats_screen_unloaded_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     LV_LOG("stats_screen_unloaded_cb was called\n");
-}
-void __attribute__((weak)) stats_screen_gesture_cb(lv_event_t * e)
-{
-    LV_UNUSED(e);
-    LV_LOG("stats_screen_gesture_cb was called\n");
 }
 void __attribute__((weak)) update_screen_load_start_cb(lv_event_t * e)
 {

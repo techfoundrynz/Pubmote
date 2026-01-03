@@ -1,6 +1,9 @@
 list(
   APPEND
   PROJECT_SOURCES
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/color_picker/color_picker.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/color_picker/color_picker_xml_parser.c
+  ${CMAKE_CURRENT_LIST_DIR}/widgets/color_picker/color_picker_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label_xml_parser.c
   ${CMAKE_CURRENT_LIST_DIR}/widgets/dynamic_fmt_label/dynamic_fmt_label_gen.c
@@ -13,6 +16,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_outlined_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/button/button_primary_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/div/div_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/dropdown/dropdown_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/footpad_indicator/footpad_indicator_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/horizontal_pager/horizontal_page_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/horizontal_pager/horizontal_pager_gen.c

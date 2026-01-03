@@ -201,6 +201,7 @@ extern lv_subject_t state_update_step;
 extern lv_subject_t settings_dark_text;
 extern lv_subject_t settings_speed_label;
 extern lv_subject_t settings_temp_label;
+extern lv_subject_t settings_color_h;
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -248,7 +249,6 @@ void stats_screen_load_start_cb(lv_event_t * e);
 void stats_screen_loaded_cb(lv_event_t * e);
 void stats_screen_unload_start_cb(lv_event_t * e);
 void stats_screen_unloaded_cb(lv_event_t * e);
-void stats_screen_gesture_cb(lv_event_t * e);
 void update_screen_load_start_cb(lv_event_t * e);
 void update_screen_loaded_cb(lv_event_t * e);
 void update_screen_unload_start_cb(lv_event_t * e);
@@ -269,6 +269,7 @@ void pubmote_ui_init_gen(const char * asset_path);
  **********************/
 
 /*Include all the widget and components of this library*/
+#include "widgets/color_picker/color_picker_gen.h"
 #include "widgets/dynamic_fmt_label/dynamic_fmt_label_gen.h"
 #include "widgets/dynamic_range_arc/dynamic_range_arc_gen.h"
 #include "components/bar/bar_gen.h"
@@ -277,6 +278,7 @@ void pubmote_ui_init_gen(const char * asset_path);
 #include "components/button/button_outlined_gen.h"
 #include "components/button/button_primary_gen.h"
 #include "components/div/div_gen.h"
+#include "components/dropdown/dropdown_gen.h"
 #include "components/footpad_indicator/footpad_indicator_gen.h"
 #include "components/horizontal_pager/horizontal_page_gen.h"
 #include "components/horizontal_pager/horizontal_pager_gen.h"

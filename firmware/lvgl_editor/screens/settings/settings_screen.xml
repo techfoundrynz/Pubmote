@@ -1,6 +1,7 @@
 <screen permanent="false">
 	<styles>
 		<style name="style_dropdown" width="50%" />
+		<style name="style_slider" width="70%" />
 	</styles>
 	<view
 		style_bg_color="#theme_bg"
@@ -22,56 +23,61 @@
 		</header>
 		<horizontal_pager height="55%">
 			<horizontal_page>
-				<slider name="screen_brightness_slider" min_value="0" max_value="100" style_width="70%" />
-				<event_cb trigger="value_changed" callback="settings_screen_brightness_slider_change_cb" />
+				<slider name="screen_brightness_slider" min_value="0" max_value="100">
+					<style name="style_slider" />
+					<event_cb trigger="value_changed" callback="settings_screen_brightness_slider_change_cb" />
+				</slider>
 				<label text="Screen brightness" />
 			</horizontal_page>
 			<horizontal_page>
-				<lv_dropdown name="double_press_action_dropdown">
+				<dropdown name="double_press_action_dropdown">
 					<event_cb
 						trigger="value_changed"
 						callback="settings_screen_double_press_action_dropdown_change_cb"
 					/>
 					<style name="style_dropdown" />
-				</lv_dropdown>
+				</dropdown>
 				<label text="Double press action" />
 			</horizontal_page>
 			<horizontal_page>
-				<lv_dropdown name="screen_rotation_dropdown">
+				<dropdown name="screen_rotation_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_screen_rotation_dropdown_change_cb" />
 					<style name="style_dropdown" />
-				</lv_dropdown>
+				</dropdown>
 				<label text="Screen rotation" />
 			</horizontal_page>
 			<horizontal_page>
-				<lv_dropdown name="shutdown_time_dropdown">
+				<dropdown name="shutdown_time_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_shutdown_time_dropdown_change_cb" />
 					<style name="style_dropdown" />
-				</lv_dropdown>
+				</dropdown>
 				<label text="Auto-off time" />
 			</horizontal_page>
 			<horizontal_page>
-				<lv_dropdown name="temp_units_dropdown">
+				<dropdown name="temp_units_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_temp_units_dropdown_change_cb" />
 					<style name="style_dropdown" />
-				</lv_dropdown>
+				</dropdown>
 				<label text="Temp units" />
 			</horizontal_page>
 			<horizontal_page>
-				<lv_dropdown name="distance_units_dropdown">
+				<dropdown name="distance_units_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_distance_units_dropdown_change_cb" />
 					<style name="style_dropdown" />
-				</lv_dropdown>
+				</dropdown>
 				<label text="Distance units" />
 			</horizontal_page>
 			<horizontal_page>
-				<lv_dropdown name="startup_sound_dropdown">
+				<dropdown name="startup_sound_dropdown">
 					<event_cb trigger="value_changed" callback="settings_screen_startup_sound_dropdown_change_cb" />
 					<style name="style_dropdown" />
-				</lv_dropdown>
+				</dropdown>
 				<label text="Startup sound" />
 			</horizontal_page>
 			<horizontal_page>
+				<color_picker>
+					<style name="style_slider" />
+				</color_picker>
 				<label text="Theme color" />
 			</horizontal_page>
 			<horizontal_page>

@@ -90,6 +90,7 @@
 		<int name="settings_dark_text" value="0" help="Use black text for buttons" />
 		<string name="settings_speed_label" value="KPH" />
 		<string name="settings_temp_label" value="C" />
+		<int name="settings_color_h" value="0" />
 	</subjects>
 
 	<images>

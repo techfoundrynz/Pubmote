@@ -52,7 +52,7 @@ lv_obj_t * button_primary_create(lv_obj_t * parent, const char * label)
         style_inited = true;
     }
 
-    lv_obj_t * button_0 = button_create(parent, "Label");
+    lv_obj_t * button_0 = button_create(parent, label);
     lv_obj_set_name_static(button_0, "button_primary_#");
 
     lv_obj_add_style(button_0, &style_base, 0);
