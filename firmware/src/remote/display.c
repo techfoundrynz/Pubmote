@@ -69,12 +69,12 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_CPU_AFFINITY (portNUM_PROCESSORS - 1)
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
-#define LVGL_TASK_PRIORITY 20
+#define LVGL_TASK_PRIORITY 4
 #define BUFFER_LINES ((int)(LV_VER_RES / 10))
 #define BUFFER_SIZE (LV_HOR_RES * BUFFER_LINES)
 #define MAX_TRAN_SIZE ((int)LV_HOR_RES * BUFFER_LINES * sizeof(uint16_t))
 
-#define SCREEN_TEST_UI 0
+#define SCREEN_TEST_UI 1
 
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
@@ -416,7 +416,7 @@ static esp_err_t app_lvgl_init(void) {
                                                 .direct_mode = false,
                                                 .swap_bytes = true,
 #if SW_ROTATE
-  // .sw_rotate = true, // TODO - figure out why this causes mem issues
+                                                .sw_rotate = true, // TODO - figure out why this causes mem issues
 #endif
                                             }};
 
@@ -426,7 +426,7 @@ static esp_err_t app_lvgl_init(void) {
   lv_display_add_event_cb(lvgl_disp, LVGL_port_rounder_callback, LV_EVENT_INVALIDATE_AREA, NULL);
 #endif
 
-  // display_set_rotation(device_settings.screen_rotation); // TODO - figure out why this causes mem issues
+  display_set_rotation(device_settings.screen_rotation); // TODO - figure out why this causes mem issues
 
 #if TOUCH_ENABLED
   const lvgl_port_touch_cfg_t touch_cfg = {
@@ -434,7 +434,7 @@ static esp_err_t app_lvgl_init(void) {
       .handle = touch_handle,
   };
   lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
-  // lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_PRESSED, NULL);
+  lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_PRESSED, NULL);
 #endif
 
   // Initialize the encoder driver
@@ -494,7 +494,6 @@ static esp_err_t display_ui() {
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, "Hello world");
     lv_obj_center(label);
-    // lv_demo_widgets();
 #else
     // ui_init(); // Generated SL UI
     // Use generated ui_init() function here without theme apply
