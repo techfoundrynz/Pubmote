@@ -8,7 +8,7 @@
 		<event_cb trigger="screen_unload_start" callback="stats_screen_unload_start_cb" />
 		<event_cb trigger="screen_unloaded" callback="stats_screen_unloaded_cb" />
 		<!-- <event_cb trigger="gesture" callback="stats_screen_gesture_cb" /> -->
-		<!-- <screen_create_event screen="menu_screen" trigger="gesture" anim_type="move_left" duration="200" /> -->
+		<screen_create_event screen="menu_screen" trigger="gesture" anim_type="move_left" duration="200" />
 		<div
 			width="100%"
 			height="100%"

@@ -9,7 +9,7 @@
 		<style name="style_base" bg_opa="100%" bg_color="#settings_theme_color" text_color="#theme_text" />
 		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#settings_theme_color" />
 	</styles>
-	<view extends="button">
+	<view extends="button" label="$label">
 		<style name="style_base" />
 		<style name="style_pressed" selector="pressed" />
 	</view>

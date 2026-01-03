@@ -17,7 +17,7 @@
 		/>
 		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#theme_structure5" />
 	</styles>
-	<view extends="button">
+	<view extends="button" label="$label">
 		<style name="style_base" />
 		<style name="style_pressed" selector="pressed" />
 	</view>
