@@ -37,6 +37,15 @@ extern "C"
   void settings_screen_loaded_cb(lv_event_t *e);
   void settings_screen_unload_start_cb(lv_event_t *e);
   void settings_screen_unloaded_cb(lv_event_t *e);
+  void settings_screen_brightness_slider_change_cb(lv_event_t * e);
+  void settings_screen_double_press_action_dropdown_change_cb(lv_event_t * e);
+  void settings_screen_screen_rotation_dropdown_change_cb(lv_event_t * e);
+  void settings_screen_shutdown_time_dropdown_change_cb(lv_event_t * e);
+  void settings_screen_temp_units_dropdown_change_cb(lv_event_t * e);
+  void settings_screen_distance_units_dropdown_change_cb(lv_event_t * e);
+  void settings_screen_startup_sound_dropdown_change_cb(lv_event_t * e);
+  void settings_screen_cancel_cb(lv_event_t * e);
+  void settings_screen_save_cb(lv_event_t * e);
 
   /**********************
    *      MACROS

@@ -78,7 +78,7 @@ void settings_screen_custom_init(void) {
 
 void settings_screen_load_start_cb(lv_event_t *e) {
   // Handle screen load start events here
-  LV_LOG_User("Settings screen load start");
+  LV_LOG_USER("Settings screen load start");
   lv_obj_t *screen = lv_event_get_current_target(e);
   settings_screen_set_dropdown_options(screen);
 
@@ -87,7 +87,7 @@ void settings_screen_load_start_cb(lv_event_t *e) {
   lv_obj_t *dark_text_switch = find_child_by_name_recursive(screen, "dark_text_switch");
 
   if (dark_text_switch) {
-    lv_switch_set_state(dark_text_switch, device_settings.dark_text ? true : false);
+    // lv_switch_set_state(dark_text_switch, device_settings.dark_text ? true : false);
   }
 
   // lv_obj_t *theme_color_picker = find_child_by_name_recursive(screen, "theme_color_picker");
@@ -104,4 +104,31 @@ void settings_screen_unload_start_cb(lv_event_t *e) {
 
 void settings_screen_unloaded_cb(lv_event_t *e) {
   // Handle screen unloaded events here
+}
+
+void settings_screen_brightness_slider_change_cb(lv_event_t * e) {
+}
+
+void settings_screen_double_press_action_dropdown_change_cb(lv_event_t * e) {
+}
+
+void settings_screen_screen_rotation_dropdown_change_cb(lv_event_t * e) {
+}
+
+void settings_screen_shutdown_time_dropdown_change_cb(lv_event_t * e) {
+}
+
+void settings_screen_temp_units_dropdown_change_cb(lv_event_t * e) {
+}
+
+void settings_screen_distance_units_dropdown_change_cb(lv_event_t * e) {
+}
+
+void settings_screen_startup_sound_dropdown_change_cb(lv_event_t * e) {
+}
+
+void settings_screen_cancel_cb(lv_event_t * e) {
+}
+
+void settings_screen_save_cb(lv_event_t * e) {
 }

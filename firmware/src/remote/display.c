@@ -69,10 +69,12 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_CPU_AFFINITY (portNUM_PROCESSORS - 1)
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
-#define LVGL_TASK_PRIORITY 20
-#define BUFFER_LINES ((int)(LV_VER_RES / 20))
+#define LVGL_TASK_PRIORITY 4
+#define BUFFER_LINES ((int)(LV_VER_RES / 10))
 #define BUFFER_SIZE (LV_HOR_RES * BUFFER_LINES)
 #define MAX_TRAN_SIZE ((int)LV_HOR_RES * BUFFER_LINES * sizeof(uint16_t))
+
+#define SCREEN_TEST_UI 1
 
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
@@ -413,7 +415,7 @@ static esp_err_t app_lvgl_init(void) {
                                                 .direct_mode = false,
                                                 .swap_bytes = true,
 #if SW_ROTATE
-  // .sw_rotate = true, // TODO - figure out why this causes mem issues
+                                                .sw_rotate = true, // TODO - figure out why this causes mem issues
 #endif
                                             }};
 
@@ -426,7 +428,10 @@ static esp_err_t app_lvgl_init(void) {
   }
 #endif
 
-  // display_set_rotation(device_settings.screen_rotation); // TODO - figure out why this causes mem issues
+  if (LVGL_lock(0)) {
+    display_set_rotation(device_settings.screen_rotation); 
+    LVGL_unlock();
+  }
 
 #if TOUCH_ENABLED
   const lvgl_port_touch_cfg_t touch_cfg = {
