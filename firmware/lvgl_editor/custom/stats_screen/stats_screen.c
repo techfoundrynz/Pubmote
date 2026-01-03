@@ -29,6 +29,7 @@ void stats_screen_gesture_cb(lv_event_t *e) {
 
 void stats_screen_load_start_cb(lv_event_t *e) {
   // Handle screen load start events here
+  LV_LOG_USER("Stats screen load start");
 }
 
 void stats_screen_loaded_cb(lv_event_t *e) {
@@ -41,4 +42,5 @@ void stats_screen_unload_start_cb(lv_event_t *e) {
 
 void stats_screen_unloaded_cb(lv_event_t *e) {
   // Handle screen unloaded events here
+  LV_LOG_USER("Stats screen unloaded");
 }
