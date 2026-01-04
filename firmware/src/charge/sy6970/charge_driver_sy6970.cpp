@@ -197,7 +197,12 @@ extern "C" RemotePowerState sy6970_get_power_state() {
   state.isFault = PPM.getFaultStatus() != 0;
 
   if (state.isFault) {
-    ESP_LOGW(TAG, "SY6970 fault detected! Fault status: 0x%02X. Charge status: %s", PPM.getFaultStatus(), PPM.getChargeStatusString());
+    static uint8_t last_fault_status = 0;
+    uint8_t current_fault_status = PPM.getFaultStatus();
+    if (current_fault_status != last_fault_status) {
+      ESP_LOGW(TAG, "SY6970 fault detected! Fault status: 0x%02X. Charge status: %s", current_fault_status, PPM.getChargeStatusString());
+      last_fault_status = current_fault_status;
+    }
   }
 
 
