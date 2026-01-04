@@ -28,9 +28,9 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<battery_gauge bind_percent="state_battery_percent" bind_charge_state="state_battery_status">
+				<!-- <battery_gauge bind_percent="state_battery_percent" bind_charge_state="state_battery_status">
 					<style name="style_battery_gauge" />
-				</battery_gauge>
+				</battery_gauge> -->
 			</div>
 			<div
 				flex_flow="column"

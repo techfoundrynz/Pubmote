@@ -5,6 +5,7 @@
 #include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
@@ -69,12 +70,17 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_CPU_AFFINITY (portNUM_PROCESSORS - 1)
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
-#define LVGL_TASK_PRIORITY 4
-#define BUFFER_LINES ((int)(LV_VER_RES / 10))
+#define LVGL_TASK_PRIORITY 20
+#define BUFFER_LINES ((int)(LV_VER_RES / 14))
 #define BUFFER_SIZE (LV_HOR_RES * BUFFER_LINES)
 #define MAX_TRAN_SIZE ((int)LV_HOR_RES * BUFFER_LINES * sizeof(uint16_t))
 
-#define SCREEN_TEST_UI 1
+#define SCREEN_TEST_UI 0
+
+// Statically allocated buffers (in Internal RAM, implicitly DMA capable on S3)
+// 16-byte alignment is good practice for DMA/Cache
+static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf1_static[BUFFER_SIZE];
+static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf2_static[BUFFER_SIZE];
 
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
@@ -304,7 +310,7 @@ static esp_err_t app_lcd_init(void) {
   }
 
   ESP_ERROR_CHECK(esp_lcd_panel_invert_color(lcd_panel, invert_color));
-  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, true, false));
+  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, false, false));
   esp_lcd_panel_disp_on_off(lcd_panel, true);
   ESP_LOGI(TAG, "Test display communication");
   ESP_ERROR_CHECK(test_display_communication(lcd_io));
@@ -391,6 +397,8 @@ static esp_err_t app_lvgl_init(void) {
                                             .panel_handle = lcd_panel,
                                             .buffer_size = BUFFER_SIZE,
                                             .double_buffer = true,
+                                            .buf1 = buf1_static,
+                                            .buf2 = buf2_static,
                                             .hres = LV_HOR_RES,
                                             .vres = LV_VER_RES,
                                             .monochrome = false,
@@ -415,7 +423,7 @@ static esp_err_t app_lvgl_init(void) {
                                                 .direct_mode = false,
                                                 .swap_bytes = true,
 #if SW_ROTATE
-                                                .sw_rotate = true, // TODO - figure out why this causes mem issues
+                                                .sw_rotate = false, // TODO - figure out why this causes mem issues
 #endif
                                             }};
 
@@ -429,7 +437,7 @@ static esp_err_t app_lvgl_init(void) {
 #endif
 
   if (LVGL_lock(0)) {
-    display_set_rotation(device_settings.screen_rotation); 
+    display_set_rotation(device_settings.screen_rotation);
     LVGL_unlock();
   }
 
@@ -480,12 +488,43 @@ lv_indev_t *get_touch() {
 }
 #endif
 
+static void ui_init(void) {
+  pubmote_ui_init("");
+  lv_screen_load(splash_screen_create()); // Load the main screen
+}
+
+static void event_handler(lv_event_t *e) {
+  lv_event_code_t code = lv_event_get_code(e);
+
+  if (code == LV_EVENT_CLICKED) {
+    LV_LOG_USER("Clicked");
+    ESP_LOGI(TAG, "Clicked");
+    LVGL_lock(0);
+    ui_init();
+    LVGL_unlock();
+  }
+  else if (code == LV_EVENT_VALUE_CHANGED) {
+    LV_LOG_USER("Toggled");
+  }
+}
+
 static esp_err_t display_ui() {
   ESP_LOGI(TAG, "Display UI");
 
   if (LVGL_lock(0)) {
-    pubmote_ui_init("");
-    lv_screen_load(splash_screen_create()); // Load the main screen
+#if SCREEN_TEST_UI
+    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xFF69B4), LV_PART_MAIN);
+    lv_obj_t *btn = lv_btn_create(lv_scr_act());
+    lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn, event_handler, LV_EVENT_ALL, NULL);
+
+    lv_obj_t *label = lv_label_create(btn);
+    lv_label_set_text(label, "Hello world");
+    lv_obj_center(label);
+#else
+    ui_init();
+#endif
+
     LVGL_unlock();
     // Delay backlight turn on to avoid flickering
     vTaskDelay(pdMS_TO_TICKS(250));

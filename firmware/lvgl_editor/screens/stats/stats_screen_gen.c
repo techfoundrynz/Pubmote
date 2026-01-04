@@ -73,8 +73,6 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_set_style_flex_cross_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_style_flex_track_place(div_1, LV_FLEX_ALIGN_CENTER, 0);
     lv_obj_set_height(div_1, lv_pct(20));
-    lv_obj_t * battery_gauge_0 = battery_gauge_create(div_1, &state_battery_percent, &state_battery_status);
-    lv_obj_add_style(battery_gauge_0, &style_battery_gauge, 0);
     
     lv_obj_t * div_2 = div_create(div_0);
     lv_obj_set_flex_flow(div_2, LV_FLEX_FLOW_COLUMN);
