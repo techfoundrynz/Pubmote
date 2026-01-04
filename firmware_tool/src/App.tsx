@@ -11,6 +11,22 @@ import { DeviceInfo } from "./components/DeviceInfo";
 import { ToastProvider, useToast } from "./context/ToastContext";
 import { Dialog } from "./components/ui/Dialog";
 
+// Helper function to compare semantic versions
+const compareVersions = (v1: string, v2: string): number => {
+  const parts1 = v1.replace(/^v/, '').split('.').map(Number);
+  const parts2 = v2.replace(/^v/, '').split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const part1 = parts1[i] || 0;
+    const part2 = parts2[i] || 0;
+    
+    if (part1 > part2) return 1;
+    if (part1 < part2) return -1;
+  }
+  
+  return 0;
+};
+
 const AppContent = () => {
   const terminal = useRef<TerminalService>(new TerminalService()).current;
   const espService = useRef<ESPService>(new ESPService(terminal)).current;
@@ -46,9 +62,26 @@ const AppContent = () => {
       
       const releases = await response.json();
       if (releases && releases.length > 0) {
-        const latest = releases[0];
+        // Filter out nightly builds (releases with "nightly" in tag_name)
+        const nonNightlyReleases = releases.filter((release: any) => 
+          !release.tag_name.toLowerCase().includes('nightly')
+        );
+        
+        if (nonNightlyReleases.length === 0) return;
+        
+        // Find the latest version by comparing all non-nightly releases
+        let latestRelease = nonNightlyReleases[0];
+        for (const release of nonNightlyReleases) {
+          const currentVersion = release.tag_name.replace(/^v/, '');
+          const latestVersionStr = latestRelease.tag_name.replace(/^v/, '');
+          
+          if (compareVersions(currentVersion, latestVersionStr) > 0) {
+            latestRelease = release;
+          }
+        }
+        
         // Extract version from tag_name (e.g., "v1.2.3" -> "1.2.3")
-        const version = latest.tag_name.replace(/^v/, '');
+        const version = latestRelease.tag_name.replace(/^v/, '');
         setLatestVersion(version);
       }
     } catch (error) {
@@ -101,7 +134,7 @@ const AppContent = () => {
     }
   };
 
-  const handleLoadElf = async (file: File) => {
+  const handleLoadElf = React.useCallback(async (file: File) => {
     try {
       await espService.setElf(file);
       setIsElfLoaded(true);
@@ -111,7 +144,7 @@ const AppContent = () => {
       terminal.log("Failed to load debug symbols", "error");
       setIsElfLoaded(false);
     }
-  };
+  }, [espService, terminal]);
 
   const handleDownloadElf = async () => {
     if (!deviceInfo.version || !deviceInfo.variant) {
@@ -190,7 +223,7 @@ const AppContent = () => {
   const tabs = [
     {
       label: "Firmware",
-      content: <FirmwarePage />,
+      content: <FirmwarePage onLoadElf={handleLoadElf} />,
     },
     {
       label: "Settings",
@@ -241,7 +274,7 @@ const AppContent = () => {
                 onLoadElf={handleLoadElf}
                 onDownloadElf={handleDownloadElf}
                 isElfLoaded={isElfLoaded}
-                updateAvailable={!!(latestVersion && deviceInfo.version && latestVersion !== deviceInfo.version)}
+                updateAvailable={!!(latestVersion && deviceInfo.version && compareVersions(latestVersion, deviceInfo.version) > 0)}
               />
             </div>
 

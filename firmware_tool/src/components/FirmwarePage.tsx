@@ -5,7 +5,7 @@ import { FlashProgress } from "./FlashProgress";
 import { FirmwareFiles } from "../types";
 import { Usb } from "lucide-react";
 
-const FirmwarePage: React.FC<unknown> = () => {
+const FirmwarePage: React.FC<{ onLoadElf?: (file: File) => void }> = ({ onLoadElf }) => {
   const { deviceInfo, espService, flashProgress, disconnect, setFlashProgress } = useDeviceTools();
   const [selectedFirmware, setSelectedFirmware] =
     React.useState<FirmwareFiles | null>(null);
@@ -13,11 +13,14 @@ const FirmwarePage: React.FC<unknown> = () => {
 
   React.useEffect(() => {
     if (selectedFirmware?.elf) {
-      espService.setElf(selectedFirmware.elf);
+      // Only update the isElfLoaded state, handleLoadElf already calls espService.setElf
+      if (onLoadElf) {
+        onLoadElf(selectedFirmware.elf);
+      }
     } else {
       espService.setElf(null);
     }
-  }, [selectedFirmware, espService]);
+  }, [selectedFirmware, espService, onLoadElf]);
 
     
   const handleFlash = async () => {

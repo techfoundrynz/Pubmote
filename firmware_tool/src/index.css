@@ -29,6 +29,9 @@
     --badge-blue-bg: #dbeafe;
     --badge-blue-text: #1d4ed8;
     --badge-blue-border: #2563eb;
+
+    /* Danger color - red-600 in light mode */
+    --color-danger: #dc2626;
   }
 
   .dark {
@@ -57,6 +60,9 @@
     --badge-blue-bg: #1e3a8a;
     --badge-blue-text: #93c5fd;
     --badge-blue-border: #3b82f6;
+
+    /* Danger color - red-700 in dark mode (one shade darker) */
+    --color-danger: #b91c1c;
   }
 }
 
