@@ -15,7 +15,7 @@ interface Props {
   onViewCoredump: () => Promise<void>;
   onClearCoredump: () => Promise<void>;
   onLoadElf: (file: File) => Promise<void>;
-  onDownloadElf: () => Promise<void>;
+  onDownloadElf: (isManual?: boolean) => Promise<void>;
   isElfLoaded?: boolean;
   updateAvailable?: boolean;
   flashProgress?: FlashProgress;

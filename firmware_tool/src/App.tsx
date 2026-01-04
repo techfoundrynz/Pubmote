@@ -103,10 +103,11 @@ const AppContent = () => {
       // Check for updates after successful connection
       checkForUpdates();
       
-      // Automatically download ELF if version and variant are available
-      if (info.version && info.variant) {
+      // Automatically download ELF if version and hardware are available
+      // Only auto-download for release builds (variant === 'release')
+      if (info.version && info.hardware && info.variant === 'release') {
         try {
-          await handleDownloadElf(info.version, info.variant);
+          await handleDownloadElf(info.version, info.hardware);
         } catch (error) {
           // Silently fail - user can manually download if needed
           console.warn("Auto-download ELF failed:", error);
@@ -157,12 +158,14 @@ const AppContent = () => {
     }
   }, [espService, terminal]);
 
-  const handleDownloadElf = async (versionOverride?: string, variantOverride?: string) => {
+  const handleDownloadElf = async (versionOverride?: string, hardwareOverride?: string, isManual: boolean = false) => {
     const version = versionOverride || deviceInfo.version;
-    const variant = variantOverride || deviceInfo.variant;
+    const hardware = hardwareOverride || deviceInfo.hardware;
     
-    if (!version || !variant) {
-      toast.error("Cannot download symbols: missing firmware version/variant info");
+    if (!version || !hardware) {
+      if (isManual) {
+        toast.error("Cannot download symbols: missing firmware version/hardware info");
+      }
       return;
     }
 
@@ -184,13 +187,13 @@ const AppContent = () => {
         toast.warning(`Release '${version}' not found. Using latest release '${release.tag_name}'.`);
       }
 
-      // 3. Find ELF asset
+      // 3. Find ELF asset - match against hardware name
       const elfAsset = release.assets.find((asset: any) => 
-        asset.name.endsWith('.elf') && asset.name.includes(variant)
+        asset.name.endsWith('.elf') && asset.name.includes(hardware)
       );
 
       if (!elfAsset) {
-        throw new Error(`No ELF file found for variant '${variant}' in release '${release.tag_name}'`);
+        throw new Error(`No ELF file found for hardware '${hardware}' in release '${release.tag_name}'`);
       }
 
       // 4. Download via CORS Proxy
@@ -211,22 +214,26 @@ const AppContent = () => {
           toast.dismiss(toastId);
         }
       } catch (downloadError) {
-        console.warn("CORS proxy download failed, falling back to direct download:", downloadError);
-        setErrorDialog({
+        console.warn("CORS proxy download failed:", downloadError);
+        if (isManual) {
+          setErrorDialog({
             isOpen: true,
             title: "Download Failed",
             message: "Auto-download failed. Opening browser to download manually."
-        });
-        window.open(originalUrl, '_blank');
+          });
+          window.open(originalUrl, '_blank');
+        }
       }
 
     } catch (error) {
        console.error("Failed to fetch release info:", error);
-       setErrorDialog({
+       if (isManual) {
+         setErrorDialog({
            isOpen: true,
            title: "Error Checking Releases",
            message: error instanceof Error ? error.message : "Unknown error occurred"
-       });
+         });
+       }
     }
   };
 
@@ -282,7 +289,7 @@ const AppContent = () => {
                 onViewCoredump={handleViewCoredump}
                 onClearCoredump={handleClearCoredump}
                 onLoadElf={handleLoadElf}
-                onDownloadElf={handleDownloadElf}
+                onDownloadElf={(isManual) => handleDownloadElf(undefined, undefined, isManual)}
                 isElfLoaded={isElfLoaded}
                 updateAvailable={!!(latestVersion && deviceInfo.version && compareVersions(latestVersion, deviceInfo.version) > 0)}
                 flashProgress={flashProgress}

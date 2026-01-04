@@ -15,7 +15,7 @@ interface Props {
   onViewCoredump?: () => Promise<void>;
   onClearCoredump?: () => Promise<void>;
   onLoadElf?: (file: File) => Promise<void>;
-  onDownloadElf?: () => Promise<void>;
+  onDownloadElf?: (isManual?: boolean) => Promise<void>;
   isElfLoaded?: boolean;
   flashProgress?: FlashProgress;
 }
@@ -145,7 +145,7 @@ export function Terminal({
       value: 'download', 
       label: 'Download from release', 
       icon: <Cloud className="h-4 w-4" />,
-      onClick: () => onDownloadElf && onDownloadElf(),
+      onClick: () => onDownloadElf && onDownloadElf(true),
       disabled: !onDownloadElf 
     },
   ];
