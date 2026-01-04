@@ -7,8 +7,10 @@ backup/
 cache/
 autosave/
 managed_components/
+node_modules/
 .DS_Store
 sdkconfig.*.old
+api/.wrangler/
 
 # Compiled release files
 *.dev.zip

@@ -10,6 +10,7 @@ import { DeviceToolsProvider } from "./context/DeviceToolsContext";
 import { DeviceInfo } from "./components/DeviceInfo";
 import { ToastProvider, useToast } from "./context/ToastContext";
 import { Dialog } from "./components/ui/Dialog";
+import { fetchWithCorsProxy } from "./utils/corsProxy";
 
 // Helper function to compare semantic versions
 const compareVersions = (v1: string, v2: string): number => {
@@ -57,7 +58,7 @@ const AppContent = () => {
 
   const checkForUpdates = async () => {
     try {
-      const response = await fetch('https://api.github.com/repos/techfoundrynz/pubmote/releases');
+      const response = await fetchWithCorsProxy('https://api.github.com/repos/techfoundrynz/pubmote/releases');
       if (!response.ok) return;
       
       const releases = await response.json();
@@ -101,6 +102,16 @@ const AppContent = () => {
       toast.success("Device connected");
       // Check for updates after successful connection
       checkForUpdates();
+      
+      // Automatically download ELF if version and variant are available
+      if (info.version && info.variant) {
+        try {
+          await handleDownloadElf(info.version, info.variant);
+        } catch (error) {
+          // Silently fail - user can manually download if needed
+          console.warn("Auto-download ELF failed:", error);
+        }
+      }
     } catch (error) {
       console.error("Connection error:", error);
       setDeviceInfo({ connected: false });
@@ -146,20 +157,20 @@ const AppContent = () => {
     }
   }, [espService, terminal]);
 
-  const handleDownloadElf = async () => {
-    if (!deviceInfo.version || !deviceInfo.variant) {
+  const handleDownloadElf = async (versionOverride?: string, variantOverride?: string) => {
+    const version = versionOverride || deviceInfo.version;
+    const variant = variantOverride || deviceInfo.variant;
+    
+    if (!version || !variant) {
       toast.error("Cannot download symbols: missing firmware version/variant info");
       return;
     }
 
     try {
-      toast.info("Fetching release data...");
-      const response = await fetch('https://api.github.com/repos/techfoundrynz/pubmote/releases');
+      const response = await fetchWithCorsProxy('https://api.github.com/repos/techfoundrynz/pubmote/releases');
       if (!response.ok) throw new Error(`GitHub API Error: ${response.statusText}`);
       
       const releases = await response.json();
-      const version = deviceInfo.version;
-      const variant = deviceInfo.variant;
 
       // 1. Try to find precise tag match
       let release = releases.find((r: any) => r.tag_name === version || r.name === version);
@@ -182,15 +193,14 @@ const AppContent = () => {
         throw new Error(`No ELF file found for variant '${variant}' in release '${release.tag_name}'`);
       }
 
-      // 4. Download via Proxy
+      // 4. Download via CORS Proxy
       const originalUrl = elfAsset.browser_download_url;
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`;
 
       try {
         const toastId = toast.info(`Downloading ${elfAsset.name}...`, 0);
         
         try {
-          const fileRes = await fetch(proxyUrl);
+          const fileRes = await fetchWithCorsProxy(originalUrl);
           if (!fileRes.ok) throw new Error(`Download failed: ${fileRes.statusText}`);
 
           const blob = await fileRes.blob();
@@ -201,7 +211,7 @@ const AppContent = () => {
           toast.dismiss(toastId);
         }
       } catch (downloadError) {
-        console.warn("Proxy download failed, falling back to direct download:", downloadError);
+        console.warn("CORS proxy download failed, falling back to direct download:", downloadError);
         setErrorDialog({
             isOpen: true,
             title: "Download Failed",
@@ -249,7 +259,7 @@ const AppContent = () => {
         title={errorDialog?.title || ""}
         message={errorDialog?.message || ""}
       />
-      <main className="flex-1 min-h-0 px-4 pt-6 pb-8 max-w-screen-2xl mx-auto w-full">
+      <main className="flex-1 min-h-0 px-4 pb-8 max-w-screen-2xl mx-auto w-full">
         <DeviceToolsProvider
           terminal={terminal}
           espService={espService}
@@ -275,6 +285,7 @@ const AppContent = () => {
                 onDownloadElf={handleDownloadElf}
                 isElfLoaded={isElfLoaded}
                 updateAvailable={!!(latestVersion && deviceInfo.version && compareVersions(latestVersion, deviceInfo.version) > 0)}
+                flashProgress={flashProgress}
               />
             </div>
 

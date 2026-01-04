@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal as TerminalIcon, Send, Trash2, Filter, Download, ArrowDownCircle, FileCode, Upload, Cloud } from 'lucide-react';
 import { Dropdown } from './ui/Dropdown';
-import { DeviceInfoData } from '../types';
+import { DeviceInfoData, FlashProgress } from '../types';
 import { LogEntry, TerminalService } from '../services/terminal';
 
 import { CoredumpBanner } from './CoredumpBanner';
@@ -17,6 +17,7 @@ interface Props {
   onLoadElf?: (file: File) => Promise<void>;
   onDownloadElf?: () => Promise<void>;
   isElfLoaded?: boolean;
+  flashProgress?: FlashProgress;
 }
 
 export function Terminal({ 
@@ -28,7 +29,8 @@ export function Terminal({
   onClearCoredump,
   onLoadElf,
   onDownloadElf,
-  isElfLoaded
+  isElfLoaded,
+  flashProgress
 }: Props) {
   const [command, setCommand] = React.useState('');
   const commandBuffer = React.useRef<string[]>([]);
@@ -217,44 +219,46 @@ export function Terminal({
         </div>
       </div>
 
-      <div
-        ref={terminalRef}
-        className="flex-1 min-h-0 font-mono text-sm overflow-y-auto bg-[var(--color-bg-primary)] rounded text-[var(--color-text-secondary)] relative scroll-smooth"
-      >
-        {deviceInfo?.hasCoredump && onViewCoredump && onClearCoredump && (
+      <div className="flex-1 min-h-0 flex flex-col bg-[var(--color-bg-primary)] rounded overflow-hidden">
+        {deviceInfo?.hasCoredump && onViewCoredump && onClearCoredump && 
+         !['erasing', 'flashing', 'verifying'].includes(flashProgress?.status || '') && (
           <CoredumpBanner
             onView={onViewCoredump}
             onClear={onClearCoredump}
-            compact={true}
           />
         )}
-        <div className="p-3 space-y-1">
-          {filteredLogs.length > 0 ? (
-            filteredLogs.map((log, index) => (
-              <div
-                key={index}
-                className={`leading-relaxed ${
-                  log.type === 'error'
-                    ? 'text-red-400'
+        <div
+          ref={terminalRef}
+          className="flex-1 min-h-0 font-mono text-sm overflow-y-auto text-[var(--color-text-secondary)] scroll-smooth"
+        >
+          <div className="p-3 space-y-1">
+            {filteredLogs.length > 0 ? (
+              filteredLogs.map((log, index) => (
+                <div
+                  key={index}
+                  className={`leading-relaxed ${
+                    log.type === 'error'
+                      ? 'text-red-400'
+                      : log.type === 'success'
+                      ? 'text-green-400'
+                      : 'text-[var(--color-text-secondary)]'
+                  }`}
+                >
+                  [{log.timestamp}]{' '}
+                  {log.type === 'error'
+                    ? '❌'
                     : log.type === 'success'
-                    ? 'text-green-400'
-                    : 'text-[var(--color-text-secondary)]'
-                }`}
-              >
-                [{log.timestamp}]{' '}
-                {log.type === 'error'
-                  ? '❌'
-                  : log.type === 'success'
-                  ? '✅'
-                  : 'ℹ️'}{' '}
-                {log.message}
+                    ? '✅'
+                    : 'ℹ️'}{' '}
+                  {log.message}
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500 italic">
+                {disabled ? 'Connect a device to see terminal output...' : 'No logs to display'}
               </div>
-            ))
-          ) : (
-            <div className="text-gray-500 italic">
-              {disabled ? 'Connect a device to see terminal output...' : 'No logs to display'}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
