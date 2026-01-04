@@ -209,7 +209,7 @@ const AppContent = () => {
           const blob = await fileRes.blob();
           const file = new File([blob], elfAsset.name, { type: "application/octet-stream" });
 
-          handleLoadElf(file);
+          await handleLoadElf(file);
         } finally {
           toast.dismiss(toastId);
         }

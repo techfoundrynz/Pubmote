@@ -77,9 +77,9 @@ export class ESPService {
     this.terminal = terminal;
   }
 
-  public setElf(file: File | null) {
+  public async setElf(file: File | null) {
     if (file) {
-      this.stacktraceService.setElfFile(file);
+      await this.stacktraceService.setElfFile(file);
       this.log("ELF file loaded for backtrace decoding", "success");
     } else {
       // Maybe clear it? The service doesn't have clear method yet but overriding works.
@@ -115,9 +115,17 @@ export class ESPService {
 
         // Check for backtrace
         if (logInfo.data.includes("Backtrace:")) {
+          console.log("[DEBUG] Backtrace detected in line:", logInfo.data);
+          console.log("[DEBUG] ELF loaded:", this.stacktraceService.isElfLoaded());
           if (this.stacktraceService.isElfLoaded()) {
-            const decoded = await this.stacktraceService.decode(logInfo.data);
-            this.log(decoded, "info");
+            try {
+              const decoded = await this.stacktraceService.decode(logInfo.data);
+              console.log("[DEBUG] Decoded result:", decoded);
+              this.log(decoded, "info");
+            } catch (error) {
+              console.error("[DEBUG] Decode error:", error);
+              this.log(`Backtrace decode error: ${error}`, "error");
+            }
           } else {
             this.log("Backtrace detected but no ELF file loaded.", "info");
           }
@@ -140,9 +148,17 @@ export class ESPService {
 
           // Check for backtrace
           if (logInfo.data.includes("Backtrace:")) {
+            console.log("[DEBUG] Backtrace detected in buffered line:", logInfo.data);
+            console.log("[DEBUG] ELF loaded:", this.stacktraceService.isElfLoaded());
             if (this.stacktraceService.isElfLoaded()) {
-              const decoded = await this.stacktraceService.decode(logInfo.data);
-              this.log(decoded, "info");
+              try {
+                const decoded = await this.stacktraceService.decode(logInfo.data);
+                console.log("[DEBUG] Decoded result:", decoded);
+                this.log(decoded, "info");
+              } catch (error) {
+                console.error("[DEBUG] Decode error:", error);
+                this.log(`Backtrace decode error: ${error}`, "error");
+              }
             } else {
               this.log("Backtrace detected but no ELF file loaded.", "info");
             }
