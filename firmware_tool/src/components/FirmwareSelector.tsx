@@ -17,6 +17,7 @@ import { cn } from "../utils/cn";
 import JSZip from "jszip";
 import { useToast } from "../context/ToastContext";
 import { Dialog } from "../components/ui/Dialog";
+import { fetchWithCorsProxy } from "../utils/corsProxy";
 
 interface FileUploadProps {
   label: string;
@@ -223,10 +224,10 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
     try {
       const extractedFiles = await extractFirmwareFiles(file);
       setFiles({
-        bootloader: null,
-        partitionTable: null,
-        application: null,
-        elf: null,
+        bootloader: extractedFiles.bootloader,
+        partitionTable: extractedFiles.partitionTable,
+        application: extractedFiles.application,
+        elf: extractedFiles.elf,
         zip: file,
       });
       onSelectFirmware(extractedFiles);
@@ -287,8 +288,7 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       setIsDownloading(true);
       toastId = toast.info("Downloading firmware package...", 0);
       
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl);
+      const response = await fetchWithCorsProxy(url);
       if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
       
       const blob = await response.blob();
@@ -298,7 +298,7 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       
       await handlePackageFileChange(file);
     } catch (err) {
-      console.error("Failed to download firmware via proxy, falling back to direct download:", err);
+      console.error("Failed to download firmware via CORS proxy, falling back to direct download:", err);
       setErrorDialog({
           isOpen: true,
           title: "Download Failed",

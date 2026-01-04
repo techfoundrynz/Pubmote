@@ -1,0 +1,22 @@
+{
+  "name": "pubmote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pubmote monorepo",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --filter @pubmote/* dev",
+    "firmware-tool:dev": "pnpm --filter @pubmote/firmware-tool dev",
+    "firmware-tool:build": "pnpm --filter @pubmote/firmware-tool build",
+    "firmware-tool:lint": "pnpm --filter @pubmote/firmware-tool lint",
+    "firmware-tool:preview": "pnpm --filter @pubmote/firmware-tool preview",
+    "firmware-tool:deploy": "pnpm --filter @pubmote/firmware-tool run deploy",
+    "api:dev": "pnpm --filter @pubmote/api dev",
+    "api:deploy": "pnpm --filter @pubmote/api run deploy",
+    "api:typecheck": "pnpm --filter @pubmote/api typecheck"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

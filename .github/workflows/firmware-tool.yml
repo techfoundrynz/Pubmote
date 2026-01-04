@@ -21,15 +21,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '22'
           
       - name: Install dependencies
         working-directory: ./firmware_tool # Change to the firmware_tool directory
-        run: npm ci  # Using ci instead of install for cleaner installs in CI environment
+        run: corepack enable && pnpm i
         
       - name: Build
         working-directory: ./firmware_tool
-        run: npm run build  # Assuming you have a build script in package.json
+        run: pnpm build
         
       - name: GH Pages deploy
         uses: Cecilapp/GitHub-Pages-deploy@3.2.2

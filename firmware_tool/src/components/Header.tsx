@@ -19,7 +19,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-[var(--color-bg-primary)]">
-      <div className="flex justify-between items-center px-4 py-4 max-w-screen-2xl mx-auto w-full">
+      <div className="flex justify-between items-center px-4 py-6 max-w-screen-2xl mx-auto w-full">
         <div className="flex items-center gap-3">
           <img src="/favicon.svg" alt="Pubmote Logo" className="h-12 w-12" />
           <div>

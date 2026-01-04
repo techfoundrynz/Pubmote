@@ -107,12 +107,11 @@ export function FloatAccessoriesSelector() {
             dropdownWidth={400}
           />
       </div>
+      <p>
+        A VESC Express package for controlling LEDs, BMS and Pubmote. To install:
+      </p>
       <div className="space-y-4">
-        <div className="space-y-4 rounded-lg bg-[var(--color-bg-tertiary)] p-4">
-          <p>
-            A VESC Express package for controlling LEDs, BMS and Pubmote. To install:
-          </p>
-
+        <div className="space-y-4 rounded-lg bg-[var(--color-bg-tertiary)] px-4">
           <ul className="p-4" style={{listStyleType: "decimal"}}>
             <li>
               Select a build to download from the dropdown above and unzip it
