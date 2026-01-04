@@ -4,7 +4,7 @@ import hashlib
 
 major_version = 0
 minor_version = 6
-patch_version = 11
+patch_version = 12
 
 def generate_build_id():
     # Get current timestamp
