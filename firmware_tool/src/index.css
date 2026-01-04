@@ -2,6 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    /* Light mode colors */
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #e5e5e5;
+    --color-bg-tertiary: #d4d4d4;
+    --color-bg-hover: #c4c4c4;
+    --color-bg-disabled: #d4d4d4;
+    --color-text-primary: #000000;
+    --color-text-secondary: #262626;
+    --color-text-tertiary: #525252;
+    --color-text-disabled: #737373;
+    --color-border: #d4d4d4;
+    --color-scrollbar-track: #f5f5f5;
+    --color-scrollbar-thumb: #d4d4d4;
+    --color-scrollbar-thumb-hover: #a3a3a3;
+
+    /* Badge colors - light backgrounds in light mode */
+    --badge-green-bg: #dcfce7;
+    --badge-green-text: #15803d;
+    --badge-green-border: #16a34a;
+    --badge-red-bg: #fee2e2;
+    --badge-red-text: #b91c1c;
+    --badge-red-border: #dc2626;
+    --badge-blue-bg: #dbeafe;
+    --badge-blue-text: #1d4ed8;
+    --badge-blue-border: #2563eb;
+
+    /* Danger color - red-600 in light mode */
+    --color-danger: #dc2626;
+  }
+
+  .dark {
+    /* Dark mode colors */
+    --color-bg-primary: #0a0a0a;
+    --color-bg-secondary: #171717;
+    --color-bg-tertiary: #1f1f1f;
+    --color-bg-hover: #2a2a2a;
+    --color-bg-disabled: #2a2a2a;
+    --color-text-primary: #f5f5f5;
+    --color-text-secondary: #a3a3a3;
+    --color-text-tertiary: #737373;
+    --color-text-disabled: #525252;
+    --color-border: #404040;
+    --color-scrollbar-track: #0a0a0a;
+    --color-scrollbar-thumb: #2a2a2a;
+    --color-scrollbar-thumb-hover: #3a3a3a;
+
+    /* Badge colors - dark backgrounds in dark mode */
+    --badge-green-bg: #14532d;
+    --badge-green-text: #86efac;
+    --badge-green-border: #22c55e;
+    --badge-red-bg: #7f1d1d;
+    --badge-red-text: #fca5a5;
+    --badge-red-border: #ef4444;
+    --badge-blue-bg: #1e3a8a;
+    --badge-blue-text: #93c5fd;
+    --badge-blue-border: #3b82f6;
+
+    /* Danger color - red-700 in dark mode (one shade darker) */
+    --color-danger: #b91c1c;
+  }
+}
+
 body {
   @apply antialiased;
 }
@@ -11,9 +75,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-900;
+  background-color: var(--color-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply rounded bg-gray-700 hover:bg-gray-600;
+  background-color: var(--color-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-scrollbar-thumb-hover);
 }

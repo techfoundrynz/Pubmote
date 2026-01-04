@@ -1,27 +1,47 @@
 import React, { useEffect, useRef } from 'react';
-import { Terminal as TerminalIcon, Send, Trash2, Filter, Download } from 'lucide-react';
+import { Terminal as TerminalIcon, Send, Trash2, Filter, Download, ArrowDownCircle, FileCode, Upload, Cloud } from 'lucide-react';
 import { Dropdown } from './ui/Dropdown';
 import { DeviceInfoData } from '../types';
 import { LogEntry, TerminalService } from '../services/terminal';
+
+import { CoredumpBanner } from './CoredumpBanner';
+import { cn } from '../utils/cn';
 
 interface Props {
   terminal: TerminalService;
   onSendCommand: (command: string) => void;
   disabled?: boolean;
   deviceInfo?: DeviceInfoData;
+  onViewCoredump?: () => Promise<void>;
+  onClearCoredump?: () => Promise<void>;
+  onLoadElf?: (file: File) => Promise<void>;
+  onDownloadElf?: () => Promise<void>;
+  isElfLoaded?: boolean;
 }
 
-export function Terminal({ terminal, onSendCommand, disabled = false, deviceInfo }: Props) {
+export function Terminal({ 
+  terminal, 
+  onSendCommand, 
+  disabled = false, 
+  deviceInfo,
+  onViewCoredump,
+  onClearCoredump,
+  onLoadElf,
+  onDownloadElf,
+  isElfLoaded
+}: Props) {
   const [command, setCommand] = React.useState('');
   const commandBuffer = React.useRef<string[]>([]);
   const commandBufferIndex = React.useRef<number>(0);
   const [logs, setLogs] = React.useState<LogEntry[]>([]);
+  const [autoScroll, setAutoScroll] = React.useState(true);
   const [enabledLogTypes, setEnabledLogTypes] = React.useState<string[]>([
     'info',
     'error',
     'success',
   ]);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Subscribe to terminal data
@@ -44,10 +64,10 @@ export function Terminal({ terminal, onSendCommand, disabled = false, deviceInfo
   }, [terminal]);
 
   useEffect(() => {
-    if (terminalRef.current) {
+    if (autoScroll && terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [logs, autoScroll]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +114,16 @@ export function Terminal({ terminal, onSendCommand, disabled = false, deviceInfo
     URL.revokeObjectURL(url);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0 && onLoadElf) {
+      onLoadElf(e.target.files[0]);
+    }
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const filteredLogs = logs.filter(log => enabledLogTypes.includes(log.type));
 
   const logLevelOptions = [
@@ -102,10 +132,33 @@ export function Terminal({ terminal, onSendCommand, disabled = false, deviceInfo
     { value: 'success', label: 'Success', color: 'text-green-500' },
   ];
 
+  const elfOptions = [
+    { 
+      value: 'pick', 
+      label: 'Pick file', 
+      icon: <Upload className="h-4 w-4" />,
+      onClick: () => fileInputRef.current?.click() 
+    },
+    { 
+      value: 'download', 
+      label: 'Download from release', 
+      icon: <Cloud className="h-4 w-4" />,
+      onClick: () => onDownloadElf && onDownloadElf(),
+      disabled: !onDownloadElf 
+    },
+  ];
+
   return (
-    <div className="rounded-lg bg-gray-800/50 p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-gray-400">
+    <div className="flex flex-col flex-1 min-h-0 rounded-lg bg-[var(--color-bg-tertiary)] p-4">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        accept=".elf"
+        className="hidden"
+      />
+      <div className="flex items-center justify-between mb-2 flex-shrink-0">
+        <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
           <TerminalIcon className="h-4 w-4" />
           <span className="text-sm font-medium">Terminal Monitor</span>
         </div>
@@ -119,15 +172,44 @@ export function Terminal({ terminal, onSendCommand, disabled = false, deviceInfo
             icon={<Filter className="h-4 w-4" />}
           />
           <button
+            onClick={() => setAutoScroll(!autoScroll)}
+            className={`p-1 transition-colors ${
+              autoScroll ? 'text-blue-400 hover:text-blue-300' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+            }`}
+            title={autoScroll ? 'Disable autoscroll' : 'Enable autoscroll'}
+          >
+            <ArrowDownCircle className="h-4 w-4" />
+          </button>
+          
+          {(onLoadElf || onDownloadElf) && (
+             <Dropdown
+               options={elfOptions.map(opt => ({
+                 value: opt.value,
+                 label: opt.label,
+                 icon: opt.icon,
+                 onClick: opt.onClick,
+                 disabled: opt.disabled
+               }))}
+               value={[]}
+               onChange={() => {}}
+               label="Load debug symbols"
+               icon={<FileCode className={cn("h-4 w-4", !disabled && (isElfLoaded ? "text-green-500" : "text-yellow-500"))} />}
+               variant="icon"
+               dropdownWidth="auto"
+               disabled={disabled}
+             />
+          )}
+
+          <button
             onClick={downloadLogs}
-            className="p-1 text-gray-400 hover:text-gray-200 transition-colors"
+            className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             title="Download logs"
           >
             <Download className="h-4 w-4" />
           </button>
           <button
             onClick={clearLogs}
-            className="p-1 text-gray-400 hover:text-gray-200 transition-colors"
+            className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             title="Clear logs"
           >
             <Trash2 className="h-4 w-4" />
@@ -137,34 +219,43 @@ export function Terminal({ terminal, onSendCommand, disabled = false, deviceInfo
 
       <div
         ref={terminalRef}
-        className="font-mono text-sm h-80 overflow-y-auto bg-gray-950 rounded p-3 text-gray-300 space-y-1"
+        className="flex-1 min-h-0 font-mono text-sm overflow-y-auto bg-[var(--color-bg-primary)] rounded text-[var(--color-text-secondary)] relative scroll-smooth"
       >
-        {filteredLogs.length > 0 ? (
-          filteredLogs.map((log, index) => (
-            <div
-              key={index}
-              className={`leading-relaxed ${
-                log.type === 'error'
-                  ? 'text-red-400'
-                  : log.type === 'success'
-                  ? 'text-green-400'
-                  : 'text-gray-300'
-              }`}
-            >
-              [{log.timestamp}]{' '}
-              {log.type === 'error'
-                ? '❌'
-                : log.type === 'success'
-                ? '✅'
-                : 'ℹ️'}{' '}
-              {log.message}
-            </div>
-          ))
-        ) : (
-          <div className="text-gray-500 italic">
-            {disabled ? 'Connect a device to see terminal output...' : 'No logs to display'}
-          </div>
+        {deviceInfo?.hasCoredump && onViewCoredump && onClearCoredump && (
+          <CoredumpBanner
+            onView={onViewCoredump}
+            onClear={onClearCoredump}
+            compact={true}
+          />
         )}
+        <div className="p-3 space-y-1">
+          {filteredLogs.length > 0 ? (
+            filteredLogs.map((log, index) => (
+              <div
+                key={index}
+                className={`leading-relaxed ${
+                  log.type === 'error'
+                    ? 'text-red-400'
+                    : log.type === 'success'
+                    ? 'text-green-400'
+                    : 'text-[var(--color-text-secondary)]'
+                }`}
+              >
+                [{log.timestamp}]{' '}
+                {log.type === 'error'
+                  ? '❌'
+                  : log.type === 'success'
+                  ? '✅'
+                  : 'ℹ️'}{' '}
+                {log.message}
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500 italic">
+              {disabled ? 'Connect a device to see terminal output...' : 'No logs to display'}
+            </div>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
@@ -192,12 +283,12 @@ export function Terminal({ terminal, onSendCommand, disabled = false, deviceInfo
           }}
           disabled={disabled}
           placeholder={disabled ? 'Connect device to send commands...' : 'Enter command...'}
-          className="flex-1 bg-gray-900 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 bg-[var(--color-bg-secondary)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <button
           type="submit"
           disabled={disabled || !command.trim()}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-[var(--color-bg-disabled)] disabled:text-[var(--color-text-disabled)] disabled:cursor-not-allowed"
         >
           <Send className="h-4 w-4" />
           Send
