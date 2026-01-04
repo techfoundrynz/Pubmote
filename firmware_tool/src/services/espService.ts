@@ -2,6 +2,7 @@ import { ESPLoader, Transport, LoaderOptions } from "esptool-js";
 import { delay } from "../utils/delay";
 import { LogEntry, TerminalService } from "./terminal";
 import { FirmwareFiles } from "../types";
+import { StacktraceService } from "./stacktraceService";
 
 const LogTypePrefixMap: Record<LogEntry["type"], Array<`${string} `>> = {
   info: ["I "],
@@ -70,8 +71,20 @@ export class ESPService {
   }];
 
 
+  private stacktraceService: StacktraceService = new StacktraceService();
+
   constructor(terminal?: TerminalService) {
     this.terminal = terminal;
+  }
+
+  public setElf(file: File | null) {
+    if (file) {
+      this.stacktraceService.setElfFile(file);
+      this.log("ELF file loaded for backtrace decoding", "success");
+    } else {
+      // Maybe clear it? The service doesn't have clear method yet but overriding works.
+      // For now do nothing or we could add clear to StacktraceService
+    }
   }
 
   public addLogListener = (listener: LogListener) => {
@@ -94,11 +107,21 @@ export class ESPService {
     }
   }
 
-  private processEspLog = (data: string | Uint8Array) => {
+  private processEspLog = async (data: string | Uint8Array) => {
     if (typeof data === "string") {
       const logInfo = getEspLogInfo(data);
       if (logInfo.data) {
         this.emitToListeners(logInfo.data, logInfo.type);
+
+        // Check for backtrace
+        if (logInfo.data.includes("Backtrace:")) {
+          if (this.stacktraceService.isElfLoaded()) {
+            const decoded = await this.stacktraceService.decode(logInfo.data);
+            this.log(decoded, "info");
+          } else {
+            this.log("Backtrace detected but no ELF file loaded.", "info");
+          }
+        }
       }
     } else {
       // If log message is split into multiple chunks, buffer it until newline
@@ -114,6 +137,16 @@ export class ESPService {
         const logInfo = getEspLogInfo(line);
         if (logInfo.data) {
           this.emitToListeners(logInfo.data, logInfo.type);
+
+          // Check for backtrace
+          if (logInfo.data.includes("Backtrace:")) {
+            if (this.stacktraceService.isElfLoaded()) {
+              const decoded = await this.stacktraceService.decode(logInfo.data);
+              this.log(decoded, "info");
+            } else {
+              this.log("Backtrace detected but no ELF file loaded.", "info");
+            }
+          }
         }
       }
     }
@@ -161,6 +194,36 @@ export class ESPService {
     });
   }
 
+  checkCoredump = async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const timeout = 2000;
+      const timeoutId = setTimeout(() => {
+        this.removeLogListener(coreDumpListener);
+        resolve(false);
+      }, timeout);
+
+      const coreDumpListener: LogListener = (data) => {
+        if (data.includes("coredump: found")) {
+          clearTimeout(timeoutId);
+          this.removeLogListener(coreDumpListener);
+          this.log("Core dump detected on device.", "info");
+          resolve(true);
+          return true;
+        }
+        if (data.includes("coredump: none")) {
+          clearTimeout(timeoutId);
+          this.removeLogListener(coreDumpListener);
+          resolve(false);
+          return true;
+        }
+        return false;
+      };
+
+      this.addLogListener(coreDumpListener);
+      this.sendCommand("coredump_info");
+    });
+  }
+
   connect = async (): Promise<{
     connected: boolean;
     chipId: string;
@@ -168,6 +231,7 @@ export class ESPService {
     version: string;
     variant: string;
     hardware: string;
+    hasCoredump: boolean;
   }> => {
     if (this.isConnecting) {
       throw new Error("Connection already in progress");
@@ -198,6 +262,10 @@ export class ESPService {
 
       const loader = new ESPLoader(loaderOptions);
 
+      // ... (existing loader.main(), loader.sync(), chip info reading ...)
+      // I need to keep the context lines for the replace, so I will target the specific block I'm changing
+      // But wait, the previous tool call modified the file, line numbers might shifted.
+      // I will rely on the Context match.
       await loader.main();
       await loader.sync();
 
@@ -235,12 +303,19 @@ export class ESPService {
       let version: string = "";
       let variant: string = "";
       let hardware: string = "";
+      let hasCoredump: boolean = false;
 
       try {
         const res = await this.getVersionInfo();
         version = res.version;
         variant = res.variant;
         hardware = res.hardware;
+
+        // Check for core dump
+        hasCoredump = await this.checkCoredump().catch(e => {
+          console.error(e);
+          return false;
+        });
       } catch (e) {
         this.log(
           `Connection failed: ${e instanceof Error ? e.message : "Unknown error"
@@ -256,6 +331,7 @@ export class ESPService {
         version,
         variant,
         hardware,
+        hasCoredump,
       };
 
       this.log(

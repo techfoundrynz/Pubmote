@@ -108,7 +108,7 @@ export function FloatAccessoriesSelector() {
           />
       </div>
       <div className="space-y-4">
-        <div className="space-y-4 rounded-lg bg-gray-800/50 p-4">
+        <div className="space-y-4 rounded-lg bg-[var(--color-bg-tertiary)] p-4">
           <p>
             A VESC Express package for controlling LEDs, BMS and Pubmote. To install:
           </p>

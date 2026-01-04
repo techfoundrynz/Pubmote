@@ -155,6 +155,7 @@ jobs:
         files: |
           *.zip
           *.bin
+          *.elf
         prerelease: true
         fail_on_unmatched_files: true
         generate_release_notes: true

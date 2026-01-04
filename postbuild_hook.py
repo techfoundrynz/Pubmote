@@ -13,7 +13,8 @@ def zip_build_files(source, target, env):
     files_to_zip = [
         "bootloader.bin",
         "partitions.bin",
-        "firmware.bin"
+        "firmware.bin",
+        "firmware.elf"
     ]
 
     # Get build flags for parsing
@@ -60,6 +61,14 @@ def zip_build_files(source, target, env):
     
     print(f"Copying firmware.bin to: {env['PIOENV']}-{version_string}.bin")
     shutil.copy(firmware_source, firmware_dest)
+
+    # Copy firmware.elf to versioned filename
+    elf_source = os.path.join(build_dir, env['PIOENV'], "firmware.elf")
+    elf_dest = f"{project_dir}{os.sep}{env['PIOENV']}-{version_string}.elf"
+
+    if os.path.exists(elf_source):
+        print(f"Copying firmware.elf to: {env['PIOENV']}-{version_string}.elf")
+        shutil.copy(elf_source, elf_dest)
 
 # Add postbuild call
 env.AddPostAction("$BUILD_DIR/firmware.bin", zip_build_files)
