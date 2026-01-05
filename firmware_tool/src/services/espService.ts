@@ -1,3 +1,4 @@
+/* eslint-disable no-control-regex */
 import { ESPLoader, Transport, LoaderOptions } from "esptool-js";
 import { delay } from "../utils/delay";
 import { LogEntry, TerminalService } from "./terminal";
@@ -31,11 +32,18 @@ const removeLogLevelPrefix = (data: string): string => {
 }
 
 const removeAnsiEscapeCodes = (data: string): string => {
-  return data.replace(
-    // eslint-disable-next-line no-control-regex
-    /(?:\u001b|\x1b|\[)?(?:\[|\()(?:\d{1,3};)*\d{1,3}[A-Za-z]/g,
-    ''
-  );
+  return data
+    // Remove ANSI escape sequences (ESC[...)
+    .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+    // Remove other escape sequences (ESC(...)
+    .replace(/\x1b\([0-9;]*[A-Za-z]/g, '')
+    // Remove CSI sequences
+    .replace(/\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]/g, '')
+    // Remove all control characters (0x00-0x1F) except newline (0x0A) and tab (0x09)
+    // This includes carriage return (0x0D) which we handle separately
+    .replace(/[\x00-\x08\x0B-\x1F\x7F-\x9F]/g, '')
+    // Remove any remaining replacement characters
+    .replace(/\uFFFD/g, '');
 };
 
 const getEspLogInfo = (
@@ -44,8 +52,11 @@ const getEspLogInfo = (
   data: string;
   type: LogEntry["type"];
 } => {
-  const cleanedData = removeAnsiEscapeCodes(data.trim());
+  // Convert carriage returns to newlines for proper display
+  const normalizedData = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const cleanedData = removeAnsiEscapeCodes(normalizedData.trim());
   const type = getLogLevel(cleanedData);
+
   return {
     data: removeLogLevelPrefix(cleanedData),
     type,

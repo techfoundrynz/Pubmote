@@ -168,10 +168,14 @@ export function Terminal({
           <Dropdown
             options={logLevelOptions}
             value={enabledLogTypes}
-            onChange={(value) => setEnabledLogTypes(value as string[])}
-            multiple={true}
+            onChange={(value) => setEnabledLogTypes(value as LogEntry['type'][])}
+            multiple
             label="Log Levels"
+            multipleLabel="Select log levels"
             icon={<Filter className="h-4 w-4" />}
+            width="auto"
+            dropdownWidth="auto"
+            disabled={disabled}
           />
           <button
             onClick={() => setAutoScroll(!autoScroll)}
@@ -236,21 +240,25 @@ export function Terminal({
               filteredLogs.map((log, index) => (
                 <div
                   key={index}
-                  className={`leading-relaxed ${
+                  className="leading-relaxed flex gap-2"
+                >
+                  <div className="text-[var(--color-text-secondary)] flex-shrink-0">
+                    [{log.timestamp}]{' '}
+                    {log.type === 'error'
+                      ? '❌'
+                      : log.type === 'success'
+                      ? '✅'
+                      : 'ℹ️'}
+                  </div>
+                  <div className={`whitespace-pre-wrap flex-1 ${
                     log.type === 'error'
                       ? 'text-red-400'
                       : log.type === 'success'
                       ? 'text-green-400'
                       : 'text-[var(--color-text-secondary)]'
-                  }`}
-                >
-                  [{log.timestamp}]{' '}
-                  {log.type === 'error'
-                    ? '❌'
-                    : log.type === 'success'
-                    ? '✅'
-                    : 'ℹ️'}{' '}
-                  {log.message}
+                  }`}>
+                    {log.message}
+                  </div>
                 </div>
               ))
             ) : (
