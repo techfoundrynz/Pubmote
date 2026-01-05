@@ -454,17 +454,11 @@ static esp_err_t app_lvgl_init(void) {
       .handle = touch_handle,
   };
 
-  lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
-  if (lvgl_touch_indev) {
-    indev_drv_touch = lvgl_touch_indev->driver;
-    original_read_cb = lvgl_touch_indev->driver->read_cb;
-    // Replace the read callback with our own wrapped with mutex control
-    indev_drv_touch->read_cb = lv_touch_cb;
-    indev_drv_touch->feedback_cb = feedback_cb;
-  }
-  else {
-    ESP_LOGE(TAG, "Failed to add touch to LVGL");
-  }
+  indev_drv_touch = lvgl_touch_indev->driver;
+  original_read_cb = lvgl_touch_indev->driver->read_cb;
+  // Replace the read callback with our own wrapped with mutex control
+  indev_drv_touch->read_cb = lv_touch_cb;
+  indev_drv_touch->feedback_cb = feedback_cb;
 
   //  lv_indev_add_event_cb(lvgl_touch_indev, lv_touch_cb, LV_EVENT_ALL, NULL); //LVGL9
 #endif
