@@ -76,6 +76,11 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 
 #define SCREEN_TEST_UI 0
 
+// Statically allocated buffers (in Internal RAM, implicitly DMA capable on S3)
+// 16-byte alignment is good practice for DMA/Cache
+static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf1_static[BUFFER_SIZE];
+static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf2_static[BUFFER_SIZE];
+
 #if TOUCH_ENABLED
 static void feedback_cb(struct _lv_indev_drv_t *indev_drv, uint8_t code) {
   if (code == LV_EVENT_PRESSED) {
@@ -373,7 +378,10 @@ static void lv_touch_cb(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 #endif // TOUCH_ENABLED
 
 void display_set_rotation(ScreenRotation rot) {
-  lv_disp_set_rotation(lvgl_disp, (lv_disp_rot_t)rot);
+  if (LVGL_lock(0)) {
+    lv_disp_set_rotation(lvgl_disp, (lv_disp_rot_t)rot);
+    LVGL_unlock();
+  }
 }
 
 static esp_err_t app_lvgl_init(void) {
@@ -402,6 +410,8 @@ static esp_err_t app_lvgl_init(void) {
                                             .panel_handle = lcd_panel,
                                             .buffer_size = BUFFER_SIZE,
                                             .double_buffer = true,
+                                            .buf1 = buf1_static,
+                                            .buf2 = buf2_static,
                                             .hres = LV_HOR_RES,
                                             .vres = LV_VER_RES,
                                             .monochrome = false,
@@ -443,12 +453,18 @@ static esp_err_t app_lvgl_init(void) {
       .disp = lvgl_disp,
       .handle = touch_handle,
   };
+
   lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
-  indev_drv_touch = lvgl_touch_indev->driver;
-  original_read_cb = lvgl_touch_indev->driver->read_cb;
-  // Replace the read callback with our own wrapped with mutex control
-  indev_drv_touch->read_cb = lv_touch_cb;
-  indev_drv_touch->feedback_cb = feedback_cb;
+  if (lvgl_touch_indev) {
+    indev_drv_touch = lvgl_touch_indev->driver;
+    original_read_cb = lvgl_touch_indev->driver->read_cb;
+    // Replace the read callback with our own wrapped with mutex control
+    indev_drv_touch->read_cb = lv_touch_cb;
+    indev_drv_touch->feedback_cb = feedback_cb;
+  }
+  else {
+    ESP_LOGE(TAG, "Failed to add touch to LVGL");
+  }
 
   //  lv_indev_add_event_cb(lvgl_touch_indev, lv_touch_cb, LV_EVENT_ALL, NULL); //LVGL9
 #endif

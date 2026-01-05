@@ -45,6 +45,9 @@ typedef struct {
     bool        double_buffer;      /*!< True, if should be allocated two buffers */
     uint32_t    trans_size;         /*!< Allocated buffer will be in SRAM to move framebuf (optional) */
 
+    void        *buf1;              /*!< Pointer to the first buffer (optional) */
+    void        *buf2;              /*!< Pointer to the second buffer (optional) */
+
     uint32_t    hres;           /*!< LCD display horizontal resolution */
     uint32_t    vres;           /*!< LCD display vertical resolution */
 
