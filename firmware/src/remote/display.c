@@ -454,6 +454,7 @@ static esp_err_t app_lvgl_init(void) {
       .handle = touch_handle,
   };
 
+  lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
   indev_drv_touch = lvgl_touch_indev->driver;
   original_read_cb = lvgl_touch_indev->driver->read_cb;
   // Replace the read callback with our own wrapped with mutex control
