@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Terminal as TerminalIcon, Send, Trash2, Filter, Download, ArrowDownCircle, FileCode, Upload, Cloud } from 'lucide-react';
+import { Terminal as TerminalIcon, Send, Trash2, Filter, Download, ArrowDownCircle, FileCode, Upload, Cloud, Search, X } from 'lucide-react';
 import { Dropdown } from './ui/Dropdown';
 import { DeviceInfoData, FlashProgress } from '../types';
 import { LogEntry, TerminalService } from '../services/terminal';
@@ -36,6 +36,8 @@ export function Terminal({
   const commandBuffer = React.useRef<string[]>([]);
   const commandBufferIndex = React.useRef<number>(0);
   const [logs, setLogs] = React.useState<LogEntry[]>([]);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
   const [autoScroll, setAutoScroll] = React.useState(true);
   const [enabledLogTypes, setEnabledLogTypes] = React.useState<string[]>([
     'info',
@@ -126,7 +128,13 @@ export function Terminal({
     }
   };
 
-  const filteredLogs = logs.filter(log => enabledLogTypes.includes(log.type));
+  const filteredLogs = logs.filter(log => {
+    const matchesType = enabledLogTypes.includes(log.type);
+    const matchesSearch = searchQuery 
+      ? log.message.toLowerCase().includes(searchQuery.toLowerCase())
+      : true;
+    return matchesType && matchesSearch;
+  });
 
   const logLevelOptions = [
     { value: 'info', label: 'Info', color: 'text-blue-500' },
@@ -159,12 +167,13 @@ export function Terminal({
         accept=".elf"
         className="hidden"
       />
-      <div className="flex items-center justify-between mb-2 flex-shrink-0">
-        <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
+      <div className="flex items-center justify-end mb-2 flex-shrink-0 relative h-8">
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2 text-[var(--color-text-secondary)] z-0 pointer-events-none">
           <TerminalIcon className="h-4 w-4" />
           <span className="text-sm font-medium">Terminal Monitor</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 relative z-10 bg-[var(--color-bg-tertiary)] pl-4 transition-all">
+
           <Dropdown
             options={logLevelOptions}
             value={enabledLogTypes}
@@ -220,6 +229,44 @@ export function Terminal({
           >
             <Trash2 className="h-4 w-4" />
           </button>
+          
+          <div className={`relative flex items-center transition-all duration-300 ease-in-out ${
+            isSearchExpanded || searchQuery ? "w-48" : "w-6"
+          }`}>
+            {isSearchExpanded || searchQuery ? (
+              <div className="relative w-full">
+                <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => !searchQuery && setIsSearchExpanded(false)}
+                  placeholder="Search..."
+                  className="h-8 w-full rounded-md bg-[var(--color-bg-secondary)] pl-8 pr-7 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] border border-[var(--color-border-primary)] focus:border-blue-500 focus:outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearchQuery('');
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsSearchExpanded(true)}
+                className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                title="Search logs"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -250,7 +297,7 @@ export function Terminal({
                       ? '✅'
                       : 'ℹ️'}
                   </div>
-                  <div className={`whitespace-pre-wrap flex-1 ${
+                  <div className={`whitespace-pre-wrap break-all flex-1 ${
                     log.type === 'error'
                       ? 'text-red-400'
                       : log.type === 'success'

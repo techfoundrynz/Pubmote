@@ -81,6 +81,8 @@ export class ESPService {
     return true;
   }];
 
+  public onReboot?: () => void;
+
 
   private stacktraceService: StacktraceService = new StacktraceService();
 
@@ -141,6 +143,14 @@ export class ESPService {
             this.log("Backtrace detected but no ELF file loaded.", "info");
           }
         }
+
+        // Check for reboot
+        if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x")) {
+          console.log("[DEBUG] Reboot detected");
+          if (this.onReboot) {
+            this.onReboot();
+          }
+        }
       }
     } else {
       // If log message is split into multiple chunks, buffer it until newline
@@ -172,6 +182,14 @@ export class ESPService {
               }
             } else {
               this.log("Backtrace detected but no ELF file loaded.", "info");
+            }
+          }
+
+          // Check for reboot
+          if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x")) {
+            console.log("[DEBUG] Reboot detected (buffered)");
+            if (this.onReboot) {
+              this.onReboot();
             }
           }
         }
