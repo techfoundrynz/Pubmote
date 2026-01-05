@@ -577,8 +577,6 @@ export class ESPService {
     this.removeSerialMonitor();
     if (this.port) {
       this.port.removeEventListener('disconnect', this.handlePortDisconnect);
-      // We don't null this.port here yet, because esptool might use it to disconnect transport?
-      // Actually esptool has its own reference to port in transport.
     }
 
     if (this.espLoader) {
