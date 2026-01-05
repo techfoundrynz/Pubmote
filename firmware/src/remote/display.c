@@ -224,7 +224,8 @@ static esp_err_t app_lcd_init(void) {
 #if DISP_GC9A01
   const esp_lcd_panel_io_spi_config_t io_config = GC9A01_PANEL_IO_SPI_CONFIG(DISP_CS, DISP_DC, NULL, NULL);
 #elif DISP_SH8601 || DISP_CO5300
-  const esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(DISP_CS, NULL, NULL);
+  esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(DISP_CS, NULL, NULL);
+  io_config.pclk_hz = LCD_PIXEL_CLOCK_HZ;
 #elif DISP_ST7789
   #error "ST7789 not supported"
 #endif
