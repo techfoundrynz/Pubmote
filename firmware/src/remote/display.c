@@ -76,6 +76,11 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 
 #define SCREEN_TEST_UI 1
 
+// Statically allocated buffers (in Internal RAM, implicitly DMA capable on S3)
+// 16-byte alignment is good practice for DMA/Cache
+static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf1_static[BUFFER_SIZE];
+static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf2_static[BUFFER_SIZE];
+
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
   ESP_LOGW(TAG, "Input event received");
@@ -363,7 +368,10 @@ static esp_err_t app_touch_init(void) {
 #endif // TOUCH_ENABLED
 
 void display_set_rotation(ScreenRotation rot) {
-  lv_display_set_rotation(lvgl_disp, (lv_display_rotation_t)rot);
+  if (LVGL_lock(0)) {
+    lv_display_set_rotation(lvgl_disp, (lv_display_rotation_t)rot);
+    LVGL_unlock();
+  }
 }
 
 static esp_err_t app_lvgl_init(void) {
@@ -392,6 +400,8 @@ static esp_err_t app_lvgl_init(void) {
                                             .panel_handle = lcd_panel,
                                             .buffer_size = BUFFER_SIZE,
                                             .double_buffer = true,
+                                            .buf1 = buf1_static,
+                                            .buf2 = buf2_static,
                                             .hres = LV_HOR_RES,
                                             .vres = LV_VER_RES,
                                             .monochrome = false,
