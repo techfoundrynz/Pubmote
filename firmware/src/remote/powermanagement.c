@@ -210,7 +210,7 @@ static void enter_sleep_internal() {
 
   // Turn off screen before sleep
   display_off();
-  led_set_brightness(0);
+  led_deinit();
   acc1_power_set_level(0);
   acc2_power_set_level(0);
 

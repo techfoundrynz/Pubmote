@@ -1,0 +1,3 @@
+packages:
+  - 'firmware_tool'
+  - 'api'

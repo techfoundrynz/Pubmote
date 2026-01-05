@@ -1,7 +1,9 @@
+/* eslint-disable no-control-regex */
 import { ESPLoader, Transport, LoaderOptions } from "esptool-js";
 import { delay } from "../utils/delay";
 import { LogEntry, TerminalService } from "./terminal";
 import { FirmwareFiles } from "../types";
+import { StacktraceService } from "./stacktraceService";
 
 const LogTypePrefixMap: Record<LogEntry["type"], Array<`${string} `>> = {
   info: ["I "],
@@ -30,11 +32,18 @@ const removeLogLevelPrefix = (data: string): string => {
 }
 
 const removeAnsiEscapeCodes = (data: string): string => {
-  return data.replace(
-    // eslint-disable-next-line no-control-regex
-    /(?:\u001b|\x1b|\[)?(?:\[|\()(?:\d{1,3};)*\d{1,3}[A-Za-z]/g,
-    ''
-  );
+  return data
+    // Remove ANSI escape sequences (ESC[...)
+    .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+    // Remove other escape sequences (ESC(...)
+    .replace(/\x1b\([0-9;]*[A-Za-z]/g, '')
+    // Remove CSI sequences
+    .replace(/\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]/g, '')
+    // Remove all control characters (0x00-0x1F) except newline (0x0A) and tab (0x09)
+    // This includes carriage return (0x0D) which we handle separately
+    .replace(/[\x00-\x08\x0B-\x1F\x7F-\x9F]/g, '')
+    // Remove any remaining replacement characters
+    .replace(/\uFFFD/g, '');
 };
 
 const getEspLogInfo = (
@@ -43,8 +52,11 @@ const getEspLogInfo = (
   data: string;
   type: LogEntry["type"];
 } => {
-  const cleanedData = removeAnsiEscapeCodes(data.trim());
+  // Convert carriage returns to newlines for proper display
+  const normalizedData = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const cleanedData = removeAnsiEscapeCodes(normalizedData.trim());
   const type = getLogLevel(cleanedData);
+
   return {
     data: removeLogLevelPrefix(cleanedData),
     type,
@@ -69,9 +81,23 @@ export class ESPService {
     return true;
   }];
 
+  public onReboot?: () => void;
+
+
+  private stacktraceService: StacktraceService = new StacktraceService();
 
   constructor(terminal?: TerminalService) {
     this.terminal = terminal;
+  }
+
+  public async setElf(file: File | null) {
+    if (file) {
+      await this.stacktraceService.setElfFile(file);
+      this.log("ELF file loaded for backtrace decoding", "success");
+    } else {
+      // Maybe clear it? The service doesn't have clear method yet but overriding works.
+      // For now do nothing or we could add clear to StacktraceService
+    }
   }
 
   public addLogListener = (listener: LogListener) => {
@@ -94,11 +120,37 @@ export class ESPService {
     }
   }
 
-  private processEspLog = (data: string | Uint8Array) => {
+  private processEspLog = async (data: string | Uint8Array) => {
     if (typeof data === "string") {
       const logInfo = getEspLogInfo(data);
       if (logInfo.data) {
         this.emitToListeners(logInfo.data, logInfo.type);
+
+        // Check for backtrace
+        if (logInfo.data.includes("Backtrace:")) {
+          console.log("[DEBUG] Backtrace detected in line:", logInfo.data);
+          console.log("[DEBUG] ELF loaded:", this.stacktraceService.isElfLoaded());
+          if (this.stacktraceService.isElfLoaded()) {
+            try {
+              const decoded = await this.stacktraceService.decode(logInfo.data);
+              console.log("[DEBUG] Decoded result:", decoded);
+              this.log(decoded, "info");
+            } catch (error) {
+              console.error("[DEBUG] Decode error:", error);
+              this.log(`Backtrace decode error: ${error}`, "error");
+            }
+          } else {
+            this.log("Backtrace detected but no ELF file loaded.", "info");
+          }
+        }
+
+        // Check for reboot
+        if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x")) {
+          console.log("[DEBUG] Reboot detected");
+          if (this.onReboot) {
+            this.onReboot();
+          }
+        }
       }
     } else {
       // If log message is split into multiple chunks, buffer it until newline
@@ -114,6 +166,32 @@ export class ESPService {
         const logInfo = getEspLogInfo(line);
         if (logInfo.data) {
           this.emitToListeners(logInfo.data, logInfo.type);
+
+          // Check for backtrace
+          if (logInfo.data.includes("Backtrace:")) {
+            console.log("[DEBUG] Backtrace detected in buffered line:", logInfo.data);
+            console.log("[DEBUG] ELF loaded:", this.stacktraceService.isElfLoaded());
+            if (this.stacktraceService.isElfLoaded()) {
+              try {
+                const decoded = await this.stacktraceService.decode(logInfo.data);
+                console.log("[DEBUG] Decoded result:", decoded);
+                this.log(decoded, "info");
+              } catch (error) {
+                console.error("[DEBUG] Decode error:", error);
+                this.log(`Backtrace decode error: ${error}`, "error");
+              }
+            } else {
+              this.log("Backtrace detected but no ELF file loaded.", "info");
+            }
+          }
+
+          // Check for reboot
+          if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x")) {
+            console.log("[DEBUG] Reboot detected (buffered)");
+            if (this.onReboot) {
+              this.onReboot();
+            }
+          }
         }
       }
     }
@@ -161,6 +239,36 @@ export class ESPService {
     });
   }
 
+  checkCoredump = async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const timeout = 2000;
+      const timeoutId = setTimeout(() => {
+        this.removeLogListener(coreDumpListener);
+        resolve(false);
+      }, timeout);
+
+      const coreDumpListener: LogListener = (data) => {
+        if (data.includes("coredump: found")) {
+          clearTimeout(timeoutId);
+          this.removeLogListener(coreDumpListener);
+          this.log("Core dump detected on device.", "info");
+          resolve(true);
+          return true;
+        }
+        if (data.includes("coredump: none")) {
+          clearTimeout(timeoutId);
+          this.removeLogListener(coreDumpListener);
+          resolve(false);
+          return true;
+        }
+        return false;
+      };
+
+      this.addLogListener(coreDumpListener);
+      this.sendCommand("coredump_info");
+    });
+  }
+
   connect = async (): Promise<{
     connected: boolean;
     chipId: string;
@@ -168,6 +276,7 @@ export class ESPService {
     version: string;
     variant: string;
     hardware: string;
+    hasCoredump: boolean;
   }> => {
     if (this.isConnecting) {
       throw new Error("Connection already in progress");
@@ -198,6 +307,10 @@ export class ESPService {
 
       const loader = new ESPLoader(loaderOptions);
 
+      // ... (existing loader.main(), loader.sync(), chip info reading ...)
+      // I need to keep the context lines for the replace, so I will target the specific block I'm changing
+      // But wait, the previous tool call modified the file, line numbers might shifted.
+      // I will rely on the Context match.
       await loader.main();
       await loader.sync();
 
@@ -235,12 +348,19 @@ export class ESPService {
       let version: string = "";
       let variant: string = "";
       let hardware: string = "";
+      let hasCoredump: boolean = false;
 
       try {
         const res = await this.getVersionInfo();
         version = res.version;
         variant = res.variant;
         hardware = res.hardware;
+
+        // Check for core dump
+        hasCoredump = await this.checkCoredump().catch(e => {
+          console.error(e);
+          return false;
+        });
       } catch (e) {
         this.log(
           `Connection failed: ${e instanceof Error ? e.message : "Unknown error"
@@ -256,6 +376,7 @@ export class ESPService {
         version,
         variant,
         hardware,
+        hasCoredump,
       };
 
       this.log(

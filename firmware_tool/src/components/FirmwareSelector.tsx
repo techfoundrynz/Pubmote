@@ -15,6 +15,9 @@ import { Dropdown } from "./ui/Dropdown";
 import { Badge } from "./ui/Badge";
 import { cn } from "../utils/cn";
 import JSZip from "jszip";
+import { useToast } from "../context/ToastContext";
+import { Dialog } from "../components/ui/Dialog";
+import { fetchWithCorsProxy } from "../utils/corsProxy";
 
 interface FileUploadProps {
   label: string;
@@ -85,12 +88,12 @@ function FileUpload({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       className={cn(
-        "flex flex-col items-center gap-4 rounded-lg p-6 transition-colors duration-200",
-        file ? "bg-gray-800/50" : "bg-gray-800/30",
+        "flex flex-col items-center gap-4 rounded-lg p-6 transition-colors duration-200 border-2 border-dashed",
+        file ? "border-gray-600" : "border-gray-700",
         isDragging &&
           !isInvalid &&
-          "bg-blue-900/20 border-2 border-dashed border-blue-500",
-        isInvalid && "bg-red-900/20 border-2 border-dashed border-red-500",
+          "bg-blue-900/20 border-blue-500",
+        isInvalid && "bg-red-900/20 border-red-500",
         "relative"
       )}
     >
@@ -103,7 +106,7 @@ function FileUpload({
       />
 
       {isInvalid ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/95 rounded-lg">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-bg-secondary)]/95 rounded-lg">
           <X className="h-8 w-8 text-red-500 mb-2" />
           <p className="text-sm text-red-400">Invalid file type</p>
         </div>
@@ -128,7 +131,7 @@ function FileUpload({
           </>
         ) : (
           <>
-            <p className="text-sm text-gray-400">{label}</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">{label}</p>
             <button
               onClick={() => inputRef.current?.click()}
               className="text-blue-500 hover:text-blue-400"
@@ -145,12 +148,16 @@ function FileUpload({
 export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
   const { onSelectFirmware, deviceInfo } = props;
   const { versions, loading, error: fetchError } = useFirmware();
+  const { toast } = useToast();
+  const [isDownloading, setIsDownloading] = React.useState(false);
+  const [errorDialog, setErrorDialog] = React.useState<{isOpen: boolean, title: string, message: string} | null>(null);
   const [files, setFiles] = React.useState<
     FirmwareFiles & { zip: File | null }
   >({
     bootloader: null,
     partitionTable: null,
     application: null,
+    elf: null,
     zip: null,
   });
   const [uploadMode, setUploadMode] = React.useState<"individual" | "package">(
@@ -165,16 +172,26 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       const bootloaderFile = contents.file("bootloader.bin");
       const partitionsFile = contents.file("partitions.bin");
       const firmwareFile = contents.file("firmware.bin");
+      const elfFile = contents.file("firmware.elf");
 
       if (!bootloaderFile || !partitionsFile || !firmwareFile) {
         throw new Error("Invalid firmware package - missing required files");
       }
 
-      const [bootloaderBlob, partitionsBlob, firmwareBlob] = await Promise.all([
+      const promises: Promise<Blob>[] = [
         bootloaderFile.async("blob"),
         partitionsFile.async("blob"),
         firmwareFile.async("blob"),
-      ]);
+      ];
+
+      if (elfFile) {
+        promises.push(elfFile.async("blob"));
+      }
+
+      const blobs = await Promise.all(promises);
+      
+      const [bootloaderBlob, partitionsBlob, firmwareBlob] = blobs;
+      const elfBlob = elfFile ? blobs[3] : null;
 
       return {
         bootloader: new File([bootloaderBlob], "bootloader.bin", {
@@ -186,6 +203,9 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
         application: new File([firmwareBlob], "firmware.bin", {
           type: "application/octet-stream",
         }),
+        elf: elfBlob ? new File([elfBlob], "firmware.elf", {
+           type: "application/octet-stream" 
+        }) : null,
       };
     } catch (error) {
       console.error("Failed to extract firmware files:", error);
@@ -204,17 +224,20 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
     try {
       const extractedFiles = await extractFirmwareFiles(file);
       setFiles({
-        bootloader: null,
-        partitionTable: null,
-        application: null,
+        bootloader: extractedFiles.bootloader,
+        partitionTable: extractedFiles.partitionTable,
+        application: extractedFiles.application,
+        elf: extractedFiles.elf,
         zip: file,
       });
       onSelectFirmware(extractedFiles);
+      toast.success(`Loaded firmware package: ${file.name}`);
     } catch (error) {
       setFiles({
         bootloader: null,
         partitionTable: null,
         application: null,
+        elf: null,
         zip: null,
       });
       onSelectFirmware(null);
@@ -259,38 +282,40 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       }))
   );
 
-  const handleVersionSelect = (url: string) => {
-    window.open(url, "_blank");
+  const handleVersionSelect = async (url: string) => {
+    let toastId: string | undefined;
+    try {
+      setIsDownloading(true);
+      toastId = toast.info("Downloading firmware package...", 0);
+      
+      const response = await fetchWithCorsProxy(url);
+      if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
+      
+      const blob = await response.blob();
+      // Extract filename from URL or default
+      const filename = url.split('/').pop() || "firmware.zip";
+      const file = new File([blob], filename, { type: "application/zip" });
+      
+      await handlePackageFileChange(file);
+    } catch (err) {
+      console.error("Failed to download firmware via CORS proxy, falling back to direct download:", err);
+      setErrorDialog({
+          isOpen: true,
+          title: "Download Failed",
+          message: "Auto-download failed. Opening browser to download manually."
+      });
+      // Fallback to direct download
+      window.open(url, "_blank");
+    } finally {
+      if (toastId) toast.dismiss(toastId);
+      setIsDownloading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Select Firmware Files</h2>
-        <div className="flex rounded-lg bg-gray-800 p-1">
-          <button
-            onClick={() => setUploadMode("package")}
-            className={cn(
-              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-              uploadMode === "package"
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white"
-            )}
-          >
-            Package
-          </button>
-          <button
-            onClick={() => setUploadMode("individual")}
-            className={cn(
-              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-              uploadMode === "individual"
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white"
-            )}
-          >
-            Individual Files
-          </button>
-        </div>
         <Dropdown
           options={versionOptions}
           value=""
@@ -298,12 +323,14 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
           label={
             loading
               ? "Loading..."
+              : isDownloading
+              ? "Downloading..."
               : versions.length === 0
               ? "No releases available"
               : "Download Release"
           }
           icon={<Tag className="h-4 w-4" />}
-          disabled={loading || versions.length === 0}
+          disabled={loading || versions.length === 0 || isDownloading}
           width="fixed"
           dropdownWidth={400}
         />
@@ -315,11 +342,45 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
         </p>
       </div>
 
+      <div className="flex justify-center">
+        <div className="flex rounded-lg bg-[var(--color-bg-tertiary)] p-1">
+          <button
+            onClick={() => setUploadMode("package")}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              uploadMode === "package"
+                ? "bg-blue-600 text-white"
+                : "text-gray-400 hover:text-[var(--color-text-primary)]"
+            )}
+          >
+            Package
+          </button>
+          <button
+            onClick={() => setUploadMode("individual")}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              uploadMode === "individual"
+                ? "bg-blue-600 text-white"
+                : "text-gray-400 hover:text-[var(--color-text-primary)]"
+            )}
+          >
+            Individual Files
+          </button>
+        </div>
+      </div>
+
       {fetchError && (
         <div className="p-3 rounded-lg bg-red-900/50 text-red-200">
           {fetchError}
         </div>
       )}
+
+      <Dialog 
+        isOpen={!!errorDialog?.isOpen} 
+        onClose={() => setErrorDialog(null)}
+        title={errorDialog?.title || ""}
+        message={errorDialog?.message || ""}
+      />
 
       {uploadMode === "individual" ? (
         <div className="grid gap-4 md:grid-cols-3">

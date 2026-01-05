@@ -2,6 +2,7 @@
 #include "utilities/screen_utils.h"
 #include "utilities/theme_utils.h"
 #include <remote/display.h>
+#include <remote/led.h>
 #include <remote/settings.h>
 
 static const char *TAG = "PUBREMOTE-SETTINGS_SCREEN";
@@ -104,6 +105,7 @@ void theme_color_picker_change(lv_event_t *e) {
   // lv_color_t val = lv_colorwheel_get_rgb(ui_ThemeColor);
   // device_settings.theme_color = lv_color_to32(val); // TODO
   reload_theme();
+  led_set_effect_default();
 }
 
 void dark_text_switch_change(lv_event_t *e) {

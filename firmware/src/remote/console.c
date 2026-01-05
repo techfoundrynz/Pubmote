@@ -1,6 +1,7 @@
 
 #include "config.h"
 #include "esp_console.h"
+#include "esp_core_dump.h"
 #include "esp_log.h"
 #include "powermanagement.h"
 #include "settings.h"
@@ -180,6 +181,126 @@ static void register_save_settings_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
+static int crash_command() {
+  printf("Forcing a crash for testing backtrace decoding...\n");
+  int *ptr = NULL;
+  *ptr = 42; // Dereference NULL pointer to cause a crash
+  return 0;
+}
+
+static void register_crash_command() {
+  esp_console_cmd_t cmd = {
+      .command = "crash",
+      .help = "Force a crash to test backtrace decoding",
+      .hint = NULL,
+      .func = &crash_command,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+static esp_err_t check_and_validate_coredump() {
+  esp_err_t err = esp_core_dump_image_check();
+  if (err != ESP_OK) {
+    if (err == ESP_ERR_INVALID_SIZE || err == ESP_ERR_INVALID_CRC) {
+        printf("coredump: corrupt (err=%d), erasing...\n", err);
+        esp_core_dump_image_erase();
+    }
+    return err;
+  }
+  return ESP_OK;
+}
+
+static int coredump_info_command() {
+  if (check_and_validate_coredump() != ESP_OK) {
+    printf("coredump: none\n");
+    return 0;
+  }
+
+  esp_core_dump_summary_t *summary = malloc(sizeof(esp_core_dump_summary_t));
+  if (summary == NULL) {
+    printf("Failed to allocate memory for core dump summary\n");
+    return -1;
+  }
+  esp_err_t err = esp_core_dump_get_summary(summary);
+  if (err == ESP_OK) {
+    printf("coredump: found\n");
+  }
+  else {
+    printf("coredump: none\n");
+  }
+  free(summary);
+  return 0;
+}
+
+static void register_coredump_info_command() {
+  esp_console_cmd_t cmd = {
+      .command = "coredump_info",
+      .help = "Check for existence of a core dump",
+      .hint = NULL,
+      .func = &coredump_info_command,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+static int coredump_print_command() {
+  if (check_and_validate_coredump() != ESP_OK) {
+    printf("coredump: none\n");
+    return 0;
+  }
+
+  esp_core_dump_summary_t *summary = malloc(sizeof(esp_core_dump_summary_t));
+  if (summary == NULL) {
+    printf("Failed to allocate memory for core dump summary\n");
+    return -1;
+  }
+  esp_err_t err = esp_core_dump_get_summary(summary);
+  if (err == ESP_OK) {
+    printf("coredump_task: %s\n", summary->exc_task);
+    printf("coredump_backtrace:\n");
+    printf("Backtrace:");
+    for (int i = 0; i < summary->exc_bt_info.depth; i++) {
+      printf(" 0x%lx", summary->exc_bt_info.bt[i]);
+    }
+    printf("\n");
+  }
+  else {
+    printf("No core dump found or failed to parse (err=%d)\n", err);
+  }
+  free(summary);
+  return 0;
+}
+
+static void register_coredump_print_command() {
+  esp_console_cmd_t cmd = {
+      .command = "coredump_print",
+      .help = "Print the backtrace from the stored core dump",
+      .hint = NULL,
+      .func = &coredump_print_command,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+static int coredump_erase_command() {
+  esp_err_t err = esp_core_dump_image_erase();
+  if (err == ESP_OK) {
+    printf("Core dump erased successfully\n");
+  }
+  else {
+    printf("Failed to erase core dump (err=%d)\n", err);
+  }
+  return 0;
+}
+
+static void register_coredump_erase_command() {
+  esp_console_cmd_t cmd = {
+      .command = "coredump_erase",
+      .help = "Erase the stored core dump",
+      .hint = NULL,
+      .func = &coredump_erase_command,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
 void console_init() {
   ESP_LOGI(TAG, "Initializing console");
   esp_console_repl_t *repl = NULL;
@@ -196,6 +317,10 @@ void console_init() {
   register_erase_command();
   register_get_settings_command();
   register_save_settings_command();
+  register_crash_command();
+  register_coredump_info_command();
+  register_coredump_print_command();
+  register_coredump_erase_command();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
   esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();

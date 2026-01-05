@@ -7,13 +7,16 @@ backup/
 cache/
 autosave/
 managed_components/
+node_modules/
 .DS_Store
 sdkconfig.*.old
 firmware/lvgl_editor/preview-build/
 firmware/lvgl_editor/preview-bin/build.log
+api/.wrangler/
 
 # Compiled release files
 *.dev.zip
 *.release.zip
 *.dev.bin
 *.release.bin
+*.elf

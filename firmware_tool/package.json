@@ -1,5 +1,5 @@
 {
-  "name": "pubmote-firmware-tool",
+  "name": "@pubmote/firmware-tool",
   "private": true,
   "homepage": "https://techfoundrynz.github.io/pubmote",
   "version": "0.0.0",
@@ -9,7 +9,6 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {

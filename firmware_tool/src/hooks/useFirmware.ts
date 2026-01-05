@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FirmwareVersion, ReleaseType } from '../types';
 import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
+import { fetchWithCorsProxy } from '../utils/corsProxy';
 
 const GITHUB_REPO = 'techfoundrynz/pubmote';
 const GITHUB_API = 'https://api.github.com';
@@ -26,18 +27,18 @@ export function useFirmware() {
   useEffect(() => {
     async function loadFirmware() {
       try {
-        const response = await fetch(`${GITHUB_API}/repos/${GITHUB_REPO}/releases`, {
+        const response = await fetchWithCorsProxy(`${GITHUB_API}/repos/${GITHUB_REPO}/releases`, {
           headers: {
             'Accept': 'application/vnd.github.v3+json'
           }
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch releases: ${response.statusText}`);
         }
-        
+
         const releases: GitHubRelease[] = await response.json();
-        
+
         let firmwareVersions: FirmwareVersion[] = releases.map(release => {
           const variants = release.assets
             .filter(asset => asset.name.endsWith('.zip'))

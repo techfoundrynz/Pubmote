@@ -3,6 +3,10 @@ name: PlatformIO CI
 # Runs on every opened, reopened, or updated PR
 on:
   pull_request:
+    paths:
+      - 'firmware/**'
+      - 'platformio.ini'
+      - '.github/workflows/pull-request-ci.yml'
     types: 
       - opened
       - reopened
