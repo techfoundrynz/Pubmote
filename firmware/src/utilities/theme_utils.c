@@ -24,7 +24,8 @@ static void custom_theme_apply_cb(lv_theme_t *theme, lv_obj_t *obj) {
     lv_color_t bg_color = lv_obj_get_style_bg_color(obj, LV_PART_MAIN);
 
     // Apply focus styles for encoder navigation
-    lv_obj_set_style_outline_color(obj, lv_color_lighten(bg_color, 60), LV_STATE_FOCUS_KEY | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_color(obj, lv_color_lighten(bg_color, 130), LV_STATE_FOCUS_KEY | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_opa(obj, 255, LV_STATE_DEFAULT | LV_STATE_FOCUS_KEY | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_width(obj, 5, LV_STATE_DEFAULT | LV_STATE_FOCUS_KEY | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_pad(obj, 0, LV_STATE_DEFAULT | LV_STATE_FOCUS_KEY | LV_STATE_FOCUSED);
   }

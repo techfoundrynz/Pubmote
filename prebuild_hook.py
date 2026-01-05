@@ -3,8 +3,8 @@ from datetime import datetime
 import hashlib
 
 major_version = 0
-minor_version = 6
-patch_version = 10
+minor_version = 7
+patch_version = 1
 
 def generate_build_id():
     # Get current timestamp

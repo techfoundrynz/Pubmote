@@ -103,13 +103,13 @@ const SettingsPage: React.FC<unknown> = () => {
   }, [deviceInfo.connected, flashProgress.status]);
 
   return (
-    <div className="rounded-lg bg-gray-900 p-6">
+    <div className="rounded-lg bg-[var(--color-bg-secondary)] p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold mb-4">Remote Settings</h2>
         <button
           onClick={fetchSettings}
           disabled={disabled}
-          className="p-1 text-gray-400 hover:text-gray-200 transition-colors"
+          className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
           title="Reload settings"
         >
           <RefreshCcw className="h-5 w-5" />
@@ -127,7 +127,7 @@ const SettingsPage: React.FC<unknown> = () => {
               setSettings((prev) => ({ ...prev, wifi_ssid: e.target.value }))
             }
             placeholder="Enter WiFi network name"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+            className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[var(--color-text-primary)]"
           />
         </div>
 
@@ -146,13 +146,13 @@ const SettingsPage: React.FC<unknown> = () => {
                 }))
               }
               placeholder="Enter WiFi password"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white pr-16"
+              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[var(--color-text-primary)] pr-16"
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-3">
               <button
                 type="button"
                 onClick={() => setshowWifiPassword((prev) => !prev)}
-                className="text-gray-400 hover:text-white text-sm"
+                className="text-gray-400 hover:text-[var(--color-text-primary)] text-sm"
               >
                 {showWifiPassword ? (
                   <EyeOff className="h-5 w-5" />
@@ -188,7 +188,7 @@ const SettingsPage: React.FC<unknown> = () => {
         </div> */}
         <div className="border-t pt-4 flex items-center justify-between gap-4">
           <button
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors bg-red-900/50 hover:bg-red-900/75"
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors bg-[var(--color-danger)] hover:bg-red-700 border border-red-500"
             disabled={disabled}
             onClick={() => {
               sendTerminalCommand("erase");
@@ -212,7 +212,7 @@ const SettingsPage: React.FC<unknown> = () => {
               sendTerminalCommand(saveValuesString);
             }}
             disabled={disabled}
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 hover:bg-blue-700 disabled:bg-[var(--color-bg-disabled)] disabled:text-[var(--color-text-disabled)] disabled:cursor-not-allowed"
           >
             <Save className="h-4 w-4" />
             Save

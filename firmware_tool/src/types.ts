@@ -11,6 +11,7 @@ export interface DeviceInfoData {
   version?: string;
   variant?: string;
   hardware?: string;
+  hasCoredump?: boolean;
 }
 
 export interface FlashProgress {
@@ -36,4 +37,5 @@ export interface FirmwareFiles {
   bootloader: File | null;
   partitionTable: File | null;
   application: File | null;
+  elf: File | null;
 }

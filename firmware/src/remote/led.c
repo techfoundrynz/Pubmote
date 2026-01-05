@@ -330,7 +330,7 @@ void led_init() {
 #if LED_ENABLED
   ESP_LOGI(TAG, "Initializing LED strip");
   configure_led();
-  xTaskCreate(led_task, "led_task", 2048, NULL, 2, NULL);
+  xTaskCreate(led_task, "led_task", 2048, NULL, 2, &led_task_handle);
   register_startup_cb(play_startup_effect);
 #endif
 }
