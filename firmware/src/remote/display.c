@@ -92,7 +92,7 @@ static void input_event_cb(lv_event_t *e) {
       lv_obj_t *act_obj = lv_indev_get_active_obj();
       if (act_obj && lv_obj_check_type(act_obj, &lv_button_class)) {
         if (!lv_obj_has_state(act_obj, LV_STATE_DISABLED)) {
-          haptic_vibrate(HAPTIC_SINGLE_CLICK);
+          // haptic_vibrate(HAPTIC_SINGLE_CLICK);
         }
       }
     }
