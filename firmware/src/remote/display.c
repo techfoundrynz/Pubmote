@@ -83,7 +83,7 @@ static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf2_static[BUFFER_SIZE];
 
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
-  ESP_LOGW(TAG, "Input event received");
+  // ESP_LOGW(TAG, "Input event received");
   lv_event_code_t code = lv_event_get_code(e);
   if (code == LV_EVENT_PRESSED) {
     reset_sleep_timer();

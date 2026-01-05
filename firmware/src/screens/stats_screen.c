@@ -559,11 +559,6 @@ void stats_screen_loaded(lv_event_t *e) {
   ESP_LOGI(TAG, "Stats screen loaded");
   stats_update_screen_display();
   register_primary_button_cb(BUTTON_EVENT_DOUBLE_PRESS, double_press_handler);
-
-  if (LVGL_lock(-1)) {
-    lv_obj_set_scroll_snap_x(ui_SecondaryStatContainer, LV_SCROLL_SNAP_CENTER);
-    LVGL_unlock();
-  }
 }
 
 void stats_screen_unload_start(lv_event_t *e) {

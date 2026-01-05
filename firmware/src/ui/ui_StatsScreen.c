@@ -372,6 +372,7 @@ void ui_StatsScreen_screen_init(void)
     lv_obj_remove_flag(ui_SecondaryStatContainer, LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SCROLL_MOMENTUM);      /// Flags
     lv_obj_set_scrollbar_mode(ui_SecondaryStatContainer, LV_SCROLLBAR_MODE_ACTIVE);
     lv_obj_set_scroll_dir(ui_SecondaryStatContainer, LV_DIR_HOR);
+    lv_obj_set_scroll_snap_x(ui_SecondaryStatContainer, LV_SCROLL_SNAP_CENTER);
     lv_obj_set_style_pad_left(ui_SecondaryStatContainer, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_SecondaryStatContainer, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui_SecondaryStatContainer, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
