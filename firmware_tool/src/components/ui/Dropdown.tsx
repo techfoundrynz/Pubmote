@@ -82,13 +82,7 @@ export function Dropdown({
     return value === optionValue;
   };
 
-  const getDisplayLabel = () => {
-    if (multiple) {
-      return label;
-    }
-    const selectedOption = options.find((opt) => opt.value === value);
-    return selectedOption ? selectedOption.label : label;
-  };
+
 
   const getOptionTooltip = (option: DropdownOption) => {
     if (option.tooltip) return option.tooltip;

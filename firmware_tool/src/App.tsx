@@ -237,6 +237,39 @@ const AppContent = () => {
     }
   };
 
+  // Set up the reboot handler
+  React.useEffect(() => {
+    espService.onReboot = async () => {
+      if (!deviceInfo.version) return;
+
+      terminal.log("Device reboot detected...", "info");
+      
+      // Wait for device to boot
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      try {
+        const hasCoredump = await espService.checkCoredump().catch(e => {
+          console.error(e);
+          return false;
+        });
+
+        setDeviceInfo(prev => ({
+          ...prev,
+          hasCoredump
+        }));
+
+        if (hasCoredump) {
+          toast.warning("Crashdump detected after reboot");
+        }
+      } catch (error) {
+        console.error("Failed to check coredump after reboot:", error);
+      }
+    };
+    return () => {
+      espService.onReboot = undefined;
+    };
+  }, [espService, terminal, toast, deviceInfo.version]);
+
   const tabs = [
     {
       label: "Firmware",

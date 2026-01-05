@@ -1,6 +1,7 @@
 // DeviceInfo.tsx
 import React from "react";
-import { Cpu, Wifi, Tag, Box } from "lucide-react";
+import { Box, Tag, Cpu, Wifi } from "lucide-react";
+import { Badge } from './ui/Badge';
 import { DeviceInfoData, FlashProgress } from "../types";
 
 import { Terminal } from "./Terminal";
@@ -40,13 +41,9 @@ export function DeviceInfo({
     <div className="rounded-lg bg-[var(--color-bg-secondary)] p-6 flex flex-col h-full">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Device Information</h2>
-        <div className={`px-2 py-1 rounded text-xs font-medium border ${
-          deviceInfo.connected 
-            ? 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border-[var(--badge-green-border)]' 
-            : 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)] border-[var(--badge-red-border)]'
-        }`}>
+        <Badge variant={deviceInfo.connected ? 'success' : 'destructive'} size="lg">
           {deviceInfo.connected ? 'Connected' : 'Disconnected'}
-        </div>
+        </Badge>
       </div>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -69,9 +66,9 @@ export function DeviceInfo({
                   {deviceInfo.version || "Unknown"}
                 </div>
                 {updateAvailable && (
-                  <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)] border border-[var(--badge-blue-border)] rounded whitespace-nowrap">
+                  <Badge variant="default">
                     Update Available
-                  </span>
+                  </Badge>
                 )}
               </div>
               {/* Variant hidden in dense mode or tooltip used */}
