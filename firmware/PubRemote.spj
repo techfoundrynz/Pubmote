@@ -3399,8 +3399,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID40972318-217402S426341",
@@ -3924,8 +3923,7 @@
                         "InheritedType": 4
                       }
                     ],
-                    "saved_objtypeKey": "LABEL",
-                    "tree_closed": true
+                    "saved_objtypeKey": "LABEL"
                   },
                   {
                     "guid": "GUID78337151-43345S38631437",
@@ -4283,7 +4281,8 @@
                                 "InheritedType": 11
                               }
                             ],
-                            "saved_objtypeKey": "CONTAINER"
+                            "saved_objtypeKey": "CONTAINER",
+                            "tree_closed": true
                           },
                           {
                             "guid": "GUID62168481-31424S9076434",
@@ -5440,7 +5439,7 @@
                           {
                             "nid": 314,
                             "strtype": "OBJECT/Scroll_snap_x",
-                            "strval": "NONE",
+                            "strval": "CENTER",
                             "InheritedType": 3
                           },
                           {
@@ -5649,8 +5648,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   }
                 ],
                 "dont_export": false,
@@ -6192,8 +6190,7 @@
                     "InheritedType": 4
                   }
                 ],
-                "saved_objtypeKey": "CONTAINER",
-                "tree_closed": true
+                "saved_objtypeKey": "CONTAINER"
               }
             ],
             "dont_export": false,
@@ -7109,7 +7106,7 @@
                               {
                                 "nid": -616860180,
                                 "strtype": "CHANGE SCREEN/Fade_mode",
-                                "strval": "FADE_ON",
+                                "strval": "OUT_TOP",
                                 "InheritedType": 3
                               },
                               {
@@ -10889,11 +10886,11 @@
                       },
                       {
                         "nid": 1865820697,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -11044,8 +11041,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID4554269-296737S241634258",
@@ -11550,11 +11546,11 @@
                       },
                       {
                         "nid": 1865820697,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -11705,8 +11701,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID88300006-837294S310452",
@@ -12211,11 +12206,11 @@
                       },
                       {
                         "nid": 1865820697,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -12873,11 +12868,11 @@
                       },
                       {
                         "nid": -347940614,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -13022,8 +13017,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID6183281-826406S7713322",
@@ -13530,11 +13524,11 @@
                       },
                       {
                         "nid": -347940614,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -13679,8 +13673,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID12135862-826409S534273322",
@@ -14187,11 +14180,11 @@
                       },
                       {
                         "nid": -347940614,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -14336,8 +14329,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID48163477-80357S2445648",
@@ -14843,11 +14835,11 @@
                       },
                       {
                         "nid": -347940614,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -14992,8 +14984,7 @@
                         "InheritedType": 11
                       }
                     ],
-                    "saved_objtypeKey": "CONTAINER",
-                    "tree_closed": true
+                    "saved_objtypeKey": "CONTAINER"
                   },
                   {
                     "guid": "GUID19851876-826418S7563322",
@@ -15428,11 +15419,11 @@
                       },
                       {
                         "nid": -347940614,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -15969,11 +15960,11 @@
                       },
                       {
                         "nid": -347940614,
-                        "flags": 50,
+                        "flags": 34,
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           100,
-                          1
+                          100
                         ],
                         "InheritedType": 7
                       },
@@ -16193,7 +16184,6 @@
                   },
                   {
                     "nid": 225,
-                    "flags": 1048576,
                     "strtype": "OBJECT/Scrolling",
                     "InheritedType": 1
                   },
@@ -16224,7 +16214,7 @@
                   {
                     "nid": 314,
                     "strtype": "OBJECT/Scroll_snap_x",
-                    "strval": "NONE",
+                    "strval": "CENTER",
                     "InheritedType": 3
                   },
                   {
@@ -22155,8 +22145,7 @@
                             "InheritedType": 11
                           }
                         ],
-                        "saved_objtypeKey": "CONTAINER",
-                        "tree_closed": true
+                        "saved_objtypeKey": "CONTAINER"
                       }
                     ],
                     "dont_export": false,
@@ -29483,7 +29472,7 @@
     "theme_color1": 5,
     "theme_color2": 0,
     "custom_variable_prefix": "uic",
-    "backup_cnt": 1442,
+    "backup_cnt": 1448,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
     "lvgl_version": "9.2.2",

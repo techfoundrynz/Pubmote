@@ -19,10 +19,6 @@ void settings_screen_load_start(lv_event_t *e) {
   if (LVGL_lock(-1)) {
     apply_ui_scale(NULL);
 
-    // // Set the scroll snap
-    // lv_obj_set_scroll_snap_x(ui_SettingsBody, LV_SCROLL_SNAP_CENTER);
-    // // lv_obj_scroll_to_x(ui_SettingsBody, 0, LV_ANIM_OFF);
-
     // // Brightness
     // lv_slider_set_value(ui_BrightnessSlider, device_settings.bl_level, LV_ANIM_OFF);
 

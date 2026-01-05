@@ -71,7 +71,7 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define LVGL_TASK_CPU_AFFINITY (portNUM_PROCESSORS - 1)
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
 #define LVGL_TASK_PRIORITY 20
-#define BUFFER_LINES ((int)(LV_VER_RES / 14))
+#define BUFFER_LINES ((int)(LV_VER_RES / 10))
 #define BUFFER_SIZE (LV_HOR_RES * BUFFER_LINES)
 #define MAX_TRAN_SIZE ((int)LV_HOR_RES * BUFFER_LINES * sizeof(uint16_t))
 
@@ -82,13 +82,9 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf1_static[BUFFER_SIZE];
 static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf2_static[BUFFER_SIZE];
 
-// Statically allocated buffers (in Internal RAM, implicitly DMA capable on S3)
-// 16-byte alignment is good practice for DMA/Cache
-static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf1_static[BUFFER_SIZE];
-static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf2_static[BUFFER_SIZE];
-
 #if TOUCH_ENABLED
 static void input_event_cb(lv_event_t *e) {
+  // ESP_LOGW(TAG, "Input event received");
   lv_event_code_t code = lv_event_get_code(e);
   if (code == LV_EVENT_PRESSED) {
     reset_sleep_timer();
@@ -234,7 +230,8 @@ static esp_err_t app_lcd_init(void) {
 #if DISP_GC9A01
   const esp_lcd_panel_io_spi_config_t io_config = GC9A01_PANEL_IO_SPI_CONFIG(DISP_CS, DISP_DC, NULL, NULL);
 #elif DISP_SH8601 || DISP_CO5300
-  const esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(DISP_CS, NULL, NULL);
+  esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(DISP_CS, NULL, NULL);
+  io_config.pclk_hz = LCD_PIXEL_CLOCK_HZ;
 #elif DISP_ST7789
   #error "ST7789 not supported"
 #endif

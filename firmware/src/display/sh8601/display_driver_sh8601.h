@@ -5,7 +5,7 @@
 #include <esp_err.h>
 #include <esp_lcd_sh8601.h>
 #include <esp_lcd_types.h>
-#define LCD_PIXEL_CLOCK_HZ (40 * 1000 * 1000)
+#define LCD_PIXEL_CLOCK_HZ (80 * 1000 * 1000)
 
 #define SH8601_MAXWIDTH 480  ///< SH8601 max TFT width
 #define SH8601_MAXHEIGHT 480 ///< SH8601 max TFT width
