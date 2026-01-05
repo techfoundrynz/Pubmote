@@ -50,6 +50,10 @@
 
 #define JOYSTICK_ENABLED (JOYSTICK_X_ENABLED || JOYSTICK_Y_ENABLED)
 
+#ifndef JOYSTICK_BUTTON_LEVEL
+  #define JOYSTICK_BUTTON_LEVEL 0 // 0: active low, 1: active high (switch = 0, ps5 = 1)
+#endif
+
 // Display configuration
 #if defined(TP_CST816S) || defined(TP_FT3168) || defined(TP_CST9217)
   #define TOUCH_ENABLED 1

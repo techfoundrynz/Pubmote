@@ -134,7 +134,9 @@ jobs:
       run: pip install --upgrade platformio
 
     - name: Build PlatformIO Project
-      run: pio run
+      run: |
+          sed -i 's/build_type = debug/build_type = release/g' platformio.ini
+          pio run
       env:
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"release\"

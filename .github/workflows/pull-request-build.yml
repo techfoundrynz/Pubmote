@@ -104,7 +104,9 @@ jobs:
 
       # Build the project using the extracted build_value
       - name: Build PlatformIO Project
-        run: pio run -e ${{ needs.check_comment.outputs.build_value }}
+        run: |
+          sed -i 's/build_type = debug/build_type = release/g' platformio.ini
+          pio run -e ${{ needs.check_comment.outputs.build_value }}
         env:
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"qa\"
