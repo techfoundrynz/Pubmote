@@ -270,6 +270,17 @@ const AppContent = () => {
     };
   }, [espService, terminal, toast, deviceInfo.version]);
 
+  // Set up the disconnect handler
+  React.useEffect(() => {
+    espService.onDisconnect = () => {
+      handleDisconnect();
+      toast.error("Device disconnected unexpectedly");
+    };
+    return () => {
+      espService.onDisconnect = undefined;
+    };
+  }, [espService, handleDisconnect, toast]);
+
   const tabs = [
     {
       label: "Firmware",
@@ -331,22 +342,24 @@ const AppContent = () => {
 
             {/* Main Content */}
             <div className="lg:col-span-6 flex flex-col min-h-0">
-              <nav className="flex space-x-8 mb-6 border-b border-gray-800 flex-shrink-0" aria-label="Tabs">
-                {tabs.map((tab, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setActiveTab(index)}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 -mb-[2px] ${
-                      activeTab === index
-                        ? "border-blue-500 text-blue-500"
-                        : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-700"
-                    }`}
-                    aria-selected={activeTab === index}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
+              <div className="mb-6 border-b border-gray-800 flex-shrink-0">
+                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                  {tabs.map((tab, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setActiveTab(index)}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                        activeTab === index
+                          ? "border-blue-500 text-blue-500"
+                          : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-700"
+                      }`}
+                      aria-selected={activeTab === index}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
               
               <div className="min-h-0 overflow-y-auto space-y-6">
                 {tabs[activeTab].content}

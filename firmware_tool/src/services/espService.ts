@@ -72,6 +72,7 @@ export class ESPService {
   private isConnecting: boolean = false;
   private monitorSerial: boolean = false;
   private logBuffer: string = "";
+  private port: any = null;
 
   private logListeners: Array<LogListener> = [(d, t) => {
     this.terminal?.writeLine(
@@ -82,6 +83,7 @@ export class ESPService {
   }];
 
   public onReboot?: () => void;
+  public onDisconnect?: () => void;
 
 
   private stacktraceService: StacktraceService = new StacktraceService();
@@ -89,6 +91,14 @@ export class ESPService {
   constructor(terminal?: TerminalService) {
     this.terminal = terminal;
   }
+
+  private handlePortDisconnect = async () => {
+    this.log("Device disconnected unexpectedly", "error");
+    await this.disconnect();
+    if (this.onDisconnect) {
+      this.onDisconnect();
+    }
+  };
 
   public async setElf(file: File | null) {
     if (file) {
@@ -291,6 +301,9 @@ export class ESPService {
       }
 
       const port = await navigator.serial.requestPort();
+      this.port = port;
+      this.port.addEventListener('disconnect', this.handlePortDisconnect);
+
       const transport = new Transport(port, true);
 
       this.log("Initializing connection...");
@@ -562,6 +575,12 @@ export class ESPService {
 
   async disconnect(): Promise<void> {
     this.removeSerialMonitor();
+    if (this.port) {
+      this.port.removeEventListener('disconnect', this.handlePortDisconnect);
+      // We don't null this.port here yet, because esptool might use it to disconnect transport?
+      // Actually esptool has its own reference to port in transport.
+    }
+
     if (this.espLoader) {
       try {
         await this.espLoader.transport.disconnect();
@@ -571,5 +590,8 @@ export class ESPService {
       this.espLoader = null;
       this.log("Disconnected from device");
     }
+
+    // safe to null port now
+    this.port = null;
   }
 }
