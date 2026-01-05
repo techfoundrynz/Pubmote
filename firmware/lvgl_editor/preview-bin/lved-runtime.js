@@ -9131,6 +9131,7 @@ var _lvrt_xml_test_register_from_data = Module['_lvrt_xml_test_register_from_dat
 var _lvrt_xml_test_run_init = Module['_lvrt_xml_test_run_init'] = wasmExports['lvrt_xml_test_run_init']
 var _lvrt_xml_test_run_next = Module['_lvrt_xml_test_run_next'] = wasmExports['lvrt_xml_test_run_next']
 var _lvrt_xml_test_run_stop = Module['_lvrt_xml_test_run_stop'] = wasmExports['lvrt_xml_test_run_stop']
+var _lvrt_health_check = Module['_lvrt_health_check'] = wasmExports['lvrt_health_check']
 var _free = Module['_free'] = wasmExports['free']
 var _fflush = wasmExports['fflush']
 var _pubmote_ui_init = Module['_pubmote_ui_init'] = wasmExports['pubmote_ui_init']
