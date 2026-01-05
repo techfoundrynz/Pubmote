@@ -26,7 +26,6 @@
 #include "remote/time.h"
 #include "remote/transmitter.h"
 #include "remote/vehicle_state.h"
-#include "ui/ui.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -34,7 +33,19 @@ static const char *TAG = "PUBREMOTE-MAIN";
 
 #define DEBUG_MEMORY 0
 
+static void log_memory_stats() {
+  size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+  size_t min_heap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
+  size_t free_dma = heap_caps_get_free_size(MALLOC_CAP_DMA);
+  size_t largest_dma_block = heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
+  ESP_LOGI(TAG, "Free heap: %d bytes (min ever: %d bytes)", free_heap, min_heap);
+  ESP_LOGI(TAG, "Free DMA Heap: %d, Largest Block: %d", free_dma, largest_dma_block);
+}
+
 void app_main(void) {
+  ESP_LOGI(TAG, "Starting PubRemote firmware version %d.%d.%d (%s)", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH,
+           RELEASE_VARIANT);
+  log_memory_stats();
   // Enable power for core peripherals
   acc1_power_set_level(1);
   // Core setup
@@ -70,9 +81,7 @@ void app_main(void) {
 
 #if DEBUG_MEMORY
   while (1) {
-    size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    size_t min_heap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
-    ESP_LOGI(TAG, "Free heap before update: %d bytes (min ever: %d bytes)", free_heap, min_heap);
+    log_memory_stats();
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
 #endif
