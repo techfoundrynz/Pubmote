@@ -183,7 +183,7 @@ esp_err_t wifi_init(void) {
   }
 
   esp_wifi_set_ps(WIFI_PS_NONE); // No power save for ESP-NOW (better performance)
-  esp_wifi_set_max_tx_power(52); // ~14 dBm for balanced power and range
+  esp_wifi_set_max_tx_power(84); // ~14 dBm for balanced power and range
 
   ESP_LOGI(TAG, "WiFi station initialization completed after ESP-NOW transition");
   is_initialized = true;
@@ -451,4 +451,12 @@ bool wifi_is_auto_reconnect_enabled(void) {
 
 bool wifi_is_initialized() {
   return is_initialized;
+}
+
+int8_t wifi_get_rssi(void) {
+  wifi_ap_record_t ap_info;
+  if (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK) {
+    return 0;
+  }
+  return ap_info.rssi;
 }

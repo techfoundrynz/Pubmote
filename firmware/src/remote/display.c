@@ -68,7 +68,7 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define LVGL_TICK_PERIOD_MS 5
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_CPU_AFFINITY (portNUM_PROCESSORS - 1)
-#define LVGL_TASK_STACK_SIZE (6 * 1024)
+#define LVGL_TASK_STACK_SIZE (8 * 1024)
 #define LVGL_TASK_PRIORITY 20
 #define BUFFER_LINES ((int)(LV_VER_RES / 10))
 #define BUFFER_SIZE (LV_HOR_RES * BUFFER_LINES)
@@ -82,14 +82,17 @@ static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf1_static[BUFFER_SIZE];
 static WORD_ALIGNED_ATTR DMA_ATTR uint16_t buf2_static[BUFFER_SIZE];
 
 #if TOUCH_ENABLED
-static void feedback_cb(struct _lv_indev_drv_t *indev_drv, uint8_t code) {
+static void input_event_cb(lv_event_t *e) {
+  // ESP_LOGW(TAG, "Input event received");
+  lv_event_code_t code = lv_event_get_code(e);
   if (code == LV_EVENT_PRESSED) {
-    lv_indev_t *indev = lv_indev_get_act();
+    reset_sleep_timer();
+    lv_indev_t *indev = lv_event_get_target(e);
     if (indev) {
-      lv_obj_t *act_obj = lv_indev_get_obj_act();
-      if (act_obj != NULL && lv_obj_check_type(act_obj, &lv_btn_class)) {
+      lv_obj_t *act_obj = lv_indev_get_active_obj();
+      if (act_obj && lv_obj_check_type(act_obj, &lv_button_class)) {
         if (!lv_obj_has_state(act_obj, LV_STATE_DISABLED)) {
-          //  haptic_vibrate(HAPTIC_SINGLE_CLICK); // Optional: vibrate on button press
+          // haptic_vibrate(HAPTIC_SINGLE_CLICK);
         }
       }
     }
@@ -101,9 +104,6 @@ static void feedback_cb(struct _lv_indev_drv_t *indev_drv, uint8_t code) {
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
 static esp_lcd_panel_handle_t lcd_panel = NULL;
 #if TOUCH_ENABLED
-typedef void (*lv_indev_read_cb_t)(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
-static lv_indev_drv_t *indev_drv_touch = NULL;
-static lv_indev_read_cb_t original_read_cb = NULL;
 static esp_lcd_touch_handle_t touch_handle = NULL;
 #endif
 
@@ -113,7 +113,6 @@ static lv_display_t *lvgl_disp = NULL;
 static lv_indev_t *lvgl_touch_indev = NULL;
 #endif
 
-static lv_indev_drv_t indev_drv_encoder;
 static lv_indev_t *lvgl_encoder_indev = NULL;
 
 /* LCD panel gap */
@@ -133,7 +132,13 @@ static uint8_t panel_y_gap = 0;
 static bool is_initialized = false;
 
 #if ROUNDER_CALLBACK
-void LVGL_port_rounder_callback(struct _lv_disp_drv_t *disp_drv, lv_area_t *area) {
+void LVGL_port_rounder_callback(lv_event_t *e) {
+  lv_area_t *area = lv_event_get_param(e);
+  if (area == NULL) {
+    ESP_LOGI(TAG, "Area is NULL in rounder callback");
+    return;
+  }
+
   uint16_t x1 = area->x1;
   uint16_t x2 = area->x2;
   uint16_t y1 = area->y1;
@@ -149,7 +154,7 @@ void LVGL_port_rounder_callback(struct _lv_disp_drv_t *disp_drv, lv_area_t *area
 }
 #endif
 
-static void encoder_read_cb(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
+static void encoder_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
   static int32_t last_encoder_value = 0;
   static uint32_t last_time = 0;
   uint32_t current_time = lv_tick_get();
@@ -306,7 +311,7 @@ static esp_err_t app_lcd_init(void) {
   }
 
   ESP_ERROR_CHECK(esp_lcd_panel_invert_color(lcd_panel, invert_color));
-  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, true, false));
+  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, false, false));
   esp_lcd_panel_disp_on_off(lcd_panel, true);
   ESP_LOGI(TAG, "Test display communication");
   ESP_ERROR_CHECK(test_display_communication(lcd_io));
@@ -361,26 +366,11 @@ static esp_err_t app_touch_init(void) {
   return ESP_OK;
 }
 
-static void lv_touch_cb(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
-  // Call the original read callback
-  if (original_read_cb) {
-    original_read_cb(indev_drv, data);
-    static bool was_pressed = false;
-    bool was_press = (data->state == LV_INDEV_STATE_PRESSED);
-    if (was_press && !was_pressed) {
-      // Reset the sleep timer when touch is pressed
-      reset_sleep_timer();
-    }
-
-    was_pressed = was_press;
-  }
-}
-
 #endif // TOUCH_ENABLED
 
 void display_set_rotation(ScreenRotation rot) {
   if (LVGL_lock(0)) {
-    lv_disp_set_rotation(lvgl_disp, (lv_disp_rot_t)rot);
+    lv_display_set_rotation(lvgl_disp, (lv_display_rotation_t)rot);
     LVGL_unlock();
   }
 }
@@ -416,7 +406,7 @@ static esp_err_t app_lvgl_init(void) {
                                             .hres = LV_HOR_RES,
                                             .vres = LV_VER_RES,
                                             .monochrome = false,
-                                            // .color_format = LV_COLOR_FORMAT_RGB565, //LVGL9
+                                            .color_format = LV_COLOR_FORMAT_RGB565,
                                             .rotation =
                                                 {
                                                     .swap_xy = false,
@@ -435,19 +425,19 @@ static esp_err_t app_lvgl_init(void) {
                                                 .buff_spiram = false,
                                                 .full_refresh = false,
                                                 .direct_mode = false,
-// .swap_bytes = false, //LVGL9
+                                                .swap_bytes = true,
 #if SW_ROTATE
-                                                .sw_rotate = true,
+                                                .sw_rotate = true, // TODO - figure out why this causes mem issues
 #endif
                                             }};
 
   lvgl_disp = lvgl_port_add_disp(&disp_cfg);
 
 #if ROUNDER_CALLBACK
-  lvgl_disp->driver->rounder_cb = LVGL_port_rounder_callback;
+  lv_display_add_event_cb(lvgl_disp, LVGL_port_rounder_callback, LV_EVENT_INVALIDATE_AREA, NULL);
 #endif
 
-  display_set_rotation(device_settings.screen_rotation);
+  display_set_rotation(device_settings.screen_rotation); // TODO - figure out why this causes mem issues
 
 #if TOUCH_ENABLED
   const lvgl_port_touch_cfg_t touch_cfg = {
@@ -455,23 +445,13 @@ static esp_err_t app_lvgl_init(void) {
       .handle = touch_handle,
   };
   lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
-  indev_drv_touch = lvgl_touch_indev->driver;
-  original_read_cb = lvgl_touch_indev->driver->read_cb;
-  // Replace the read callback with our own wrapped with mutex control
-  indev_drv_touch->read_cb = lv_touch_cb;
-  indev_drv_touch->feedback_cb = feedback_cb;
-
-  //  lv_indev_add_event_cb(lvgl_touch_indev, lv_touch_cb, LV_EVENT_ALL, NULL); //LVGL9
+  lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_PRESSED, NULL);
 #endif
 
   // Initialize the encoder driver
-  lv_indev_drv_init(&indev_drv_encoder);
-  indev_drv_encoder.type = LV_INDEV_TYPE_ENCODER;
-  indev_drv_encoder.read_cb = encoder_read_cb;
-  // lv_timer_set_period(indev_timer, 10); // 10ms instead of default 30ms
-
-  // Register the encoder
-  lvgl_encoder_indev = lv_indev_drv_register(&indev_drv_encoder);
+  lvgl_encoder_indev = lv_indev_create();
+  lv_indev_set_type(lvgl_encoder_indev, LV_INDEV_TYPE_ENCODER);
+  lv_indev_set_read_cb(lvgl_encoder_indev, encoder_read_cb);
 
   return ESP_OK;
 }
@@ -525,7 +505,6 @@ static esp_err_t display_ui() {
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, "Hello world");
     lv_obj_center(label);
-    // lv_demo_widgets();
 #else
     // ui_init(); // Generated SL UI
     // Use generated ui_init() function here without theme apply

@@ -172,7 +172,7 @@ void calibration_task(void *pvParameters) {
       LVGL_unlock();
     }
 
-    vTaskDelay(pdMS_TO_TICKS(LV_DISP_DEF_REFR_PERIOD));
+    vTaskDelay(pdMS_TO_TICKS(LV_DEF_REFR_PERIOD));
   }
 
   ESP_LOGI(TAG, "Calibration task ended");

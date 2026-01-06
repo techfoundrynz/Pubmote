@@ -151,4 +151,11 @@ bool wifi_is_auto_reconnect_enabled(void);
 
 bool wifi_is_initialized();
 
+/**
+ * @brief Get current WiFi RSSI
+ * 
+ * @return RSSI in dBm, or 0 if not connected
+ */
+int8_t wifi_get_rssi(void);
+
 #endif // __WIFI_H
