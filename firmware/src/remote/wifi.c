@@ -452,3 +452,11 @@ bool wifi_is_auto_reconnect_enabled(void) {
 bool wifi_is_initialized() {
   return is_initialized;
 }
+
+int8_t wifi_get_rssi(void) {
+  wifi_ap_record_t ap_info;
+  if (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK) {
+    return 0;
+  }
+  return ap_info.rssi;
+}

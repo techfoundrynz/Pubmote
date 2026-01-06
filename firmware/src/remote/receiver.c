@@ -201,11 +201,15 @@ static void receiver_task(void *pvParameters) {
   // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "RX task ended");
   vTaskDelete(NULL);
+  receiver_task_handle = NULL;
 }
 
 void receiver_init() {
   ESP_LOGI(TAG, "Starting receiver task");
-  xTaskCreatePinnedToCore(receiver_task, "receiver_task", 4096, NULL, 20, &receiver_task_handle, 0);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(receiver_task, "receiver_task", 4096, NULL, 20, &receiver_task_handle, 0) ==
+                          pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 }
 
 void receiver_deinit() {
