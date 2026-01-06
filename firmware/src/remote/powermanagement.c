@@ -464,5 +464,6 @@ void power_management_init() {
   gpio_isr_handler_add(PMU_INT, pmu_isr_handler, (void *)PMU_INT);
 #endif
 
-  xTaskCreate(power_management_task, "power_management_task", 4096, NULL, 2, NULL);
+  ESP_ERROR_CHECK(
+      xTaskCreate(power_management_task, "power_management_task", 4096, NULL, 2, NULL) == pdPASS ? ESP_OK : ESP_FAIL);
 }

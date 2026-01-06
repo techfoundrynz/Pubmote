@@ -3,6 +3,7 @@
 #include "esp_crt_bundle.h"
 #include "esp_https_ota.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "ota/update_client.h"
 #include "remote/connection.h"
 #include "remote/display.h"
@@ -174,6 +175,7 @@ static void update_task(void *pvParameters) {
   UpdateStep last_step = current_update_step;
   char *wifi_ssid = get_wifi_ssid();
   char *wifi_password = get_wifi_password();
+  int64_t last_rssi_log_time = 0;
 
   if (wifi_ssid == NULL || strlen(wifi_ssid) == 0 || wifi_password == NULL || strlen(wifi_password) == 0) {
     current_update_step = UPDATE_STEP_NO_WIFI;
@@ -204,6 +206,8 @@ static void update_task(void *pvParameters) {
         current_update_step = UPDATE_STEP_ERROR;
       }
       else {
+        ESP_LOGI(TAG, "WiFi Connected. RSSI: %d dBm", wifi_get_rssi());
+        last_rssi_log_time = esp_timer_get_time();
         current_update_step = UPDATE_STEP_CHECKING_UPDATE;
       }
       break;
@@ -299,6 +303,16 @@ static void update_task(void *pvParameters) {
     default:
       break;
     }
+
+    // Log RSSI every second if connected
+    if (wifi_get_connection_state() == WIFI_STATE_CONNECTED) {
+      int64_t current_time = esp_timer_get_time();
+      if ((current_time - last_rssi_log_time) > 1000000) {
+        ESP_LOGI(TAG, "WiFi RSSI: %d dBm", wifi_get_rssi());
+        last_rssi_log_time = current_time;
+      }
+    }
+
     vTaskDelay(pdMS_TO_TICKS(LV_DISP_DEF_REFR_PERIOD));
   }
 
@@ -329,7 +343,14 @@ void update_screen_load_start(lv_event_t *e) {
 
 void update_screen_loaded(lv_event_t *e) {
   ESP_LOGI(TAG, "Update screen loaded");
-  xTaskCreate(update_task, "update_task", 8192, NULL, 2, NULL);
+  if (update_task_handle != NULL) {
+    ESP_LOGW(TAG, "Update task already running");
+    return;
+  }
+
+  ESP_LOGI(TAG, "Free heap before update task: %lu", esp_get_free_heap_size());
+  ESP_ERROR_CHECK(xTaskCreate(update_task, "update_task", 6144, NULL, 5, &update_task_handle) == pdPASS ? ESP_OK
+                                                                                                        : ESP_FAIL);
 }
 
 void update_screen_unload_start(lv_event_t *e) {

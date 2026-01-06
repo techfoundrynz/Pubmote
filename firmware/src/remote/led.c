@@ -34,8 +34,8 @@ static uint8_t brightness_level = 255; // Brightness setting for the LED strip
 static uint8_t current_brightness = 0; // Effective brightness for the animation
 static RGB rgb = {255, 255, 255};
 
-  #define ANIMATION_DELAY_MS 10 // Delay for the LED animation task
-  #define BRIGHTNESS_STEP 5     // Step size for brightness adjustment
+  #define ANIMATION_DELAY_MS 10         // Delay for the LED animation task
+  #define BRIGHTNESS_STEP 5             // Step size for brightness adjustment
   #define TRANSITION_DURATION_US 200000 // 200ms transition
 
 static RGB last_displayed_color = {0, 0, 0};
@@ -43,8 +43,8 @@ static RGB transition_start_color = {0, 0, 0};
 static int64_t transition_start_time = 0;
 
 static void trigger_transition() {
-    transition_start_color = last_displayed_color;
-    transition_start_time = esp_timer_get_time();
+  transition_start_color = last_displayed_color;
+  transition_start_time = esp_timer_get_time();
 }
 
 static void configure_led(void) {
@@ -112,14 +112,18 @@ static void apply_led_effect() {
   // Check if we happen to be in a transition
   int64_t now = esp_timer_get_time();
   if (now < transition_start_time + TRANSITION_DURATION_US) {
-      float progress = (float)(now - transition_start_time) / TRANSITION_DURATION_US;
-      if (progress < 0.0f) progress = 0.0f;
-      if (progress > 1.0f) progress = 1.0f;
-      
-      // Interpolate
-      final_color.r = (uint8_t)(transition_start_color.r + (target_color.r - transition_start_color.r) * progress);
-      final_color.g = (uint8_t)(transition_start_color.g + (target_color.g - transition_start_color.g) * progress);
-      final_color.b = (uint8_t)(transition_start_color.b + (target_color.b - transition_start_color.b) * progress);
+    float progress = (float)(now - transition_start_time) / TRANSITION_DURATION_US;
+    if (progress < 0.0f) {
+      progress = 0.0f;
+    }
+    else if (progress > 1.0f) {
+      progress = 1.0f;
+    }
+
+    // Interpolate
+    final_color.r = (uint8_t)(transition_start_color.r + (target_color.r - transition_start_color.r) * progress);
+    final_color.g = (uint8_t)(transition_start_color.g + (target_color.g - transition_start_color.g) * progress);
+    final_color.b = (uint8_t)(transition_start_color.b + (target_color.b - transition_start_color.b) * progress);
   }
 
   last_displayed_color = final_color;
@@ -283,6 +287,7 @@ static void led_task(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(ANIMATION_DELAY_MS));
   }
   vTaskDelete(NULL);
+  led_task_handle = NULL;
 }
 #endif
 
@@ -330,7 +335,7 @@ void led_init() {
 #if LED_ENABLED
   ESP_LOGI(TAG, "Initializing LED strip");
   configure_led();
-  xTaskCreate(led_task, "led_task", 2048, NULL, 2, &led_task_handle);
+  ESP_ERROR_CHECK(xTaskCreate(led_task, "led_task", 2048, NULL, 2, &led_task_handle) == pdPASS ? ESP_OK : ESP_FAIL);
   register_startup_cb(play_startup_effect);
 #endif
 }
