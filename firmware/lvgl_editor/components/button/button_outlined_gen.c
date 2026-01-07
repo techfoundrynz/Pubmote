@@ -54,7 +54,7 @@ lv_obj_t * button_outlined_create(lv_obj_t * parent, const char * label)
         lv_style_set_recolor(&style_pressed, THEME_STRUCTURE5);
 
         lv_style_init(&style_focused);
-        lv_style_set_border_opa(&style_focused, OPA_MUTED);
+        lv_style_set_border_color(&style_focused, SETTINGS_THEME_COLOR);
 
         style_inited = true;
     }
