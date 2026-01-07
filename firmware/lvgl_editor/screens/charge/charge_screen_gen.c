@@ -72,7 +72,7 @@ lv_obj_t * charge_screen_create(void)
     lv_arc_set_min_value(lv_arc_0, 0);
     lv_arc_set_max_value(lv_arc_0, 100);
     lv_arc_bind_value(lv_arc_0, &state_battery_percent);
-    lv_arc_set_start_angle(lv_arc_0, 90);
+    lv_arc_set_start_angle(lv_arc_0, 89);
     lv_arc_set_end_angle(lv_arc_0, 89);
     lv_arc_set_bg_start_angle(lv_arc_0, 90);
     lv_arc_set_bg_end_angle(lv_arc_0, 89);
