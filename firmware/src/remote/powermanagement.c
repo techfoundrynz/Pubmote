@@ -27,7 +27,6 @@
 #include <math.h>
 #include <remote/connection.h>
 #include <remote/led.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
 

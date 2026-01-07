@@ -1,0 +1,52 @@
+<component>
+	<previews>
+		<preview style_pad_all="4" style_bg_color="0x000000" />
+	</previews>
+	<api>
+		<prop name="options" type="string" default="Option 1" help="Newline-separated list of options" />
+		<prop name="selected" type="int" default="0" help="Index of the selected option" />
+	</api>
+	<styles>
+		<style
+			name="style_main"
+			radius="#unit_md"
+			bg_opa="100%"
+			bg_color="#theme_structure2"
+			text_color="#theme_text"
+			pad_hor="#unit_sm"
+			pad_ver="#unit_sm"
+			pad_left="#unit_md"
+			pad_right="#unit_md"
+			min_height="40px"
+			width="100%"
+		/>
+		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#theme_structure5" />
+		<style
+			name="style_list"
+			bg_color="#theme_structure2"
+			text_color="#theme_text"
+			text_font="#theme_default_button_font"
+			radius="#unit_sm"
+			border_width="1px"
+			border_color="#theme_structure2"
+			border_opa="100%"
+			max_height="200px"
+		/>
+		<style name="style_selected" bg_color="#settings_theme_color" bg_opa="30%" />
+		<style
+			name="style_scrollbar"
+			bg_color="#settings_theme_color"
+			bg_opa="80%"
+			width="4px"
+			radius="2px"
+			pad_right="2px"
+		/>
+		<style name="style_indicator" />
+	</styles>
+	<view extends="lv_dropdown" options="$options" selected="$selected">
+		<remove_style_all />
+		<style name="style_main" />
+		<style name="style_pressed" selector="pressed" />
+		<style name="style_indicator" selector="indicator" />
+	</view>
+</component>

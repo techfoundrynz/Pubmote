@@ -1,6 +1,5 @@
-#include <ui/ui.h>
 #ifndef __ABOUT_SCREEN_H
-  #define __ABOUT_SCREEN_H
+#define __ABOUT_SCREEN_H
 
 bool is_charge_screen_active();
 

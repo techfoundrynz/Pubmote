@@ -1,0 +1,26 @@
+<component>
+	<previews>
+		<preview style_pad_all="4" style_bg_color="0x000000" />
+	</previews>
+	<api>
+		<prop name="label" type="string" default="Label" />
+	</api>
+	<styles>
+		<style
+			name="style_base"
+			bg_opa="100%"
+			bg_color="#theme_bg"
+			border_width="3px"
+			border_color="#theme_structure5"
+			text_color="#theme_text"
+			border_opa="100%"
+		/>
+		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#theme_structure5" />
+		<style name="style_focused" border_color="#settings_theme_color" />
+	</styles>
+	<view extends="button" label="$label">
+		<style name="style_base" />
+		<style name="style_pressed" selector="pressed" />
+		<style name="style_focused" selector="focus_key" />
+	</view>
+</component>

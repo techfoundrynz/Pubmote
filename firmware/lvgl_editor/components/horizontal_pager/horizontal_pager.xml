@@ -1,0 +1,21 @@
+<component>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
+	<styles>
+		<style
+			name="style_main"
+			flex_main_place="start"
+			flex_track_place="center"
+			flex_cross_place="center"
+			width="100%"
+			height="content"
+			layout="flex"
+			flex_flow="row"
+		/>
+	</styles>
+	<view scrollable="true" scroll_snap_x="center" scrollbar_mode="off" scroll_one="true">
+		<remove_style_all />
+		<style name="style_main" />
+	</view>
+</component>

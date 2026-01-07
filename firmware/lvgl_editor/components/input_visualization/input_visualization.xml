@@ -1,0 +1,92 @@
+<component>
+	<api>
+		<prop name="x" type="percentage" default="0%" />
+		<prop name="y" type="percentage" default="0%" />
+		<prop name="deadzone" type="percentage" default="40%" />
+		<prop name="active" type="bool" default="false" />
+	</api>
+	<consts>
+		<px name="thickness" value="4px" />
+		<px name="deadzone_thickness" value="2px" />
+	</consts>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
+	<view height="100px" width="100px" style_pad_all="0px" style_bg_opa="0%" style_border_width="0px">
+		<!-- main -->
+		<lv_obj
+			name="outline"
+			width="100%"
+			height="100%"
+			style_radius="50%"
+			style_border_width="#thickness"
+			style_border_color="0x4e4e4e"
+			align="center"
+			style_bg_opa="0%"
+		/>
+		<!-- midlines -->
+		<lv_obj
+			name="midline_x"
+			height="#thickness"
+			width="100%"
+			style_bg_color="0xEE4266"
+			align="center"
+			style_bg_opa="100%"
+			style_border_width="0px"
+			style_radius="0px"
+		/>
+		<lv_obj
+			name="midline_y"
+			height="100%"
+			width="#thickness"
+			style_bg_color="0xEE4266"
+			align="center"
+			style_bg_opa="100%"
+			style_border_width="0px"
+			style_radius="0px"
+		/>
+
+		<!-- deadzone -->
+		<lv_obj
+			name="deadzone_indicator"
+			width="40%"
+			height="40%"
+			style_border_color="#theme_structure5"
+			style_border_width="#deadzone_thickness"
+			style_bg_opa="0"
+			style_radius="50%"
+			align="center"
+		/>
+		<!-- indicator -->
+		<lv_obj
+			name="indicator"
+			height="20px"
+			width="20px"
+			align="center"
+			style_border_width="0px"
+			style_bg_opa="0%"
+			style_pad_all="0px"
+			x="0%"
+			y="0%"
+		>
+			<lv_obj
+				name="indicator_y"
+				height="100%"
+				width="#thickness"
+				style_bg_color="#theme_structure5"
+				align="center"
+				style_bg_opa="100%"
+				style_border_width="0px"
+			/>
+			<lv_obj
+				name="indicator_x"
+				height="#thickness"
+				width="100%"
+				style_bg_color="#theme_structure5"
+				align="center"
+				style_bg_opa="100%"
+				style_border_width="0px"
+			/>
+		</lv_obj>
+	</view>
+</component>

@@ -1,0 +1,106 @@
+<screen permanent="false">
+	<styles>
+		<style name="style_dropdown" width="50%" />
+		<style name="style_slider" width="70%" />
+	</styles>
+	<view
+		style_bg_color="#theme_bg"
+		width="100%"
+		height="100%"
+		scrollable="false"
+		flex_flow="column"
+		style_flex_main_place="space_between"
+		style_flex_cross_place="center"
+		style_flex_track_place="center"
+		style_pad_all="0px"
+	>
+		<event_cb trigger="screen_load_start" callback="settings_screen_load_start_cb" />
+		<event_cb trigger="screen_loaded" callback="settings_screen_loaded_cb" />
+		<event_cb trigger="screen_unload_start" callback="settings_screen_unload_start_cb" />
+		<event_cb trigger="screen_unloaded" callback="settings_screen_unloaded_cb" />
+		<header>
+			<h1 text="Settings" />
+		</header>
+		<horizontal_pager height="55%">
+			<horizontal_page>
+				<slider name="screen_brightness_slider" min_value="0" max_value="100">
+					<style name="style_slider" />
+					<event_cb trigger="value_changed" callback="settings_screen_brightness_slider_change_cb" />
+				</slider>
+				<label text="Screen brightness" />
+			</horizontal_page>
+			<horizontal_page>
+				<dropdown name="double_press_action_dropdown" options="Disabled&#10;Open menu">
+					<event_cb
+						trigger="value_changed"
+						callback="settings_screen_double_press_action_dropdown_change_cb"
+					/>
+					<style name="style_dropdown" />
+				</dropdown>
+				<label text="Double press action" />
+			</horizontal_page>
+			<horizontal_page>
+				<dropdown name="screen_rotation_dropdown" options="Disabled&#10;90 deg&#10;180 deg&#10;270 deg">
+					<event_cb trigger="value_changed" callback="settings_screen_screen_rotation_dropdown_change_cb" />
+					<style name="style_dropdown" />
+				</dropdown>
+				<label text="Screen rotation" />
+			</horizontal_page>
+			<horizontal_page>
+				<dropdown
+					name="shutdown_time_dropdown"
+					options="Disabled&#10;2 minutes&#10;5 minutes&#10;10 minutes&#10;20 minutes"
+				>
+					<event_cb trigger="value_changed" callback="settings_screen_shutdown_time_dropdown_change_cb" />
+					<style name="style_dropdown" />
+				</dropdown>
+				<label text="Auto-off time" />
+			</horizontal_page>
+			<horizontal_page>
+				<dropdown name="temp_units_dropdown" options="Celcius&#10;Farenheit">
+					<event_cb trigger="value_changed" callback="settings_screen_temp_units_dropdown_change_cb" />
+					<style name="style_dropdown" />
+				</dropdown>
+				<label text="Temp units" />
+			</horizontal_page>
+			<horizontal_page>
+				<dropdown name="distance_units_dropdown" options="Kilometers&#10;Miles">
+					<event_cb trigger="value_changed" callback="settings_screen_distance_units_dropdown_change_cb" />
+					<style name="style_dropdown" />
+				</dropdown>
+				<label text="Distance units" />
+			</horizontal_page>
+			<horizontal_page>
+				<dropdown name="startup_sound_dropdown" options="Disabled&#10;Beep&#10;Melody">
+					<event_cb trigger="value_changed" callback="settings_screen_startup_sound_dropdown_change_cb" />
+					<style name="style_dropdown" />
+				</dropdown>
+				<label text="Startup sound" />
+			</horizontal_page>
+			<horizontal_page>
+				<color_picker>
+					<style name="style_slider" />
+				</color_picker>
+				<label text="Theme color" />
+			</horizontal_page>
+			<horizontal_page>
+				<switch bind_checked="settings_dark_text">
+					<subject_toggle_event subject="settings_dark_text" trigger="clicked" />
+				</switch>
+				<label text="Dark text" />
+			</horizontal_page>
+		</horizontal_pager>
+		<footer>
+			<footer_buttons>
+				<button width="80px" label="Cancel">
+					<event_cb trigger="clicked" callback="settings_screen_cancel_cb" />
+					<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
+				</button>
+				<button_primary width="80px" label="Save">
+					<event_cb trigger="clicked" callback="settings_screen_save_cb" />
+					<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
+				</button_primary>
+			</footer_buttons>
+		</footer>
+	</view>
+</screen>
