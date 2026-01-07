@@ -37,46 +37,6 @@ extern "C" {
 
 #define OPA_MUTED lv_pct(20)
 
-#define LIGHT lv_color_hex(0xffffff)
-
-#define DARK lv_color_hex(0x0e0e0e)
-
-#define SURFACE_PRIMARY_LIGHT lv_color_hex(0x0e0e0e)
-
-#define TEXT_ON_SURFACE_PRIMARY_LIGHT lv_color_hex(0xffffff)
-
-#define SURFACE_PRIMARY_DARK lv_color_hex(0xffffff)
-
-#define TEXT_ON_SURFACE_PRIMARY_DARK lv_color_hex(0x0e0e0e)
-
-#define BG_PRIMARY_LIGHT lv_color_hex(0xffffff)
-
-#define BG_PRIMARY_DARK lv_color_hex(0x0e0e0e)
-
-#define BG_SECONDARY_LIGHT lv_color_hex(0xf0f0f0)
-
-#define BG_SECONDARY_DARK lv_color_hex(0x373130)
-
-#define BG_TERTIARY_LIGHT lv_color_hex(0xf0f0f0)
-
-#define BG_TERTIARY_DARK lv_color_hex(0x373130)
-
-#define ACCENT1_LIGHT lv_color_hex(0xAF4ADE)
-
-#define ACCENT1_DARK lv_color_hex(0xAF4ADE)
-
-#define ACCENT1_50_LIGHT lv_color_hex(0xD2B1F6)
-
-#define ACCENT1_50_DARK lv_color_hex(0x7E4CB7)
-
-#define ACCENT2_LIGHT lv_color_hex(0xe9deaf)
-
-#define ACCENT2_DARK lv_color_hex(0x887A3D)
-
-#define ACCENT2_50_LIGHT lv_color_hex(0xf3f0e7)
-
-#define ACCENT2_50_DARK lv_color_hex(0x4A473E)
-
 #define THEME_SUCCESS lv_color_hex(0x0EAD69)
 
 #define THEME_WARN lv_color_hex(0xFECC0B)

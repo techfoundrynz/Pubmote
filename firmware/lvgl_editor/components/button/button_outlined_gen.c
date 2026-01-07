@@ -36,6 +36,7 @@ lv_obj_t * button_outlined_create(lv_obj_t * parent, const char * label)
 
     static lv_style_t style_base;
     static lv_style_t style_pressed;
+    static lv_style_t style_focused;
 
     static bool style_inited = false;
 
@@ -46,10 +47,14 @@ lv_obj_t * button_outlined_create(lv_obj_t * parent, const char * label)
         lv_style_set_border_width(&style_base, 3);
         lv_style_set_border_color(&style_base, THEME_STRUCTURE5);
         lv_style_set_text_color(&style_base, THEME_TEXT);
+        lv_style_set_border_opa(&style_base, (255 * 100 / 100));
 
         lv_style_init(&style_pressed);
         lv_style_set_recolor_opa(&style_pressed, OPA_MUTED);
         lv_style_set_recolor(&style_pressed, THEME_STRUCTURE5);
+
+        lv_style_init(&style_focused);
+        lv_style_set_border_width(&style_focused, 5);
 
         style_inited = true;
     }
@@ -59,6 +64,7 @@ lv_obj_t * button_outlined_create(lv_obj_t * parent, const char * label)
 
     lv_obj_add_style(button_0, &style_base, 0);
     lv_obj_add_style(button_0, &style_pressed, LV_STATE_PRESSED);
+    lv_obj_add_style(button_0, &style_focused, LV_STATE_FOCUS_KEY);
 
     LV_TRACE_OBJ_CREATE("finished");
 

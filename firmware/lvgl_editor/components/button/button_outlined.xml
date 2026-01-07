@@ -13,11 +13,14 @@
 			border_width="3px"
 			border_color="#theme_structure5"
 			text_color="#theme_text"
+			border_opa="100%"
 		/>
 		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#theme_structure5" />
+		<style name="style_focused" border_width="5px" />
 	</styles>
 	<view extends="button" label="$label">
 		<style name="style_base" />
 		<style name="style_pressed" selector="pressed" />
+		<style name="style_focused" selector="focus_key" />
 	</view>
 </component>

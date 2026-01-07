@@ -10,28 +10,7 @@
 		<int name="unit_xl" value="24" />
 
 		<percentage name="opa_muted" value="20%" />
-
-		<color name="light" value="0xffffff" />
-		<color name="dark" value="0x0e0e0e" />
-		<color name="surface_primary_light" value="0x0e0e0e" />
-		<color name="text_on_surface_primary_light" value="0xffffff" />
-		<color name="surface_primary_dark" value="0xffffff" />
-		<color name="text_on_surface_primary_dark" value="0x0e0e0e" />
-		<color name="bg_primary_light" value="0xffffff" />
-		<color name="bg_primary_dark" value="0x0e0e0e" />
-		<color name="bg_secondary_light" value="0xf0f0f0" />
-		<color name="bg_secondary_dark" value="0x373130" />
-		<color name="bg_tertiary_light" value="0xf0f0f0" />
-		<color name="bg_tertiary_dark" value="0x373130" />
-		<color name="accent1_light" value="0xAF4ADE" />
-		<color name="accent1_dark" value="0xAF4ADE" />
-		<color name="accent1_50_light" value="0xD2B1F6" />
-		<color name="accent1_50_dark" value="0x7E4CB7" />
-		<color name="accent2_light" value="0xe9deaf" />
-		<color name="accent2_dark" value="0x887A3D" />
-		<color name="accent2_50_light" value="0xf3f0e7" />
-		<color name="accent2_50_dark" value="0x4A473E" />
-
+		
 		<!-- theme -->
 		<color name="theme_success" value="0x0EAD69" />
 		<color name="theme_warn" value="0xFECC0B" />

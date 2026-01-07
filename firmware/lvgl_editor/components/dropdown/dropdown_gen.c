@@ -47,8 +47,8 @@ lv_obj_t * dropdown_create(lv_obj_t * parent, const char * options, int32_t sele
         lv_style_init(&style_main);
         lv_style_set_radius(&style_main, UNIT_MD);
         lv_style_set_bg_opa(&style_main, (255 * 100 / 100));
-        lv_style_set_bg_color(&style_main, SURFACE_PRIMARY_LIGHT);
-        lv_style_set_text_color(&style_main, TEXT_ON_SURFACE_PRIMARY_LIGHT);
+        lv_style_set_bg_color(&style_main, THEME_STRUCTURE2);
+        lv_style_set_text_color(&style_main, THEME_TEXT);
         lv_style_set_pad_hor(&style_main, UNIT_SM);
         lv_style_set_pad_ver(&style_main, UNIT_SM);
         lv_style_set_pad_left(&style_main, UNIT_MD);
@@ -66,7 +66,7 @@ lv_obj_t * dropdown_create(lv_obj_t * parent, const char * options, int32_t sele
         lv_style_set_text_font(&style_list, THEME_DEFAULT_BUTTON_FONT);
         lv_style_set_radius(&style_list, UNIT_SM);
         lv_style_set_border_width(&style_list, 1);
-        lv_style_set_border_color(&style_list, THEME_STRUCTURE3);
+        lv_style_set_border_color(&style_list, THEME_STRUCTURE2);
         lv_style_set_border_opa(&style_list, (255 * 100 / 100));
         lv_style_set_max_height(&style_list, 200);
 
