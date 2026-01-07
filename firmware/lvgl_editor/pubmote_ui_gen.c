@@ -95,6 +95,7 @@ extern lv_font_t inter_bold_96_data;
  *----------------*/
 
 const void * splash;
+const void * charge;
 
 /*----------------
  * Subjects
@@ -201,6 +202,8 @@ void pubmote_ui_init_gen(const char * asset_path)
      *----------------*/
     lv_snprintf(buf, 256, "%s%s", asset_path, "images/splash.png");
     splash = lv_strdup(buf);
+    lv_snprintf(buf, 256, "%s%s", asset_path, "images/charge.png");
+    charge = lv_strdup(buf);
 
     /*----------------
      * Subjects
@@ -359,6 +362,7 @@ void pubmote_ui_init_gen(const char * asset_path)
 #if LV_USE_XML && !defined(LV_EDITOR_PREVIEW)
     /* Register images */
     lv_xml_register_image(NULL, "splash", splash);
+    lv_xml_register_image(NULL, "charge", charge);
 #endif
 
 #if LV_USE_XML == 0

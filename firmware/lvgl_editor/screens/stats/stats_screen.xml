@@ -30,8 +30,16 @@
 				height="20%"
 				width="70%"
 			>
-				<battery_gauge bind_percent="state_battery_percent" bind_charge_state="state_battery_status">
+				<battery_gauge
+					height="28px"
+					width="55px"
+					bind_percent="state_battery_percent"
+					bind_charge_state="state_battery_status"
+				>
 					<style name="style_battery_gauge" />
+					<lv_image src="charge" align="center">
+						<bind_flag_if_eq flag="hidden" subject="state_battery_status" ref_value="0" />
+					</lv_image>
 				</battery_gauge>
 				<label text="POCKET MODE" style_text_font="inter_bold_16" long_mode="scroll_circular">
 					<bind_flag_if_not_eq flag="hidden" subject="state_pocket_mode" ref_value="1" />
@@ -105,7 +113,7 @@
 				style_flex_track_place="center"
 				height="20%"
 			>
-				<label text="0%" style_text_font="inter_24" />
+				<label text="0%" style_text_font="inter_bold_24" />
 			</div>
 		</div>
 

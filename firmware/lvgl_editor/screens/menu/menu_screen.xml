@@ -1,4 +1,7 @@
 <screen permanent="false">
+	<styles>
+		<style name="style_button" height="64px" width="60%" />
+	</styles>
 	<view style_bg_color="#theme_bg" style_pad_hor="20px" scrollable="true" scrollbar_mode="off">
 		<event_cb trigger="screen_load_start" callback="menu_screen_load_start_cb" />
 		<event_cb trigger="screen_loaded" callback="menu_screen_loaded_cb" />
@@ -16,21 +19,26 @@
 			scroll_snap_y="center"
 			scroll_one="true"
 		>
-			<button label="Back" height="64px" width="60%">
+			<button label="Back">
+				<style name="style_button" />
 				<screen_load_event screen="stats_screen" trigger="clicked" anim_type="move_top" duration="200" />
 			</button>
-			<button label="Enable Pocket Mode" height="64px" width="60%">
+			<button label="Enable Pocket Mode">
+				<style name="style_button" />
 				<bind_flag_if_eq flag="hidden" ref_value="1" subject="state_pocket_mode" />
 				<subject_toggle_event subject="state_pocket_mode" trigger="clicked" />
 			</button>
-			<button label="Disable Pocket Mode" height="64px" width="60%">
+			<button label="Disable Pocket Mode">
+				<style name="style_button" />
 				<bind_flag_if_eq flag="hidden" ref_value="0" subject="state_pocket_mode" />
 				<subject_toggle_event subject="state_pocket_mode" trigger="clicked" />
 			</button>
-			<button label="Settings" height="64px" width="60%">
+			<button label="Settings">
+				<style name="style_button" />
 				<screen_create_event screen="settings_screen" trigger="clicked" anim_type="move_left" duration="200" />
 			</button>
-			<button label="Calibration" height="64px" width="60%">
+			<button label="Calibration">
+				<style name="style_button" />
 				<screen_create_event
 					screen="calibration_screen"
 					trigger="clicked"
@@ -38,17 +46,21 @@
 					duration="200"
 				/>
 			</button>
-			<button label="Pairing" height="64px" width="60%">
+			<button label="Pairing">
+				<style name="style_button" />
 				<screen_create_event screen="pairing_screen" trigger="clicked" anim_type="move_left" duration="200" />
 			</button>
-			<button label="About" height="64px" width="60%">
+			<button label="About">
+				<style name="style_button" />
 				<screen_create_event screen="about_screen" trigger="clicked" anim_type="move_left" duration="200" />
 			</button>
-			<button label="Shutdown" height="64px" width="60%">
+			<button label="Shutdown">
+				<style name="style_button" />
 				<bind_flag_if_eq flag="hidden" ref_value="1" subject="state_factory_reset" />
 				<subject_toggle_event subject="state_factory_reset" trigger="long_pressed" />
 			</button>
-			<button label="Factory reset" height="64px" width="60%">
+			<button label="Factory reset">
+				<style name="style_button" />
 				<bind_flag_if_eq flag="hidden" ref_value="0" subject="state_factory_reset" />
 				<subject_toggle_event subject="state_factory_reset" trigger="long_pressed" />
 				<event_cb callback="factory_reset" trigger="clicked" />

@@ -10,7 +10,7 @@
 		<int name="unit_xl" value="24" />
 
 		<percentage name="opa_muted" value="20%" />
-		
+
 		<!-- theme -->
 		<color name="theme_success" value="0x0EAD69" />
 		<color name="theme_warn" value="0xFECC0B" />
@@ -47,6 +47,7 @@
 		<int name="state_connection_state" value="0" />
 		<string name="state_connection_state_label" value="Disconnected" />
 		<int name="state_battery_percent" value="0" />
+		<!-- 0 = discharging, 1 = charging, 2 = full -->
 		<int name="state_battery_status" value="0" />
 		<float name="state_speed" value="0" />
 		<string name="state_speed_fmt" value="%.1f" />
@@ -78,6 +79,7 @@
 		<file name="icon_minus" figma_node_id="91:40" src_path="images/icon_minus.png" />
 		<file name="icon_theme" figma_node_id="15:28" src_path="images/icon_theme.png" /> -->
 		<file name="splash" src_path="images/splash.png" />
+		<file name="charge" src_path="images/charge.png" />
 	</images>
 
 	<fonts>

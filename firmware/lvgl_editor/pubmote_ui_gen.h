@@ -135,6 +135,7 @@ extern lv_font_t * inter_bold_96;
  *----------------*/
 
 extern const void * splash;
+extern const void * charge;
 
 /*----------------
  * Subjects
