@@ -214,11 +214,11 @@ esp_err_t lvgl_port_remove_disp(lv_display_t *disp)
     lv_disp_remove(disp);
     lvgl_port_unlock();
 
-    if (disp_ctx->draw_buffs[0]) {
+    if (disp_ctx->draw_buffs[0] && !disp_ctx->flags.static_buffers) {
         free(disp_ctx->draw_buffs[0]);
     }
 
-    if (disp_ctx->draw_buffs[1]) {
+    if (disp_ctx->draw_buffs[1] && !disp_ctx->flags.static_buffers) {
         free(disp_ctx->draw_buffs[1]);
     }
 
