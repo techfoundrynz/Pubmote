@@ -187,11 +187,11 @@ esp_err_t lvgl_port_remove_disp(lv_disp_t *disp)
             lv_mem_free(disp_drv->draw_ctx);
             disp_drv->draw_ctx = NULL;
         }
-        if (disp_drv->draw_buf && disp_drv->draw_buf->buf1 && !disp_ctx->flags.static_buffers) {
+        if (disp_drv->draw_buf && disp_drv->draw_buf->buf1) {
             free(disp_drv->draw_buf->buf1);
             disp_drv->draw_buf->buf1 = NULL;
         }
-        if (disp_drv->draw_buf && disp_drv->draw_buf->buf2 && !disp_ctx->flags.static_buffers) {
+        if (disp_drv->draw_buf && disp_drv->draw_buf->buf2) {
             free(disp_drv->draw_buf->buf2);
             disp_drv->draw_buf->buf2 = NULL;
         }
@@ -290,22 +290,11 @@ static lv_disp_t *lvgl_port_add_disp_priv(const lvgl_port_display_cfg_t *disp_cf
 
         /* alloc draw buffers used by LVGL */
         /* it's recommended to choose the size of the draw buffer(s) to be at least 1/10 screen sized */
-        if (disp_cfg->buf1) {
-            buf1 = disp_cfg->buf1;
-            disp_ctx->flags.static_buffers = 1;
-        } else {
-            buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), buff_caps);
-            ESP_GOTO_ON_FALSE(buf1, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf1) allocation!");
-        }
-
+        buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), buff_caps);
+        ESP_GOTO_ON_FALSE(buf1, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf1) allocation!");
         if (disp_cfg->double_buffer) {
-            if (disp_cfg->buf2) {
-                buf2 = disp_cfg->buf2;
-                disp_ctx->flags.static_buffers = 1;
-            } else {
-                buf2 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), buff_caps);
-                ESP_GOTO_ON_FALSE(buf2, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf2) allocation!");
-            }
+            buf2 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), buff_caps);
+            ESP_GOTO_ON_FALSE(buf2, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf2) allocation!");
         }
     }
 
@@ -354,10 +343,10 @@ static lv_disp_t *lvgl_port_add_disp_priv(const lvgl_port_display_cfg_t *disp_cf
 
 err:
     if (ret != ESP_OK) {
-        if (buf1 && !disp_ctx->flags.static_buffers) {
+        if (buf1) {
             free(buf1);
         }
-        if (buf2 && !disp_ctx->flags.static_buffers) {
+        if (buf2) {
             free(buf2);
         }
         if (buf3) {

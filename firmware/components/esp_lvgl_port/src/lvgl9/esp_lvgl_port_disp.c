@@ -70,7 +70,6 @@ typedef struct {
         unsigned int direct_mode: 1;    /* Use screen-sized buffers and draw to absolute coordinates */
         unsigned int sw_rotate: 1;    /* Use software rotation (slower) or PPA if available */
         unsigned int static_buffers: 1; /*!< User provided static buffers, do not free */
-        unsigned int slicing_mode: 1;   /*!< Sliced flush mode active (internal sync) */
     } flags;
 } lvgl_port_display_ctx_t;
 
@@ -215,11 +214,11 @@ esp_err_t lvgl_port_remove_disp(lv_display_t *disp)
     lv_disp_remove(disp);
     lvgl_port_unlock();
 
-    if (disp_ctx->draw_buffs[0] && !disp_ctx->flags.static_buffers) {
+    if (disp_ctx->draw_buffs[0]) {
         free(disp_ctx->draw_buffs[0]);
     }
 
-    if (disp_ctx->draw_buffs[1] && !disp_ctx->flags.static_buffers) {
+    if (disp_ctx->draw_buffs[1]) {
         free(disp_ctx->draw_buffs[1]);
     }
 
@@ -329,7 +328,6 @@ static lv_display_t *lvgl_port_add_disp_priv(const lvgl_port_display_cfg_t *disp
         trans_sem = xSemaphoreCreateCounting(1, 0);
         ESP_GOTO_ON_FALSE(trans_sem, ESP_ERR_NO_MEM, err, TAG, "Failed to create transport counting Semaphore");
         disp_ctx->trans_sem = trans_sem;
-        disp_ctx->trans_sem = trans_sem;
     } else {
         /* alloc draw buffers used by LVGL */
         /* it's recommended to choose the size of the draw buffer(s) to be at least 1/10 screen sized */
@@ -427,6 +425,10 @@ static lv_display_t *lvgl_port_add_disp_priv(const lvgl_port_display_cfg_t *disp
         };
         disp_ctx->ppa_handle = lvgl_port_ppa_create(&ppa_cfg);
         assert(disp_ctx->ppa_handle != NULL);
+#else
+        disp_ctx->draw_buffs[2] = heap_caps_malloc(buffer_size * color_bytes, buff_caps);
+        ESP_GOTO_ON_FALSE(disp_ctx->draw_buffs[2], ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (rotation buffer) allocation!");
+
 #endif //LVGL_PORT_PPA
     }
 
@@ -672,124 +674,28 @@ static void lvgl_port_flush_callback(lv_display_t *drv, const lv_area_t *area, u
             }
         }
 #else
-        /* SW rotation using sliced buffering with Ping-Pong optimization */
-        if (disp_ctx->flags.monochrome) {
-             /* For monochrome, the data transformation handles rotation in _lvgl_port_transform_monochrome */
-             /* We simply need to provide the rotated area coordinates to the driver */
-             lv_area_t temp_area = *area;
-             lvgl_port_rotate_area(drv, &temp_area);
-             offsetx1 = temp_area.x1;
-             offsetx2 = temp_area.x2;
-             offsety1 = temp_area.y1;
-             offsety2 = temp_area.y2;
-             /* Fall through to standard path */
-        } else {
-            /* Enable slicing mode for callbacks to give semaphore instead of calling flush_ready */
-            disp_ctx->flags.slicing_mode = 1;
-            
-            /* Ensure we have a semaphore for sync */
-            if (!disp_ctx->trans_sem) {
-                 disp_ctx->trans_sem = xSemaphoreCreateCounting(1, 0);
+        /* SW rotation */
+        if (disp_ctx->draw_buffs[2]) {
+            int32_t ww = lv_area_get_width(area);
+            int32_t hh = lv_area_get_height(area);
+            lv_color_format_t cf = lv_display_get_color_format(drv);
+            uint32_t w_stride = lv_draw_buf_width_to_stride(ww, cf);
+            uint32_t h_stride = lv_draw_buf_width_to_stride(hh, cf);
+            if (disp_ctx->current_rotation == LV_DISPLAY_ROTATION_180) {
+                lv_draw_sw_rotate(color_map, disp_ctx->draw_buffs[2], hh, ww, h_stride, h_stride, LV_DISPLAY_ROTATION_180, cf);
+            } else if (disp_ctx->current_rotation == LV_DISPLAY_ROTATION_90) {
+                lv_draw_sw_rotate(color_map, disp_ctx->draw_buffs[2], ww, hh, w_stride, h_stride, LV_DISPLAY_ROTATION_90, cf);
+            } else if (disp_ctx->current_rotation == LV_DISPLAY_ROTATION_270) {
+                lv_draw_sw_rotate(color_map, disp_ctx->draw_buffs[2], ww, hh, w_stride, h_stride, LV_DISPLAY_ROTATION_270, cf);
             }
-
-            uint32_t stride = lv_draw_buf_width_to_stride(lv_area_get_width(area), lv_display_get_color_format(drv));
-            uint32_t bpp = lv_color_format_get_size(lv_display_get_color_format(drv));
-            uint32_t max_chunk_bytes = 8192; // 8KB temp buffer (per buffer)
-            uint32_t pixels_per_chunk = max_chunk_bytes / bpp;
-            
-            int32_t src_w = lv_area_get_width(area);
-            int32_t src_h = lv_area_get_height(area);
-
-            int32_t chunk_h = pixels_per_chunk / src_w;
-            if (chunk_h < 1) chunk_h = 1;
-
-            uint32_t alloc_size = (chunk_h == 1) ? (src_w * bpp) : max_chunk_bytes;
-            
-            /* Encode using Ping-Pong buffers */
-            void *rot_bufs[2];
-            rot_bufs[0] = heap_caps_malloc(alloc_size, MALLOC_CAP_DEFAULT | MALLOC_CAP_DMA);
-            rot_bufs[1] = heap_caps_malloc(alloc_size, MALLOC_CAP_DEFAULT | MALLOC_CAP_DMA);
-            
-            if (!rot_bufs[0] || !rot_bufs[1]) {
-                 if (rot_bufs[0]) free(rot_bufs[0]);
-                 if (rot_bufs[1]) free(rot_bufs[1]);
-                 ESP_LOGE(TAG, "Failed to allocate rotation buffers");
-                 disp_ctx->flags.slicing_mode = 0;
-                 return;
-            }
-
-            uint8_t *src_p = color_map;
-            int32_t y = 0;
-            int buf_idx = 0;
-            bool transfer_in_progress = false;
-            
-            while (y < src_h) {
-                int32_t h_actual = (src_h - y > chunk_h) ? chunk_h : (src_h - y);
-                
-                /* 1. Rotate into current buffer (CPU busy, DMA potentially busy with other buffer) */
-                uint32_t dest_stride;
-                if (disp_ctx->current_rotation == LV_DISPLAY_ROTATION_180) {
-                     dest_stride = stride;
-                } else {
-                     dest_stride = lv_draw_buf_width_to_stride(h_actual, lv_display_get_color_format(drv));
-                }
-
-                lv_draw_sw_rotate(src_p, rot_bufs[buf_idx], src_w, h_actual, stride, dest_stride, disp_ctx->current_rotation, lv_display_get_color_format(drv));
-                
-                if (disp_ctx->flags.swap_bytes) {
-                     lv_draw_sw_rgb565_swap(rot_bufs[buf_idx], h_actual * src_w);
-                }
-
-                /* 2. Wait for previous transfer to complete before reusing bus / or ensure previous usage of THIS buffer is done */
-                /* Actually with ping-pong, if transfer_in_progress is true, it means the OTHER buffer is being sent. */
-                /* We must wait for it to finish before we can start sending THIS buffer (because bus is busy). */
-                /* AND we implicitly wait for THIS buffer to be free because we just wrote to it? */
-                /* Wait. If we just wrote to it, it means we assumed it was free. */
-                /* In the loop: 
-                   Iter 0: Write Buf0. Wait (false). Send Buf0. InProgress=true. idx=1.
-                   Iter 1: Write Buf1. Wait (true -> Wait for Buf0 done). Send Buf1. InProgress=true. idx=0.
-                   Iter 2: Write Buf0. Wait (true -> Wait for Buf1 done). Send Buf0. 
-                   
-                   This logic assumes writing Buf0 is safe while Buf1 is sending. (Yes).
-                   It assumes writing Buf1 is safe while Buf0 is sending. (Yes).
-                   It waits for bus to be free before Sending. (Yes).
-                */
-                
-                if (transfer_in_progress && disp_ctx->trans_sem) {
-                     xSemaphoreTake(disp_ctx->trans_sem, portMAX_DELAY);
-                }
-
-                /* 3. Flush current buffer */
-                lv_area_t dest_area;
-                dest_area.x1 = area->x1;
-                dest_area.x2 = area->x2;
-                dest_area.y1 = area->y1 + y;
-                dest_area.y2 = area->y1 + y + h_actual - 1;
-                lvgl_port_rotate_area(drv, &dest_area);
-                
-                esp_lcd_panel_draw_bitmap(disp_ctx->panel_handle, dest_area.x1, dest_area.y1, dest_area.x2 + 1, dest_area.y2 + 1, rot_bufs[buf_idx]);
-                transfer_in_progress = true;
-
-                y += h_actual;
-                src_p += h_actual * stride;
-                buf_idx = !buf_idx;
-            }
-            
-            /* Wait for final transfer to complete */
-            if (transfer_in_progress && disp_ctx->trans_sem) {
-                 xSemaphoreTake(disp_ctx->trans_sem, portMAX_DELAY);
-            }
-
-            free(rot_bufs[0]);
-            free(rot_bufs[1]);
-            
-            disp_ctx->flags.slicing_mode = 0;
-            
-            /* Notify LVGL we are done with the WHOLE mapping */
-            lv_disp_flush_ready(drv);
-            return; // We handled everything
-      }
-#endif // LVGL_PORT_PPA
+            color_map = (uint8_t *)disp_ctx->draw_buffs[2];
+            lvgl_port_rotate_area(drv, (lv_area_t *)area);
+            offsetx1 = area->x1;
+            offsetx2 = area->x2;
+            offsety1 = area->y1;
+            offsety2 = area->y2;
+        }
+#endif //LVGL_PORT_PPA
     }
 
     if (disp_ctx->flags.swap_bytes) {
