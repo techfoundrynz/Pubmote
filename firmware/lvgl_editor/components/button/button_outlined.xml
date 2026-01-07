@@ -16,7 +16,7 @@
 			border_opa="100%"
 		/>
 		<style name="style_pressed" recolor_opa="#opa_muted" recolor="#theme_structure5" />
-		<style name="style_focused" border_width="5px" />
+		<style name="style_focused" border_opa="#opa_muted" />
 	</styles>
 	<view extends="button" label="$label">
 		<style name="style_base" />
