@@ -80,7 +80,7 @@ void color_picker_constructor_hook(lv_obj_t * obj)
     color_picker_data_t * data = lv_malloc(sizeof(color_picker_data_t));
     data->hue = 0;
     data->saturation = 100;
-    data->lightness = 50;
+    data->lightness = 100;
     data->mode = COLOR_PICKER_MODE_HUE;
     data->bind_value = NULL;
     data->press_start_value = 0;

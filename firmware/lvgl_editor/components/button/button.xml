@@ -10,7 +10,7 @@
 			name="style_base"
 			radius="#unit_md"
 			bg_opa="100%"
-			width="100%"
+			width="content"
 			pad_hor="#unit_sm"
 			pad_ver="#unit_sm"
 			text_font="#theme_default_button_font"
@@ -26,12 +26,6 @@
 		<style name="style_base" />
 		<style name="style_pressed" selector="pressed" />
 		<style name="style_focused" selector="focused" />
-		<lv_label
-			text="$label"
-			align="center"
-			width="100%"
-			style_text_align="center"
-			long_mode="scroll_circular"
-		/>
+		<lv_label text="$label" align="center" style_text_align="center" long_mode="scroll_circular" />
 	</view>
 </component>

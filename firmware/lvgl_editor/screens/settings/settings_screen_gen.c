@@ -79,7 +79,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_0 = label_create(horizontal_page_0, "Screen brightness");
     
     lv_obj_t * horizontal_page_1 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * double_press_action_dropdown = dropdown_create(horizontal_page_1, "Option 1", 0);
+    lv_obj_t * double_press_action_dropdown = dropdown_create(horizontal_page_1, "Disabled\nOpen menu", 0);
     lv_obj_set_name(double_press_action_dropdown, "double_press_action_dropdown");
     lv_obj_add_event_cb(double_press_action_dropdown, settings_screen_double_press_action_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(double_press_action_dropdown, &style_dropdown, 0);
@@ -87,7 +87,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_1 = label_create(horizontal_page_1, "Double press action");
     
     lv_obj_t * horizontal_page_2 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * screen_rotation_dropdown = dropdown_create(horizontal_page_2, "Option 1", 0);
+    lv_obj_t * screen_rotation_dropdown = dropdown_create(horizontal_page_2, "Disabled\n90 deg\n180 deg\n270 deg", 0);
     lv_obj_set_name(screen_rotation_dropdown, "screen_rotation_dropdown");
     lv_obj_add_event_cb(screen_rotation_dropdown, settings_screen_screen_rotation_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(screen_rotation_dropdown, &style_dropdown, 0);
@@ -95,7 +95,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_2 = label_create(horizontal_page_2, "Screen rotation");
     
     lv_obj_t * horizontal_page_3 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * shutdown_time_dropdown = dropdown_create(horizontal_page_3, "Option 1", 0);
+    lv_obj_t * shutdown_time_dropdown = dropdown_create(horizontal_page_3, "Disabled\n2 minutes\n5 minutes\n10 minutes\n20 minutes", 0);
     lv_obj_set_name(shutdown_time_dropdown, "shutdown_time_dropdown");
     lv_obj_add_event_cb(shutdown_time_dropdown, settings_screen_shutdown_time_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(shutdown_time_dropdown, &style_dropdown, 0);
@@ -103,7 +103,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_3 = label_create(horizontal_page_3, "Auto-off time");
     
     lv_obj_t * horizontal_page_4 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * temp_units_dropdown = dropdown_create(horizontal_page_4, "Option 1", 0);
+    lv_obj_t * temp_units_dropdown = dropdown_create(horizontal_page_4, "Celcius\nFarenheit", 0);
     lv_obj_set_name(temp_units_dropdown, "temp_units_dropdown");
     lv_obj_add_event_cb(temp_units_dropdown, settings_screen_temp_units_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(temp_units_dropdown, &style_dropdown, 0);
@@ -111,7 +111,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_4 = label_create(horizontal_page_4, "Temp units");
     
     lv_obj_t * horizontal_page_5 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * distance_units_dropdown = dropdown_create(horizontal_page_5, "Option 1", 0);
+    lv_obj_t * distance_units_dropdown = dropdown_create(horizontal_page_5, "Kilometers\nMiles", 0);
     lv_obj_set_name(distance_units_dropdown, "distance_units_dropdown");
     lv_obj_add_event_cb(distance_units_dropdown, settings_screen_distance_units_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(distance_units_dropdown, &style_dropdown, 0);
@@ -119,7 +119,7 @@ lv_obj_t * settings_screen_create(void)
     lv_obj_t * label_5 = label_create(horizontal_page_5, "Distance units");
     
     lv_obj_t * horizontal_page_6 = horizontal_page_create(horizontal_pager_0);
-    lv_obj_t * startup_sound_dropdown = dropdown_create(horizontal_page_6, "Option 1", 0);
+    lv_obj_t * startup_sound_dropdown = dropdown_create(horizontal_page_6, "Disabled\nBeep\nMelody", 0);
     lv_obj_set_name(startup_sound_dropdown, "startup_sound_dropdown");
     lv_obj_add_event_cb(startup_sound_dropdown, settings_screen_startup_sound_dropdown_change_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_style(startup_sound_dropdown, &style_dropdown, 0);

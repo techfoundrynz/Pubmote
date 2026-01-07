@@ -44,7 +44,7 @@ lv_obj_t * button_create(lv_obj_t * parent, const char * label)
         lv_style_init(&style_base);
         lv_style_set_radius(&style_base, UNIT_MD);
         lv_style_set_bg_opa(&style_base, (255 * 100 / 100));
-        lv_style_set_width(&style_base, lv_pct(100));
+        lv_style_set_width(&style_base, LV_SIZE_CONTENT);
         lv_style_set_pad_hor(&style_base, UNIT_SM);
         lv_style_set_pad_ver(&style_base, UNIT_SM);
         lv_style_set_text_font(&style_base, THEME_DEFAULT_BUTTON_FONT);
@@ -71,7 +71,6 @@ lv_obj_t * button_create(lv_obj_t * parent, const char * label)
     lv_obj_t * lv_label_0 = lv_label_create(lv_button_0);
     lv_label_set_text(lv_label_0, label);
     lv_obj_set_align(lv_label_0, LV_ALIGN_CENTER);
-    lv_obj_set_width(lv_label_0, lv_pct(100));
     lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(lv_label_0, LV_LABEL_LONG_MODE_SCROLL_CIRCULAR);
 

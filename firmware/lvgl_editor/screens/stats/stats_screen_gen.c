@@ -55,7 +55,7 @@ lv_obj_t * stats_screen_create(void)
     lv_obj_add_event_cb(lv_obj_0, stats_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
     lv_obj_add_event_cb(lv_obj_0, stats_screen_unload_start_cb, LV_EVENT_SCREEN_UNLOAD_START, NULL);
     lv_obj_add_event_cb(lv_obj_0, stats_screen_unloaded_cb, LV_EVENT_SCREEN_UNLOADED, NULL);
-    lv_obj_add_screen_create_event(lv_obj_0, LV_EVENT_GESTURE, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
+    lv_obj_add_screen_create_event(lv_obj_0, LV_EVENT_GESTURE, menu_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_BOTTOM, 200, 0);
     lv_obj_t * div_0 = div_create(lv_obj_0);
     lv_obj_set_width(div_0, lv_pct(100));
     lv_obj_set_height(div_0, lv_pct(100));

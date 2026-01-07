@@ -16,56 +16,36 @@ static void settings_screen_set_dropdown_options(lv_obj_t *screen) {
 
   // Set dropdown options
   if (double_press_dropdown) {
-    lv_dropdown_set_options(double_press_dropdown, "None\n"
-                                                   "Open menu");
 #ifndef LV_EDITOR_PREVIEW
     lv_dropdown_set_selected(double_press_dropdown, device_settings.double_press_action);
 #endif
   }
 
   if (rotation_dropdown) {
-    lv_dropdown_set_options(rotation_dropdown, "0 Deg\n"
-                                               "90 Deg\n"
-                                               "180 Deg\n"
-                                               "270 Deg");
 #ifndef LV_EDITOR_PREVIEW
     lv_dropdown_set_selected(rotation_dropdown, device_settings.screen_rotation);
 #endif
   }
 
   if (shutdown_dropdown) {
-    lv_dropdown_set_options(shutdown_dropdown, "Disabled\n"
-                                               "2 minute\n"
-                                               "5 minutes\n"
-                                               "10 minutes\n"
-                                               "20 minutes");
-
 #ifndef LV_EDITOR_PREVIEW
     lv_dropdown_set_selected(shutdown_dropdown, device_settings.auto_off_time);
 #endif
   }
 
   if (temp_units_dropdown) {
-    lv_dropdown_set_options(temp_units_dropdown, "Celsius\n"
-                                                 "Fahrenheit");
-
 #ifndef LV_EDITOR_PREVIEW
     lv_dropdown_set_selected(temp_units_dropdown, device_settings.temp_units);
 #endif
   }
 
   if (distance_dropdown) {
-    lv_dropdown_set_options(distance_dropdown, "Kilometers\n"
-                                               "Miles");
 #ifndef LV_EDITOR_PREVIEW
     lv_dropdown_set_selected(distance_dropdown, device_settings.distance_units);
 #endif
   }
 
   if (startup_sound_dropdown) {
-    lv_dropdown_set_options(startup_sound_dropdown, "None\n"
-                                                    "Beep\n"
-                                                    "Melody");
 #ifndef LV_EDITOR_PREVIEW
     lv_dropdown_set_selected(startup_sound_dropdown, device_settings.startup_sound);
 #endif
@@ -106,29 +86,29 @@ void settings_screen_unloaded_cb(lv_event_t *e) {
   // Handle screen unloaded events here
 }
 
-void settings_screen_brightness_slider_change_cb(lv_event_t * e) {
+void settings_screen_brightness_slider_change_cb(lv_event_t *e) {
 }
 
-void settings_screen_double_press_action_dropdown_change_cb(lv_event_t * e) {
+void settings_screen_double_press_action_dropdown_change_cb(lv_event_t *e) {
 }
 
-void settings_screen_screen_rotation_dropdown_change_cb(lv_event_t * e) {
+void settings_screen_screen_rotation_dropdown_change_cb(lv_event_t *e) {
 }
 
-void settings_screen_shutdown_time_dropdown_change_cb(lv_event_t * e) {
+void settings_screen_shutdown_time_dropdown_change_cb(lv_event_t *e) {
 }
 
-void settings_screen_temp_units_dropdown_change_cb(lv_event_t * e) {
+void settings_screen_temp_units_dropdown_change_cb(lv_event_t *e) {
 }
 
-void settings_screen_distance_units_dropdown_change_cb(lv_event_t * e) {
+void settings_screen_distance_units_dropdown_change_cb(lv_event_t *e) {
 }
 
-void settings_screen_startup_sound_dropdown_change_cb(lv_event_t * e) {
+void settings_screen_startup_sound_dropdown_change_cb(lv_event_t *e) {
 }
 
-void settings_screen_cancel_cb(lv_event_t * e) {
+void settings_screen_cancel_cb(lv_event_t *e) {
 }
 
-void settings_screen_save_cb(lv_event_t * e) {
+void settings_screen_save_cb(lv_event_t *e) {
 }

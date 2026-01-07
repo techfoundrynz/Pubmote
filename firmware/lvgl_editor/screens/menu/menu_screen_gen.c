@@ -67,7 +67,7 @@ lv_obj_t * menu_screen_create(void)
     lv_obj_t * button_0 = button_create(div_0, "Back");
     lv_obj_set_height(button_0, 64);
     lv_obj_set_width(button_0, lv_pct(60));
-    lv_obj_add_screen_load_event(button_0, LV_EVENT_CLICKED, stats_screen, LV_SCREEN_LOAD_ANIM_OVER_TOP, 200, 0);
+    lv_obj_add_screen_load_event(button_0, LV_EVENT_CLICKED, stats_screen, LV_SCREEN_LOAD_ANIM_MOVE_TOP, 200, 0);
     
     lv_obj_t * button_1 = button_create(div_0, "Enable Pocket Mode");
     lv_obj_set_height(button_1, 64);

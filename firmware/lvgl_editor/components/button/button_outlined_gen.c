@@ -42,7 +42,6 @@ lv_obj_t * button_outlined_create(lv_obj_t * parent, const char * label)
     if (!style_inited) {
         lv_style_init(&style_base);
         lv_style_set_bg_opa(&style_base, (255 * 100 / 100));
-        lv_style_set_width(&style_base, lv_pct(100));
         lv_style_set_bg_color(&style_base, THEME_BG);
         lv_style_set_border_width(&style_base, 3);
         lv_style_set_border_color(&style_base, THEME_STRUCTURE5);

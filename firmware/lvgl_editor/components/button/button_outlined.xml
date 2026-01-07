@@ -9,7 +9,6 @@
 		<style
 			name="style_base"
 			bg_opa="100%"
-			width="100%"
 			bg_color="#theme_bg"
 			border_width="3px"
 			border_color="#theme_structure5"

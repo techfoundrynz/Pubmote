@@ -30,7 +30,7 @@
 				<label text="Screen brightness" />
 			</horizontal_page>
 			<horizontal_page>
-				<dropdown name="double_press_action_dropdown">
+				<dropdown name="double_press_action_dropdown" options="Disabled&#10;Open menu">
 					<event_cb
 						trigger="value_changed"
 						callback="settings_screen_double_press_action_dropdown_change_cb"
@@ -40,35 +40,38 @@
 				<label text="Double press action" />
 			</horizontal_page>
 			<horizontal_page>
-				<dropdown name="screen_rotation_dropdown">
+				<dropdown name="screen_rotation_dropdown" options="Disabled&#10;90 deg&#10;180 deg&#10;270 deg">
 					<event_cb trigger="value_changed" callback="settings_screen_screen_rotation_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</dropdown>
 				<label text="Screen rotation" />
 			</horizontal_page>
 			<horizontal_page>
-				<dropdown name="shutdown_time_dropdown">
+				<dropdown
+					name="shutdown_time_dropdown"
+					options="Disabled&#10;2 minutes&#10;5 minutes&#10;10 minutes&#10;20 minutes"
+				>
 					<event_cb trigger="value_changed" callback="settings_screen_shutdown_time_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</dropdown>
 				<label text="Auto-off time" />
 			</horizontal_page>
 			<horizontal_page>
-				<dropdown name="temp_units_dropdown">
+				<dropdown name="temp_units_dropdown" options="Celcius&#10;Farenheit">
 					<event_cb trigger="value_changed" callback="settings_screen_temp_units_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</dropdown>
 				<label text="Temp units" />
 			</horizontal_page>
 			<horizontal_page>
-				<dropdown name="distance_units_dropdown">
+				<dropdown name="distance_units_dropdown" options="Kilometers&#10;Miles">
 					<event_cb trigger="value_changed" callback="settings_screen_distance_units_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</dropdown>
 				<label text="Distance units" />
 			</horizontal_page>
 			<horizontal_page>
-				<dropdown name="startup_sound_dropdown">
+				<dropdown name="startup_sound_dropdown" options="Disabled&#10;Beep&#10;Melody">
 					<event_cb trigger="value_changed" callback="settings_screen_startup_sound_dropdown_change_cb" />
 					<style name="style_dropdown" />
 				</dropdown>

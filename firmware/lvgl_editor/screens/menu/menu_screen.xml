@@ -17,7 +17,7 @@
 			scroll_one="true"
 		>
 			<button label="Back" height="64px" width="60%">
-				<screen_load_event screen="stats_screen" trigger="clicked" anim_type="over_top" duration="200" />
+				<screen_load_event screen="stats_screen" trigger="clicked" anim_type="move_top" duration="200" />
 			</button>
 			<button label="Enable Pocket Mode" height="64px" width="60%">
 				<bind_flag_if_eq flag="hidden" ref_value="1" subject="state_pocket_mode" />
