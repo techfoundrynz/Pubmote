@@ -68,7 +68,6 @@ lv_obj_t * about_screen_create(void)
     lv_obj_t * label_2 = label_create(body_0, "Hash: unknown");
     
     lv_obj_t * button_outlined_0 = button_outlined_create(body_0, "Check for updates");
-    lv_obj_set_width(button_outlined_0, LV_SIZE_CONTENT);
     lv_obj_add_screen_create_event(button_outlined_0, LV_EVENT_CLICKED, update_screen_create, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0);
     
     lv_obj_t * footer_0 = footer_create(lv_obj_0);
