@@ -39,3 +39,9 @@ export interface FirmwareFiles {
   application: File | null;
   elf: File | null;
 }
+
+export interface CommandInfo {
+  name: string;
+  help: string;
+  hint?: string;
+}

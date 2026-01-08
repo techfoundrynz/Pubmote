@@ -45,6 +45,49 @@ const AppContent = () => {
   const [errorDialog, setErrorDialog] = useState<{isOpen: boolean, title: string, message: string} | null>(null);
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
+  // Handle device reboot
+  React.useEffect(() => {
+    console.log("[App] Registering onReboot handler to espService");
+    espService.onReboot = async () => {
+      console.log("Device reboot detected, refreshing info...");
+      toast.info("Device reboot detected, refreshing info...");
+      
+      // Wait for boot - increased to 3.5s to ensure device is ready
+      await new Promise(r => setTimeout(r, 3500));
+      
+      if (espService.isConnected()) {
+        try {
+          console.log("[onReboot] Fetching version info...");
+          let verInfo = {};
+          try {
+             verInfo = await espService.getVersionInfo();
+             console.log("[onReboot] Version info fetched:", verInfo);
+          } catch(err) {
+             console.warn("[onReboot] Failed to fetch version info:", err);
+          }
+          
+          console.log("[onReboot] Checking for coredump...");
+          const hasCoredump = await espService.checkCoredump();
+          console.log("[onReboot] Coredump check result:", hasCoredump);
+          
+          setDeviceInfo(prev => ({
+            ...prev,
+            ...verInfo,
+            hasCoredump
+          }));
+          
+          if (hasCoredump) {
+            toast.error("Crash detected (core dump found)");
+          }
+        } catch (e) {
+            console.error("Failed to refresh info after reboot", e);
+        }
+      } else {
+          console.warn("[onReboot] Service not connected");
+      }
+    };
+  }, [espService, toast]);
+
   const handleSendTerminalCommand = React.useCallback(
     async (command: string) => {
       try {
@@ -237,39 +280,6 @@ const AppContent = () => {
     }
   };
 
-  // Set up the reboot handler
-  React.useEffect(() => {
-    espService.onReboot = async () => {
-      if (!deviceInfo.version) return;
-
-      terminal.log("Device reboot detected...", "info");
-      
-      // Wait for device to boot
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      try {
-        const hasCoredump = await espService.checkCoredump().catch(e => {
-          console.error(e);
-          return false;
-        });
-
-        setDeviceInfo(prev => ({
-          ...prev,
-          hasCoredump
-        }));
-
-        if (hasCoredump) {
-          toast.warning("Crashdump detected after reboot");
-        }
-      } catch (error) {
-        console.error("Failed to check coredump after reboot:", error);
-      }
-    };
-    return () => {
-      espService.onReboot = undefined;
-    };
-  }, [espService, terminal, toast, deviceInfo.version]);
-
   // Set up the disconnect handler
   React.useEffect(() => {
     espService.onDisconnect = () => {
@@ -326,8 +336,6 @@ const AppContent = () => {
             <div className="lg:col-span-6 flex flex-col min-h-0">
               <DeviceInfo
                 deviceInfo={deviceInfo}
-                onConnect={handleConnect}
-                onDisconnect={handleDisconnect}
                 onSendCommand={handleSendTerminalCommand}
                 terminal={terminal}
                 onViewCoredump={handleViewCoredump}
@@ -337,6 +345,7 @@ const AppContent = () => {
                 isElfLoaded={isElfLoaded}
                 updateAvailable={!!(latestVersion && deviceInfo.version && compareVersions(latestVersion, deviceInfo.version) > 0)}
                 flashProgress={flashProgress}
+                getCompletions={espService.getCompletions}
               />
             </div>
 

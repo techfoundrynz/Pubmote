@@ -54,7 +54,7 @@ const getEspLogInfo = (
 } => {
   // Convert carriage returns to newlines for proper display
   const normalizedData = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const cleanedData = removeAnsiEscapeCodes(normalizedData.trim());
+  const cleanedData = removeAnsiEscapeCodes(normalizedData.trimEnd());
   const type = getLogLevel(cleanedData);
 
   return {
@@ -75,12 +75,15 @@ export class ESPService {
   private port: any = null;
 
   private logListeners: Array<LogListener> = [(d, t) => {
-    this.terminal?.writeLine(
+    this.log(
       d, t
     );
 
     return true;
   }];
+
+  // Silent execution implementation
+  private silentListeners: LogListener[] = [];
 
   public onReboot?: () => void;
   public onDisconnect?: () => void;
@@ -119,10 +122,21 @@ export class ESPService {
   }
 
   public log = (message: string, type: "info" | "error" | "success" = "info") => {
+    if (!message.replace("pubconsole>", "").trim()) {
+      return;
+    }
     this.terminal?.writeLine(message, type);
   }
 
+  // Override emitToListeners to check silent listeners first
   private emitToListeners = (...args: Parameters<LogListener>) => {
+    // Check silent listeners first
+    for (const listener of this.silentListeners) {
+      if (listener(...args)) {
+        return;
+      }
+    }
+
     for (const listener of this.logListeners) {
       if (listener(...args)) {
         break; // Break on first listener that marks log as handled
@@ -131,14 +145,26 @@ export class ESPService {
   }
 
   private processEspLog = async (data: string | Uint8Array) => {
+    // Always append to buffer
     if (typeof data === "string") {
-      const logInfo = getEspLogInfo(data);
+      this.logBuffer += data;
+    } else {
+      this.logBuffer += new TextDecoder().decode(data);
+    }
+
+    // Process complete lines
+    while (this.logBuffer.includes("\n")) {
+      const splitIndex = this.logBuffer.indexOf("\n");
+      const line = this.logBuffer.slice(0, splitIndex);
+      this.logBuffer = this.logBuffer.slice(splitIndex + 1);
+
+      const logInfo = getEspLogInfo(line);
       if (logInfo.data) {
         this.emitToListeners(logInfo.data, logInfo.type);
 
         // Check for backtrace
         if (logInfo.data.includes("Backtrace:")) {
-          console.log("[DEBUG] Backtrace detected in line:", logInfo.data);
+          console.log("[DEBUG] Backtrace detected in buffered line:", logInfo.data);
           console.log("[DEBUG] ELF loaded:", this.stacktraceService.isElfLoaded());
           if (this.stacktraceService.isElfLoaded()) {
             try {
@@ -151,59 +177,26 @@ export class ESPService {
             }
           } else {
             this.log("Backtrace detected but no ELF file loaded.", "info");
+            // If we have backtrace but no ELF, try to auto-download if we have version info
+            // But we don't have access to deviceInfo here easily unless we store it
           }
         }
 
-        // Check for reboot
-        if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x")) {
-          console.log("[DEBUG] Reboot detected");
-          if (this.onReboot) {
-            this.onReboot();
-          }
+        // Matches "rst:0x" or "rst: 0x" anywhere in the line
+        if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x") || logInfo.data.includes("rst:")) {
+          console.log("[DEBUG] Reboot detected (buffered):", logInfo.data);
+          this.onReboot?.();
         }
       }
-    } else {
-      // If log message is split into multiple chunks, buffer it until newline
-      this.logBuffer += new TextDecoder().decode(data);
-      if (!this.logBuffer.includes("\n")) {
-        return;
-      }
+    }
 
-      while (this.logBuffer.includes("\n")) {
-        const [line, ...rest] = this.logBuffer.split("\n");
-        this.logBuffer = rest.join("\n");
-
-        const logInfo = getEspLogInfo(line);
-        if (logInfo.data) {
-          this.emitToListeners(logInfo.data, logInfo.type);
-
-          // Check for backtrace
-          if (logInfo.data.includes("Backtrace:")) {
-            console.log("[DEBUG] Backtrace detected in buffered line:", logInfo.data);
-            console.log("[DEBUG] ELF loaded:", this.stacktraceService.isElfLoaded());
-            if (this.stacktraceService.isElfLoaded()) {
-              try {
-                const decoded = await this.stacktraceService.decode(logInfo.data);
-                console.log("[DEBUG] Decoded result:", decoded);
-                this.log(decoded, "info");
-              } catch (error) {
-                console.error("[DEBUG] Decode error:", error);
-                this.log(`Backtrace decode error: ${error}`, "error");
-              }
-            } else {
-              this.log("Backtrace detected but no ELF file loaded.", "info");
-            }
-          }
-
-          // Check for reboot
-          if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x")) {
-            console.log("[DEBUG] Reboot detected (buffered)");
-            if (this.onReboot) {
-              this.onReboot();
-            }
-          }
-        }
-      }
+    // Check for prompt in remaining buffer
+    // Prompts don't end with newline, so they sit in the buffer
+    // We check if the trimmed buffer ends with our expected prompt
+    const cleanedBuffer = removeAnsiEscapeCodes(this.logBuffer).trim();
+    if (cleanedBuffer.endsWith("pubconsole>") || cleanedBuffer === "pubconsole>") {
+      this.emitToListeners("pubconsole>", "info");
+      this.logBuffer = ""; // Clear buffer after detecting prompt to be clean for next input
     }
   }
 
@@ -240,6 +233,7 @@ export class ESPService {
           this.removeLogListener(versionLogListener);
           this.log("Version info successfully loaded");
           resolve({ version, variant, hardware });
+          return true;
         }
 
         return true; // Mark log as handled
@@ -433,14 +427,16 @@ export class ESPService {
     return encoder.encode(command + "\n");
   }
 
-  async sendCommand(command: string): Promise<void> {
+  async sendCommand(command: string, silent: boolean = false): Promise<void> {
     if (!this.espLoader || !this.isConnected()) {
       throw new Error("Device not connected");
     }
 
     try {
-      await this.espLoader.transport.write(this.encodeCommand(command + "\n"));
-      this.log(`Sent command: ${command}`, "info");
+      await this.espLoader.transport.write(this.encodeCommand(command));
+      if (!silent) {
+        this.log(`Sent command: ${command}`, "info");
+      }
     } catch (error) {
       this.log(
         `Failed to send command: ${error instanceof Error ? error.message : "Unknown error"
@@ -591,5 +587,53 @@ export class ESPService {
 
     // safe to null port now
     this.port = null;
+  }
+
+  // Execute a command silently and capture output
+  executeCommand = async (command: string, timeout = 2000): Promise<string[]> => {
+    return new Promise((resolve, reject) => {
+      const lines: string[] = [];
+      const timeoutId = setTimeout(() => {
+        this.removeSilentListener(listener);
+        console.warn(`[executeCommand] Timeout waiting for prompt for command: "${command}"`);
+        resolve(lines); // return what we have so far
+      }, timeout);
+
+      const listener: LogListener = (data) => {
+        const trimmed = data.trim();
+        if (trimmed === 'pubconsole>') {
+          clearTimeout(timeoutId);
+          this.removeSilentListener(listener);
+          resolve(lines);
+          return true;
+        }
+        // Filter out echo if present (simple check)
+        if (trimmed !== command.trim()) {
+          lines.push(data.trimEnd());
+        }
+        return true; // Swallow the log
+      };
+
+      this.addSilentListener(listener);
+      this.sendCommand(command, true);
+    });
+  }
+
+  private addSilentListener(listener: LogListener) {
+    this.silentListeners.push(listener);
+  }
+
+  private removeSilentListener(listener: LogListener) {
+    this.silentListeners = this.silentListeners.filter(l => l !== listener);
+  }
+
+  getCompletions = async (prefix: string): Promise<string[]> => {
+    // Don't autocomplete if empty or just whitespace
+    if (!prefix || !prefix.trim()) return [];
+
+    const lines = await this.executeCommand(`complete "${prefix}"`, 3000); // Increased timeout to 3s
+
+    // Filter out empty lines or other noise if any
+    return lines.filter(l => l.trim().length > 0 && !l.includes("Usage: complete") && !l.startsWith("complete ") && !l.includes("Unrecognized command"));
   }
 }

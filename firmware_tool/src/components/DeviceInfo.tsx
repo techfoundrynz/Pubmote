@@ -9,8 +9,6 @@ import { TerminalService } from "../services/terminal";
 
 interface Props {
   deviceInfo: DeviceInfoData;
-  onConnect: () => Promise<void>;
-  onDisconnect: () => void;
   onSendCommand: (command: string) => Promise<void>;
   terminal: TerminalService;
   onViewCoredump: () => Promise<void>;
@@ -20,12 +18,11 @@ interface Props {
   isElfLoaded?: boolean;
   updateAvailable?: boolean;
   flashProgress?: FlashProgress;
+  getCompletions?: (prefix: string) => Promise<string[]>;
 }
 
 export function DeviceInfo({
   deviceInfo,
-  onConnect,
-  onDisconnect,
   onSendCommand,
   terminal,
   onViewCoredump,
@@ -35,6 +32,7 @@ export function DeviceInfo({
   isElfLoaded,
   updateAvailable = false,
   flashProgress,
+  getCompletions
 }: Props) {
   
   return (
@@ -107,6 +105,7 @@ export function DeviceInfo({
         onDownloadElf={onDownloadElf}
         isElfLoaded={isElfLoaded}
         flashProgress={flashProgress}
+        getCompletions={getCompletions}
       />
     </div>
   );

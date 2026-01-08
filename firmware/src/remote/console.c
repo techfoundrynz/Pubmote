@@ -7,6 +7,7 @@
 #include "settings.h"
 #include <stdio.h>
 #include <string.h>
+#include "linenoise/linenoise.h"
 
 // https://github.com/espressif/esp-idf/blob/master/examples/system/console/basic/main/console_example_main.c
 
@@ -301,6 +302,39 @@ static void register_coredump_erase_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
+
+static int complete_command(int argc, char **argv) {
+  if (argc != 2) {
+    ESP_LOGE(TAG, "Usage: complete <prefix>");
+    return -1;
+  }
+  
+  linenoiseCompletions lc = {0};
+  esp_console_get_completion(argv[1], &lc);
+  
+  for (size_t i = 0; i < lc.len; i++) {
+    printf("%s\n", lc.cvec[i]);
+  }
+  
+  for (size_t i = 0; i < lc.len; i++) {
+    free(lc.cvec[i]);
+  }
+  if (lc.cvec) {
+    free(lc.cvec);
+  }
+  return 0;
+}
+
+static void register_complete_command() {
+  esp_console_cmd_t cmd = {
+      .command = "complete",
+      .help = "Get autocompletion for a prefix",
+      .hint = NULL,
+      .func = &complete_command,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
 void console_init() {
   ESP_LOGI(TAG, "Initializing console");
   esp_console_repl_t *repl = NULL;
@@ -321,6 +355,7 @@ void console_init() {
   register_coredump_info_command();
   register_coredump_print_command();
   register_coredump_erase_command();
+  register_complete_command();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
   esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
@@ -337,6 +372,10 @@ void console_init() {
 #else
   #error Unsupported console type
 #endif
+
+  linenoiseSetCompletionCallback(esp_console_get_completion);
+  linenoiseSetHintsCallback((linenoiseHintsCallback*)esp_console_get_hint);
+  linenoiseSetFreeHintsCallback(free);
 
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
   ESP_LOGI(TAG, "Console initialized");
