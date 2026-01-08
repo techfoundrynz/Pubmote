@@ -538,8 +538,9 @@ static esp_err_t display_ui() {
     apply_ui_scale(ui_MenuScreen);
 #endif
     LVGL_unlock();
+    display_set_bl_level(0);
     // Delay backlight turn on to avoid flickering
-    vTaskDelay(pdMS_TO_TICKS(250));
+    vTaskDelay(pdMS_TO_TICKS(350));
     display_set_bl_level(device_settings.bl_level);
     return ESP_OK;
   }

@@ -11,6 +11,7 @@
 #include "esp_sleep.h"
 #include "esp_timer.h"
 #include "gpio_detection.h"
+#include "haptic.h"
 #include "remote/tones.h"
 #include "remoteinputs.h"
 #include "screens/charge_screen.h"
@@ -87,13 +88,18 @@ static esp_err_t enable_wake() {
 
   // Use PMU as secondary wake source if available
 #ifdef PMU_INT
-  res = esp_sleep_enable_ext0_wakeup(PMU_INT, 0);
-  if (res != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to enable PMU interrupt wake-up.");
-  }
+// Temp disabled as it seems to case immediate wake
+// res = esp_sleep_enable_ext0_wakeup(PMU_INT, 0);
+// if (res != ESP_OK) {
+//   ESP_LOGE(TAG, "Failed to enable PMU interrupt wake-up.");
+// }
 #endif
 
   return res;
+}
+
+static bool empty_long_press_hold() {
+  return true;
 }
 
 static bool power_button_long_press_hold() {
@@ -108,12 +114,13 @@ static bool power_button_long_press_hold() {
   return true;
 }
 
-void bind_power_button() {
+static void bind_power_button() {
   register_primary_button_cb(BUTTON_EVENT_LONG_PRESS_HOLD, power_button_long_press_hold);
 }
 
-void unbind_power_button() {
-  unregister_primary_button_cb(BUTTON_EVENT_LONG_PRESS_HOLD);
+// Specifically bind with empty handler to mark event as handled
+static void unbind_power_button() {
+  register_primary_button_cb(BUTTON_EVENT_LONG_PRESS_HOLD, empty_long_press_hold);
 }
 
 static bool power_button_initial_release() {
@@ -208,24 +215,25 @@ static void enter_sleep_internal() {
   // Disable some things so they don't run during wake check
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   unbind_power_button();
+  haptic_vibrate(HAPTIC_ALERT_750MS);
 
-  // Turn off screen before sleep
+  // Turn off things
   display_off();
-  led_deinit();
-  acc1_power_set_level(0);
-  acc2_power_set_level(0);
+  led_set_effect_none();
 
   // wait for button release
   while (get_button_pressed()) {
     vTaskDelay(pdMS_TO_TICKS(10));
     ESP_LOGI(TAG, "Waiting for button release before sleep...");
   }
+  vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow effects to finish
+
+  acc1_power_set_level(0);
+  acc2_power_set_level(0);
 
 #if PMU_SY6970
   disable_watchdog();
 #endif
-
-  vTaskDelay(pdMS_TO_TICKS(50)); // Allow gpio level to settle before going into sleep
 
   enable_wake();
 
@@ -441,6 +449,9 @@ void power_management_init() {
     ESP_LOGI(TAG, "Not a deep sleep wakeup or other wake-up sources.");
     break;
   }
+  // Bind empty long press hold so we can mark event as handled
+  unbind_power_button();
+
   reset_sleep_timer();
   if (get_button_pressed()) {
     // Enable the power button once released if it wasn't already

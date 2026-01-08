@@ -62,41 +62,33 @@ void drv2605_haptic_play_vibration(HapticFeedbackPattern pattern) {
             break;
         case HAPTIC_SINGLE_CLICK:
             drv.setWaveform(0, 1);
-            drv.setWaveform(1, 0);
             break;
         case HAPTIC_DOUBLE_CLICK:
-            drv.setWaveform(10, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 10);
             break;
             
         case HAPTIC_TRIPLE_CLICK:
-            drv.setWaveform(12, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 12);
             break;
             
         case HAPTIC_SOFT_BUMP:
-            drv.setWaveform(7, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 7);
             break;
             
         case HAPTIC_SOFT_BUZZ:
-            drv.setWaveform(13, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 13);
             break;
             
         case HAPTIC_STRONG_BUZZ:
-            drv.setWaveform(14, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 14);
             break;
             
         case HAPTIC_ALERT_750MS:
-            drv.setWaveform(15, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 15);
             break;
             
         case HAPTIC_ALERT_1000MS:
-            drv.setWaveform(16, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 16);
             break;
             
         default:
@@ -221,6 +213,7 @@ void drv2605_haptic_driver_deinit() {
     ESP_LOGI(TAG, "Deinitializing DRV2605 haptic driver");
     
     drv.stop();
+    vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to ensure stop command is processed
     haptic_initialized = false;
     
     #ifdef HAPTIC_EN
