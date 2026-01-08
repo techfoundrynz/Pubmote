@@ -349,6 +349,7 @@ void led_deinit() {
 
   if (led_strip != NULL) {
     led_off();
+    vTaskDelay(pdMS_TO_TICKS(10)); // Allow time for LEDs to turn off
     led_strip_del(led_strip);
     led_strip = NULL;
   }
