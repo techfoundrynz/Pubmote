@@ -1,4 +1,0 @@
-dependencies:
-  esp_lcd_st7789:
-    version: ^1.0.0
-  lvgl/lvgl: 9.4.0
