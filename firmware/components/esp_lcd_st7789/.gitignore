@@ -1,0 +1,6 @@
+.DS_Store
+build/
+.cache/
+managed_components/
+dist/
+dependencies.lock

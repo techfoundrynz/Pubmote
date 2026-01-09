@@ -1,0 +1,7 @@
+menu "Example Configuration"
+    config M5STACK
+        bool "Compile the example for M5Stack"
+        default y
+        help
+            Enable this option if you wish to compile the example for the M5Stack, as it uses different pins than the default for ESP32
+endmenu

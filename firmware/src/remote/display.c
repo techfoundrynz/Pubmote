@@ -50,7 +50,8 @@
   #include "esp_lcd_sh8601.h"
   #define RGB_ELE_ORDER LCD_RGB_ELEMENT_ORDER_RGB
 #elif DISP_ST7789
-  #error "ST7789 not supported"
+  #include "esp_lcd_st7789.h"
+  #define RGB_ELE_ORDER LCD_RGB_ELEMENT_ORDER_RGB
 #endif
 
 #include "remote/haptic.h"
@@ -215,7 +216,7 @@ static esp_err_t app_lcd_init(void) {
   const spi_bus_config_t buscfg =
       SH8601_PANEL_BUS_QSPI_CONFIG(DISP_CLK, DISP_SDIO0, DISP_SDIO1, DISP_SDIO2, DISP_SDIO3, MAX_TRAN_SIZE);
 #elif DISP_ST7789
-  #error "ST7789 not supported"
+  const spi_bus_config_t buscfg = ST7789_PANEL_BUS_SPI_CONFIG(DISP_CLK, DISP_MOSI, MAX_TRAN_SIZE);
 #endif
 
   ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
@@ -227,7 +228,7 @@ static esp_err_t app_lcd_init(void) {
   esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(DISP_CS, NULL, NULL);
   io_config.pclk_hz = LCD_PIXEL_CLOCK_HZ;
 #elif DISP_ST7789
-  #error "ST7789 not supported"
+  const esp_lcd_panel_io_spi_config_t io_config = ST7789_PANEL_IO_SPI_CONFIG(DISP_CS, DISP_DC, NULL, NULL);
 #endif
 
   // Attach the LCD to the SPI bus
@@ -250,7 +251,7 @@ static esp_err_t app_lcd_init(void) {
           },
   };
 #elif DISP_ST7789
-  #error "ST7789 not supported"
+  st7789_vendor_config_t vendor_config = {};
 #endif
 
   const esp_lcd_panel_dev_config_t panel_config = {
@@ -267,7 +268,7 @@ static esp_err_t app_lcd_init(void) {
   ESP_LOGI(TAG, "Install SH8601/CO5300 panel driver");
   esp_err_t init_err = esp_lcd_new_panel_sh8601(lcd_io, &panel_config, &lcd_panel);
 #elif DISP_ST7789
-  #error "ST7789 not supported"
+  esp_err_t init_err = esp_lcd_new_panel_st7789(lcd_io, &panel_config, &lcd_panel);
 #endif
 
   if (init_err != ESP_OK) {
@@ -294,7 +295,7 @@ static esp_err_t app_lcd_init(void) {
 #elif DISP_SH8601 || DISP_CO5300
   invert_color = false;
 #elif DISP_ST7789
-  #error "ST7789 not supported"
+  invert_color = true;
 #endif
 
   // Set lcd panel gap
@@ -427,7 +428,8 @@ static esp_err_t app_lvgl_init(void) {
                                                     .mirror_x = false,
                                                     .mirror_y = false,
 #elif DISP_ST7789
-  #error "ST7789 not supported"
+                                                    .mirror_x = true,
+                                                    .mirror_y = true,
 #endif
                                                 },
                                             .flags = {
