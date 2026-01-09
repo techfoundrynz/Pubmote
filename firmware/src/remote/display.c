@@ -25,7 +25,7 @@
 #include <stdio.h>
 
 // Display configuration
-#if TP_CST816S
+#if TP_CST816
   #include "esp_lcd_touch_cst816s.h"
 #elif TP_FT3168
   #include "esp_lcd_touch_ft5x06.h"
@@ -321,7 +321,7 @@ static esp_err_t app_touch_init(void) {
 
   esp_lcd_panel_io_handle_t tp_io_handle = NULL;
 
-  #if TP_CST816S
+  #if TP_CST816
   esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CST816S_CONFIG();
   #elif TP_FT3168
   esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_FT5x06_CONFIG();
@@ -348,7 +348,7 @@ static esp_err_t app_touch_init(void) {
           },
   };
 
-  #if TP_CST816S
+  #if TP_CST816
   ESP_LOGI(TAG, "Initialize touch controller CST816S");
   ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_cst816s(tp_io_handle, &tp_cfg, &touch_handle));
   #elif TP_FT3168
