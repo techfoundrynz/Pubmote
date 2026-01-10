@@ -22,8 +22,14 @@
   #define ACC2_POWER_DEFAULT 30 // Default to x% brightness
 #endif
 
+#if (defined(TOUCH_ENABLED) || defined(HAPTIC_DRV2605))
+  #define I2C_ENABLED 1
+#else
+  #define I2C_ENABLED 0
+#endif
+
 // i2c configuration
-#if (!defined(I2C_SDA) || !defined(I2C_SCL))
+#if (I2C_ENABLED && (!defined(I2C_SDA) || !defined(I2C_SCL)))
   #error "I2C_SDA and I2C_SCL must be defined for I2C communication. Please define them in your build flags."
 #endif
 
@@ -55,7 +61,7 @@
 #endif
 
 // Display configuration
-#if defined(TP_CST816S) || defined(TP_FT3168) || defined(TP_CST9217)
+#if defined(TP_CST816) || defined(TP_FT3168) || defined(TP_CST9217)
   #define TOUCH_ENABLED 1
 #else
   #define TOUCH_ENABLED 0
