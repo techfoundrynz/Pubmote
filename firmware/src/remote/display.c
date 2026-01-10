@@ -340,6 +340,13 @@ static esp_err_t app_touch_init(void) {
   #ifdef TP_INT
       .int_gpio_num = TP_INT,
   #endif
+  #ifdef TP_CST816
+      .levels =
+          {
+              .reset = 0,
+              .interrupt = 0,
+          },
+  #endif
       .flags =
           {
               .swap_xy = 0,
