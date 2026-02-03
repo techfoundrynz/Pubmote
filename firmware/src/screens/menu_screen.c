@@ -7,25 +7,25 @@
 #include <remote/display.h>
 #include <remote/powermanagement.h>
 #include <remote/settings.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";
 
 static bool confirm_reset = false;
 
 static void set_reset_mode(bool mode) {
-  confirm_reset = mode;
-  if (confirm_reset) {
-    lv_label_set_text(ui_MenuShutdownButtonLabel, "Factory reset?");
-  }
-  else {
-    lv_label_set_text(ui_MenuShutdownButtonLabel, "Shutdown");
-  }
+  // confirm_reset = mode;
+  // if (confirm_reset) {
+  //   lv_label_set_text(ui_MenuShutdownButtonLabel, "Factory reset?");
+  // }
+  // else {
+  //   lv_label_set_text(ui_MenuShutdownButtonLabel, "Shutdown");
+  // }
 }
 
 bool is_menu_screen_active() {
   lv_obj_t *active_screen = lv_scr_act();
-  return active_screen == ui_MenuScreen;
+  // return active_screen == ui_MenuScreen;
+  return false;
 }
 
 // Event handlers
@@ -34,7 +34,7 @@ void menu_screen_load_start(lv_event_t *e) {
   // Permanent screen - don't apply scale
 
   if (LVGL_lock(0)) {
-    create_navigation_group(ui_MenuBody);
+    // create_navigation_group(ui_MenuBody);
     LVGL_unlock();
   }
 }
@@ -44,31 +44,31 @@ void menu_screen_loaded(lv_event_t *e) {
 
   set_reset_mode(false);
 
-  if (LVGL_lock(0)) {
-    if (pairing_state == PAIRING_STATE_PAIRED) {
-      lv_obj_clear_flag(ui_MenuConnectButton, LV_OBJ_FLAG_HIDDEN);
+  // if (LVGL_lock(0)) {
+  //   if (pairing_state == PAIRING_STATE_PAIRED) {
+  //     lv_obj_clear_flag(ui_MenuConnectButton, LV_OBJ_FLAG_HIDDEN);
 
-      if (connection_state == CONNECTION_STATE_DISCONNECTED) {
-        lv_label_set_text(ui_MenuConnectButtonLabel, "Connect");
-      }
-      else {
-        lv_label_set_text(ui_MenuConnectButtonLabel, "Disconnect");
-      }
-    }
-    else {
-      lv_obj_add_flag(ui_MenuConnectButton, LV_OBJ_FLAG_HIDDEN);
-    }
+  //     if (connection_state == CONNECTION_STATE_DISCONNECTED) {
+  //       lv_label_set_text(ui_MenuConnectButtonLabel, "Connect");
+  //     }
+  //     else {
+  //       lv_label_set_text(ui_MenuConnectButtonLabel, "Disconnect");
+  //     }
+  //   }
+  //   else {
+  //     lv_obj_add_flag(ui_MenuConnectButton, LV_OBJ_FLAG_HIDDEN);
+  //   }
 
-    // Update pocket mode button text
-    if (is_pocket_mode_enabled()) {
-      lv_label_set_text(ui_MenuPocketModeButtonLabel, "Disable Pocket Mode");
-    }
-    else {
-      lv_label_set_text(ui_MenuPocketModeButtonLabel, "Enable Pocket Mode");
-    }
+  //   // Update pocket mode button text
+  //   if (is_pocket_mode_enabled()) {
+  //     lv_label_set_text(ui_MenuPocketModeButtonLabel, "Disable Pocket Mode");
+  //   }
+  //   else {
+  //     lv_label_set_text(ui_MenuPocketModeButtonLabel, "Enable Pocket Mode");
+  //   }
 
-    LVGL_unlock();
-  }
+  //   LVGL_unlock();
+  // }
 }
 
 void menu_screen_unload_start(lv_event_t *e) {
@@ -90,7 +90,7 @@ void menu_connect_press(lv_event_t *e) {
   }
 
   if (LVGL_lock(0)) {
-    _ui_screen_change(&ui_StatsScreen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_StatsScreen_screen_init);
+    // _ui_screen_change(&ui_StatsScreen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_StatsScreen_screen_init);
     LVGL_unlock();
   }
 }
@@ -108,10 +108,10 @@ void menu_pocket_mode_press(lv_event_t *e) {
 
   save_device_settings();
 
-  if (LVGL_lock(0)) {
-    _ui_screen_change(&ui_StatsScreen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_StatsScreen_screen_init);
-    LVGL_unlock();
-  }
+  // if (LVGL_lock(0)) {
+  //   _ui_screen_change(&ui_StatsScreen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_StatsScreen_screen_init);
+  //   LVGL_unlock();
+  // }
 }
 
 // Track press event so we can bind long and short press events without overlap

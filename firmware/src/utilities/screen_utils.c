@@ -3,7 +3,7 @@
 #include "lvgl.h"
 #include "number_utils.h"
 #include "remote/display.h"
-#include <ui/ui.h>
+// #include <ui/ui.h>
 
 static void scale_padding(lv_obj_t *obj) {
   if (obj == NULL) {
@@ -89,27 +89,27 @@ static void scale_dimensions(lv_obj_t *obj) {
 }
 
 static bool is_bold_font(lv_font_t *font) {
-  if (font == &ui_font_Inter_Bold_14 || font == &ui_font_Inter_Bold_28 || font == &ui_font_Inter_Bold_48 ||
-      font == &ui_font_Inter_Bold_96) {
-    return true;
-  }
+  // if (font == &ui_font_Inter_Bold_14 || font == &ui_font_Inter_Bold_28 || font == &ui_font_Inter_Bold_48 ||
+  //     font == &ui_font_Inter_Bold_96) {
+  //   return true;
+  // }
 
   return false;
 }
 
 static uint8_t get_font_size(lv_font_t *font) {
-  if (font == &ui_font_Inter_14 || font == &ui_font_Inter_Bold_14) {
-    return 14;
-  }
-  else if (font == &ui_font_Inter_28 || font == &ui_font_Inter_Bold_28) {
-    return 28;
-  }
-  else if (font == &ui_font_Inter_Bold_48) {
-    return 48;
-  }
-  else if (font == &ui_font_Inter_Bold_96) {
-    return 96;
-  }
+  // if (font == &ui_font_Inter_14 || font == &ui_font_Inter_Bold_14) {
+  //   return 14;
+  // }
+  // else if (font == &ui_font_Inter_28 || font == &ui_font_Inter_Bold_28) {
+  //   return 28;
+  // }
+  // else if (font == &ui_font_Inter_Bold_48) {
+  //   return 48;
+  // }
+  // else if (font == &ui_font_Inter_Bold_96) {
+  //   return 96;
+  // }
   return 14;
 }
 
@@ -133,38 +133,38 @@ void scale_text(lv_obj_t *obj) {
     bool is_bold = is_bold_font(font);
 
     lv_font_t *new_font = font;
-    if (size <= 20) {
-      if (is_bold) {
-        new_font = &ui_font_Inter_Bold_14;
-      }
-      else {
-        new_font = &ui_font_Inter_28;
-      }
-    }
-    else if (size <= 36) {
-      if (is_bold) {
-        new_font = &ui_font_Inter_Bold_28;
-      }
-      else {
-        new_font = &ui_font_Inter_28;
-      }
-    }
-    else if (size <= 64) {
-      if (is_bold) {
-        new_font = &ui_font_Inter_Bold_48;
-      }
-      else {
-        new_font = &ui_font_Inter_28;
-      }
-    }
-    else {
-      if (is_bold) {
-        new_font = &ui_font_Inter_Bold_96;
-      }
-      else {
-        new_font = &ui_font_Inter_28;
-      }
-    }
+    // if (size <= 20) {
+    //   if (is_bold) {
+    //     new_font = &ui_font_Inter_Bold_14;
+    //   }
+    //   else {
+    //     new_font = &ui_font_Inter_28;
+    //   }
+    // }
+    // else if (size <= 36) {
+    //   if (is_bold) {
+    //     new_font = &ui_font_Inter_Bold_28;
+    //   }
+    //   else {
+    //     new_font = &ui_font_Inter_28;
+    //   }
+    // }
+    // else if (size <= 64) {
+    //   if (is_bold) {
+    //     new_font = &ui_font_Inter_Bold_48;
+    //   }
+    //   else {
+    //     new_font = &ui_font_Inter_28;
+    //   }
+    // }
+    // else {
+    //   if (is_bold) {
+    //     new_font = &ui_font_Inter_Bold_96;
+    //   }
+    //   else {
+    //     new_font = &ui_font_Inter_28;
+    //   }
+    // }
 
     lv_obj_set_style_text_font(obj, new_font, part);
   }
@@ -252,12 +252,12 @@ void apply_ui_scale(lv_obj_t *element) {
 
 void reload_screens() {
   if (LVGL_lock(-1)) {
-    lv_obj_clean(ui_MenuScreen);
-    lv_obj_clean(ui_StatsScreen);
-    ui_MenuScreen_screen_init();
-    ui_StatsScreen_screen_init();
-    apply_ui_scale(ui_StatsScreen);
-    apply_ui_scale(ui_MenuScreen);
+    // lv_obj_clean(ui_MenuScreen);
+    // lv_obj_clean(ui_StatsScreen);
+    // ui_MenuScreen_screen_init();
+    // ui_StatsScreen_screen_init();
+    // apply_ui_scale(ui_StatsScreen);
+    // apply_ui_scale(ui_MenuScreen);
     LVGL_unlock();
   }
 }

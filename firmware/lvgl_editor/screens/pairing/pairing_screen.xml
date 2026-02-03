@@ -1,0 +1,32 @@
+<screen permanent="false">
+	<view
+		style_bg_color="#theme_bg"
+		width="100%"
+		height="100%"
+		scrollable="false"
+		flex_flow="column"
+		style_flex_main_place="space_between"
+		style_flex_cross_place="center"
+		style_flex_track_place="center"
+		style_pad_all="0px"
+	>
+		<event_cb trigger="screen_load_start" callback="pairing_screen_load_start_cb" />
+		<event_cb trigger="screen_loaded" callback="pairing_screen_loaded_cb" />
+		<event_cb trigger="screen_unload_start" callback="pairing_screen_unload_start_cb" />
+		<event_cb trigger="screen_unloaded" callback="pairing_screen_unloaded_cb" />
+		<header>
+			<h1 text="Pairing" />
+		</header>
+		<body>
+			<lv_label style_text_font="inter_bold_72" text="0000" style_text_color="#theme_text" />
+			<label text="Your pairing code" />
+		</body>
+		<footer>
+			<footer_buttons>
+				<button width="80px" label="Cancel">
+					<screen_create_event screen="menu_screen" trigger="clicked" anim_type="move_right" duration="200" />
+				</button>
+			</footer_buttons>
+		</footer>
+	</view>
+</screen>

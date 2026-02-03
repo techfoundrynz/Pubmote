@@ -1,6 +1,5 @@
-#include <ui/ui.h>
 #ifndef __PAIRING_SCREEN_H
-  #define __PAIRING_SCREEN_H
+#define __PAIRING_SCREEN_H
 
 bool is_pairing_screen_active();
 

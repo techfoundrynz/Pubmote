@@ -1,0 +1,40 @@
+<component>
+	<api>
+		<prop name="bind_percent" type="subject" help="Percentage fill" />
+		<prop name="bind_charge_state" type="subject" />
+	</api>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
+	<view>
+		<remove_style_all />
+		<lv_obj
+			width="95%"
+			height="100%"
+			style_border_width="4%"
+			style_border_color="#theme_structure5"
+			style_bg_opa="0%"
+			style_radius="5px"
+			style_pad_all="0px"
+		>
+			<lv_obj
+				style_radius="0px"
+				style_bg_color="#theme_success"
+				height="100%"
+				width="100%"
+				style_bg_opa="100%"
+				style_border_width="0px"
+				align="left_mid"
+			/>
+		</lv_obj>
+		<!-- tip -->
+		<lv_obj
+			width="5%"
+			height="30%"
+			style_bg_color="#theme_structure5"
+			align="right_mid"
+			style_border_width="0px"
+			style_radius="0px"
+		/>
+	</view>
+</component>

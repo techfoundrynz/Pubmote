@@ -5,6 +5,7 @@
 #include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
@@ -17,9 +18,9 @@
 #include "hal/ledc_types.h"
 #include "lvgl.h"
 #include "powermanagement.h"
+#include "pubmote_ui.h"
 #include "remote/i2c.h"
 #include "settings.h"
-#include "ui/ui.h"
 #include "utilities/screen_utils.h"
 #include "utilities/theme_utils.h"
 #include <stdio.h>
@@ -427,31 +428,49 @@ static esp_err_t app_lvgl_init(void) {
                                                 .direct_mode = false,
                                                 .swap_bytes = true,
 #if SW_ROTATE
-                                                .sw_rotate = true, // TODO - figure out why this causes mem issues
+                                                .sw_rotate = false, // TODO - figure out why this causes mem issues
 #endif
                                             }};
 
   lvgl_disp = lvgl_port_add_disp(&disp_cfg);
 
 #if ROUNDER_CALLBACK
-  lv_display_add_event_cb(lvgl_disp, LVGL_port_rounder_callback, LV_EVENT_INVALIDATE_AREA, NULL);
+  if (lvgl_port_lock(0)) {
+    lv_display_add_event_cb(lvgl_disp, LVGL_port_rounder_callback, LV_EVENT_INVALIDATE_AREA, NULL);
+    lvgl_port_unlock();
+  }
 #endif
 
-  display_set_rotation(device_settings.screen_rotation); // TODO - figure out why this causes mem issues
+  if (LVGL_lock(0)) {
+    display_set_rotation(device_settings.screen_rotation);
+    LVGL_unlock();
+  }
 
 #if TOUCH_ENABLED
   const lvgl_port_touch_cfg_t touch_cfg = {
       .disp = lvgl_disp,
       .handle = touch_handle,
   };
-  lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
-  lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_PRESSED, NULL);
+  if (LVGL_lock(0)) {
+    lvgl_touch_indev = lvgl_port_add_touch(&touch_cfg);
+    if (lvgl_touch_indev) {
+      ESP_LOGI(TAG, "Touch input added successfully: %p", lvgl_touch_indev);
+      lv_indev_add_event_cb(lvgl_touch_indev, input_event_cb, LV_EVENT_ALL, NULL);
+    }
+    else {
+      ESP_LOGE(TAG, "Failed to add touch input!");
+    }
+    LVGL_unlock();
+  }
 #endif
 
   // Initialize the encoder driver
-  lvgl_encoder_indev = lv_indev_create();
-  lv_indev_set_type(lvgl_encoder_indev, LV_INDEV_TYPE_ENCODER);
-  lv_indev_set_read_cb(lvgl_encoder_indev, encoder_read_cb);
+  if (LVGL_lock(0)) {
+    lvgl_encoder_indev = lv_indev_create();
+    lv_indev_set_type(lvgl_encoder_indev, LV_INDEV_TYPE_ENCODER);
+    lv_indev_set_read_cb(lvgl_encoder_indev, encoder_read_cb);
+    LVGL_unlock();
+  }
 
   return ESP_OK;
 }
@@ -474,7 +493,11 @@ lv_indev_t *get_touch() {
 }
 #endif
 
-#if SCREEN_TEST_UI
+static void ui_init(void) {
+  pubmote_ui_init("");
+  lv_screen_load(splash_screen_create()); // Load the main screen
+}
+
 static void event_handler(lv_event_t *e) {
   lv_event_code_t code = lv_event_get_code(e);
 
@@ -489,14 +512,12 @@ static void event_handler(lv_event_t *e) {
     LV_LOG_USER("Toggled");
   }
 }
-#endif
 
 static esp_err_t display_ui() {
   ESP_LOGI(TAG, "Display UI");
 
   if (LVGL_lock(0)) {
-    reload_theme();
-#if SCREEN_TEST_UI // Useful for debugging mutexes and any sl generated code
+#if SCREEN_TEST_UI
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xFF69B4), LV_PART_MAIN);
     lv_obj_t *btn = lv_btn_create(lv_scr_act());
     lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);
@@ -506,16 +527,9 @@ static esp_err_t display_ui() {
     lv_label_set_text(label, "Hello world");
     lv_obj_center(label);
 #else
-    // ui_init(); // Generated SL UI
-    // Use generated ui_init() function here without theme apply
-    ui____initial_actions0 = lv_obj_create(NULL);
-    ui_SplashScreen_screen_init();
-    ui_StatsScreen_screen_init();
-    ui_MenuScreen_screen_init();
-    lv_disp_load_scr(ui_SplashScreen);
-    apply_ui_scale(ui_StatsScreen);
-    apply_ui_scale(ui_MenuScreen);
+    ui_init();
 #endif
+
     LVGL_unlock();
     // Delay backlight turn on to avoid flickering
     vTaskDelay(pdMS_TO_TICKS(250));

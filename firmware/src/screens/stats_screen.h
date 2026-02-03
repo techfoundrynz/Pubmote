@@ -1,6 +1,6 @@
-#include <ui/ui.h>
 #ifndef __STATS_SCREEN_H
-  #define __STATS_SCREEN_H
+#define __STATS_SCREEN_H
+#include "lvgl.h"
 
 typedef enum {
   STAT_DISPLAY_SPEED,

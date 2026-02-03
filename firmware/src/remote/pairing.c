@@ -6,7 +6,6 @@
 #include "settings.h"
 #include <esp_now.h>
 #include <string.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-PAIRING";
 
@@ -77,7 +76,7 @@ bool pairing_process_bond_event(uint8_t *data, int len) {
     char *formattedString;
     asprintf(&formattedString, "%ld", pairing_settings.secret_code);
     if (LVGL_lock(0)) {
-      lv_label_set_text(ui_PairingCode, formattedString);
+      // lv_label_set_text(ui_PairingCode, formattedString);
       LVGL_unlock();
     }
     free(formattedString);
@@ -102,7 +101,7 @@ bool pairing_process_completion_event(uint8_t *data, int len) {
         pairing_state = PAIRING_STATE_PAIRED;
         save_pairing_data();
         connection_connect_to_default_peer();
-        lv_disp_load_scr(ui_StatsScreen);
+        // lv_disp_load_scr(ui_StatsScreen);
         LVGL_unlock();
       }
       return true;

@@ -8,7 +8,6 @@
 #include <remote/remoteinputs.h>
 #include <remote/settings.h>
 #include <screens/calibration_screen.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-CALIBRATION_SCREEN";
 
@@ -36,7 +35,8 @@ void reset_min_max_data() {
 
 bool is_calibration_screen_active() {
   lv_obj_t *active_screen = lv_scr_act();
-  return active_screen == ui_CalibrationScreen;
+  // return active_screen == ui_CalibrationScreen;
+  return false;
 }
 
 static void update_display_stick_label(float x, float y) {
@@ -47,7 +47,7 @@ static void update_display_stick_label(float x, float y) {
   else {
     asprintf(&formattedString, "X: %.2f \nY: %.2f", x, y);
   }
-  lv_label_set_text(ui_CalibrationHeaderLabel, formattedString);
+  // lv_label_set_text(ui_CalibrationHeaderLabel, formattedString);
   free(formattedString);
 }
 
@@ -80,10 +80,10 @@ Point calculatePoint(float radius, float x, float y) {
 }
 
 static void update_display_stick_position(float x, float y) {
-  lv_coord_t width = lv_obj_get_width(ui_CalibrationIndicatorContainer);
-  int radius = width / 2;
-  Point position = calculatePoint(radius, x * radius, y * radius);
-  lv_obj_set_pos(ui_PositionIndicatorContainer, position.x, -position.y);
+  // lv_coord_t width = lv_obj_get_width(ui_CalibrationIndicatorContainer);
+  // int radius = width / 2;
+  // Point position = calculatePoint(radius, x * radius, y * radius);
+  // lv_obj_set_pos(ui_PositionIndicatorContainer, position.x, -position.y);
 }
 
 int16_t get_deadband() {
@@ -102,13 +102,13 @@ int16_t get_deadband() {
 static void update_deadband_indicator() {
   if (calibration_step == CALIBRATION_STEP_DEADBAND) {
     int16_t new_deadband = get_deadband();
-    uint16_t x_diff = calibration_data.x_max - calibration_data.x_min;
-    uint16_t y_diff = calibration_data.y_max - calibration_data.y_min;
-    uint8_t deadband_pct_x = (int8_t)(((float)new_deadband / (float)x_diff) * 100);
-    uint8_t deadband_pct_y = (int8_t)(((float)new_deadband / (float)y_diff) * 100);
-    uint8_t deadband_pct = (deadband_pct_x > deadband_pct_y ? deadband_pct_x : deadband_pct_y);
-    lv_obj_set_width(ui_DeadbandIndicator, lv_pct(deadband_pct * 2));
-    lv_obj_set_height(ui_DeadbandIndicator, lv_pct(deadband_pct * 2));
+    // uint16_t x_diff = calibration_data.x_max - calibration_data.x_min;
+    // uint16_t y_diff = calibration_data.y_max - calibration_data.y_min;
+    // uint8_t deadband_pct_x = (int8_t)(((float)new_deadband / (float)x_diff) * 100);
+    // uint8_t deadband_pct_y = (int8_t)(((float)new_deadband / (float)y_diff) * 100);
+    // uint8_t deadband_pct = (deadband_pct_x > deadband_pct_y ? deadband_pct_x : deadband_pct_y);
+    // lv_obj_set_width(ui_DeadbandIndicator, lv_pct(deadband_pct * 2));
+    // lv_obj_set_height(ui_DeadbandIndicator, lv_pct(deadband_pct * 2));
 
     deadband = new_deadband;
   }
@@ -132,14 +132,14 @@ static void update_min_max() {
 
 static void update_stick_press_indicator() {
   bool is_stick_down = gpio_get_level(PRIMARY_BUTTON) == JOYSTICK_BUTTON_LEVEL;
-  if (is_stick_down) {
-    lv_obj_set_style_bg_color(ui_PositionIndicatorHoriz, lv_color_hex(COLOR_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(ui_PositionIndicatorVert, lv_color_hex(COLOR_PRIMARY), LV_PART_MAIN);
-  }
-  else {
-    lv_obj_set_style_bg_color(ui_PositionIndicatorHoriz, lv_color_hex(COLOR_PRIMARY_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(ui_PositionIndicatorVert, lv_color_hex(COLOR_PRIMARY_TEXT), LV_PART_MAIN);
-  }
+  // if (is_stick_down) {
+  //   lv_obj_set_style_bg_color(ui_PositionIndicatorHoriz, lv_color_hex(COLOR_PRIMARY), LV_PART_MAIN);
+  //   lv_obj_set_style_bg_color(ui_PositionIndicatorVert, lv_color_hex(COLOR_PRIMARY), LV_PART_MAIN);
+  // }
+  // else {
+  //   lv_obj_set_style_bg_color(ui_PositionIndicatorHoriz, lv_color_hex(COLOR_PRIMARY_TEXT), LV_PART_MAIN);
+  //   lv_obj_set_style_bg_color(ui_PositionIndicatorVert, lv_color_hex(COLOR_PRIMARY_TEXT), LV_PART_MAIN);
+  // }
 }
 
 void calibration_task(void *pvParameters) {
@@ -181,57 +181,57 @@ void calibration_task(void *pvParameters) {
 
 void update_calibration_screen() {
   if (LVGL_lock(0)) {
-    lv_obj_clear_flag(ui_CalibrationIndicatorContainer, LV_OBJ_FLAG_HIDDEN); // show on every step except expo
-    lv_obj_add_flag(ui_DeadbandIndicator, LV_OBJ_FLAG_HIDDEN);               // Hide for every step except deadband
-    lv_obj_add_flag(ui_ExpoSlider, LV_OBJ_FLAG_HIDDEN);                      // Hide for every step except expo
-    lv_obj_add_flag(ui_StickFlags, LV_OBJ_FLAG_HIDDEN);                      // Hide for every step except flags
+    // lv_obj_clear_flag(ui_CalibrationIndicatorContainer, LV_OBJ_FLAG_HIDDEN); // show on every step except expo
+    // lv_obj_add_flag(ui_DeadbandIndicator, LV_OBJ_FLAG_HIDDEN);               // Hide for every step except deadband
+    // lv_obj_add_flag(ui_ExpoSlider, LV_OBJ_FLAG_HIDDEN);                      // Hide for every step except expo
+    // lv_obj_add_flag(ui_StickFlags, LV_OBJ_FLAG_HIDDEN);                      // Hide for every step except flags
 
-    switch (calibration_step) {
-    case CALIBRATION_STEP_START:
-      lv_label_set_text(ui_CalibrationStepLabel, "Press start to begin calibration");
-      lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Start");
-      break;
-    case CALIBRATION_STEP_CENTER:
-      lv_label_set_text(ui_CalibrationStepLabel, "Move stick to center");
-      lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
-      break;
-    case CALIBRATION_STEP_MINMAX:
-      lv_label_set_text(ui_CalibrationStepLabel, "Move stick to min/max");
-      lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
-      break;
-    case CALIBRATION_STEP_DEADBAND:
-      lv_label_set_text(ui_CalibrationStepLabel, "Move stick within deadband");
-      lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
-      lv_obj_set_width(ui_DeadbandIndicator, lv_pct(0));
-      lv_obj_set_height(ui_DeadbandIndicator, lv_pct(0));
-      lv_obj_clear_flag(ui_DeadbandIndicator, LV_OBJ_FLAG_HIDDEN);
-      break;
-    case CALIBRATION_STEP_EXPO:
-      lv_slider_set_value(ui_ExpoSlider, (int)(calibration_data.expo * 10), LV_ANIM_OFF);
-      lv_obj_add_flag(ui_CalibrationIndicatorContainer, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(ui_CalibrationStepLabel, "Set expo factor");
-      lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
-      lv_obj_clear_flag(ui_ExpoSlider, LV_OBJ_FLAG_HIDDEN);
-      break;
-    case CALIBRATION_STEP_STICK_FLAGS:
-      lv_obj_add_flag(ui_CalibrationIndicatorContainer, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(ui_CalibrationStepLabel, "Axis options");
-      lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
-      lv_obj_clear_flag(ui_StickFlags, LV_OBJ_FLAG_HIDDEN);
+    // switch (calibration_step) {
+    // case CALIBRATION_STEP_START:
+    //   lv_label_set_text(ui_CalibrationStepLabel, "Press start to begin calibration");
+    //   lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Start");
+    //   break;
+    // case CALIBRATION_STEP_CENTER:
+    //   lv_label_set_text(ui_CalibrationStepLabel, "Move stick to center");
+    //   lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
+    //   break;
+    // case CALIBRATION_STEP_MINMAX:
+    //   lv_label_set_text(ui_CalibrationStepLabel, "Move stick to min/max");
+    //   lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
+    //   break;
+    // case CALIBRATION_STEP_DEADBAND:
+    //   lv_label_set_text(ui_CalibrationStepLabel, "Move stick within deadband");
+    //   lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
+    //   lv_obj_set_width(ui_DeadbandIndicator, lv_pct(0));
+    //   lv_obj_set_height(ui_DeadbandIndicator, lv_pct(0));
+    //   lv_obj_clear_flag(ui_DeadbandIndicator, LV_OBJ_FLAG_HIDDEN);
+    //   break;
+    // case CALIBRATION_STEP_EXPO:
+    //   lv_slider_set_value(ui_ExpoSlider, (int)(calibration_data.expo * 10), LV_ANIM_OFF);
+    //   lv_obj_add_flag(ui_CalibrationIndicatorContainer, LV_OBJ_FLAG_HIDDEN);
+    //   lv_label_set_text(ui_CalibrationStepLabel, "Set expo factor");
+    //   lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
+    //   lv_obj_clear_flag(ui_ExpoSlider, LV_OBJ_FLAG_HIDDEN);
+    //   break;
+    // case CALIBRATION_STEP_STICK_FLAGS:
+    //   lv_obj_add_flag(ui_CalibrationIndicatorContainer, LV_OBJ_FLAG_HIDDEN);
+    //   lv_label_set_text(ui_CalibrationStepLabel, "Axis options");
+    //   lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Next");
+    //   lv_obj_clear_flag(ui_StickFlags, LV_OBJ_FLAG_HIDDEN);
 
-      if (calibration_data.invert_y) {
-        lv_obj_add_state(ui_InvertYSwitch, LV_STATE_CHECKED);
-      }
-      else {
-        lv_obj_clear_state(ui_InvertYSwitch, LV_STATE_CHECKED);
-      }
+    //   if (calibration_data.invert_y) {
+    //     lv_obj_add_state(ui_InvertYSwitch, LV_STATE_CHECKED);
+    //   }
+    //   else {
+    //     lv_obj_clear_state(ui_InvertYSwitch, LV_STATE_CHECKED);
+    //   }
 
-      break;
-    case CALIBRATION_STEP_DONE:
-      lv_label_set_text(ui_CalibrationStepLabel, "Calibration complete!");
-      lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Save");
-      break;
-    }
+    //   break;
+    // case CALIBRATION_STEP_DONE:
+    //   lv_label_set_text(ui_CalibrationStepLabel, "Calibration complete!");
+    //   lv_label_set_text(ui_CalibrationPrimaryActionButtonLabel, "Save");
+    //   break;
+    // }
     LVGL_unlock();
   }
 }
@@ -269,7 +269,7 @@ void calibration_screen_load_start(lv_event_t *e) {
 
   if (LVGL_lock(0)) {
     apply_ui_scale(NULL);
-    create_navigation_group(ui_CalibrationFooter);
+    // create_navigation_group(ui_CalibrationFooter);
     LVGL_unlock();
   }
   update_calibration_screen();
@@ -314,12 +314,12 @@ void calibration_settings_primary_button_press(lv_event_t *e) {
     calibration_data.expo = expo;
   }
   else if (calibration_step == CALIBRATION_STEP_STICK_FLAGS) {
-    calibration_data.invert_y = lv_obj_has_state(ui_InvertYSwitch, LV_STATE_CHECKED);
+    // calibration_data.invert_y = lv_obj_has_state(ui_InvertYSwitch, LV_STATE_CHECKED);
   }
   else if (calibration_step >= CALIBRATION_STEP_DONE) {
     calibration_settings = calibration_data;
     save_calibration();
-    _ui_screen_change(&ui_MenuScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 200, 0, &ui_MenuScreen_screen_init);
+    // _ui_screen_change(&ui_MenuScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 200, 0, &ui_MenuScreen_screen_init);
     return;
   }
 
@@ -337,6 +337,6 @@ void calibration_settings_secondary_button_press(lv_event_t *e) {
 }
 
 void expo_slider_change(lv_event_t *e) {
-  float val = (float)lv_slider_get_value(ui_ExpoSlider);
-  expo = val / 10;
+  // float val = (float)lv_slider_get_value(ui_ExpoSlider);
+  // expo = val / 10;
 }

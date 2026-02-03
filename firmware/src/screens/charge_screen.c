@@ -7,19 +7,19 @@
 #include <remote/stats.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-CHARGE_SCREEN";
 
 bool is_charge_screen_active() {
   lv_obj_t *active_screen = lv_scr_act();
-  return active_screen == ui_ChargeScreen;
+  // return active_screen == ui_ChargeScreen;
+  return false;
 }
 
 void update_charge_labels() {
   char *formattedString;
   asprintf(&formattedString, "%d%%", remoteStats.remoteBatteryPercentage);
-  lv_label_set_text(ui_ChargeInfoLevelLabel, formattedString);
+  // lv_label_set_text(ui_ChargeInfoLevelLabel, formattedString);
   free(formattedString);
 }
 

@@ -1,0 +1,105 @@
+<globals>
+	<api>
+		<!-- Add <enumdefs> here -->
+	</api>
+
+	<consts>
+		<int name="unit_sm" value="6" />
+		<int name="unit_md" value="12" />
+		<int name="unit_lg" value="18" />
+		<int name="unit_xl" value="24" />
+
+		<percentage name="opa_muted" value="20%" />
+
+		<!-- theme -->
+		<color name="theme_success" value="0x0EAD69" />
+		<color name="theme_warn" value="0xFECC0B" />
+		<color name="theme_danger" value="0xFF8B3E" />
+		<color name="theme_critical" value="0xFF6369" />
+
+		<color name="theme_text" value="0xFFFFFF" />
+		<color name="theme_bg" value="0x000000" />
+
+		<color name="theme_structure1" value="0x000000" />
+		<color name="theme_structure2" value="0x242424" />
+		<color name="theme_structure3" value="0x5a5a5a" />
+		<color name="theme_structure4" value="0x9d9d9d" />
+		<color name="theme_structure5" value="0xffffff" />
+
+		<color name="settings_theme_color" value="0xFF46A2" />
+
+		<int name="vehicle_state_normal" value="0" />
+		<int name="vehicle_state_warn" value="1" />
+		<int name="vehicle_state_danger" value="2" />
+		<int name="vehicle_state_critical" value="3" />
+
+		<string name="theme_default_button_font" value="inter_bold_16" />
+	</consts>
+
+	<styles>
+		<style name="style_disabled" opa_layered="60%" />
+		<style name="style_reset" width="content" height="content" bg_opa="0" border_width="0" radius="0" pad_all="0" />
+	</styles>
+
+	<subjects>
+		<!-- state -->
+		<!-- 0 = disconnected, 1 = connected, 2 = reconnecting -->
+		<int name="state_connection_state" value="0" />
+		<string name="state_connection_state_label" value="Disconnected" />
+		<int name="state_battery_percent" value="0" />
+		<!-- 0 = discharging, 1 = charging, 2 = full -->
+		<int name="state_battery_status" value="0" />
+		<float name="state_speed" value="0" />
+		<string name="state_speed_fmt" value="%.1f" />
+		<float name="state_max_speed" value="40" />
+		<int name="state_duty_cycle" value="0" />
+		<!-- 0 = normal, 1 = warning, 2 = danger, 3 = critical -->
+		<int name="state_vehicle_state" value="0" />
+		<int name="state_motor_temp" value="0" />
+		<int name="state_cont_temp" value="0" />
+		<float name="state_trip_distance" value="0" />
+		<int name="state_adc1_active" value="0" />
+		<int name="state_adc2_active" value="0" />
+		<int name="state_pocket_mode" value="0" />
+		<int name="state_factory_reset" value="0" />
+		<int name="state_has_wifi_creds" value="0" />
+		<int name="state_update_step" value="0" />
+
+		<!-- settings -->
+		<!-- <string name="settings_theme_color" value="0xFF46A2" help="Theme color" /> TEMP AS CONSTANT -->
+		<int name="settings_dark_text" value="0" help="Use black text for buttons" />
+		<string name="settings_speed_label" value="KPH" />
+		<string name="settings_temp_label" value="C" />
+		<int name="settings_color_h" value="0" />
+	</subjects>
+
+	<images>
+		<!-- <file name="icon_heart" figma_node_id="24:20" src_path="images/icon_heart.png" />
+		<file name="icon_plus" figma_node_id="24:25" src_path="images/icon_plus.png" />
+		<file name="icon_minus" figma_node_id="91:40" src_path="images/icon_minus.png" />
+		<file name="icon_theme" figma_node_id="15:28" src_path="images/icon_theme.png" /> -->
+		<file name="splash" src_path="images/splash.png" />
+		<file name="charge" src_path="images/charge.png" />
+	</images>
+
+	<fonts>
+		<bin name="inter_12" size="12" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_14" size="14" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_16" size="16" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_24" size="24" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_28" size="28" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_42" size="42" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_64" size="56" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_72" size="72" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+		<bin name="inter_96" size="96" as_file="false" src_path="fonts/Inter/Inter-Regular.ttf" bpp="8" />
+
+		<bin name="inter_bold_12" size="12" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_14" size="14" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_16" size="16" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_24" size="24" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_28" size="28" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_42" size="42" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_72" size="72" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+		<bin name="inter_bold_96" size="96" as_file="false" src_path="fonts/Inter/Inter-Bold.ttf" bpp="8" />
+	</fonts>
+</globals>

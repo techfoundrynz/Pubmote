@@ -1,0 +1,27 @@
+<component>
+	<previews>
+		<preview style_bg_color="0x000000" />
+	</previews>
+	<api>
+		<prop name="subject_enable" type="subject" help="Make the roller disabled if the subject is 0" />
+	</api>
+	<styles>
+		<style
+			name="style_base"
+			text_font="inter_64"
+			text_line_space="-16"
+			text_color="#theme_text"
+			text_opa="#opa_muted"
+			text_align="center"
+			anim_duration="200"
+		/>
+		<style name="style_selected" bg_opa="0" text_opa="100%" text_color="#theme_bg" />
+	</styles>
+	<view extends="lv_roller">
+		<remove_style_all />
+		<bind_state_if_eq subject="$subject_enable" ref_value="0" state="disabled" />
+		<style name="style_base" />
+		<style name="style_selected" selector="selected" />
+		<bind_style subject="$subject_enable" ref_value="0" name="style_disabled" />
+	</view>
+</component>

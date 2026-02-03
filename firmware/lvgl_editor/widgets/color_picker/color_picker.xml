@@ -1,0 +1,38 @@
+<widget>
+	<api>
+		<prop name="size" type="int" help="Wheel diameter" />
+		<prop name="bind_value" type="subject" />
+	</api>
+	<previews>
+		<preview style_bg_color="0x000000" style_pad_all="20px" />
+	</previews>
+	<styles>
+		<style 
+			name="style_main"
+			bg_color="#theme_structure5"
+			bg_opa="#opa_muted"
+			radius="20px"
+			height="#unit_md"
+		/>
+		<style 
+			name="style_track"
+			bg_opa="0%"
+			radius="20px"
+		/>
+		<style 
+			name="style_knob"
+			bg_opa="100%"
+			border_width="2px"
+			border_color="#theme_structure5"
+			border_opa="100%"
+			radius="20px"
+			pad_all="#unit_sm"
+		/>
+	</styles>
+	<view extends="lv_slider" width="100%" style_min_width="200px" min_value="0" max_value="360">
+		<remove_style_all />
+		<style name="style_main" />
+		<style name="style_track" selector="indicator" />
+		<style name="style_knob" selector="knob" />
+	</view>
+</widget>

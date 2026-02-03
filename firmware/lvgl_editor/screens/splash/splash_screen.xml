@@ -1,0 +1,12 @@
+<screen permanent="false">
+	<view style_bg_color="#theme_bg">
+		<screen_load_event
+			screen="stats_screen"
+			trigger="screen_loaded"
+			anim_type="fade_in"
+			duration="200"
+			delay="500"
+		/>
+		<lv_image src="splash" width="100%" height="100%" />
+	</view>
+</screen>

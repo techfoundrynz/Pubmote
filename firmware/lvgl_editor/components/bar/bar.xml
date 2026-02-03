@@ -1,0 +1,15 @@
+<component>
+	<previews>
+		<preview style_pad_all="20" style_bg_color="0x000000" />
+	</previews>
+	<styles>
+		<style name="style_main" bg_color="#theme_structure4" bg_opa="#opa_muted" radius="20" height="#unit_sm" />
+		<style name="style_indicator" bg_color="#theme_structure4" bg_opa="100%" radius="20" />
+	</styles>
+
+	<view extends="lv_bar">
+		<remove_style_all />
+		<style name="style_main" />
+		<style name="style_indicator" selector="indicator" />
+	</view>
+</component>

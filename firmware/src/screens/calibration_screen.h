@@ -1,6 +1,5 @@
-#include <ui/ui.h>
 #ifndef __CALIBRATION_SCREEN_H
-  #define __CALIBRATION_SCREEN_H
+#define __CALIBRATION_SCREEN_H
 
 typedef enum {
   CALIBRATION_STEP_START,
