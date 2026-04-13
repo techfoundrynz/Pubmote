@@ -22,13 +22,28 @@
   #define ACC2_POWER_DEFAULT 30 // Default to x% brightness
 #endif
 
-#if (defined(TOUCH_ENABLED) || defined(HAPTIC_DRV2605))
+// Display configuration
+#if (defined(TP_CST816) && TP_CST816) || (defined(TP_FT3168) && TP_FT3168) || (defined(TP_CST9217) && TP_CST9217)
+  #define TOUCH_ENABLED 1
+#else
+  #define TOUCH_ENABLED 0
+#endif
+
+#ifndef TP_RST
+  #define TP_RST -1
+#endif
+
+// i2c configuration
+#if (TOUCH_ENABLED || (defined(HAPTIC_DRV2605) && HAPTIC_DRV2605))
   #define I2C_ENABLED 1
+
+  #ifndef I2C_INTERNAL_PULLUP
+    #define I2C_INTERNAL_PULLUP 0
+  #endif
 #else
   #define I2C_ENABLED 0
 #endif
 
-// i2c configuration
 #if (I2C_ENABLED && (!defined(I2C_SDA) || !defined(I2C_SCL)))
   #error "I2C_SDA and I2C_SCL must be defined for I2C communication. Please define them in your build flags."
 #endif
@@ -60,17 +75,6 @@
   #define JOYSTICK_BUTTON_LEVEL 0 // 0: active low, 1: active high (switch = 0, ps5 = 1)
 #endif
 
-// Display configuration
-#if defined(TP_CST816) || defined(TP_FT3168) || defined(TP_CST9217)
-  #define TOUCH_ENABLED 1
-#else
-  #define TOUCH_ENABLED 0
-#endif
-
-#ifndef TP_RST
-  #define TP_RST -1
-#endif
-
 // Led configuration
 #if defined(LED_DATA)
   #define LED_ENABLED 1
@@ -94,7 +98,7 @@
 #endif
 
 // Haptic configuration
-#if defined(HAPTIC_DRV2605) || defined(HAPTIC_PWM)
+#if (defined(HAPTIC_DRV2605) && HAPTIC_DRV2605) || (defined(HAPTIC_PWM) && HAPTIC_PWM)
   #define HAPTIC_ENABLED 1
 #else
   #define HAPTIC_ENABLED 0
