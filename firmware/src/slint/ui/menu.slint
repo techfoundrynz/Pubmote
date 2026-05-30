@@ -1,0 +1,41 @@
+// MenuScreen — faithful reproduction of ui_MenuScreen.
+//
+// LVGL: ui_MenuContent (column SPACE_BETWEEN) -> ui_MenuBody (scrollable column,
+// pad 40, row gap 10) with buttons in this exact order:
+//   Back, Connect (hidden), Enable Pocket Mode, Settings, Calibration, Pairing,
+//   About, Shutdown. Each lv_btn is 42px tall, 100% width.
+
+import { Theme } from "theme.slint";
+import { AppButton } from "widgets.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export component MenuScreen inherits Rectangle {
+    in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
+    in property <string> pocket-mode-text: "Enable Pocket Mode";
+    callback back;
+    callback connect;
+    callback pocket-mode;
+    callback settings;
+    callback calibration;
+    callback pairing;
+    callback about;
+    callback shutdown;
+
+    background: Theme.bg;
+
+    ScrollView {
+        VerticalLayout {
+            padding: 40px * Theme.scale;
+            spacing: 10px * Theme.scale;
+
+            AppButton { text: "Back"; primary: false; clicked => { root.back(); } }
+            if root.show-connect: AppButton { text: "Connect"; clicked => { root.connect(); } }
+            AppButton { text: root.pocket-mode-text; clicked => { root.pocket-mode(); } }
+            AppButton { text: "Settings"; clicked => { root.settings(); } }
+            AppButton { text: "Calibration"; clicked => { root.calibration(); } }
+            AppButton { text: "Pairing"; clicked => { root.pairing(); } }
+            AppButton { text: "About"; clicked => { root.about(); } }
+            AppButton { text: "Shutdown"; clicked => { root.shutdown(); } }
+        }
+    }
+}

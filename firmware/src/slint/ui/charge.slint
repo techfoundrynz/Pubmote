@@ -1,0 +1,47 @@
+// ChargeScreen — faithful reproduction of ui_ChargeScreen.
+//
+// LVGL: ui_ChargeLevelDial  lv_arc 240x240 centered, full circle (bg 90..89),
+//                           value 0; white knob (hidden).
+//       ui_ChargeInfoContainer (centered column):
+//         ui_ChargeInfoPrimaryLabel "Charging" Inter_Bold_14
+//         ui_ChargeInfoLevelLabel   "0%"       Inter_14
+
+import { Theme } from "theme.slint";
+import { ArcGauge } from "widgets.slint";
+
+export component ChargeScreen inherits Rectangle {
+    in property <int> battery-percent: 0;
+    background: Theme.bg;
+
+    // ui_ChargeLevelDial — near-full-circle arc (LVGL bg angles 90..89).
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: parent.height;
+        thickness: 20px * Theme.scale;
+        start-angle: 90deg;
+        span-angle: 359deg;
+        track-color: Theme.track;
+        indicator-color: Theme.accent;
+        value: clamp(root.battery-percent / 100.0, 0, 1);
+    }
+
+    // ui_ChargeInfoContainer
+    VerticalLayout {
+        alignment: center;
+        Text {
+            text: "Charging";
+            color: Theme.text;
+            font-size: Theme.font-14;
+            font-weight: Theme.w-bold;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: "\{root.battery-percent}%";
+            color: Theme.text;
+            font-size: Theme.font-14;
+            horizontal-alignment: center;
+        }
+    }
+}

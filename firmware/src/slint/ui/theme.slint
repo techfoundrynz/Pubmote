@@ -1,0 +1,36 @@
+// Shared theme for the PubRemote Slint UI.
+//
+// Colours and sizes mirror the LVGL/SquareLine UI. The LVGL screens were
+// designed against a 240px base (BASE_RES) and scaled up to the panel size at
+// runtime via apply_ui_scale (SCALE_FACTOR = LV_HOR_RES / BASE_RES). We
+// reproduce that here with Theme.scale so fixed pixel dimensions match.
+
+export global Theme {
+    // Base design resolution the LVGL screens were authored at.
+    out property <length> base-res: 240px;
+    // Target panel size (pingumote = 466). Keep in sync with the window size.
+    out property <length> panel-res: 466px;
+    // SCALE_FACTOR from firmware/src/remote/display.h.
+    out property <float> scale: root.panel-res / root.base-res;
+
+    // Palette (hex values taken verbatim from the SquareLine screens).
+    out property <color> bg: #000000;
+    out property <color> text: #ffffff;
+    out property <color> text-dim: #9a9a9a;
+    out property <color> accent: #2196f3;        // lv_palette BLUE
+    out property <color> track: #414141;         // 0x414141 arc track / borders
+    out property <color> track-dim: #282828;     // 0x282828 utilization track
+    out property <color> grey: #717171;          // 0x717171 RSSI bars
+    out property <color> battery-green: #1db200;  // 0x1DB200 battery fill
+    out property <color> calib-red: #ee4266;     // 0xEE4266 calibration crosshair
+
+    // Font sizes (px). LVGL fonts were NOT scaled by apply_ui_scale on pingumote
+    // (SCALE_FONT defaults to 1), so these stay at their nominal sizes.
+    out property <length> font-14: 14px;
+    out property <length> font-28: 28px;
+    out property <length> font-48: 48px;
+    out property <length> font-96: 96px;
+
+    out property <int> w-regular: 400;
+    out property <int> w-bold: 700;
+}

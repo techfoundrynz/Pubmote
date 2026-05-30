@@ -1,60 +1,206 @@
-// Basic Slint UI for PubRemote (Slint build path).
+// Top-level PubRemote Slint UI.
 //
-// This is intentionally minimal: it proves out the Slint runtime, the
-// software renderer, the display flush path and touch input on-device.
-// The real screens (currently LVGL/SquareLine) are migrated incrementally
-// on top of this.
-//
-// `slint_target_sources()` compiles this file and generates `app-window.h`
-// exposing the `AppWindow` class to C++.
+// Holds every screen ported from the LVGL/SquareLine UI and switches between
+// them based on `UiState.screen`. All dynamic data and actions are funnelled
+// through the `UiState` global so the C++ side has a single, stable surface to
+// bind against (set properties, connect callbacks) — analogous to how the LVGL
+// code updated named widgets and registered event callbacks.
+
+import { Theme } from "ui/theme.slint";
+import { SplashScreen } from "ui/splash.slint";
+import { StatsScreen } from "ui/stats.slint";
+import { MenuScreen } from "ui/menu.slint";
+import { SettingsScreen } from "ui/settings.slint";
+import { PairingScreen } from "ui/pairing.slint";
+import { CalibrationScreen } from "ui/calibration.slint";
+import { AboutScreen } from "ui/about.slint";
+import { UpdateScreen } from "ui/update.slint";
+import { ChargeScreen } from "ui/charge.slint";
+
+export enum Screen {
+    splash,
+    stats,
+    menu,
+    settings,
+    pairing,
+    calibration,
+    about,
+    update,
+    charge,
+}
+
+// Single binding surface for the firmware.
+export global UiState {
+    in-out property <Screen> screen: Screen.splash;
+
+    // --- Stats (ui_StatsScreen) ---
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;
+    in property <float> duty-fraction: 0;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;
+    in property <string> connection-text: "Disconnected";
+    in property <string> board-battery: "0%";
+
+    // --- Menu (ui_MenuScreen) ---
+    in property <bool> menu-show-connect: false;
+    in property <string> pocket-mode-text: "Enable Pocket Mode";
+
+    // --- Settings (ui_SettingsScreen) ---
+    in-out property <float> brightness: 128;
+    in-out property <int> double-press-index: 0;
+    in-out property <int> rotation-index: 0;
+    in-out property <int> auto-off-index: 0;
+    in-out property <int> temp-units-index: 0;
+    in-out property <int> distance-units-index: 0;
+    in-out property <int> startup-sound-index: 0;
+    in-out property <bool> dark-text: false;
+
+    // --- Pairing (ui_PairingScreen) ---
+    in property <string> pairing-code: "0000";
+    in property <string> pairing-action-text: "Cancel";
+
+    // --- Calibration (ui_CalibrationScreen) ---
+    in property <string> calibration-header: "X: 0.0 | Y: 0.0";
+    in property <string> calibration-step: "Press start to begin calibration";
+    in property <string> calibration-primary-text: "Start";
+    in property <float> joystick-x: 0;
+    in property <float> joystick-y: 0;
+
+    // --- About (ui_AboutScreen) ---
+    in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
+    in property <string> debug-info: "Battery: unknown";
+
+    // --- Update (ui_UpdateScreen) ---
+    in property <string> update-body: "Click next to scan for networks";
+    in property <bool> update-show-dropdown: false;
+    in property <[string]> updates: [];
+    in property <string> update-primary-text: "Next";
+
+    // --- Charge (ui_ChargeScreen) ---
+    in property <int> charge-percent: 0;
+
+    // --- Actions (the firmware connects these) ---
+    callback splash-tapped();
+    // Menu
+    callback menu-back();
+    callback menu-connect();
+    callback menu-pocket-mode();
+    callback open-settings();
+    callback open-calibration();
+    callback open-pairing();
+    callback open-about();
+    callback menu-shutdown();
+    // Settings
+    callback settings-save();
+    // Pairing
+    callback pairing-action();
+    // Calibration
+    callback calibration-primary();
+    callback calibration-secondary();
+    // About
+    callback about-check-updates();
+    callback about-back();
+    // Update
+    callback update-primary();
+    callback update-secondary();
+    callback update-selected(int);
+}
 
 export component AppWindow inherits Window {
-    // Logical size == physical size (renderer scale factor 1.0).
-    // Keep in sync with LV_HOR_RES / LV_VER_RES for the target board.
+    // Default to the pingumote 466x466 panel; the platform/renderer size is set
+    // from C++ (slint_esp_init), so this is mainly for the live preview.
     width: 466px;
     height: 466px;
-    background: #000000;
+    background: Theme.bg;
+    title: "PubRemote";
 
-    in-out property <int> counter: 0;
+    if UiState.screen == Screen.splash: SplashScreen {
+        width: 100%; height: 100%;
+        clicked => { UiState.splash-tapped(); }
+    }
 
-    VerticalLayout {
-        alignment: center;
-        spacing: 16px;
+    if UiState.screen == Screen.stats: StatsScreen {
+        width: 100%; height: 100%;
+        speed: UiState.speed;
+        speed-unit: UiState.speed-unit;
+        speed-fraction: UiState.speed-fraction;
+        duty-fraction: UiState.duty-fraction;
+        left-pad: UiState.left-pad;
+        right-pad: UiState.right-pad;
+        remote-battery: UiState.remote-battery;
+        connection-text: UiState.connection-text;
+        board-battery: UiState.board-battery;
+    }
 
-        Text {
-            text: "PubRemote";
-            color: #00e0ff;
-            font-size: 44px;
-            font-weight: 700;
-            horizontal-alignment: center;
-        }
+    if UiState.screen == Screen.menu: MenuScreen {
+        width: 100%; height: 100%;
+        show-connect: UiState.menu-show-connect;
+        pocket-mode-text: UiState.pocket-mode-text;
+        back => { UiState.menu-back(); }
+        connect => { UiState.menu-connect(); }
+        pocket-mode => { UiState.menu-pocket-mode(); }
+        settings => { UiState.open-settings(); }
+        calibration => { UiState.open-calibration(); }
+        pairing => { UiState.open-pairing(); }
+        about => { UiState.open-about(); }
+        shutdown => { UiState.menu-shutdown(); }
+    }
 
-        Text {
-            text: "Slint UI";
-            color: #ffffff;
-            font-size: 22px;
-            horizontal-alignment: center;
-        }
+    if UiState.screen == Screen.settings: SettingsScreen {
+        width: 100%; height: 100%;
+        brightness <=> UiState.brightness;
+        double-press-index <=> UiState.double-press-index;
+        rotation-index <=> UiState.rotation-index;
+        auto-off-index <=> UiState.auto-off-index;
+        temp-units-index <=> UiState.temp-units-index;
+        distance-units-index <=> UiState.distance-units-index;
+        startup-sound-index <=> UiState.startup-sound-index;
+        dark-text <=> UiState.dark-text;
+        save => { UiState.settings-save(); }
+    }
 
-        Rectangle {
-            height: 72px;
-            width: 240px;
-            border-radius: 36px;
-            background: touch.pressed ? #0077aa : #00aaff;
+    if UiState.screen == Screen.pairing: PairingScreen {
+        width: 100%; height: 100%;
+        pairing-code: UiState.pairing-code;
+        action-text: UiState.pairing-action-text;
+        action => { UiState.pairing-action(); }
+    }
 
-            Text {
-                text: "Taps: " + root.counter;
-                color: #001018;
-                font-size: 26px;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
+    if UiState.screen == Screen.calibration: CalibrationScreen {
+        width: 100%; height: 100%;
+        header-text: UiState.calibration-header;
+        step-text: UiState.calibration-step;
+        primary-text: UiState.calibration-primary-text;
+        joystick-x: UiState.joystick-x;
+        joystick-y: UiState.joystick-y;
+        primary => { UiState.calibration-primary(); }
+        secondary => { UiState.calibration-secondary(); }
+    }
 
-            touch := TouchArea {
-                clicked => {
-                    root.counter += 1;
-                }
-            }
-        }
+    if UiState.screen == Screen.about: AboutScreen {
+        width: 100%; height: 100%;
+        version-info: UiState.version-info;
+        debug-info: UiState.debug-info;
+        check-updates => { UiState.about-check-updates(); }
+        back => { UiState.about-back(); }
+    }
+
+    if UiState.screen == Screen.update: UpdateScreen {
+        width: 100%; height: 100%;
+        body-text: UiState.update-body;
+        show-dropdown: UiState.update-show-dropdown;
+        updates: UiState.updates;
+        primary-text: UiState.update-primary-text;
+        primary => { UiState.update-primary(); }
+        secondary => { UiState.update-secondary(); }
+        update-selected(i) => { UiState.update-selected(i); }
+    }
+
+    if UiState.screen == Screen.charge: ChargeScreen {
+        width: 100%; height: 100%;
+        battery-percent: UiState.charge-percent;
     }
 }

@@ -1,0 +1,183 @@
+// StatsScreen — main riding display. Faithful reproduction of ui_StatsScreen.
+//
+// LVGL hierarchy:
+//   ui_SpeedDial        lv_arc 240x240, range 0-40, default angles (135->45)
+//   ui_UtilizationDial  lv_arc 240x240, pad 20, REVERSE, track 0x282828, w12
+//   ui_LeftSensor       lv_arc, bg angles 93-105, track 0x414141, indic white
+//   ui_RightSensor      lv_arc, bg angles 75-87,  track 0x414141, indic white
+//   ui_StatsContent     flex column SPACE_BETWEEN, pad 20/20/20/5
+//     ui_StatsHeader  (25%)  column align end
+//       ui_RemoteIndicatorContainer  row: battery pill + RSSI bars (RSSI hidden)
+//       ui_MessageText  "PUSHBACK" (hidden)
+//     ui_StatsBody    (50%)  column center
+//       ui_RemoteModeContainer "POCKET MODE" (hidden)
+//       ui_PrimaryStat "0.0" Inter_Bold_48  + ui_PrimaryStatUnit "KPH" Inter_14
+//       ui_SecondaryStatContainer  -> ui_ConnectionStateLabel "Disconnected"
+//     ui_StatsFooter  (25%)  ui_BoardBatteryDisplay "0%" Inter_Bold_14
+
+import { Theme } from "theme.slint";
+import { ArcGauge } from "widgets.slint";
+
+export component StatsScreen inherits Rectangle {
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;       // 0..1 of the speed dial
+    in property <float> duty-fraction: 0;        // 0..1 of the utilization dial
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;       // 0..100, small battery pill
+    in property <string> connection-text: "Disconnected";
+    in property <string> board-battery: "0%";
+
+    background: Theme.bg;
+
+    // --- Dials (centered, drawn first so the content sits on top) ---
+    // ui_SpeedDial: full-size arc (240 of 240 base == 100% of panel).
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: parent.height;
+        thickness: 16px * Theme.scale;
+        track-color: Theme.track;
+        indicator-color: Theme.accent;
+        value: root.speed-fraction;
+    }
+    // ui_UtilizationDial: 20px padding all round at base res, reverse fill.
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width * 200 / 240;
+        height: parent.height * 200 / 240;
+        thickness: 12px * Theme.scale;
+        track-color: Theme.track-dim;
+        indicator-color: Theme.accent;
+        reverse: true;
+        value: root.duty-fraction;
+    }
+    // ui_LeftSensor: small arc near the bottom (bg angles 93..105).
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: parent.height;
+        thickness: 10px * Theme.scale;
+        start-angle: 93deg;
+        span-angle: 12deg;
+        track-color: Theme.track;
+        indicator-color: Theme.text;
+        value: root.left-pad ? 1.0 : 0.0;
+    }
+    // ui_RightSensor: small arc near the bottom (bg angles 75..87).
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: parent.height;
+        thickness: 10px * Theme.scale;
+        start-angle: 75deg;
+        span-angle: 12deg;
+        track-color: Theme.track;
+        indicator-color: Theme.text;
+        value: root.right-pad ? 1.0 : 0.0;
+    }
+
+    // --- Content overlay (ui_StatsContent) ---
+    VerticalLayout {
+        padding-left: 20px * Theme.scale;
+        padding-right: 20px * Theme.scale;
+        padding-top: 20px * Theme.scale;
+        padding-bottom: 5px * Theme.scale;
+
+        // ui_StatsHeader (25%) — indicators pinned to the bottom of the region.
+        Rectangle {
+            vertical-stretch: 1;
+            VerticalLayout {
+                alignment: end;
+                // ui_RemoteIndicatorContainer
+                HorizontalLayout {
+                    alignment: center;
+                    // ui_BatteryIndicatorContainer (outline + fill + tip).
+                    // Plain Rectangle (not a layout) so the tip keeps its size.
+                    Rectangle {
+                        width: 21px * Theme.scale;
+                        height: 14px * Theme.scale;
+                        // ui_BatteryOutline + ui_BatteryFill
+                        Rectangle {
+                            x: 0;
+                            y: 0;
+                            width: 18px * Theme.scale;
+                            height: 14px * Theme.scale;
+                            border-radius: 2px;
+                            border-width: 2px;
+                            border-color: Theme.text;
+                            Rectangle {
+                                x: 2px;
+                                y: 2px;
+                                width: (parent.width - 4px) * clamp(root.remote-battery / 100.0, 0, 1);
+                                height: parent.height - 4px;
+                                background: Theme.battery-green;
+                            }
+                        }
+                        // ui_BatteryTip
+                        Rectangle {
+                            x: 18px * Theme.scale;
+                            y: (parent.height - self.height) / 2;
+                            width: 3px * Theme.scale;
+                            height: 4px * Theme.scale;
+                            background: Theme.text;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ui_StatsBody (50%)
+        Rectangle {
+            vertical-stretch: 2;
+            VerticalLayout {
+                alignment: center;
+                // ui_PrimaryStat + ui_PrimaryStatUnit
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    Text {
+                        text: root.speed;
+                        color: Theme.text;
+                        font-size: Theme.font-48;
+                        font-weight: Theme.w-bold;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        text: root.speed-unit;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        vertical-alignment: bottom;
+                    }
+                }
+                // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
+                Text {
+                    text: root.connection-text;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+
+        // ui_StatsFooter (25%)
+        Rectangle {
+            vertical-stretch: 1;
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: root.board-battery;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-bold;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+    }
+}

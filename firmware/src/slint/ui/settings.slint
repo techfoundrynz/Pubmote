@@ -1,0 +1,141 @@
+// SettingsScreen — faithful reproduction of ui_SettingsScreen.
+//
+// LVGL: ui_SettingsContent (column SPACE_BETWEEN)
+//   ui_SettingsHeader (20%) (empty row)
+//   ui_SettingsBody   (55%) — a HORIZONTAL, snap-scrolled row of setting "pages",
+//     each a full-width column with a control and a label below it:
+//       Brightness slider (10..255)         "Screen brightness"
+//       Double-press dropdown (None/Open menu) "Double-press action"
+//       Rotation dropdown (None/90/180/270)   "Screen rotation"
+//       Auto-off dropdown (Disabled/2/5/10/20/30 min) "Auto-off time"
+//       Temp units dropdown (Celsius/Fahrenheit)  "Temp units"
+//       Distance dropdown (Kilometers/Miles)  "Distance units"
+//       Startup sound dropdown (Disabled/Beep/Melody) "Startup sound"
+//       Theme colour wheel                    "Theme color"
+//       Dark text switch                      "Dark text"
+//   ui_SettingsFooter (25%) -> ui_SettingsMainActionButton 80x42 "Save"
+
+import { Theme } from "theme.slint";
+import { AppButton } from "widgets.slint";
+import { ScrollView, Slider, ComboBox, Switch } from "std-widgets.slint";
+
+// One settings page: a control slot with a caption below it. Width is governed
+// by the parent HorizontalLayout (equal stretch == one screen width per page).
+component SettingPage inherits VerticalLayout {
+    in property <string> caption;
+    horizontal-stretch: 1;
+    padding-left: 40px * Theme.scale;
+    padding-right: 40px * Theme.scale;
+    spacing: 20px * Theme.scale;
+    alignment: center;
+    @children
+    Text {
+        text: root.caption;
+        color: Theme.text;
+        font-size: Theme.font-14;
+        horizontal-alignment: center;
+    }
+}
+
+export component SettingsScreen inherits Rectangle {
+    in-out property <float> brightness: 128;     // 10..255
+    in-out property <int> double-press-index: 0;
+    in-out property <int> rotation-index: 0;
+    in-out property <int> auto-off-index: 0;
+    in-out property <int> temp-units-index: 0;
+    in-out property <int> distance-units-index: 0;
+    in-out property <int> startup-sound-index: 0;
+    in-out property <bool> dark-text: false;
+    callback save;
+    background: Theme.bg;
+
+    VerticalLayout {
+        // ui_SettingsHeader (20%) — empty
+        Rectangle { vertical-stretch: 20; }
+
+        // ui_SettingsBody (55%) — horizontal pager
+        Rectangle {
+            vertical-stretch: 55;
+            ScrollView {
+                viewport-width: root.width * 9;
+                HorizontalLayout {
+                    width: root.width * 9;
+                    SettingPage {
+                        caption: "Screen brightness";
+                        Slider { minimum: 10; maximum: 255; value <=> root.brightness; }
+                    }
+                    SettingPage {
+                        caption: "Double-press action";
+                        ComboBox {
+                            model: ["None", "Open menu"];
+                            current-index <=> root.double-press-index;
+                        }
+                    }
+                    SettingPage {
+                        caption: "Screen rotation";
+                        ComboBox {
+                            model: ["None", "90 degrees", "180 degrees", "270 degrees"];
+                            current-index <=> root.rotation-index;
+                        }
+                    }
+                    SettingPage {
+                        caption: "Auto-off time";
+                        ComboBox {
+                            model: ["Disabled", "2 minutes", "5 minutes", "10 minutes", "20 minutes", "30 minutes"];
+                            current-index <=> root.auto-off-index;
+                        }
+                    }
+                    SettingPage {
+                        caption: "Temp units";
+                        ComboBox {
+                            model: ["Celsius", "Fahrenheit"];
+                            current-index <=> root.temp-units-index;
+                        }
+                    }
+                    SettingPage {
+                        caption: "Distance units";
+                        ComboBox {
+                            model: ["Kilometers", "Miles"];
+                            current-index <=> root.distance-units-index;
+                        }
+                    }
+                    SettingPage {
+                        caption: "Startup sound";
+                        ComboBox {
+                            model: ["Disabled", "Beep", "Melody"];
+                            current-index <=> root.startup-sound-index;
+                        }
+                    }
+                    SettingPage {
+                        caption: "Theme color";
+                        // ui_ThemeColor was an lv_colorwheel; Slint has no
+                        // colour-wheel widget, so this is a placeholder swatch.
+                        Rectangle {
+                            width: 75px * Theme.scale;
+                            height: 75px * Theme.scale;
+                            border-radius: self.width / 2;
+                            background: Theme.accent;
+                        }
+                    }
+                    SettingPage {
+                        caption: "Dark text";
+                        Switch { checked <=> root.dark-text; }
+                    }
+                }
+            }
+        }
+
+        // ui_SettingsFooter (25%)
+        Rectangle {
+            vertical-stretch: 25;
+            HorizontalLayout {
+                alignment: center;
+                AppButton {
+                    width: 80px * Theme.scale;
+                    text: "Save";
+                    clicked => { root.save(); }
+                }
+            }
+        }
+    }
+}

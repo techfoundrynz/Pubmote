@@ -1,0 +1,142 @@
+// Reusable widgets for the PubRemote Slint UI.
+
+import { Theme } from "theme.slint";
+
+// Arc gauge, the equivalent of LVGL's lv_arc. Draws a background "track" arc and
+// an "indicator" arc on top, using SVG-style Path arcs.
+//
+// Angles follow the LVGL convention: 0deg = 3 o'clock, increasing clockwise
+// (90deg = 6 o'clock / bottom). `start-angle` is where the arc begins and
+// `span-angle` how far it sweeps clockwise. `value` (0..1) is the filled
+// fraction; `reverse` fills from the far end backwards (LVGL ARC_MODE_REVERSE).
+//
+// The Path viewbox is bound 1:1 to the pixel size (viewbox-width == width/1px),
+// so 1 viewbox unit == 1px and stroke-width / radius are in real pixels.
+export component ArcGauge inherits Rectangle {
+    in property <angle> start-angle: 135deg;   // lv_arc default background start
+    in property <angle> span-angle: 270deg;    // lv_arc default 135->45 == 270deg
+    in property <float> value: 0;              // 0..1
+    in property <bool> reverse: false;
+    in property <length> thickness: 16px;
+    in property <brush> track-color: Theme.track;
+    in property <brush> indicator-color: Theme.accent;
+    in property <bool> show-track: true;
+
+    property <float> w: self.width / 1px;
+    property <float> h: self.height / 1px;
+    property <float> cx: root.w / 2;
+    property <float> cy: root.h / 2;
+    property <float> rad: root.w / 2 - (root.thickness / 1px) / 2;
+
+    function ax(a: angle) -> float { return root.cx + root.rad * Math.cos(a); }
+    function ay(a: angle) -> float { return root.cy + root.rad * Math.sin(a); }
+
+    // Indicator sweep endpoints (handles reverse mode).
+    property <angle> ind-from: root.reverse ? root.start-angle + root.span-angle : root.start-angle;
+    property <angle> ind-to: root.reverse
+        ? root.start-angle + root.span-angle - root.span-angle * root.value
+        : root.start-angle + root.span-angle * root.value;
+
+    if root.show-track: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: root.w;
+        viewbox-height: root.h;
+        stroke: root.track-color;
+        stroke-width: root.thickness;
+        MoveTo {
+            x: root.ax(root.start-angle);
+            y: root.ay(root.start-angle);
+        }
+        ArcTo {
+            radius-x: root.rad;
+            radius-y: root.rad;
+            x: root.ax(root.start-angle + root.span-angle);
+            y: root.ay(root.start-angle + root.span-angle);
+            sweep: true;
+            large-arc: root.span-angle > 180deg;
+        }
+    }
+
+    if root.value > 0.001: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: root.w;
+        viewbox-height: root.h;
+        stroke: root.indicator-color;
+        stroke-width: root.thickness;
+        MoveTo {
+            x: root.ax(root.ind-from);
+            y: root.ay(root.ind-from);
+        }
+        ArcTo {
+            radius-x: root.rad;
+            radius-y: root.rad;
+            x: root.ax(root.ind-to);
+            y: root.ay(root.ind-to);
+            sweep: root.ind-to > root.ind-from;
+            large-arc: abs((root.ind-to - root.ind-from) / 1deg) > 180;
+        }
+    }
+}
+
+// Primary touch button: matches the LVGL lv_btn used across menu/settings/etc.
+// (default theme rounded button, 42px tall at base res).
+export component AppButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary: true;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    height: 42px * Theme.scale;
+    border-radius: 8px;
+    background: !root.enabled
+        ? Theme.track-dim
+        : touch.pressed
+            ? Theme.accent.darker(0.2)
+            : (root.primary ? Theme.accent : Theme.track-dim);
+
+    Text {
+        text: root.text;
+        color: root.enabled ? Theme.text : Theme.text-dim;
+        font-size: Theme.font-14;
+        font-weight: Theme.w-bold;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Outlined button (transparent fill, white border) — the LVGL "Check for
+// updates" button on the About screen.
+export component OutlineButton inherits Rectangle {
+    in property <string> text;
+    callback clicked;
+
+    height: 32px * Theme.scale;
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: Theme.text;
+    background: touch.pressed ? #ffffff20 : transparent;
+
+    Text {
+        text: root.text;
+        color: Theme.text;
+        font-size: Theme.font-14;
+        font-weight: Theme.w-bold;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}

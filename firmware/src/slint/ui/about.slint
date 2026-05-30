@@ -1,0 +1,82 @@
+// AboutScreen — faithful reproduction of ui_AboutScreen.
+//
+// LVGL: ui_AboutContent (column SPACE_BETWEEN)
+//   ui_AboutHeader (20%)  (empty row)
+//   ui_AboutBody   (55%, horizontal-scroll row of two pages):
+//       ui_VersionInfoContainer -> ui_VersionInfoLabel
+//             "Version: unknown\nType: unknown\nHash: unknown"
+//             ui_UpdateButton (outlined) "Check for updates"
+//       ui_DebugInfoContainer   -> ui_DebugInfoLabel "Battery: unknown"
+//   ui_AboutFooter (25%) -> ui_AboutMainActionButton 80x42 "Back"
+
+import { Theme } from "theme.slint";
+import { AppButton, OutlineButton } from "widgets.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export component AboutScreen inherits Rectangle {
+    in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
+    in property <string> debug-info: "Battery: unknown";
+    callback check-updates;
+    callback back;
+    background: Theme.bg;
+
+    VerticalLayout {
+        // ui_AboutHeader (20%) — empty
+        Rectangle { vertical-stretch: 20; }
+
+        // ui_AboutBody (55%) — horizontally scrollable pages
+        Rectangle {
+            vertical-stretch: 55;
+            ScrollView {
+                viewport-width: root.width * 2;
+                HorizontalLayout {
+                    width: root.width * 2;
+                    // Page 1: version + update button
+                    VerticalLayout {
+                        width: root.width;
+                        padding-left: 40px * Theme.scale;
+                        padding-right: 40px * Theme.scale;
+                        spacing: 10px * Theme.scale;
+                        alignment: center;
+                        Text {
+                            text: root.version-info;
+                            color: Theme.text;
+                            font-size: Theme.font-14;
+                            horizontal-alignment: center;
+                        }
+                        OutlineButton {
+                            text: "Check for updates";
+                            clicked => { root.check-updates(); }
+                        }
+                    }
+                    // Page 2: debug info
+                    VerticalLayout {
+                        width: root.width;
+                        padding-left: 40px * Theme.scale;
+                        padding-right: 40px * Theme.scale;
+                        alignment: center;
+                        Text {
+                            text: root.debug-info;
+                            color: Theme.text;
+                            font-size: Theme.font-14;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ui_AboutFooter (25%)
+        Rectangle {
+            vertical-stretch: 25;
+            HorizontalLayout {
+                alignment: center;
+                AppButton {
+                    width: 80px * Theme.scale;
+                    text: "Back";
+                    clicked => { root.back(); }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,117 @@
+// CalibrationScreen — faithful reproduction of ui_CalibrationScreen.
+//
+// LVGL: ui_CalibrationContent (column SPACE_BETWEEN)
+//   ui_CalibrationHeader (20%) -> "X: 0.0 | Y: 0.0" Inter_Bold_14
+//   ui_CalibrationBody   (55%, row gap 12) -> ui_CalibrationStepContent (90%):
+//       ui_CalibrationIndicatorContainer  80x80 circle, border 0x414141 w6
+//         ui_CalibrationLineVert   4 x 130%  red 0xEE4266 (crosshair)
+//         ui_CalibrationLineHoriz  130% x 4  red 0xEE4266
+//         ui_PositionIndicatorContainer 20%x20% -> white cross (live position)
+//       ui_CalibrationStepLabel "Press start to begin calibration" Inter_14
+//   ui_CalibrationFooter (25%) -> Secondary 60x42 "Cancel" + Primary 60x42 "Start"
+
+import { Theme } from "theme.slint";
+import { AppButton } from "widgets.slint";
+
+export component CalibrationScreen inherits Rectangle {
+    in property <string> header-text: "X: 0.0 | Y: 0.0";
+    in property <string> step-text: "Press start to begin calibration";
+    in property <string> primary-text: "Start";
+    in property <float> joystick-x: 0;   // -1..1
+    in property <float> joystick-y: 0;   // -1..1
+    callback primary;
+    callback secondary;
+    background: Theme.bg;
+
+    property <length> dial: 80px * Theme.scale;
+
+    VerticalLayout {
+        // ui_CalibrationHeader (20%)
+        Rectangle {
+            vertical-stretch: 20;
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: root.header-text;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-bold;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+
+        // ui_CalibrationBody (55%)
+        Rectangle {
+            vertical-stretch: 55;
+            VerticalLayout {
+                alignment: center;
+                spacing: 12px * Theme.scale;
+
+                // ui_CalibrationIndicatorContainer (80x80 circle)
+                Rectangle {
+                    width: root.dial;
+                    height: root.dial;
+                    border-radius: self.width / 2;
+                    border-width: 6px;
+                    border-color: Theme.track;
+
+                    // ui_CalibrationLineVert (red crosshair, overflows 130%)
+                    Rectangle {
+                        width: 4px;
+                        height: parent.height * 1.3;
+                        background: Theme.calib-red;
+                    }
+                    // ui_CalibrationLineHoriz
+                    Rectangle {
+                        width: parent.width * 1.3;
+                        height: 4px;
+                        background: Theme.calib-red;
+                    }
+
+                    // ui_PositionIndicatorContainer (live white cross, 20% size)
+                    Rectangle {
+                        width: parent.width * 0.2;
+                        height: parent.height * 0.2;
+                        // Move within the dial proportionally to the stick.
+                        x: (parent.width - self.width) / 2
+                            + clamp(root.joystick-x, -1, 1) * (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2
+                            + clamp(root.joystick-y, -1, 1) * (parent.height - self.height) / 2;
+                        Rectangle { width: 100%; height: 4px; background: Theme.text; }
+                        Rectangle { width: 4px; height: 100%; background: Theme.text; }
+                    }
+                }
+
+                // ui_CalibrationStepLabel
+                Text {
+                    text: root.step-text;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+        }
+
+        // ui_CalibrationFooter (25%)
+        Rectangle {
+            vertical-stretch: 25;
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px * Theme.scale;
+                AppButton {
+                    width: 60px * Theme.scale;
+                    text: "Cancel";
+                    primary: false;
+                    clicked => { root.secondary(); }
+                }
+                AppButton {
+                    width: 60px * Theme.scale;
+                    text: root.primary-text;
+                    clicked => { root.primary(); }
+                }
+            }
+        }
+    }
+}
