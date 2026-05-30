@@ -1,0 +1,60 @@
+// Basic Slint UI for PubRemote (Slint build path).
+//
+// This is intentionally minimal: it proves out the Slint runtime, the
+// software renderer, the display flush path and touch input on-device.
+// The real screens (currently LVGL/SquareLine) are migrated incrementally
+// on top of this.
+//
+// `slint_target_sources()` compiles this file and generates `app-window.h`
+// exposing the `AppWindow` class to C++.
+
+export component AppWindow inherits Window {
+    // Logical size == physical size (renderer scale factor 1.0).
+    // Keep in sync with LV_HOR_RES / LV_VER_RES for the target board.
+    width: 466px;
+    height: 466px;
+    background: #000000;
+
+    in-out property <int> counter: 0;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 16px;
+
+        Text {
+            text: "PubRemote";
+            color: #00e0ff;
+            font-size: 44px;
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: "Slint UI";
+            color: #ffffff;
+            font-size: 22px;
+            horizontal-alignment: center;
+        }
+
+        Rectangle {
+            height: 72px;
+            width: 240px;
+            border-radius: 36px;
+            background: touch.pressed ? #0077aa : #00aaff;
+
+            Text {
+                text: "Taps: " + root.counter;
+                color: #001018;
+                font-size: 26px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+
+            touch := TouchArea {
+                clicked => {
+                    root.counter += 1;
+                }
+            }
+        }
+    }
+}
