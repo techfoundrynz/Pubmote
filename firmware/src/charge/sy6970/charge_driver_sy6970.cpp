@@ -70,6 +70,26 @@ esp_err_t sy6970_enter_protection_mode() {
     return ESP_OK;
 }
 
+static esp_err_t set_advanced_charging_config() {
+    // Read and update REG05H: Bits 3:0 are Termination Current Limit. 0000 = 64mA.
+    int reg05 = PPM.readRegister(0x05);
+    if (reg05 != -1) {
+        reg05 = (reg05 & 0xF0) | 0x00; // 64mA termination current (squeeze maximum charge)
+        PPM.writeRegister(0x05, reg05);
+        ESP_LOGI(TAG, "Termination current set to 64mA");
+    }
+
+    // Read and update REG06H: Bit 0 is Battery Recharge Threshold. 0 = 100mV.
+    int reg06 = PPM.readRegister(0x06);
+    if (reg06 != -1) {
+        reg06 = reg06 & ~0x01; // Set VRECHG back to 100mV
+        PPM.writeRegister(0x06, reg06);
+        ESP_LOGI(TAG, "Recharge threshold set to VREG-100mV");
+    }
+    
+    return ESP_OK;
+}
+
 /**
  * @brief Initialize the SY6970 power management chip
  */
@@ -85,7 +105,7 @@ static esp_err_t sy6970_init() {
   PPM.enableWatchdog(PowersSY6970::TIMER_OUT_40SEC);
   PPM.setSysPowerDownVoltage(3500); // Default
   PPM.setInputCurrentLimit(1500);
-  PPM.setChargeTargetVoltage(4208);
+  PPM.setChargeTargetVoltage(4224); // Increased from 4208 to push resting voltage closer to 4.20V
   PPM.setPrechargeCurr(128);
   PPM.setChargerConstantCurr(1024);
   PPM.enableAutoDetectionDPDM(); // Enable DPDM auto-detection
@@ -93,7 +113,10 @@ static esp_err_t sy6970_init() {
   PPM.setHighVoltageRequestedRange(PowersSY6970::REQUEST_9V); // Set high voltage request to 9V
   PPM.enableMeasure(); // ADC must be enabled before reading voltages
   PPM.enableCharge();
-  set_ir_compensation(60, 96); // Set IR compensation to 60mOhm and 96mV clamp
+  
+  // Safe IR compensation to NOT trip hardware BATOVP (4.37V limit)
+  set_ir_compensation(80, 128); 
+  set_advanced_charging_config();
 
   ESP_LOGI(TAG, "SY6970 initialized successfully");
   return ESP_OK;
