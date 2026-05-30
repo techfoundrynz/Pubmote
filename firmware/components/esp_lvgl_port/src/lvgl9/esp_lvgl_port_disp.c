@@ -435,10 +435,10 @@ static lv_display_t *lvgl_port_add_disp_priv(const lvgl_port_display_cfg_t *disp
 
 err:
     if (ret != ESP_OK) {
-        if (disp_ctx->draw_buffs[0]) {
+        if (disp_ctx->draw_buffs[0] && !disp_ctx->flags.static_buffers) {
             free(disp_ctx->draw_buffs[0]);
         }
-        if (disp_ctx->draw_buffs[1]) {
+        if (disp_ctx->draw_buffs[1] && !disp_ctx->flags.static_buffers) {
             free(disp_ctx->draw_buffs[1]);
         }
         if (disp_ctx->draw_buffs[2]) {
@@ -463,13 +463,6 @@ static bool lvgl_port_flush_io_ready_callback(esp_lcd_panel_io_handle_t panel_io
 {
     lv_display_t *disp_drv = (lv_display_t *)user_ctx;
     assert(disp_drv != NULL);
-    lvgl_port_display_ctx_t *disp_ctx = (lvgl_port_display_ctx_t *)lv_display_get_driver_data(disp_drv);
-    
-    if (disp_ctx && disp_ctx->flags.slicing_mode && disp_ctx->trans_sem) {
-         BaseType_t taskAwake = pdFALSE;
-         xSemaphoreGiveFromISR(disp_ctx->trans_sem, &taskAwake);
-         return (taskAwake == pdTRUE);
-    }
 
     lv_disp_flush_ready(disp_drv);
     return false;
@@ -480,13 +473,6 @@ static bool lvgl_port_flush_dpi_panel_ready_callback(esp_lcd_panel_handle_t pane
 {
     lv_display_t *disp_drv = (lv_display_t *)user_ctx;
     assert(disp_drv != NULL);
-    lvgl_port_display_ctx_t *disp_ctx = (lvgl_port_display_ctx_t *)lv_display_get_driver_data(disp_drv);
-
-    if (disp_ctx && disp_ctx->flags.slicing_mode && disp_ctx->trans_sem) {
-         BaseType_t taskAwake = pdFALSE;
-         xSemaphoreGiveFromISR(disp_ctx->trans_sem, &taskAwake);
-         return (taskAwake == pdTRUE);
-    }
 
     lv_disp_flush_ready(disp_drv);
     return false;
