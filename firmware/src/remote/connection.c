@@ -85,6 +85,7 @@ static void connection_task(void *pvParameters) {
   // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "Connection management task ended");
   vTaskDelete(NULL);
+  connection_task_handle = NULL;
 }
 
 void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel) {
@@ -127,7 +128,10 @@ void connection_init() {
     connection_connect_to_default_peer();
   }
 
-  xTaskCreatePinnedToCore(connection_task, "connection_task", 4096, NULL, 20, &connection_task_handle, 0);
+  ESP_ERROR_CHECK(
+      xTaskCreatePinnedToCore(connection_task, "connection_task", 4096, NULL, 20, &connection_task_handle, 0) == pdPASS
+          ? ESP_OK
+          : ESP_FAIL);
 }
 
 void connection_deinit() {

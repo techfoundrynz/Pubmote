@@ -32,7 +32,7 @@ void haptic_stop_vibration() {
 
 static void haptic_play_startup_effect() {
 #if HAPTIC_ENABLED
-  haptic_vibrate(HAPTIC_SINGLE_CLICK);
+  haptic_vibrate(HAPTIC_ALERT_750MS);
   // Additional startup effects can be added here
 #endif
 }
@@ -41,5 +41,13 @@ void haptic_init() {
 #if HAPTIC_ENABLED
   haptic_driver_init();
   register_startup_cb(haptic_play_startup_effect);
+#endif
+}
+
+void haptic_deinit() {
+  haptic_stop_vibration();
+  vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to ensure stop command is processed
+#if HAPTIC_ENABLED
+  haptic_driver_deinit();
 #endif
 }

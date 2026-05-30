@@ -12,6 +12,7 @@
 
 static const char *TAG = "PUBREMOTE-CALIBRATION_SCREEN";
 
+static TaskHandle_t calibration_task_handle = NULL;
 static uint8_t calibration_step = 0;
 // Current preview data
 static CalibrationSettings calibration_data;
@@ -177,6 +178,7 @@ void calibration_task(void *pvParameters) {
 
   ESP_LOGI(TAG, "Calibration task ended");
   vTaskDelete(NULL);
+  calibration_task_handle = NULL;
 }
 
 void update_calibration_screen() {
@@ -285,7 +287,9 @@ void calibration_screen_loaded(lv_event_t *e) {
   update_calibration_screen();
 
   // Start task to update UI
-  xTaskCreate(calibration_task, "calibration_task", 4096, NULL, 2, NULL);
+  ESP_ERROR_CHECK(xTaskCreate(calibration_task, "calibration_task", 4096, NULL, 2, &calibration_task_handle) == pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 }
 
 void calibration_screen_unload_start(lv_event_t *e) {

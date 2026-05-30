@@ -199,6 +199,7 @@ static void buzzer_task(void *pvParameters) {
   }
   buzzer_stop();
   vTaskDelete(NULL);
+  buzzer_task_handle = NULL;
 }
 #endif
 
@@ -217,7 +218,8 @@ void buzzer_init() {
   #endif
   };
   ledc_channel_config(&channel_conf);
-  xTaskCreate(buzzer_task, "buzzer_task", 1024, NULL, 2, &buzzer_task_handle);
+  ESP_ERROR_CHECK(xTaskCreate(buzzer_task, "buzzer_task", 1024, NULL, 2, &buzzer_task_handle) == pdPASS ? ESP_OK
+                                                                                                        : ESP_FAIL);
   register_startup_cb(play_startup_effect);
 #endif
 }

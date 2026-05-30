@@ -349,13 +349,8 @@ void update_screen_loaded(lv_event_t *e) {
   }
 
   ESP_LOGI(TAG, "Free heap before update task: %lu", esp_get_free_heap_size());
-  BaseType_t ret = xTaskCreate(update_task, "update_task", 6144, NULL, 5, &update_task_handle);
-  if (ret != pdPASS) {
-    ESP_LOGE(TAG, "Failed to create update task: %d", ret);
-  }
-  else {
-    ESP_LOGI(TAG, "Update task created successfully");
-  }
+  ESP_ERROR_CHECK(xTaskCreate(update_task, "update_task", 6144, NULL, 5, &update_task_handle) == pdPASS ? ESP_OK
+                                                                                                        : ESP_FAIL);
 }
 
 void update_screen_unload_start(lv_event_t *e) {

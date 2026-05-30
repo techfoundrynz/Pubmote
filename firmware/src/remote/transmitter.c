@@ -149,10 +149,14 @@ static void transmitter_task(void *pvParameters) {
   // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "TX task ended");
   vTaskDelete(NULL);
+  transmitter_task_handle = NULL;
 }
 
 void transmitter_init() {
-  xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20, &transmitter_task_handle, 0);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20,
+                                          &transmitter_task_handle, 0) == pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 }
 
 void transmitter_deinit() {

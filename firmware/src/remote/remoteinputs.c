@@ -174,7 +174,9 @@ static void thumbstick_task(void *pvParameters) {
 
 void thumbstick_init() {
 #if (JOYSTICK_Y_ENABLED || JOYSTICK_X_ENABLED)
-  xTaskCreatePinnedToCore(thumbstick_task, "thumbstick_task", 4096, NULL, 20, NULL, 0);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(thumbstick_task, "thumbstick_task", 4096, NULL, 20, NULL, 0) == pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 #endif
 }
 
@@ -243,8 +245,6 @@ static void button_long_press_hold_cb(void *button_handle, void *usr_data) {
   if (registered_long_press_hold_cb) {
     handled = registered_long_press_hold_cb();
   }
-
-  haptic_vibrate(HAPTIC_SOFT_BUZZ);
 }
 
 void buttons_init() {
