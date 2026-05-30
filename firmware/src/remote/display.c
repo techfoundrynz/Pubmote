@@ -422,7 +422,7 @@ static esp_err_t app_lvgl_init(void) {
                                                 },
                                             .flags = {
                                                 .buff_dma = true,
-                                                .buff_spiram = true,
+                                                .buff_spiram = false,
                                                 .full_refresh = false,
                                                 .direct_mode = false,
                                                 .swap_bytes = true,
