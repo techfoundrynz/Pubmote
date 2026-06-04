@@ -314,8 +314,8 @@ void EspPlatform<PixelType>::run_event_loop()
         if (auto wait_time = slint::platform::duration_until_next_timer_update()) {
             ticks_to_wait = std::min(ticks_to_wait, pdMS_TO_TICKS(wait_time->count()));
         }
-        ESP_LOGI("SLINT-ESP-LOOP", "Waiting: touch=%p, max_ticks=%u, ticks_to_wait=%u",
-                 touch_handle, (unsigned int)max_ticks_to_wait, (unsigned int)ticks_to_wait);
+        // ESP_LOGI("SLINT-ESP-LOOP", "Waiting: touch=%p, max_ticks=%u, ticks_to_wait=%u",
+        //          touch_handle, (unsigned int)max_ticks_to_wait, (unsigned int)ticks_to_wait);
         ulTaskNotifyTake(/*reset to zero*/ pdTRUE, ticks_to_wait);
     }
 
@@ -329,7 +329,15 @@ void EspPlatform<PixelType>::quit_event_loop()
         const std::unique_lock lock(queue_mutex);
         quit = true;
     }
-    vTaskNotifyGiveFromISR(task, nullptr);
+    if (xPortInIsrContext()) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        vTaskNotifyGiveFromISR(task, &xHigherPriorityTaskWoken);
+        if (xHigherPriorityTaskWoken) {
+            portYIELD_FROM_ISR();
+        }
+    } else {
+        xTaskNotifyGive(task);
+    }
 }
 
 template<typename PixelType>
@@ -339,7 +347,15 @@ void EspPlatform<PixelType>::run_in_event_loop(slint::platform::Platform::Task e
         const std::unique_lock lock(queue_mutex);
         queue.push_back(std::move(event));
     }
-    vTaskNotifyGiveFromISR(task, nullptr);
+    if (xPortInIsrContext()) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        vTaskNotifyGiveFromISR(task, &xHigherPriorityTaskWoken);
+        if (xHigherPriorityTaskWoken) {
+            portYIELD_FROM_ISR();
+        }
+    } else {
+        xTaskNotifyGive(task);
+    }
 }
 
 template<typename PixelType>

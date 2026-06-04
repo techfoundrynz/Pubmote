@@ -34,24 +34,72 @@ if (SLINT_ESP_LOCAL_EXAMPLE)
     add_subdirectory(../.. slint_build)
 else()
     list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-    # This variable is set when generating nightly snapshot's CMakeLists.txt
-    if (NOT SLINT_NIGHTLY)
-        find_package(Slint 1.16.1)
+    # Download the host compiler manually if it is not present, avoiding find_package target collision.
+    set(download_directory "${CMAKE_BINARY_DIR}/slint-prebuilt")
+    if (CMAKE_HOST_WIN32)
+        set(compiler_name "slint-compiler.exe")
+        set(platform_suffix "windows-${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    else()
+        set(compiler_name "slint-compiler")
+        set(platform_suffix "${CMAKE_HOST_SYSTEM_NAME}-${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    endif()
+    
+    set(slint_compiler_path "${download_directory}/${compiler_name}")
+
+    if (NOT EXISTS "${slint_compiler_path}")
+        set(SLINT_GITHUB_RELEASE "v1.16.1")
+        set(prebuilt_archive_filename "slint-compiler-${platform_suffix}.tar.gz")
+        set(download_url "https://github.com/slint-ui/slint/releases/download/${SLINT_GITHUB_RELEASE}/${prebuilt_archive_filename}")
+
+        file(MAKE_DIRECTORY "${download_directory}")
+        message(STATUS "Downloading pre-built Slint compiler binary from ${download_url}")
+        file(DOWNLOAD "${download_url}" "${download_directory}/${prebuilt_archive_filename}" SHOW_PROGRESS)
+        file(ARCHIVE_EXTRACT INPUT "${download_directory}/${prebuilt_archive_filename}" DESTINATION "${download_directory}")
+        file(REMOVE "${download_directory}/${prebuilt_archive_filename}")
     endif()
 
-    if (TARGET Slint::Slint)
-        # Imported targets are only visible in directory scope by default, but
-        # for use by the application, we need to make the target global.
-        set_target_properties(Slint::Slint PROPERTIES IMPORTED_GLOBAL TRUE)
+    set(SLINT_FEATURE_RENDERER_SOFTWARE ON CACHE BOOL "Enable software renderer" FORCE)
+    set(SLINT_FEATURE_SOFTWARE_RENDERER_PATH ON CACHE BOOL "Enable path rendering in software renderer" FORCE)
+    set(SLINT_FEATURE_FREESTANDING ON CACHE BOOL "Enable freestanding mode" FORCE)
+    
+    include(FetchContent)
+    FetchContent_Declare(
+        Slint
+        GIT_REPOSITORY https://github.com/slint-ui/slint
+        GIT_TAG v1.16.1
+        SOURCE_SUBDIR api/cpp
+    )
+    FetchContent_MakeAvailable(Slint)
+
+    # Run Cargo build at configuration time to ensure the library file is created before SCons ldgen/compilation.
+    message(STATUS "Running Cargo build for Slint C++...")
+    execute_process(
+        COMMAND cargo +esp build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features renderer-software,software-renderer-path,freestanding
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/slint-src"
+        RESULT_VARIABLE cargo_result
+    )
+    if (NOT cargo_result EQUAL 0)
+        message(FATAL_ERROR "Cargo build for Slint C++ failed!")
+    endif()
+
+    # Copy the compiled library to where CMake/ldgen expects it
+    file(COPY "${CMAKE_BINARY_DIR}/_deps/slint-src/target/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
+         DESTINATION "${CMAKE_BINARY_DIR}/_deps/slint-build")
+
+    # Copy the compiled library to where prebuild_hook.py / SCons links it
+    file(COPY "${CMAKE_BINARY_DIR}/_deps/slint-src/target/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
+         DESTINATION "${CMAKE_BINARY_DIR}/slint-prebuilt/Slint-cpp-1.16.1-xtensa-esp32s3-none-elf/lib")
+
+    # Copy the generated slint_internal.h header to the prebuilt include directory
+    file(GLOB_RECURSE generated_internal_h "${CMAKE_BINARY_DIR}/_deps/slint-src/target/*/slint_internal.h")
+    if (generated_internal_h)
+        list(GET generated_internal_h 0 single_internal_h)
+        get_filename_component(internal_h_dir "${single_internal_h}" DIRECTORY)
+        file(COPY "${internal_h_dir}"
+             DESTINATION "${CMAKE_BINARY_DIR}/slint-prebuilt/Slint-cpp-1.16.1-xtensa-esp32s3-none-elf/include")
+        message(STATUS "Copied generated slint_internal.h from ${internal_h_dir}")
     else()
-        include(FetchContent)
-        FetchContent_Declare(
-            Slint
-            GIT_REPOSITORY https://github.com/slint-ui/slint
-            GIT_TAG v1.16.1
-            SOURCE_SUBDIR api/cpp
-        )
-        FetchContent_MakeAvailable(Slint)
+        message(WARNING "Could not find generated slint_internal.h!")
     endif()
 endif()
 

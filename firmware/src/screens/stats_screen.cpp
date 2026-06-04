@@ -164,3 +164,12 @@ extern "C" void handle_menu_back() {
     get_slint_window()->global<UiState>().set_screen(Screen::Stats);
   });
 }
+
+extern "C" void handle_stats_swiped_down() {
+  ESP_LOGI(TAG, "Stats swiped down");
+  teardown_stats_properties();
+  setup_menu_properties();
+  slint::invoke_from_event_loop([]() {
+    get_slint_window()->global<UiState>().set_screen(Screen::Menu);
+  });
+}

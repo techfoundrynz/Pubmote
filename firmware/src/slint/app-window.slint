@@ -88,6 +88,7 @@ export global UiState {
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
     callback splash-tapped();
+    callback stats-swiped-down();
     // Menu
     callback menu-back();
     callback menu-connect();
@@ -114,10 +115,9 @@ export global UiState {
 }
 
 export component AppWindow inherits Window {
-    // Default to the pingumote 466x466 panel; the platform/renderer size is set
-    // from C++ (slint_esp_init), so this is mainly for the live preview.
-    width: 466px;
-    height: 466px;
+    // Default to the Theme.panel-res; dynamically sized at runtime.
+    width: Theme.panel-res;
+    height: Theme.panel-res;
     background: Theme.bg;
     title: "PubRemote";
     default-font-family: "Inter";
@@ -152,6 +152,7 @@ export component AppWindow inherits Window {
         remote-battery: UiState.remote-battery;
         connection-text: UiState.connection-text;
         board-battery: UiState.board-battery;
+        swiped-down => { UiState.stats-swiped-down(); }
     }
 
     if UiState.screen == Screen.menu: MenuScreen {

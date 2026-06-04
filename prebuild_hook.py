@@ -95,7 +95,6 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
         compile_slint_files
     )
 
-    # 3. Add slint_cpp prebuilt library and include paths
     slint_prebuilt_dir = os.path.abspath(os.path.join(".pio", "build", env["PIOENV"], "slint-prebuilt", "Slint-cpp-1.16.1-xtensa-esp32s3-none-elf"))
     slint_lib_path = os.path.join(slint_prebuilt_dir, "lib", "libslint_cpp.a")
     slint_include_dir = os.path.join(slint_prebuilt_dir, "include")

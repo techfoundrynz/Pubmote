@@ -9,7 +9,7 @@ export global Theme {
     // Base design resolution the LVGL screens were authored at.
     out property <length> base-res: 240px;
     // Target panel size (pingumote = 466). Keep in sync with the window size.
-    out property <length> panel-res: 466px;
+    in-out property <length> panel-res: 466px;
     // SCALE_FACTOR from firmware/src/remote/display.h.
     out property <float> scale: root.panel-res / root.base-res;
 

@@ -122,6 +122,7 @@ extern "C" void display_set_bl_level(uint8_t level) {
 // Declarations of screen handlers implemented in other files
 extern "C" {
 void handle_splash_tapped();
+void handle_stats_swiped_down();
 void handle_menu_back();
 void handle_menu_connect();
 void handle_menu_pocket_mode();
@@ -149,6 +150,7 @@ static void connect_callbacks() {
   });
 
   state.on_splash_tapped([]() { handle_splash_tapped(); });
+  state.on_stats_swiped_down([]() { handle_stats_swiped_down(); });
   state.on_menu_back([]() { handle_menu_back(); });
   state.on_menu_connect([]() { handle_menu_connect(); });
   state.on_menu_pocket_mode([]() { handle_menu_pocket_mode(); });
@@ -172,6 +174,9 @@ static void connect_callbacks() {
 extern "C" void apply_theme_settings() {
   const auto &theme = slint_window->global<Theme>();
   
+  // Set the actual panel resolution dynamically based on the current screen size
+  theme.set_panel_res(LV_HOR_RES);
+
   // Custom accent color
   theme.set_accent(slint::Color::from_argb_encoded(device_settings.theme_color));
 
@@ -452,7 +457,7 @@ static esp_err_t app_lcd_init(void) {
   }
 
   ESP_ERROR_CHECK(esp_lcd_panel_invert_color(lcd_panel, invert_color));
-  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, true, false));
+  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, false, false));
   esp_lcd_panel_disp_on_off(lcd_panel, true);
   ESP_ERROR_CHECK(test_display_communication(lcd_io));
 
@@ -520,11 +525,11 @@ extern "C" void display_init() {
 #endif
 
   size_t fb_size = LV_HOR_RES * LV_VER_RES * sizeof(slint::platform::Rgb565Pixel);
-  // Try allocating in PSRAM first
-  frame_buffer = (slint::platform::Rgb565Pixel *)heap_caps_malloc(fb_size, MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
+  // Try allocating in Internal RAM first to avoid CACHE-126 PSRAM cache bug on ESP32-S3 if it fits
+  frame_buffer = (slint::platform::Rgb565Pixel *)heap_caps_malloc(fb_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
   if (!frame_buffer) {
-    ESP_LOGI(TAG, "Failed to allocate frame buffer in PSRAM, trying Internal RAM...");
-    frame_buffer = (slint::platform::Rgb565Pixel *)heap_caps_malloc(fb_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    ESP_LOGI(TAG, "Failed to allocate frame buffer in Internal RAM, falling back to PSRAM...");
+    frame_buffer = (slint::platform::Rgb565Pixel *)heap_caps_malloc(fb_size, MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
   }
 
   if (!frame_buffer) {
@@ -538,7 +543,7 @@ extern "C" void display_init() {
   is_initialized = true;
 
   // Start Slint Event Loop Task
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 24 * 1024, NULL, 20, &slint_task_handle, 1);
+  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 64 * 1024, NULL, 20, &slint_task_handle, 1);
   
   // Start Input Polling Task
   xTaskCreate(slint_input_task, "slint_input_task", 4096, NULL, 20, &slint_input_task_handle);

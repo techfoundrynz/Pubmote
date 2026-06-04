@@ -28,6 +28,7 @@ export component StatsScreen inherits Rectangle {
     in property <int> remote-battery: 100;       // 0..100, small battery pill
     in property <string> connection-text: "Disconnected";
     in property <string> board-battery: "0%";
+    callback swiped-down;
 
     background: Theme.bg;
 
@@ -67,7 +68,6 @@ export component StatsScreen inherits Rectangle {
         track-color: Theme.track;
         indicator-color: Theme.text;
         value: root.left-pad ? 1.0 : 0.0;
-        ticks: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
     }
     // ui_RightSensor: small arc near the bottom (bg angles 75..87).
     ArcGauge {
@@ -81,7 +81,6 @@ export component StatsScreen inherits Rectangle {
         track-color: Theme.track;
         indicator-color: Theme.text;
         value: root.right-pad ? 1.0 : 0.0;
-        ticks: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
     }
 
     // --- Content overlay (ui_StatsContent) ---
@@ -178,6 +177,29 @@ export component StatsScreen inherits Rectangle {
                     font-size: Theme.font-14;
                     font-weight: Theme.w-bold;
                     horizontal-alignment: center;
+                }
+            }
+        }
+    }
+
+    // Swipe down detection
+    TouchArea {
+        width: 100%;
+        height: 100%;
+        property <length> start-y;
+        property <length> start-x;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) {
+                    start-x = self.mouse-x;
+                    start-y = self.mouse-y;
+                } else if (event.kind == PointerEventKind.up) {
+                    let dx = self.mouse-x - start-x;
+                    let dy = self.mouse-y - start-y;
+                    if (dy > 40px && dy > (dx > 0px ? dx : -dx)) {
+                        root.swiped-down();
+                    }
                 }
             }
         }
