@@ -9,7 +9,7 @@
 #if __has_include("soc/soc_caps.h")
 #    include "soc/soc_caps.h"
 #endif
-#if SOC_LCD_RGB_SUPPORTED && ESP_IDF_VERSION_MAJOR >= 5
+#if 0 // disabled for SPI panel compatibility
 #    include "esp_lcd_panel_rgb.h"
 #endif
 #include "esp_log.h"
@@ -113,7 +113,7 @@ std::chrono::milliseconds EspPlatform<PixelType>::duration_since_start()
     return std::chrono::milliseconds(pdTICKS_TO_MS(ticks));
 }
 
-#if SOC_LCD_RGB_SUPPORTED && ESP_IDF_VERSION_MAJOR >= 5
+#if 0 // disabled for SPI panel compatibility
 static SemaphoreHandle_t sem_vsync_end;
 static SemaphoreHandle_t sem_gui_ready;
 
@@ -153,7 +153,7 @@ void EspPlatform<PixelType>::run_event_loop()
         // or interrupt storms on boards with floating touch interrupt pins.
         max_ticks_to_wait = pdMS_TO_TICKS(30);
     }
-#if SOC_LCD_RGB_SUPPORTED && ESP_IDF_VERSION_MAJOR >= 5
+#if 0 // disabled for SPI panel compatibility
     if (buffer2) {
         sem_vsync_end = xSemaphoreCreateBinary();
         sem_gui_ready = xSemaphoreCreateBinary();
@@ -229,42 +229,7 @@ void EspPlatform<PixelType>::run_event_loop()
             }
 
             if (std::exchange(m_window->needs_redraw, false)) {
-                using slint::platform::SoftwareRenderer;
-                auto rotated = rotation == SoftwareRenderer::RenderingRotation::Rotate90
-                        || rotation == SoftwareRenderer::RenderingRotation::Rotate270;
-                auto stride = rotated ? size.height : size.width;
-                if (buffer1) {
-#if SOC_LCD_RGB_SUPPORTED && ESP_IDF_VERSION_MAJOR >= 5
-                    if (buffer2) {
-                        xSemaphoreGive(sem_gui_ready);
-                        xSemaphoreTake(sem_vsync_end, portMAX_DELAY);
-                    }
-#endif
-                    auto region = m_window->m_renderer.render(buffer1.value(), stride);
-                    ESP_LOGI("SLINT-ESP", "Redrawing region: rects=%d, bounding_box=%dx%d", 
-                             (int)region.rectangles().size(), (int)region.bounding_box_size().width, (int)region.bounding_box_size().height);
-
-                    if (buffer2) {
-                        auto s = region.bounding_box_size();
-                        if (s.width > 0 && s.height > 0) {
-                            // Assuming that using double buffer means that the buffer comes from
-                            // the driver and we need to pass the exact pointer.
-                            // https://github.com/espressif/esp-idf/blob/53ff7d43dbff642d831a937b066ea0735a6aca24/components/esp_lcd/src/esp_lcd_panel_rgb.c#L681
-                            esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, size.width, size.height,
-                                                      reinterpret_cast<const uint16_t*>(buffer1->data()));
-
-                            std::swap(buffer1, buffer2);
-                        }
-                    } else {
-                        auto s = region.bounding_box_size();
-                        if (s.width > 0 && s.height > 0) {
-                            auto o = region.bounding_box_origin();
-                            esp_lcd_panel_draw_bitmap(panel_handle, o.x, o.y, o.x + s.width, o.y + s.height,
-                                                      reinterpret_cast<const uint16_t*>(buffer1->data()));
-                        }
-                    }
-                } else {
-                    extern uint16_t *slint_chunk_buffer[2];
+                extern uint16_t *slint_chunk_buffer[2];
                     extern const int slint_chunk_lines;
                     
                     int idx = 0;
@@ -330,10 +295,10 @@ void EspPlatform<PixelType>::run_event_loop()
                     if (!first_transfer && trans_sem) {
                         xSemaphoreTake(trans_sem, portMAX_DELAY);
                     }
-                }
             }
 
             if (m_window->window().has_active_animations()) {
+                vTaskDelay(pdMS_TO_TICKS(1)); // Yield to IDLE to feed task watchdog
                 continue;
             }
         }

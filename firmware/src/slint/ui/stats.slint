@@ -18,6 +18,10 @@
 import { Theme } from "theme.slint";
 import { ArcGauge } from "arc-gauge.slint";
 
+export global StatsArcGenerator {
+    pure callback generate(length, float, float, float, bool, bool, brush, brush, brush, brush, brush) -> image;
+}
+
 export component StatsScreen inherits Rectangle {
     in property <string> speed: "0.0";
     in property <string> speed-unit: "KPH";
@@ -32,55 +36,25 @@ export component StatsScreen inherits Rectangle {
 
     background: Theme.bg;
 
-    // --- Dials (centered, drawn first so the content sits on top) ---
-    // ui_SpeedDial: full-size arc (240 of 240 base == 100% of panel).
-    ArcGauge {
+    // --- Dials (Combined into a single native image for max performance) ---
+    Image {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
-        thickness: 16px * Theme.scale;
-        track-color: Theme.track;
-        indicator-color: Theme.accent;
-        value: root.speed-fraction;
-    }
-    // ui_UtilizationDial: 20px padding all round at base res, reverse fill.
-    ArcGauge {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: parent.width * 200 / 240;
-        height: parent.height * 200 / 240;
-        thickness: 12px * Theme.scale;
-        track-color: Theme.track-dim;
-        indicator-color: Theme.accent;
-        reverse: true;
-        value: root.duty-fraction;
-    }
-    // ui_LeftSensor: small arc near the bottom (bg angles 93..105).
-    ArcGauge {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
-        thickness: 10px * Theme.scale;
-        start-angle: 93deg;
-        span-angle: 12deg;
-        track-color: Theme.track;
-        indicator-color: Theme.text;
-        value: root.left-pad ? 1.0 : 0.0;
-    }
-    // ui_RightSensor: small arc near the bottom (bg angles 75..87).
-    ArcGauge {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
-        thickness: 10px * Theme.scale;
-        start-angle: 75deg;
-        span-angle: 12deg;
-        track-color: Theme.track;
-        indicator-color: Theme.text;
-        value: root.right-pad ? 1.0 : 0.0;
+        width: parent.width - 8px * Theme.scale;
+        height: parent.height - 8px * Theme.scale;
+        source: StatsArcGenerator.generate(
+            self.width,
+            Theme.scale,
+            root.speed-fraction,
+            root.duty-fraction,
+            root.left-pad,
+            root.right-pad,
+            Theme.bg,
+            Theme.track,
+            Theme.track-dim,
+            Theme.accent,
+            Theme.text
+        );
     }
 
     // --- Content overlay (ui_StatsContent) ---

@@ -1,5 +1,9 @@
 import { Theme } from "theme.slint";
 
+export global ArcGenerator {
+    pure callback generate(length, length, angle, angle, angle, angle, brush, brush) -> image;
+}
+
 // Arc gauge, the equivalent of LVGL's lv_arc. Draws a background "track" arc and
 // an "indicator" arc on top, using SVG-style Path arcs.
 //
@@ -7,9 +11,6 @@ import { Theme } from "theme.slint";
 // (90deg = 6 o'clock / bottom). `start-angle` is where the arc begins and
 // `span-angle` how far it sweeps clockwise. `value` (0..1) is the filled
 // fraction; `reverse` fills from the far end backwards (LVGL ARC_MODE_REVERSE).
-//
-// The Path viewbox is bound 1:1 to the pixel size (viewbox-width == width/1px),
-// so 1 viewbox unit == 1px and stroke-width / radius are in real pixels.
 export component ArcGauge inherits Rectangle {
     in property <angle> start-angle: 135deg;   // lv_arc default background start
     in property <angle> span-angle: 270deg;    // lv_arc default 135->45 == 270deg
@@ -22,64 +23,23 @@ export component ArcGauge inherits Rectangle {
 
     property <float> w: self.width / 1px;
     property <float> h: self.height / 1px;
-    property <float> cx: root.w / 2;
-    property <float> cy: root.h / 2;
-    property <float> rad: max(0.0, root.w / 2 - (root.thickness / 1px) / 2);
+    
+    property <angle> active-span: root.span-angle * clamp(root.value, 0.0, 1.0);
+    property <angle> indicator-start: root.reverse ? (root.start-angle + root.span-angle - self.active-span) : root.start-angle;
 
-    property <brush> trans: transparent;
-
-    // Background track path
-    if (root.show-track && root.span-angle > 0deg && root.w > root.thickness / 1px && root.h > root.thickness / 1px) : Path {
+    // Use native C++ arc generator image to achieve 60 FPS in line-by-line chunk mode
+    Image {
         width: 100%;
         height: 100%;
-        viewbox-width: root.w;
-        viewbox-height: root.h;
-        stroke: root.track-color;
-        stroke-width: root.thickness;
-        stroke-line-cap: round;
-
-        property <angle> angle1: root.start-angle;
-        property <angle> angle2: root.start-angle + root.span-angle;
-
-        MoveTo {
-            x: root.cx + root.rad * Math.cos(parent.angle1);
-            y: root.cy + root.rad * Math.sin(parent.angle1);
-        }
-        ArcTo {
-            radius-x: root.rad;
-            radius-y: root.rad;
-            x: root.cx + root.rad * Math.cos(parent.angle2);
-            y: root.cy + root.rad * Math.sin(parent.angle2);
-            large-arc: (parent.angle2 - parent.angle1) > 180deg;
-            sweep: true;
-        }
-    }
-
-    // Active indicator path
-    if (root.value > 0.0 && root.span-angle > 0deg && root.w > root.thickness / 1px && root.h > root.thickness / 1px) : Path {
-        width: 100%;
-        height: 100%;
-        viewbox-width: root.w;
-        viewbox-height: root.h;
-        stroke: root.indicator-color;
-        stroke-width: root.thickness;
-        stroke-line-cap: round;
-
-        property <angle> active-span: root.span-angle * clamp(root.value, 0.0, 1.0);
-        property <angle> angle1: root.reverse ? (root.start-angle + root.span-angle - self.active-span) : root.start-angle;
-        property <angle> angle2: self.angle1 + self.active-span;
-
-        MoveTo {
-            x: root.cx + root.rad * Math.cos(parent.angle1);
-            y: root.cy + root.rad * Math.sin(parent.angle1);
-        }
-        ArcTo {
-            radius-x: root.rad;
-            radius-y: root.rad;
-            x: root.cx + root.rad * Math.cos(parent.angle2);
-            y: root.cy + root.rad * Math.sin(parent.angle2);
-            large-arc: (parent.angle2 - parent.angle1) > 180deg;
-            sweep: true;
-        }
+        source: ArcGenerator.generate(
+            root.width, 
+            root.thickness, 
+            root.start-angle, 
+            root.span-angle, 
+            root.indicator-start,
+            root.active-span,
+            root.show-track ? root.track-color : Colors.transparent, 
+            root.value > 0 ? root.indicator-color : Colors.transparent
+        );
     }
 }

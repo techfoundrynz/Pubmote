@@ -57,8 +57,10 @@ export component ComboBox inherits Rectangle {
                 spacing: 2px;
                 for item[idx] in root.model : Rectangle {
                     height: 32px * Theme.scale;
-                    background: item-touch.pressed ? Theme.accent.darker(0.2) : (idx == root.current-index ? Theme.track : transparent);
+                    background: item-touch.pressed ? Theme.accent.darker(0.2) : transparent;
                     border-radius: 4px * Theme.scale;
+                    border-width: (idx == root.current-index) ? 1px : 0px;
+                    border-color: (idx == root.current-index) ? Theme.accent : transparent;
                     
                     Text {
                         x: 12px;
