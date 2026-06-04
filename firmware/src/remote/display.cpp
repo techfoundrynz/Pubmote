@@ -57,10 +57,11 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
 static esp_lcd_panel_handle_t lcd_panel = NULL;
 static esp_lcd_touch_handle_t touch_handle = NULL;
-static slint::platform::Rgb565Pixel *frame_buffer = nullptr;
-
 static bool is_initialized = false;
 static uint8_t bl_level = 0;
+
+uint16_t *slint_chunk_buffer[2] = {NULL, NULL};
+extern const int slint_chunk_lines = 20;
 
 static SlintWindowPtr slint_window;
 static TaskHandle_t slint_task_handle = NULL;
@@ -212,9 +213,8 @@ static void slint_event_loop(void *pvParameters) {
   config.panel_handle = lcd_panel;
   config.touch_handle = touch_handle;
   config.byte_swap = true; // Swap bytes for standard SPI/QSPI big-endian display interfaces
-  if (frame_buffer) {
-    config.buffer1 = std::span<slint::platform::Rgb565Pixel>(frame_buffer, HOR_RES * VER_RES);
-  }
+  // We do not pass buffer1, so slint-esp defaults to line/chunk buffering mode
+  // where it allocates its own internal SRAM chunk buffers.
 
   // Map rotation
   switch (device_settings.screen_rotation) {
@@ -365,79 +365,13 @@ extern "C" void display_set_rotation(ScreenRotation rot) {
   }
 }
 
-static SemaphoreHandle_t trans_sem = NULL;
-#define CHUNK_LINES 20
-static uint16_t *chunk_buffer[2] = {NULL, NULL};
-static bool dma_active = false;
+SemaphoreHandle_t trans_sem = NULL;
 
 static bool IRAM_ATTR on_lcd_color_trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata,
                                               void *user_ctx) {
   BaseType_t high_task_awoken = pdFALSE;
   xSemaphoreGiveFromISR(trans_sem, &high_task_awoken);
   return high_task_awoken == pdTRUE;
-}
-
-extern "C" void display_draw_bitmap(int x_start, int y_start, int x_end, int y_end, const uint16_t *color_data,
-                                    bool swap_bytes) {
-  if (!is_initialized || !chunk_buffer[0] || !chunk_buffer[1] || !trans_sem) {
-    return;
-  }
-
-  // Wait for previous frame's last DMA transfer to complete if it is still running
-  if (dma_active) {
-    xSemaphoreTake(trans_sem, portMAX_DELAY);
-    dma_active = false;
-  }
-
-  int width = x_end - x_start;
-  int row_stride = HOR_RES;
-
-  int chunk_idx = 0;
-  bool first = true;
-
-  for (int y = y_start; y < y_end; y += CHUNK_LINES) {
-    int current_chunk_lines = std::min(CHUNK_LINES, y_end - y);
-    uint16_t *current_buffer = chunk_buffer[chunk_idx];
-
-    // Copy chunk from PSRAM to Internal SRAM DMA buffer (and swap bytes if requested)
-    for (int line = 0; line < current_chunk_lines; ++line) {
-      const uint16_t *src = color_data + (y + line) * row_stride + x_start;
-      uint16_t *dst = current_buffer + line * width;
-      if (swap_bytes) {
-        int i = 0;
-        // If pointers are 32-bit aligned, we can copy & swap 2 pixels at a time
-        if (width >= 2 && ((uintptr_t)src % 4 == 0) && ((uintptr_t)dst % 4 == 0)) {
-          const uint32_t *src32 = reinterpret_cast<const uint32_t *>(src);
-          uint32_t *dst32 = reinterpret_cast<uint32_t *>(dst);
-          int width32 = width / 2;
-          for (; i < width32; ++i) {
-            uint32_t val = src32[i];
-            dst32[i] = ((val & 0xFF00FF00) >> 8) | ((val & 0x00FF00FF) << 8);
-          }
-          i *= 2;
-        }
-        for (; i < width; ++i) {
-          uint16_t val = src[i];
-          dst[i] = (val << 8) | (val >> 8);
-        }
-      }
-      else {
-        memcpy(dst, src, width * sizeof(uint16_t));
-      }
-    }
-
-    // Wait for the PREVIOUS DMA transfer in this frame to finish before starting this one
-    if (!first) {
-      xSemaphoreTake(trans_sem, portMAX_DELAY);
-    }
-
-    // Draw current chunk
-    esp_lcd_panel_draw_bitmap(lcd_panel, x_start, y, x_end, y + current_chunk_lines, current_buffer);
-
-    first = false;
-    dma_active = true;         // A DMA transfer is now active for this frame's last chunk
-    chunk_idx = 1 - chunk_idx; // Swap buffer index
-  }
 }
 
 static esp_err_t app_lcd_init(void) {
@@ -601,37 +535,19 @@ static esp_err_t app_touch_init(void) {
 extern "C" void display_init() {
   ESP_LOGI(TAG, "Initializing Slint display wrapper");
 
-  trans_sem = xSemaphoreCreateBinary();
-  chunk_buffer[0] =
-      (uint16_t *)heap_caps_malloc(HOR_RES * CHUNK_LINES * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-  chunk_buffer[1] =
-      (uint16_t *)heap_caps_malloc(HOR_RES * CHUNK_LINES * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-  if (!chunk_buffer[0] || !chunk_buffer[1]) {
-    ESP_LOGE(TAG, "Failed to allocate chunk buffers!");
+  // Allocate chunk buffers early to avoid memory fragmentation from the 64KB Slint task stack
+  slint_chunk_buffer[0] = (uint16_t *)heap_caps_malloc(HOR_RES * slint_chunk_lines * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+  slint_chunk_buffer[1] = (uint16_t *)heap_caps_malloc(HOR_RES * slint_chunk_lines * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+  if (!slint_chunk_buffer[0] || !slint_chunk_buffer[1]) {
+    ESP_LOGE(TAG, "Failed to allocate early chunk buffers!");
     abort();
   }
 
+  trans_sem = xSemaphoreCreateBinary();
   ESP_ERROR_CHECK(app_lcd_init());
 #if TOUCH_ENABLED
   ESP_ERROR_CHECK(app_touch_init());
 #endif
-
-  size_t fb_size = HOR_RES * VER_RES * sizeof(slint::platform::Rgb565Pixel);
-  // Try allocating in Internal RAM first to avoid CACHE-126 PSRAM cache bug on ESP32-S3 if it fits
-  frame_buffer = (slint::platform::Rgb565Pixel *)heap_caps_malloc(fb_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-  if (!frame_buffer) {
-    ESP_LOGI(TAG, "Failed to allocate frame buffer in Internal RAM, falling back to PSRAM...");
-    frame_buffer = (slint::platform::Rgb565Pixel *)heap_caps_malloc(fb_size, MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
-  }
-
-  if (!frame_buffer) {
-    ESP_LOGE(TAG, "Failed to allocate frame buffer!");
-    abort();
-  }
-  else {
-    ESP_LOGI(TAG, "Frame buffer allocated at %p (%zu bytes)", frame_buffer, fb_size);
-    memset(frame_buffer, 0, fb_size);
-  }
 
   is_initialized = true;
 
@@ -672,10 +588,7 @@ extern "C" void display_deinit() {
   }
   spi_bus_free(LCD_HOST);
 
-  if (frame_buffer) {
-    free(frame_buffer);
-    frame_buffer = nullptr;
-  }
+
 
   is_initialized = false;
 }

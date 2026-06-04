@@ -16,7 +16,6 @@
 
 static const char *TAG = "slint_platform";
 
-extern "C" void display_draw_bitmap(int x_start, int y_start, int x_end, int y_end, const uint16_t *color_data, bool swap_bytes);
 
 using RepaintBufferType = slint::platform::SoftwareRenderer::RepaintBufferType;
 
@@ -251,8 +250,8 @@ void EspPlatform<PixelType>::run_event_loop()
                             // Assuming that using double buffer means that the buffer comes from
                             // the driver and we need to pass the exact pointer.
                             // https://github.com/espressif/esp-idf/blob/53ff7d43dbff642d831a937b066ea0735a6aca24/components/esp_lcd/src/esp_lcd_panel_rgb.c#L681
-                            display_draw_bitmap(0, 0, size.width, size.height,
-                                                reinterpret_cast<const uint16_t*>(buffer1->data()), false);
+                            esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, size.width, size.height,
+                                                      reinterpret_cast<const uint16_t*>(buffer1->data()));
 
                             std::swap(buffer1, buffer2);
                         }
@@ -260,42 +259,77 @@ void EspPlatform<PixelType>::run_event_loop()
                         auto s = region.bounding_box_size();
                         if (s.width > 0 && s.height > 0) {
                             auto o = region.bounding_box_origin();
-                            display_draw_bitmap(o.x, o.y, o.x + s.width, o.y + s.height,
-                                                reinterpret_cast<const uint16_t*>(buffer1->data()), byte_swap);
+                            esp_lcd_panel_draw_bitmap(panel_handle, o.x, o.y, o.x + s.width, o.y + s.height,
+                                                      reinterpret_cast<const uint16_t*>(buffer1->data()));
                         }
                     }
                 } else {
-                    // esp_lcd_panel_draw_bitmap is "async" so we have two buffers, one in which we
-                    // render, and one which is being transmitted with a DMA transfer in parallel.
-                    // TODO: add some synchronization code anyway to make sure that we don't
-                    // call esp_lcd_panel_draw_bitmap when an operation is still in progress
-                    // or free the buffer too early. (using `on_color_trans_done` callback).
-                    using Uniq = std::unique_ptr<PixelType, void (*)(void *)>;
-                    auto alloc = [&] {
-                        void *ptr = heap_caps_malloc(stride * sizeof(PixelType),
-                                                     MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
-                        if (!ptr) {
-                            ESP_LOGE(TAG, "malloc failed to allocate line buffer");
-                            abort();
-                        }
-                        return Uniq(reinterpret_cast<PixelType *>(ptr), heap_caps_free);
-                    };
-                    Uniq lb[2] = { alloc(), alloc() };
+                    extern uint16_t *slint_chunk_buffer[2];
+                    extern const int slint_chunk_lines;
+                    
                     int idx = 0;
+                    int lines_in_chunk = 0;
+                    std::size_t chunk_start_y = 0;
+                    std::size_t chunk_start_x = 0;
+                    std::size_t chunk_end_x = 0;
+                    bool first_transfer = true;
+                    extern SemaphoreHandle_t trans_sem;
+
                     m_window->m_renderer.render_by_line<PixelType>(
-                            [this, &lb, &idx](std::size_t line_y, std::size_t line_start,
-                                              std::size_t line_end, auto &&render_fn) {
-                                std::span<PixelType> view { lb[idx].get(), line_end - line_start };
+                            [&](std::size_t line_y, std::size_t line_start,
+                                std::size_t line_end, auto &&render_fn) {
+                                
+                                bool flush = false;
+                                if (lines_in_chunk > 0) {
+                                    if (line_y != chunk_start_y + lines_in_chunk || 
+                                        line_start != chunk_start_x || 
+                                        line_end != chunk_end_x || 
+                                        lines_in_chunk == slint_chunk_lines) {
+                                        flush = true;
+                                    }
+                                }
+
+                                if (flush) {
+                                    if (!first_transfer && trans_sem) {
+                                        xSemaphoreTake(trans_sem, portMAX_DELAY);
+                                    }
+                                    esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
+                                                              chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
+                                    idx = (idx + 1) % 2;
+                                    lines_in_chunk = 0;
+                                    first_transfer = false;
+                                }
+
+                                if (lines_in_chunk == 0) {
+                                    chunk_start_y = line_y;
+                                    chunk_start_x = line_start;
+                                    chunk_end_x = line_end;
+                                }
+
+                                std::size_t chunk_width = chunk_end_x - chunk_start_x;
+                                std::span<PixelType> view { reinterpret_cast<PixelType*>(slint_chunk_buffer[idx]) + (lines_in_chunk * chunk_width), line_end - line_start };
                                 render_fn(view);
+                                
                                 if (byte_swap) {
-                                    // Swap endianness to big endian
                                     std::for_each(view.begin(), view.end(),
                                                   [](auto &rgbpix) { byte_swap_color(&rgbpix); });
                                 }
-                                esp_lcd_panel_draw_bitmap(panel_handle, line_start, line_y,
-                                                          line_end, line_y + 1, view.data());
-                                idx = (idx + 1) % 2;
+                                
+                                lines_in_chunk++;
                             });
+                    
+                    if (lines_in_chunk > 0) {
+                        if (!first_transfer && trans_sem) {
+                            xSemaphoreTake(trans_sem, portMAX_DELAY);
+                        }
+                        esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
+                                                  chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
+                        first_transfer = false;
+                    }
+
+                    if (!first_transfer && trans_sem) {
+                        xSemaphoreTake(trans_sem, portMAX_DELAY);
+                    }
                 }
             }
 
