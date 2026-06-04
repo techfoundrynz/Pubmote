@@ -16,13 +16,13 @@
 #include "hal/ledc_types.h"
 #include "powermanagement.h"
 #include "remote/i2c.h"
-#include "settings.h"
 #include "remoteinputs.h"
+#include "settings.h"
 
 // Slint inclusion
-#include "slint-esp.h"
-#include "generated/app-window.h"
 #include "esp_heap_caps.h"
+#include "generated/app-window.h"
+#include "slint-esp.h"
 
 #if TP_CST816S
   #include "esp_lcd_touch_cst816s.h"
@@ -52,7 +52,7 @@ static const char *TAG = "PUBREMOTE-DISPLAY";
 #define LCD_HOST SPI2_HOST
 #define LCD_CMD_BITS 8
 #define LCD_PARAM_BITS 8
-#define MAX_TRAN_SIZE (LV_HOR_RES * LV_VER_RES * sizeof(uint16_t))
+#define MAX_TRAN_SIZE (HOR_RES * VER_RES * sizeof(uint16_t))
 
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
 static esp_lcd_panel_handle_t lcd_panel = NULL;
@@ -71,6 +71,10 @@ SlintWindowPtr get_slint_window() {
 }
 
 #include <atomic>
+
+#ifdef SHOW_FPS
+static std::atomic<int> g_loop_count(0);
+#endif
 
 static std::atomic<Screen> cached_active_screen(Screen::Splash);
 
@@ -106,7 +110,6 @@ extern "C" bool is_update_screen_active() {
   return cached_active_screen.load() == Screen::Update;
 }
 
-
 extern "C" uint8_t display_get_bl_level() {
   return bl_level;
 }
@@ -120,34 +123,33 @@ extern "C" void display_set_bl_level(uint8_t level) {
 }
 
 // Declarations of screen handlers implemented in other files
-extern "C" {
-void handle_splash_tapped();
-void handle_stats_swiped_down();
-void handle_menu_back();
-void handle_menu_connect();
-void handle_menu_pocket_mode();
-void handle_open_settings();
-void handle_open_calibration();
-void handle_open_pairing();
-void handle_open_about();
-void handle_menu_shutdown();
-void handle_settings_save();
-void handle_pairing_action();
-void handle_calibration_primary();
-void handle_calibration_secondary();
-void handle_about_check_updates();
-void handle_about_back();
-void handle_update_primary();
-void handle_update_secondary();
-void handle_update_selected(int index);
+extern "C"
+{
+  void handle_splash_tapped();
+  void handle_stats_swiped_down();
+  void handle_menu_back();
+  void handle_menu_connect();
+  void handle_menu_pocket_mode();
+  void handle_open_settings();
+  void handle_open_calibration();
+  void handle_open_pairing();
+  void handle_open_about();
+  void handle_menu_shutdown();
+  void handle_settings_save();
+  void handle_pairing_action();
+  void handle_calibration_primary();
+  void handle_calibration_secondary();
+  void handle_about_check_updates();
+  void handle_about_back();
+  void handle_update_primary();
+  void handle_update_secondary();
+  void handle_update_selected(int index);
 }
 
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
-  state.on_screen_changed([](Screen screen) {
-    cached_active_screen.store(screen);
-  });
+  state.on_screen_changed([](Screen screen) { cached_active_screen.store(screen); });
 
   state.on_splash_tapped([]() { handle_splash_tapped(); });
   state.on_stats_swiped_down([]() { handle_stats_swiped_down(); });
@@ -173,9 +175,16 @@ static void connect_callbacks() {
 // Hardware settings apply
 extern "C" void apply_theme_settings() {
   const auto &theme = slint_window->global<Theme>();
-  
+
   // Set the actual panel resolution dynamically based on the current screen size
-  theme.set_panel_res(LV_HOR_RES);
+  theme.set_panel_res(HOR_RES);
+
+// Set the font scale based on SCALE_FONT macro if defined, otherwise panel resolution ratio
+#ifdef SCALE_FONT
+  theme.set_font_scale(SCALE_FONT);
+#else
+  theme.set_font_scale((float)HOR_RES / 240.0f);
+#endif
 
   // Custom accent color
   theme.set_accent(slint::Color::from_argb_encoded(device_settings.theme_color));
@@ -185,7 +194,8 @@ extern "C" void apply_theme_settings() {
     theme.set_bg(slint::Color::from_rgb_uint8(255, 255, 255));
     theme.set_text(slint::Color::from_rgb_uint8(0, 0, 0));
     theme.set_text_dim(slint::Color::from_rgb_uint8(100, 100, 100));
-  } else {
+  }
+  else {
     theme.set_bg(slint::Color::from_rgb_uint8(0, 0, 0));
     theme.set_text(slint::Color::from_rgb_uint8(255, 255, 255));
     theme.set_text_dim(slint::Color::from_rgb_uint8(154, 154, 154));
@@ -195,51 +205,51 @@ extern "C" void apply_theme_settings() {
 // Event loop thread
 static void slint_event_loop(void *pvParameters) {
   ESP_LOGI(TAG, "Slint task started");
-  
+
   // Initialize Slint platform with our configuration
   SlintPlatformConfiguration<slint::platform::Rgb565Pixel> config;
-  config.size = slint::PhysicalSize(slint::Size<uint32_t>{(uint32_t)LV_HOR_RES, (uint32_t)LV_VER_RES});
+  config.size = slint::PhysicalSize(slint::Size<uint32_t>{(uint32_t)HOR_RES, (uint32_t)VER_RES});
   config.panel_handle = lcd_panel;
   config.touch_handle = touch_handle;
   config.byte_swap = true; // Swap bytes for standard SPI/QSPI big-endian display interfaces
   if (frame_buffer) {
-    config.buffer1 = std::span<slint::platform::Rgb565Pixel>(frame_buffer, LV_HOR_RES * LV_VER_RES);
+    config.buffer1 = std::span<slint::platform::Rgb565Pixel>(frame_buffer, HOR_RES * VER_RES);
   }
-  
+
   // Map rotation
   switch (device_settings.screen_rotation) {
-    case SCREEN_ROTATION_90:
-      config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::Rotate90;
-      break;
-    case SCREEN_ROTATION_180:
-      config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::Rotate180;
-      break;
-    case SCREEN_ROTATION_270:
-      config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::Rotate270;
-      break;
-    default:
-      config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
-      break;
+  case SCREEN_ROTATION_90:
+    config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::Rotate90;
+    break;
+  case SCREEN_ROTATION_180:
+    config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::Rotate180;
+    break;
+  case SCREEN_ROTATION_270:
+    config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::Rotate270;
+    break;
+  default:
+    config.rotation = slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
+    break;
   }
-  
+
   ESP_LOGI(TAG, "Initializing Slint ESP platform...");
   slint_esp_init(config);
-  
+
   ESP_LOGI(TAG, "Creating AppWindow...");
   slint_window = AppWindow::create();
   connect_callbacks();
   apply_theme_settings();
-  
+
   ESP_LOGI(TAG, "Applying initial backlight level: 0");
   display_set_bl_level(0);
   vTaskDelay(pdMS_TO_TICKS(350));
   ESP_LOGI(TAG, "Restoring target backlight level: %d", device_settings.bl_level);
   display_set_bl_level(device_settings.bl_level);
-  
+
   // Blocks until event loop ends
   ESP_LOGI(TAG, "Running Slint window event loop...");
   slint_window->run();
-  
+
   ESP_LOGI(TAG, "Slint event loop exited");
   vTaskDelete(NULL);
 }
@@ -250,6 +260,12 @@ static void slint_input_task(void *pvParameters) {
   static int last_dir = 0; // -1: up, 1: down, 0: center
   static uint32_t last_move_time = 0;
 
+#ifdef SHOW_FPS
+  static uint32_t last_fps_time = 0;
+  static int last_frame_count = 0;
+  static std::atomic<bool> loop_ready(true);
+#endif
+
   while (true) {
     if (slint_window) {
       // 1. Button C mapping to Return/Enter key
@@ -259,7 +275,8 @@ static void slint_input_task(void *pvParameters) {
         slint::invoke_from_event_loop([=]() {
           if (is_pressed) {
             slint_window->window().dispatch_key_press_event("\n");
-          } else {
+          }
+          else {
             slint_window->window().dispatch_key_release_event("\n");
           }
         });
@@ -269,7 +286,8 @@ static void slint_input_task(void *pvParameters) {
       int current_dir = 0;
       if (remote_data.js_y > 0.5) {
         current_dir = 1; // Down -> Tab
-      } else if (remote_data.js_y < -0.5) {
+      }
+      else if (remote_data.js_y < -0.5) {
         current_dir = -1; // Up -> Backtab
       }
 
@@ -282,17 +300,47 @@ static void slint_input_task(void *pvParameters) {
             if (current_dir == 1) {
               slint_window->window().dispatch_key_press_event("\t");
               slint_window->window().dispatch_key_release_event("\t");
-            } else {
+            }
+            else {
               slint_window->window().dispatch_key_press_event("\x19"); // Backtab
               slint_window->window().dispatch_key_release_event("\x19");
             }
           });
         }
-      } else {
+      }
+      else {
         last_dir = 0;
       }
+
+#ifdef SHOW_FPS
+      // Keep event loop saturated with a single counting payload
+      if (loop_ready.exchange(false)) {
+        slint::invoke_from_event_loop([]() {
+          g_loop_count++;
+          loop_ready.store(true);
+        });
+      }
+
+      // Calculate and send true FPS to Slint every second
+      now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+      if (now - last_fps_time >= 1000) {
+        int current_count = g_loop_count.load();
+        int fps = current_count - last_frame_count;
+        last_frame_count = current_count;
+        last_fps_time = now;
+        slint::invoke_from_event_loop([=]() {
+          if (slint_window) {
+            slint_window->global<UiState>().set_fps(fps);
+          }
+        });
+      }
+#endif
     }
-    vTaskDelay(pdMS_TO_TICKS(30));
+#ifdef SHOW_FPS
+    vTaskDelay(pdMS_TO_TICKS(1)); // Poll frequently enough to capture high FPS
+#else
+    vTaskDelay(pdMS_TO_TICKS(30)); // Standard polling rate
+#endif
   }
 }
 
@@ -300,18 +348,18 @@ extern "C" void display_set_rotation(ScreenRotation rot) {
   if (is_initialized) {
     slint::platform::SoftwareRenderer::RenderingRotation slint_rot;
     switch (rot) {
-      case SCREEN_ROTATION_90:
-        slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::Rotate90;
-        break;
-      case SCREEN_ROTATION_180:
-        slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::Rotate180;
-        break;
-      case SCREEN_ROTATION_270:
-        slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::Rotate270;
-        break;
-      default:
-        slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
-        break;
+    case SCREEN_ROTATION_90:
+      slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::Rotate90;
+      break;
+    case SCREEN_ROTATION_180:
+      slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::Rotate180;
+      break;
+    case SCREEN_ROTATION_270:
+      slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::Rotate270;
+      break;
+    default:
+      slint_rot = slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
+      break;
     }
     slint_esp_set_rotation(slint_rot);
   }
@@ -319,37 +367,76 @@ extern "C" void display_set_rotation(ScreenRotation rot) {
 
 static SemaphoreHandle_t trans_sem = NULL;
 #define CHUNK_LINES 20
-static uint16_t *chunk_buffer = NULL;
+static uint16_t *chunk_buffer[2] = {NULL, NULL};
+static bool dma_active = false;
 
-static bool IRAM_ATTR on_lcd_color_trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx) {
+static bool IRAM_ATTR on_lcd_color_trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata,
+                                              void *user_ctx) {
   BaseType_t high_task_awoken = pdFALSE;
   xSemaphoreGiveFromISR(trans_sem, &high_task_awoken);
   return high_task_awoken == pdTRUE;
 }
 
-extern "C" void display_draw_bitmap(int x_start, int y_start, int x_end, int y_end, const uint16_t *color_data) {
-  if (!is_initialized || !chunk_buffer || !trans_sem) {
+extern "C" void display_draw_bitmap(int x_start, int y_start, int x_end, int y_end, const uint16_t *color_data,
+                                    bool swap_bytes) {
+  if (!is_initialized || !chunk_buffer[0] || !chunk_buffer[1] || !trans_sem) {
     return;
   }
+
+  // Wait for previous frame's last DMA transfer to complete if it is still running
+  if (dma_active) {
+    xSemaphoreTake(trans_sem, portMAX_DELAY);
+    dma_active = false;
+  }
+
   int width = x_end - x_start;
-  int height = y_end - y_start;
-  int row_stride = LV_HOR_RES;
+  int row_stride = HOR_RES;
+
+  int chunk_idx = 0;
+  bool first = true;
 
   for (int y = y_start; y < y_end; y += CHUNK_LINES) {
     int current_chunk_lines = std::min(CHUNK_LINES, y_end - y);
-    
-    // Copy chunk from PSRAM to Internal SRAM DMA buffer
+    uint16_t *current_buffer = chunk_buffer[chunk_idx];
+
+    // Copy chunk from PSRAM to Internal SRAM DMA buffer (and swap bytes if requested)
     for (int line = 0; line < current_chunk_lines; ++line) {
       const uint16_t *src = color_data + (y + line) * row_stride + x_start;
-      uint16_t *dst = chunk_buffer + line * width;
-      memcpy(dst, src, width * sizeof(uint16_t));
+      uint16_t *dst = current_buffer + line * width;
+      if (swap_bytes) {
+        int i = 0;
+        // If pointers are 32-bit aligned, we can copy & swap 2 pixels at a time
+        if (width >= 2 && ((uintptr_t)src % 4 == 0) && ((uintptr_t)dst % 4 == 0)) {
+          const uint32_t *src32 = reinterpret_cast<const uint32_t *>(src);
+          uint32_t *dst32 = reinterpret_cast<uint32_t *>(dst);
+          int width32 = width / 2;
+          for (; i < width32; ++i) {
+            uint32_t val = src32[i];
+            dst32[i] = ((val & 0xFF00FF00) >> 8) | ((val & 0x00FF00FF) << 8);
+          }
+          i *= 2;
+        }
+        for (; i < width; ++i) {
+          uint16_t val = src[i];
+          dst[i] = (val << 8) | (val >> 8);
+        }
+      }
+      else {
+        memcpy(dst, src, width * sizeof(uint16_t));
+      }
     }
-    
-    // Draw chunk
-    esp_lcd_panel_draw_bitmap(lcd_panel, x_start, y, x_end, y + current_chunk_lines, chunk_buffer);
-    
-    // Wait for transfer complete
-    xSemaphoreTake(trans_sem, portMAX_DELAY);
+
+    // Wait for the PREVIOUS DMA transfer in this frame to finish before starting this one
+    if (!first) {
+      xSemaphoreTake(trans_sem, portMAX_DELAY);
+    }
+
+    // Draw current chunk
+    esp_lcd_panel_draw_bitmap(lcd_panel, x_start, y, x_end, y + current_chunk_lines, current_buffer);
+
+    first = false;
+    dma_active = true;         // A DMA transfer is now active for this frame's last chunk
+    chunk_idx = 1 - chunk_idx; // Swap buffer index
   }
 }
 
@@ -424,8 +511,10 @@ static esp_err_t app_lcd_init(void) {
 
   if (init_err != ESP_OK) {
     ESP_LOGE(TAG, "Failed to install LCD driver");
-    if (lcd_panel) esp_lcd_panel_del(lcd_panel);
-    if (lcd_io) esp_lcd_panel_io_del(lcd_io);
+    if (lcd_panel)
+      esp_lcd_panel_del(lcd_panel);
+    if (lcd_io)
+      esp_lcd_panel_io_del(lcd_io);
     spi_bus_free(LCD_HOST);
     return ret;
   }
@@ -480,8 +569,8 @@ static esp_err_t app_touch_init(void) {
   ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c_v2(i2c_get_bus_handle(), &tp_io_config, &tp_io_handle));
 
   const esp_lcd_touch_config_t tp_cfg = {
-      .x_max = LV_HOR_RES,
-      .y_max = LV_VER_RES,
+      .x_max = HOR_RES,
+      .y_max = VER_RES,
       .rst_gpio_num = (gpio_num_t)TP_RST,
   #ifdef TP_INT
       .int_gpio_num = (gpio_num_t)TP_INT,
@@ -511,20 +600,23 @@ static esp_err_t app_touch_init(void) {
 
 extern "C" void display_init() {
   ESP_LOGI(TAG, "Initializing Slint display wrapper");
-  
+
   trans_sem = xSemaphoreCreateBinary();
-  chunk_buffer = (uint16_t *)heap_caps_malloc(LV_HOR_RES * CHUNK_LINES * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-  if (!chunk_buffer) {
-    ESP_LOGE(TAG, "Failed to allocate chunk buffer!");
+  chunk_buffer[0] =
+      (uint16_t *)heap_caps_malloc(HOR_RES * CHUNK_LINES * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+  chunk_buffer[1] =
+      (uint16_t *)heap_caps_malloc(HOR_RES * CHUNK_LINES * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+  if (!chunk_buffer[0] || !chunk_buffer[1]) {
+    ESP_LOGE(TAG, "Failed to allocate chunk buffers!");
     abort();
   }
-  
+
   ESP_ERROR_CHECK(app_lcd_init());
 #if TOUCH_ENABLED
   ESP_ERROR_CHECK(app_touch_init());
 #endif
 
-  size_t fb_size = LV_HOR_RES * LV_VER_RES * sizeof(slint::platform::Rgb565Pixel);
+  size_t fb_size = HOR_RES * VER_RES * sizeof(slint::platform::Rgb565Pixel);
   // Try allocating in Internal RAM first to avoid CACHE-126 PSRAM cache bug on ESP32-S3 if it fits
   frame_buffer = (slint::platform::Rgb565Pixel *)heap_caps_malloc(fb_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
   if (!frame_buffer) {
@@ -535,7 +627,8 @@ extern "C" void display_init() {
   if (!frame_buffer) {
     ESP_LOGE(TAG, "Failed to allocate frame buffer!");
     abort();
-  } else {
+  }
+  else {
     ESP_LOGI(TAG, "Frame buffer allocated at %p (%zu bytes)", frame_buffer, fb_size);
     memset(frame_buffer, 0, fb_size);
   }
@@ -544,9 +637,16 @@ extern "C" void display_init() {
 
   // Start Slint Event Loop Task
   xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 64 * 1024, NULL, 20, &slint_task_handle, 1);
-  
-  // Start Input Polling Task
-  xTaskCreate(slint_input_task, "slint_input_task", 4096, NULL, 20, &slint_input_task_handle);
+
+  // Provide global settings
+  if (slint_window) {
+#ifdef SHOW_FPS
+    slint_window->global<UiState>().set_show_fps(true);
+#endif
+  }
+
+  // Start Input Polling Task (pinned to core 0, leaving core 1 fully dedicated to the Slint event loop)
+  xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 4096, NULL, 20, &slint_input_task_handle, 0);
 }
 
 extern "C" void display_deinit() {
@@ -557,7 +657,7 @@ extern "C" void display_deinit() {
     slint_window.reset();
   }
   vTaskDelay(pdMS_TO_TICKS(100));
-  
+
   if (touch_handle) {
     esp_lcd_touch_del(touch_handle);
     touch_handle = NULL;

@@ -10,7 +10,8 @@
 //   ui_AboutFooter (25%) -> ui_AboutMainActionButton 80x42 "Back"
 
 import { Theme } from "theme.slint";
-import { AppButton, OutlineButton } from "widgets.slint";
+import { AppButton } from "app-button.slint";
+import { OutlineButton } from "outline-button.slint";
 
 export component AboutScreen inherits Rectangle {
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";

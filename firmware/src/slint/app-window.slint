@@ -19,6 +19,7 @@ import { CalibrationScreen } from "ui/calibration.slint";
 import { AboutScreen } from "ui/about.slint";
 import { UpdateScreen } from "ui/update.slint";
 import { ChargeScreen } from "ui/charge.slint";
+import { FpsOverlay } from "ui/fps-overlay.slint";
 
 export enum Screen {
     splash,
@@ -35,6 +36,8 @@ export enum Screen {
 // Single binding surface for the firmware.
 export global UiState {
     in-out property <Screen> screen: Screen.splash;
+    in-out property <int> fps: 0;
+    in property <bool> show-fps: false;
 
     // --- Stats (ui_StatsScreen) ---
     in property <string> speed: "0.0";
@@ -123,9 +126,47 @@ export component AppWindow inherits Window {
     default-font-family: "Inter";
 
     property <Screen> active-screen: UiState.screen;
+    property <Screen> previous-screen: Screen.splash;
+    property <bool> is-animating: false;
+    property <bool> screen-loaded: true;
+
+    pure function screen-x(s: Screen) -> int {
+        if (s == Screen.settings) { return -1; }
+        if (s == Screen.calibration) { return 1; }
+        if (s == Screen.pairing) { return -2; }
+        if (s == Screen.about) { return 2; }
+        if (s == Screen.update) { return 2; }
+        return 0;
+    }
+
+    pure function screen-y(s: Screen) -> int {
+        if (s == Screen.splash || s == Screen.stats || s == Screen.charge) { return 0; }
+        if (s == Screen.update) { return -2; }
+        return -1;
+    }
 
     changed active-screen => {
+        root.screen-loaded = false;
+        root.is-animating = false;
+        root.is-animating = true;
         UiState.screen-changed(self.active-screen);
+    }
+
+    Timer {
+        interval: 20ms;
+        running: !root.screen-loaded;
+        triggered => {
+            root.screen-loaded = true;
+        }
+    }
+
+    Timer {
+        interval: 250ms;
+        running: root.is-animating;
+        triggered => {
+            root.is-animating = false;
+            root.previous-screen = root.active-screen;
+        }
     }
 
     Timer {
@@ -136,13 +177,21 @@ export component AppWindow inherits Window {
         }
     }
 
-    if UiState.screen == Screen.splash: SplashScreen {
+    if UiState.screen == Screen.splash || root.previous-screen == Screen.splash: SplashScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.splash) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.splash) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.splash && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         clicked => { UiState.splash-tapped(); }
     }
 
-    if UiState.screen == Screen.stats: StatsScreen {
+    if UiState.screen == Screen.stats || root.previous-screen == Screen.stats: StatsScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.stats) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.stats) - screen-y(root.active-screen)) * self.height;
+        opacity: root.active-screen == Screen.splash ? 0.0 : 1.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         speed: UiState.speed;
         speed-unit: UiState.speed-unit;
         speed-fraction: UiState.speed-fraction;
@@ -155,8 +204,12 @@ export component AppWindow inherits Window {
         swiped-down => { UiState.stats-swiped-down(); }
     }
 
-    if UiState.screen == Screen.menu: MenuScreen {
+    if UiState.screen == Screen.menu || root.previous-screen == Screen.menu: MenuScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.menu) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.menu) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.menu && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         show-connect: UiState.menu-show-connect;
         pocket-mode-text: UiState.pocket-mode-text;
         back => { UiState.menu-back(); }
@@ -169,8 +222,12 @@ export component AppWindow inherits Window {
         shutdown => { UiState.menu-shutdown(); }
     }
 
-    if UiState.screen == Screen.settings: SettingsScreen {
+    if UiState.screen == Screen.settings || root.previous-screen == Screen.settings: SettingsScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.settings) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.settings) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.settings && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         brightness <=> UiState.brightness;
         double-press-index <=> UiState.double-press-index;
         rotation-index <=> UiState.rotation-index;
@@ -182,15 +239,23 @@ export component AppWindow inherits Window {
         save => { UiState.settings-save(); }
     }
 
-    if UiState.screen == Screen.pairing: PairingScreen {
+    if UiState.screen == Screen.pairing || root.previous-screen == Screen.pairing: PairingScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.pairing) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.pairing) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.pairing && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         pairing-code: UiState.pairing-code;
         action-text: UiState.pairing-action-text;
         action => { UiState.pairing-action(); }
     }
 
-    if UiState.screen == Screen.calibration: CalibrationScreen {
+    if UiState.screen == Screen.calibration || root.previous-screen == Screen.calibration: CalibrationScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.calibration) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.calibration) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.calibration && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         header-text: UiState.calibration-header;
         step-text: UiState.calibration-step;
         primary-text: UiState.calibration-primary-text;
@@ -200,16 +265,24 @@ export component AppWindow inherits Window {
         secondary => { UiState.calibration-secondary(); }
     }
 
-    if UiState.screen == Screen.about: AboutScreen {
+    if UiState.screen == Screen.about || root.previous-screen == Screen.about: AboutScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.about) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.about) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.about && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         version-info: UiState.version-info;
         debug-info: UiState.debug-info;
         check-updates => { UiState.about-check-updates(); }
         back => { UiState.about-back(); }
     }
 
-    if UiState.screen == Screen.update: UpdateScreen {
+    if UiState.screen == Screen.update || root.previous-screen == Screen.update: UpdateScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.update) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.update) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.update && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         body-text: UiState.update-body;
         show-dropdown: UiState.update-show-dropdown;
         updates: UiState.updates;
@@ -219,8 +292,18 @@ export component AppWindow inherits Window {
         update-selected(i) => { UiState.update-selected(i); }
     }
 
-    if UiState.screen == Screen.charge: ChargeScreen {
+    if UiState.screen == Screen.charge || root.previous-screen == Screen.charge: ChargeScreen {
         width: 100%; height: 100%;
+        x: (screen-x(Screen.charge) - screen-x(root.active-screen)) * self.width;
+        y: (screen-y(Screen.charge) - screen-y(root.active-screen)) * self.height;
+        opacity: (root.active-screen == Screen.charge && root.screen-loaded) ? 1.0 : 0.0;
+        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         battery-percent: UiState.charge-percent;
+    }
+
+    if UiState.show-fps: FpsOverlay {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        fps: UiState.fps;
     }
 }

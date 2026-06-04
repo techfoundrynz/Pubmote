@@ -1,0 +1,82 @@
+import { Theme } from "theme.slint";
+
+// Custom ComboBox without image dependencies (uses a text triangle indicator and PopupWindow).
+export component ComboBox inherits Rectangle {
+    in property <[string]> model;
+    in-out property <int> current-index: 0;
+    callback selected(string);
+
+    height: 36px * Theme.scale;
+    border-radius: 8px * Theme.scale;
+    border-width: 1px;
+    border-color: Theme.track;
+    background: Theme.track-dim;
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 8px;
+        
+        Text {
+            text: root.current-index < root.model.length ? root.model[root.current-index] : "";
+            color: Theme.text;
+            font-size: Theme.font-14;
+            vertical-alignment: center;
+            horizontal-alignment: left;
+        }
+        
+        Text {
+            text: "▼";
+            color: Theme.text-dim;
+            font-size: Theme.font-14;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+            width: 14px;
+        }
+    }
+
+    TouchArea {
+        clicked => {
+            popup.show();
+        }
+    }
+
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        
+        Rectangle {
+            background: Theme.track-dim;
+            border-radius: 8px * Theme.scale;
+            border-width: 1px;
+            border-color: Theme.track;
+            
+            VerticalLayout {
+                padding: 4px;
+                spacing: 2px;
+                for item[idx] in root.model : Rectangle {
+                    height: 32px * Theme.scale;
+                    background: item-touch.pressed ? Theme.accent.darker(0.2) : (idx == root.current-index ? Theme.track : transparent);
+                    border-radius: 4px * Theme.scale;
+                    
+                    Text {
+                        x: 12px;
+                        text: item;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        vertical-alignment: center;
+                    }
+                    
+                    item-touch := TouchArea {
+                        clicked => {
+                            root.current-index = idx;
+                            root.selected(item);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

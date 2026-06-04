@@ -60,7 +60,45 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
     def compile_slint_files(target, source, env):
         if os.path.exists(slint_compiler_path):
             print(f"[Slint Compiler] Compiling app-window.slint using: {slint_compiler_path}")
-            os.environ["SLINT_FONT_SIZES"] = "12,14,28,48,96"
+            
+            # Dynamically calculate embedded font sizes based on active platform build flags
+            build_flags = env.get("BUILD_FLAGS", [])
+            
+            def get_macro_value(macro):
+                for flag in build_flags:
+                    if isinstance(flag, str):
+                        if flag.startswith(f"-D {macro}=") or flag.startswith(f"-D{macro}="):
+                            return flag.split("=", 1)[1].strip()
+                        elif flag == f"-D {macro}" or flag == f"-D{macro}":
+                            return "1"
+                return None
+
+            lv_hor_res = 240
+            hor_res_str = get_macro_value("LV_HOR_RES")
+            if hor_res_str:
+                try:
+                    lv_hor_res = int(hor_res_str)
+                except ValueError:
+                    pass
+
+            scale_font = None
+            scale_font_str = get_macro_value("SCALE_FONT")
+            if scale_font_str:
+                try:
+                    scale_font = float(scale_font_str)
+                except ValueError:
+                    pass
+
+            if scale_font is None:
+                scale_font = lv_hor_res / 240.0
+
+            base_sizes = [12, 14, 28, 48, 96]
+            scaled_sizes = sorted(list(set(round(sz * scale_font) for sz in base_sizes)))
+            font_sizes_str = ",".join(str(sz) for sz in scaled_sizes)
+
+            print(f"[Slint Compiler] Detected target parameters: LV_HOR_RES={lv_hor_res}, SCALE_FONT={scale_font}")
+            print(f"[Slint Compiler] Embedding font sizes: {font_sizes_str}")
+            os.environ["SLINT_FONT_SIZES"] = font_sizes_str
             args = [
                 slint_compiler_path,
                 "firmware/src/slint/app-window.slint",

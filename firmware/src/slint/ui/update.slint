@@ -11,7 +11,8 @@
 // property plus an optional dropdown for choosing an update.
 
 import { Theme } from "theme.slint";
-import { AppButton, ComboBox } from "widgets.slint";
+import { AppButton } from "app-button.slint";
+import { ComboBox } from "combo-box.slint";
 
 export component UpdateScreen inherits Rectangle {
     in property <string> body-text: "Click next to scan for networks";

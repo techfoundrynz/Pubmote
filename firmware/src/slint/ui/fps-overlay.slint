@@ -1,0 +1,27 @@
+import { Theme } from "theme.slint";
+
+export component FpsOverlay inherits Rectangle {
+    in property <int> fps: 0;
+
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 12px;
+    width: fps-layout.preferred-width;
+    height: fps-layout.preferred-height;
+    z: 9999;
+
+    fps-layout := HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        
+        Text {
+            text: root.fps + " FPS";
+            color: #FFFFFF;
+            font-size: 24px;
+            font-weight: 800;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}

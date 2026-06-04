@@ -16,7 +16,7 @@
 
 static const char *TAG = "slint_platform";
 
-extern "C" void display_draw_bitmap(int x_start, int y_start, int x_end, int y_end, const uint16_t *color_data);
+extern "C" void display_draw_bitmap(int x_start, int y_start, int x_end, int y_end, const uint16_t *color_data, bool swap_bytes);
 
 using RepaintBufferType = slint::platform::SoftwareRenderer::RepaintBufferType;
 
@@ -192,7 +192,10 @@ void EspPlatform<PixelType>::run_event_loop()
 
         if (m_window) {
 
-            if (touch_handle) {
+            static uint32_t last_touch_poll = 0;
+            uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            if (touch_handle && (now_ms - last_touch_poll >= 20)) {
+                last_touch_poll = now_ms;
                 uint16_t touchpad_x[1] = { 0 };
                 uint16_t touchpad_y[1] = { 0 };
                 uint8_t touchpad_cnt = 0;
@@ -242,16 +245,6 @@ void EspPlatform<PixelType>::run_event_loop()
                     ESP_LOGI("SLINT-ESP", "Redrawing region: rects=%d, bounding_box=%dx%d", 
                              (int)region.rectangles().size(), (int)region.bounding_box_size().width, (int)region.bounding_box_size().height);
 
-                    if (byte_swap) {
-                        for (auto [o, s] : region.rectangles()) {
-                            for (int y = o.y; y < o.y + s.height; y++) {
-                                for (int x = o.x; x < o.x + s.width; x++) {
-                                    byte_swap_color(&buffer1.value()[y * stride + x]);
-                                }
-                            }
-                        }
-                    }
-
                     if (buffer2) {
                         auto s = region.bounding_box_size();
                         if (s.width > 0 && s.height > 0) {
@@ -259,15 +252,16 @@ void EspPlatform<PixelType>::run_event_loop()
                             // the driver and we need to pass the exact pointer.
                             // https://github.com/espressif/esp-idf/blob/53ff7d43dbff642d831a937b066ea0735a6aca24/components/esp_lcd/src/esp_lcd_panel_rgb.c#L681
                             display_draw_bitmap(0, 0, size.width, size.height,
-                                                reinterpret_cast<const uint16_t*>(buffer1->data()));
+                                                reinterpret_cast<const uint16_t*>(buffer1->data()), false);
 
                             std::swap(buffer1, buffer2);
                         }
                     } else {
                         auto s = region.bounding_box_size();
                         if (s.width > 0 && s.height > 0) {
-                            display_draw_bitmap(0, 0, size.width, size.height,
-                                                reinterpret_cast<const uint16_t*>(buffer1->data()));
+                            auto o = region.bounding_box_origin();
+                            display_draw_bitmap(o.x, o.y, o.x + s.width, o.y + s.height,
+                                                reinterpret_cast<const uint16_t*>(buffer1->data()), byte_swap);
                         }
                     }
                 } else {

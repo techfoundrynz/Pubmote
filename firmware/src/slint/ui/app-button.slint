@@ -1,0 +1,32 @@
+import { Theme } from "theme.slint";
+
+// Primary touch button: matches the LVGL lv_btn used across menu/settings/etc.
+// (default theme rounded button, 42px tall at base res).
+export component AppButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary: true;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    height: 42px * Theme.scale;
+    border-radius: 8px * Theme.scale;
+    background: !root.enabled
+        ? Theme.track-dim
+        : touch.pressed
+            ? Theme.accent.darker(0.2)
+            : (root.primary ? Theme.accent : Theme.track-dim);
+
+    Text {
+        text: root.text;
+        color: root.enabled ? Theme.text : Theme.text-dim;
+        font-size: Theme.font-14;
+        font-weight: Theme.w-bold;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}

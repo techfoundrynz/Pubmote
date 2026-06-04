@@ -16,7 +16,7 @@
 //     ui_StatsFooter  (25%)  ui_BoardBatteryDisplay "0%" Inter_Bold_14
 
 import { Theme } from "theme.slint";
-import { ArcGauge } from "widgets.slint";
+import { ArcGauge } from "arc-gauge.slint";
 
 export component StatsScreen inherits Rectangle {
     in property <string> speed: "0.0";
@@ -145,7 +145,7 @@ export component StatsScreen inherits Rectangle {
                     Text {
                         text: root.speed;
                         color: Theme.text;
-                        font-size: Theme.font-48;
+                        font-size: Theme.font-96;
                         font-weight: Theme.w-bold;
                         vertical-alignment: center;
                     }

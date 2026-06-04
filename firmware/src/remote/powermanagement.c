@@ -282,25 +282,23 @@ void reset_sleep_timer() {
 
   int duration_ms = get_sleep_timer_time_ms();
 
-  // Handle existing timer
-  if (sleep_timer != NULL) {
-    if (esp_timer_is_active(sleep_timer)) {
-      ESP_ERROR_CHECK(esp_timer_stop(sleep_timer));
-    }
-    ESP_ERROR_CHECK(esp_timer_delete(sleep_timer));
-    sleep_timer = NULL;
-  }
-
   if (duration_ms == 0) {
     ESP_LOGD(TAG, "Deep sleep timer disabled.");
     xSemaphoreGive(timer_mutex);
     return;
   }
 
-  // Create new timer
-  esp_timer_create_args_t sleep_timer_args = {
-      .callback = sleep_timer_callback, .arg = NULL, .dispatch_method = ESP_TIMER_TASK, .name = "SleepTimer"};
-  ESP_ERROR_CHECK(esp_timer_create(&sleep_timer_args, &sleep_timer));
+  // Handle existing timer or create a new one
+  if (sleep_timer != NULL) {
+    if (esp_timer_is_active(sleep_timer)) {
+      ESP_ERROR_CHECK(esp_timer_stop(sleep_timer));
+    }
+  } else {
+    esp_timer_create_args_t sleep_timer_args = {
+        .callback = sleep_timer_callback, .arg = NULL, .dispatch_method = ESP_TIMER_TASK, .name = "SleepTimer"};
+    ESP_ERROR_CHECK(esp_timer_create(&sleep_timer_args, &sleep_timer));
+  }
+
   ESP_ERROR_CHECK(esp_timer_start_once(sleep_timer, duration_ms * 1000));
   ESP_LOGD(TAG, "Sleep timer started for %d ms", duration_ms);
 

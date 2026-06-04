@@ -74,7 +74,11 @@ else()
     # Run Cargo build at configuration time to ensure the library file is created before SCons ldgen/compilation.
     message(STATUS "Running Cargo build for Slint C++...")
     execute_process(
-        COMMAND cargo +esp build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features renderer-software,software-renderer-path,freestanding
+        COMMAND ${CMAKE_COMMAND} -E env 
+            "CARGO_PROFILE_RELEASE_LTO=fat"
+            "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1"
+            "CARGO_PROFILE_RELEASE_OPT_LEVEL=3"
+            cargo +esp build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features renderer-software,software-renderer-path,freestanding
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/slint-src"
         RESULT_VARIABLE cargo_result
     )
