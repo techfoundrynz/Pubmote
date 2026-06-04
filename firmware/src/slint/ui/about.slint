@@ -11,7 +11,6 @@
 
 import { Theme } from "theme.slint";
 import { AppButton, OutlineButton } from "widgets.slint";
-import { ScrollView } from "std-widgets.slint";
 
 export component AboutScreen inherits Rectangle {
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
@@ -27,7 +26,7 @@ export component AboutScreen inherits Rectangle {
         // ui_AboutBody (55%) — horizontally scrollable pages
         Rectangle {
             vertical-stretch: 55;
-            ScrollView {
+            Flickable {
                 viewport-width: root.width * 2;
                 HorizontalLayout {
                     width: root.width * 2;

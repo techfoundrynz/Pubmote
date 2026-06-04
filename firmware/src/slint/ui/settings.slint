@@ -16,8 +16,8 @@
 //   ui_SettingsFooter (25%) -> ui_SettingsMainActionButton 80x42 "Save"
 
 import { Theme } from "theme.slint";
-import { AppButton } from "widgets.slint";
-import { ScrollView, Slider, ComboBox, Switch } from "std-widgets.slint";
+import { AppButton, ComboBox } from "widgets.slint";
+import { Slider, Switch } from "std-widgets.slint";
 
 // One settings page: a control slot with a caption below it. Width is governed
 // by the parent HorizontalLayout (equal stretch == one screen width per page).
@@ -56,7 +56,7 @@ export component SettingsScreen inherits Rectangle {
         // ui_SettingsBody (55%) — horizontal pager
         Rectangle {
             vertical-stretch: 55;
-            ScrollView {
+            Flickable {
                 viewport-width: root.width * 9;
                 HorizontalLayout {
                     width: root.width * 9;

@@ -1,11 +1,16 @@
-#include <ui/ui.h>
-#ifndef __ABOUT_SCREEN_H
-  #define __ABOUT_SCREEN_H
+#ifndef __CHARGE_SCREEN_H
+#define __CHARGE_SCREEN_H
+#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 bool is_charge_screen_active();
+void setup_charge_properties();
 
-void charge_screen_load_start(lv_event_t *e);
-void charge_screen_loaded(lv_event_t *e);
-void charge_screen_unload_start(lv_event_t *e);
+#ifdef __cplusplus
+}
+#endif
 
 #endif

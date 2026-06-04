@@ -7,7 +7,6 @@
 
 import { Theme } from "theme.slint";
 import { AppButton } from "widgets.slint";
-import { ScrollView } from "std-widgets.slint";
 
 export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
@@ -23,8 +22,9 @@ export component MenuScreen inherits Rectangle {
 
     background: Theme.bg;
 
-    ScrollView {
-        VerticalLayout {
+    Flickable {
+        viewport-height: menu-layout.min-height;
+        menu-layout := VerticalLayout {
             padding: 40px * Theme.scale;
             spacing: 10px * Theme.scale;
 

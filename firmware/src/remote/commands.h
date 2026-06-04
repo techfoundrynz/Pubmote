@@ -4,6 +4,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum {
   // Receiver version commands
   REM_VERSION = 0,
@@ -20,5 +26,11 @@ typedef enum {
 } RemoteCommands;
 
 bool process_board_data(uint8_t *data, int len);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

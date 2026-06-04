@@ -77,5 +77,5 @@ if (NOT download_code EQUAL 0)
 endif()
 
 file(ARCHIVE_EXTRACT INPUT "${download_target_path}/${prebuilt_archive_filename}" DESTINATION "${download_target_path}")
-list(PREPEND CMAKE_PREFIX_PATH "${download_target_path}")
+list(PREPEND CMAKE_PREFIX_PATH "${download_target_path}/Slint-cpp-${github_filename_infix}-${SLINT_TARGET_ARCHITECTURE}")
 find_package(Slint CONFIG)

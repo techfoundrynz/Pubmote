@@ -3,9 +3,15 @@
 #include "display.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
-#include <core/lv_obj.h>
+
 #include <esp_now.h>
 #include <remote/receiver.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 // Function to initialize settings (and NVS)
 esp_err_t settings_init();
@@ -130,5 +136,11 @@ bool is_pocket_mode_enabled();
 extern CalibrationSettings calibration_settings;
 extern DeviceSettings device_settings;
 extern PairingSettings pairing_settings;
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

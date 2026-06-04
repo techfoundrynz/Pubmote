@@ -16,6 +16,8 @@
 
 static const char *TAG = "slint_platform";
 
+extern "C" void display_draw_bitmap(int x_start, int y_start, int x_end, int y_end, const uint16_t *color_data);
+
 using RepaintBufferType = slint::platform::SoftwareRenderer::RepaintBufferType;
 
 class EspWindowAdapter : public slint::platform::WindowAdapter
@@ -40,6 +42,9 @@ public:
 template<typename PixelType>
 struct EspPlatform : public slint::platform::Platform
 {
+    static inline EspPlatform* active_platform = nullptr;
+    static inline void (*set_rotation_callback)(void*, slint::platform::SoftwareRenderer::RenderingRotation) = nullptr;
+
     EspPlatform(const SlintPlatformConfiguration<PixelType> &config)
         : size(config.size),
           panel_handle(config.panel_handle),
@@ -50,6 +55,16 @@ struct EspPlatform : public slint::platform::Platform
           rotation(config.rotation)
     {
         task = xTaskGetCurrentTaskHandle();
+        active_platform = this;
+        set_rotation_callback = [](void* instance, slint::platform::SoftwareRenderer::RenderingRotation rot) {
+            auto self = reinterpret_cast<EspPlatform<PixelType>*>(instance);
+            self->rotation = rot;
+            if (self->m_window) {
+                self->m_window->m_renderer.set_rendering_rotation(rot);
+                self->m_window->needs_redraw = true;
+                xTaskNotifyGive(task);
+            }
+        };
     }
 
     std::unique_ptr<slint::platform::WindowAdapter> create_window_adapter() override;
@@ -135,14 +150,9 @@ void EspPlatform<PixelType>::run_event_loop()
     TickType_t max_ticks_to_wait = portMAX_DELAY;
 
     if (touch_handle) {
-        if (esp_lcd_touch_register_interrupt_callback(
-                    touch_handle, [](auto) { vTaskNotifyGiveFromISR(task, nullptr); })
-            != ESP_OK) {
-
-            // No touch interrupt assigned or supported? Fall back to polling like esp_lvgl_port.
-            // LVGL polls in 5ms intervals, but FreeRTOS tick interval is 10ms, so go for that
-            max_ticks_to_wait = pdMS_TO_TICKS(10);
-        }
+        // Fall back to polling (every 30ms) to avoid CPU starvation from continuous interrupts
+        // or interrupt storms on boards with floating touch interrupt pins.
+        max_ticks_to_wait = pdMS_TO_TICKS(30);
     }
 #if SOC_LCD_RGB_SUPPORTED && ESP_IDF_VERSION_MAJOR >= 5
     if (buffer2) {
@@ -229,6 +239,8 @@ void EspPlatform<PixelType>::run_event_loop()
                     }
 #endif
                     auto region = m_window->m_renderer.render(buffer1.value(), stride);
+                    ESP_LOGI("SLINT-ESP", "Redrawing region: rects=%d, bounding_box=%dx%d", 
+                             (int)region.rectangles().size(), (int)region.bounding_box_size().width, (int)region.bounding_box_size().height);
 
                     if (byte_swap) {
                         for (auto [o, s] : region.rectangles()) {
@@ -246,18 +258,16 @@ void EspPlatform<PixelType>::run_event_loop()
                             // Assuming that using double buffer means that the buffer comes from
                             // the driver and we need to pass the exact pointer.
                             // https://github.com/espressif/esp-idf/blob/53ff7d43dbff642d831a937b066ea0735a6aca24/components/esp_lcd/src/esp_lcd_panel_rgb.c#L681
-                            esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, size.width, size.height,
-                                                      buffer1->data());
+                            display_draw_bitmap(0, 0, size.width, size.height,
+                                                reinterpret_cast<const uint16_t*>(buffer1->data()));
 
                             std::swap(buffer1, buffer2);
                         }
                     } else {
-                        for (auto [o, s] : region.rectangles()) {
-                            for (int y = o.y; y < o.y + s.height; y++) {
-                                esp_lcd_panel_draw_bitmap(panel_handle, o.x, y, o.x + s.width,
-                                                          y + 1,
-                                                          buffer1->data() + y * stride + o.x);
-                            }
+                        auto s = region.bounding_box_size();
+                        if (s.width > 0 && s.height > 0) {
+                            display_draw_bitmap(0, 0, size.width, size.height,
+                                                reinterpret_cast<const uint16_t*>(buffer1->data()));
                         }
                     }
                 } else {
@@ -269,7 +279,7 @@ void EspPlatform<PixelType>::run_event_loop()
                     using Uniq = std::unique_ptr<PixelType, void (*)(void *)>;
                     auto alloc = [&] {
                         void *ptr = heap_caps_malloc(stride * sizeof(PixelType),
-                                                     MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                                                     MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
                         if (!ptr) {
                             ESP_LOGE(TAG, "malloc failed to allocate line buffer");
                             abort();
@@ -304,7 +314,8 @@ void EspPlatform<PixelType>::run_event_loop()
         if (auto wait_time = slint::platform::duration_until_next_timer_update()) {
             ticks_to_wait = std::min(ticks_to_wait, pdMS_TO_TICKS(wait_time->count()));
         }
-
+        ESP_LOGI("SLINT-ESP-LOOP", "Waiting: touch=%p, max_ticks=%u, ticks_to_wait=%u",
+                 touch_handle, (unsigned int)max_ticks_to_wait, (unsigned int)ticks_to_wait);
         ulTaskNotifyTake(/*reset to zero*/ pdTRUE, ticks_to_wait);
     }
 
@@ -362,4 +373,14 @@ void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565Pixe
 void slint_esp_init(const SlintPlatformConfiguration<slint::Rgb8Pixel> &config)
 {
     slint::platform::set_platform(std::make_unique<EspPlatform<slint::Rgb8Pixel>>(config));
+}
+
+void slint_esp_set_rotation(slint::platform::SoftwareRenderer::RenderingRotation rotation)
+{
+    if (EspPlatform<slint::platform::Rgb565Pixel>::active_platform && EspPlatform<slint::platform::Rgb565Pixel>::set_rotation_callback) {
+        EspPlatform<slint::platform::Rgb565Pixel>::set_rotation_callback(EspPlatform<slint::platform::Rgb565Pixel>::active_platform, rotation);
+    }
+    else if (EspPlatform<slint::Rgb8Pixel>::active_platform && EspPlatform<slint::Rgb8Pixel>::set_rotation_callback) {
+        EspPlatform<slint::Rgb8Pixel>::set_rotation_callback(EspPlatform<slint::Rgb8Pixel>::active_platform, rotation);
+    }
 }

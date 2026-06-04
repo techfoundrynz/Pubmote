@@ -25,11 +25,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include "connection.h"
+#include "led.h"
 #include <math.h>
-#include <remote/connection.h>
-#include <remote/led.h>
-#include <ui/ui.h>
-
 static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
 
 #define INT_SETTLE_TIME_MS 200

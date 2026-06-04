@@ -9,9 +9,7 @@
 #include "remoteinputs.h"
 #include "stats.h"
 #include "time.h"
-#include "transmitter.h"
-#include "ui/ui.h"
-#include <esp_err.h>
+
 #include <esp_timer.h>
 #include <remote/settings.h>
 #include <stdbool.h>

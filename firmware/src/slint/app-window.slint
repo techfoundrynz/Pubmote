@@ -7,6 +7,9 @@
 // code updated named widgets and registered event callbacks.
 
 import { Theme } from "ui/theme.slint";
+export { Theme }
+import "../../assets/Inter-Regular.ttf";
+import "../../assets/Inter-Bold.ttf";
 import { SplashScreen } from "ui/splash.slint";
 import { StatsScreen } from "ui/stats.slint";
 import { MenuScreen } from "ui/menu.slint";
@@ -83,6 +86,7 @@ export global UiState {
     in property <int> charge-percent: 0;
 
     // --- Actions (the firmware connects these) ---
+    callback screen-changed(Screen);
     callback splash-tapped();
     // Menu
     callback menu-back();
@@ -116,6 +120,21 @@ export component AppWindow inherits Window {
     height: 466px;
     background: Theme.bg;
     title: "PubRemote";
+    default-font-family: "Inter";
+
+    property <Screen> active-screen: UiState.screen;
+
+    changed active-screen => {
+        UiState.screen-changed(self.active-screen);
+    }
+
+    Timer {
+        interval: 1000ms;
+        running: active-screen == Screen.splash;
+        triggered => {
+            UiState.splash-tapped();
+        }
+    }
 
     if UiState.screen == Screen.splash: SplashScreen {
         width: 100%; height: 100%;

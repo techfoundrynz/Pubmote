@@ -28,59 +28,31 @@ export component ArcGauge inherits Rectangle {
     property <float> cy: root.h / 2;
     property <float> rad: root.w / 2 - (root.thickness / 1px) / 2;
 
-    function ax(a: angle) -> float { return root.cx + root.rad * Math.cos(a); }
-    function ay(a: angle) -> float { return root.cy + root.rad * Math.sin(a); }
+    property <brush> trans: transparent;
+    property <float> divisor: root.ticks.length > 1 ? root.ticks.length - 1 : 1;
+    in property <[int]> ticks: [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+        20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+        40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+        60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
+        80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+        100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119
+    ];
 
-    // Indicator sweep endpoints (handles reverse mode).
-    property <angle> ind-from: root.reverse ? root.start-angle + root.span-angle : root.start-angle;
-    property <angle> ind-to: root.reverse
-        ? root.start-angle + root.span-angle - root.span-angle * root.value
-        : root.start-angle + root.span-angle * root.value;
+    for tick[idx] in root.ticks : Rectangle {
+        property <float> fraction: idx / root.divisor;
+        property <angle> angle: root.start-angle + root.span-angle * fraction;
+        property <bool> is-active: root.reverse ? (1.0 - fraction <= root.value) : (fraction <= root.value);
+        
+        x: (root.cx + root.rad * Math.cos(angle)) * 1px - self.width / 2;
+        y: (root.cy + root.rad * Math.sin(angle)) * 1px - self.height / 2;
+        width: root.thickness;
+        height: root.thickness;
+        border-radius: self.width / 2;
 
-    if root.show-track: Path {
-        width: 100%;
-        height: 100%;
-        viewbox-x: 0;
-        viewbox-y: 0;
-        viewbox-width: root.w;
-        viewbox-height: root.h;
-        stroke: root.track-color;
-        stroke-width: root.thickness;
-        MoveTo {
-            x: root.ax(root.start-angle);
-            y: root.ay(root.start-angle);
-        }
-        ArcTo {
-            radius-x: root.rad;
-            radius-y: root.rad;
-            x: root.ax(root.start-angle + root.span-angle);
-            y: root.ay(root.start-angle + root.span-angle);
-            sweep: true;
-            large-arc: root.span-angle > 180deg;
-        }
-    }
-
-    if root.value > 0.001: Path {
-        width: 100%;
-        height: 100%;
-        viewbox-x: 0;
-        viewbox-y: 0;
-        viewbox-width: root.w;
-        viewbox-height: root.h;
-        stroke: root.indicator-color;
-        stroke-width: root.thickness;
-        MoveTo {
-            x: root.ax(root.ind-from);
-            y: root.ay(root.ind-from);
-        }
-        ArcTo {
-            radius-x: root.rad;
-            radius-y: root.rad;
-            x: root.ax(root.ind-to);
-            y: root.ay(root.ind-to);
-            sweep: root.ind-to > root.ind-from;
-            large-arc: abs((root.ind-to - root.ind-from) / 1deg) > 180;
-        }
+        background: is-active
+            ? root.indicator-color
+            : (root.show-track ? root.track-color : root.trans);
     }
 }
 
@@ -140,3 +112,85 @@ export component OutlineButton inherits Rectangle {
         clicked => { root.clicked(); }
     }
 }
+
+// Custom ComboBox without image dependencies (uses a text triangle indicator and PopupWindow).
+export component ComboBox inherits Rectangle {
+    in property <[string]> model;
+    in-out property <int> current-index: 0;
+    callback selected(string);
+
+    height: 36px * Theme.scale;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.track;
+    background: Theme.track-dim;
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 8px;
+        
+        Text {
+            text: root.current-index < root.model.length ? root.model[root.current-index] : "";
+            color: Theme.text;
+            font-size: Theme.font-14;
+            vertical-alignment: center;
+            horizontal-alignment: left;
+        }
+        
+        Text {
+            text: "▼";
+            color: Theme.text-dim;
+            font-size: Theme.font-14;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+            width: 14px;
+        }
+    }
+
+    TouchArea {
+        clicked => {
+            popup.show();
+        }
+    }
+
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        
+        Rectangle {
+            background: Theme.track-dim;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: Theme.track;
+            
+            VerticalLayout {
+                padding: 4px;
+                spacing: 2px;
+                for item[idx] in root.model : Rectangle {
+                    height: 32px * Theme.scale;
+                    background: item-touch.pressed ? Theme.accent.darker(0.2) : (idx == root.current-index ? Theme.track : transparent);
+                    border-radius: 4px;
+                    
+                    Text {
+                        x: 12px;
+                        text: item;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        vertical-alignment: center;
+                    }
+                    
+                    item-touch := TouchArea {
+                        clicked => {
+                            root.current-index = idx;
+                            root.selected(item);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

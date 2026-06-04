@@ -14,10 +14,10 @@ export global Theme {
     out property <float> scale: root.panel-res / root.base-res;
 
     // Palette (hex values taken verbatim from the SquareLine screens).
-    out property <color> bg: #000000;
-    out property <color> text: #ffffff;
-    out property <color> text-dim: #9a9a9a;
-    out property <color> accent: #2196f3;        // lv_palette BLUE
+    in-out property <color> bg: #000000;
+    in-out property <color> text: #ffffff;
+    in-out property <color> text-dim: #9a9a9a;
+    in-out property <color> accent: #2196f3;        // lv_palette BLUE
     out property <color> track: #414141;         // 0x414141 arc track / borders
     out property <color> track-dim: #282828;     // 0x282828 utilization track
     out property <color> grey: #717171;          // 0x717171 RSSI bars

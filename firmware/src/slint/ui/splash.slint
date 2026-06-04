@@ -8,18 +8,11 @@ export component SplashScreen inherits Rectangle {
     callback clicked;
     background: Theme.bg;
 
-    // ui_SplashScreenLogo: centered image (LV_SIZE_CONTENT, ALIGN_CENTER).
-    // TODO: replace with the real logo via @image-url once icon2.png is added
-    // to the Slint build as an embedded asset.
-    Image {
-        // source: @image-url("icon2.png");
+    Rectangle {
         width: 30px * Theme.scale;
         height: 30px * Theme.scale;
-        // Placeholder so the layout is correct before the asset is wired in.
-        Rectangle {
-            border-radius: self.width / 2;
-            background: Theme.accent;
-        }
+        border-radius: self.width / 2;
+        background: Theme.accent;
     }
 
     TouchArea {

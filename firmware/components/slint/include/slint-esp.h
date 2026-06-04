@@ -103,3 +103,4 @@ void slint_esp_init(slint::PhysicalSize size, esp_lcd_panel_handle_t panel,
  */
 void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565Pixel> &config);
 void slint_esp_init(const SlintPlatformConfiguration<slint::Rgb8Pixel> &config);
+void slint_esp_set_rotation(slint::platform::SoftwareRenderer::RenderingRotation rotation);

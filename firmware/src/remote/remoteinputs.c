@@ -18,7 +18,6 @@
 #include <freertos/queue.h>
 #include <freertos/task.h>
 #include <math.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-REMOTEINPUTS";
 

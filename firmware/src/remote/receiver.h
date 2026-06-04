@@ -4,6 +4,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #define RSSI_NONE -100
 #define RSSI_POOR -95
 #define RSSI_FAIR -85
@@ -34,5 +40,11 @@ bool receiver_lock_channel();
 void receiver_unlock_channel();
 void receiver_init();
 void receiver_deinit();
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

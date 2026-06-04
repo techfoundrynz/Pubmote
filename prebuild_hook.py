@@ -35,3 +35,72 @@ env.Append(BUILD_FLAGS=[f'-D BUILD_ID=\\"{build_id}\\"'])
 env.Append(BUILD_FLAGS=[f'-D VERSION_MAJOR={major_version}'])
 env.Append(BUILD_FLAGS=[f'-D VERSION_MINOR={minor_version}'])
 env.Append(BUILD_FLAGS=[f'-D VERSION_PATCH={patch_version}'])
+# Add slint_cpp prebuilt library to linker flags and include paths for main firmware only (not bootloader)
+if "bootloader" not in env.subst("$BUILD_DIR"):
+    import os
+    import subprocess
+    
+    env_name = env["PIOENV"]
+    slint_prebuilt_bin_dir = os.path.join(".pio", "build", env_name, "slint-prebuilt")
+    compiler_name = "slint-compiler.exe" if os.name == 'nt' else "slint-compiler"
+    slint_compiler_path = os.path.abspath(os.path.join(slint_prebuilt_bin_dir, compiler_name))
+    
+    # 1. Check/create placeholder empty files at SCons configuration time so dependency scanning doesn't fail
+    h_path = "firmware/src/generated/app-window.h"
+    cpp_path = "firmware/src/generated/app-window.cpp"
+    if not os.path.exists(h_path) or not os.path.exists(cpp_path):
+        os.makedirs(os.path.dirname(h_path), exist_ok=True)
+        print("[Slint Compiler] Creating initial placeholder C++ files...")
+        with open(h_path, "w") as f:
+            f.write("// Slint placeholder\n")
+        with open(cpp_path, "w") as f:
+            f.write("// Slint placeholder\n")
+
+    # 2. Define the compiler execution function (runs in compilation phase, after CMake runs)
+    def compile_slint_files(target, source, env):
+        if os.path.exists(slint_compiler_path):
+            print(f"[Slint Compiler] Compiling app-window.slint using: {slint_compiler_path}")
+            os.environ["SLINT_FONT_SIZES"] = "12,14,28,48,96"
+            args = [
+                slint_compiler_path,
+                "firmware/src/slint/app-window.slint",
+                "-I", "firmware/src/slint",
+                "-I", "firmware/src/slint/ui",
+                "--embed-resources", "embed-for-software-renderer",
+                "-o", "firmware/src/generated/app-window.h",
+                "--cpp-file", "firmware/src/generated/app-window.cpp"
+            ]
+            result = subprocess.run(args, capture_output=True, text=True)
+            if result.returncode == 0:
+                print("[Slint Compiler] Compilation successful!")
+            else:
+                print(f"[Slint Compiler] Compilation failed with exit code: {result.returncode}")
+                print(result.stderr)
+                raise Exception("Slint compilation failed")
+        else:
+            print(f"[Slint Compiler] Warning: Host compiler not found yet at: {slint_compiler_path}")
+            # Ensure placeholders exist so dependency scanning doesn't fail
+            for t in target:
+                t_path = str(t)
+                if not os.path.exists(t_path):
+                    with open(t_path, "w") as f:
+                        f.write("// Slint placeholder\n")
+
+    # Register the compiler action to run when any .slint file changes
+    import glob
+    slint_sources = glob.glob("firmware/src/slint/**/*.slint", recursive=True)
+    env.Command(
+        [h_path, cpp_path],
+        slint_sources,
+        compile_slint_files
+    )
+
+    # 3. Add slint_cpp prebuilt library and include paths
+    slint_prebuilt_dir = os.path.abspath(os.path.join(".pio", "build", env["PIOENV"], "slint-prebuilt", "Slint-cpp-1.16.1-xtensa-esp32s3-none-elf"))
+    slint_lib_path = os.path.join(slint_prebuilt_dir, "lib", "libslint_cpp.a")
+    slint_include_dir = os.path.join(slint_prebuilt_dir, "include")
+    slint_include_slint_dir = os.path.join(slint_include_dir, "slint")
+    
+    # Use SCons dynamic variable expansion to only link for the main firmware elf target
+    env.Append(LINKFLAGS=[f"${{'-Wl,--whole-archive {slint_lib_path.replace(os.sep, '/') } -Wl,--no-whole-archive' if 'bootloader' not in str(TARGETS[0]) else ''}}"])
+    env.Append(CPPPATH=[slint_include_dir, slint_include_slint_dir])

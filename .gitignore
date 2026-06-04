@@ -18,3 +18,6 @@ api/.wrangler/
 *.dev.bin
 *.release.bin
 *.elf
+
+# Slint generated C++ files
+firmware/src/generated/
