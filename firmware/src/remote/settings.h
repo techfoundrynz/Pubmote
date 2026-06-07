@@ -75,10 +75,7 @@ typedef enum {
   STARTUP_SOUND_MELODY,
 } StartupSoundOptions;
 
-typedef enum {
-  DARK_TEXT_DISABLED,
-  DARK_TEXT_ENABLED,
-} DarkTextOptions;
+
 
 typedef enum {
   BATTERY_DISPLAY_PERCENT,
@@ -124,7 +121,7 @@ typedef struct {
   DistanceUnits distance_units;
   StartupSoundOptions startup_sound;
   uint32_t theme_color;
-  bool dark_text;
+
   BoardBatteryDisplayOption battery_display;
   PocketModeOptions pocket_mode;
   StatsDoublePressAction double_press_action;

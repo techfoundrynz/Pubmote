@@ -8,11 +8,10 @@ export component SplashScreen inherits Rectangle {
     callback clicked;
     background: Theme.bg;
 
-    Rectangle {
-        width: 30px * Theme.scale;
-        height: 30px * Theme.scale;
-        border-radius: self.width / 2;
-        background: Theme.accent;
+    Image {
+        width: 120px * Theme.scale;
+        height: 120px * Theme.scale;
+        source: @image-url("../../../assets/icon2.png");
     }
 
     TouchArea {

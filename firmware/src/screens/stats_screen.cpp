@@ -9,8 +9,11 @@
 #include "remote/stats.h"
 #include "utilities/conversion_utils.h"
 #include "generated/app-window.h"
+#include "remote/time.h"
 #include <stdio.h>
 #include <string.h>
+#include <atomic>
+#include "esp_timer.h"
 
 static const char *TAG = "PUBREMOTE-STATS_SCREEN";
 static float max_speed = 40.0f;
@@ -32,9 +35,25 @@ static const char* get_connection_state_label() {
   }
 }
 
+// Adaptive frame dropper: prevents event queue saturation
+static std::atomic<bool> ui_update_pending{false};
+
 // Stats update callback
 extern "C" void stats_update_screen_display() {
   if (!get_slint_window()) return;
+
+  // Drop frame if the UI event loop is still processing the last update!
+  // This automatically limits the framerate to exactly what the ESP32 can handle,
+  // preventing queue growth, memory exhaustion, and touch lag.
+  // if (ui_update_pending.exchange(true)) {
+  //   return;
+  // }
+
+  static int64_t last_update_time = 0;
+  int64_t now = esp_timer_get_time();
+  int64_t delta_ms = (now - last_update_time) / 1000;
+  last_update_time = now;
+  ESP_LOGI(TAG, "Update interval: %lldms", delta_ms);
 
   // 1. Calculate speed fraction
   if (remoteStats.speed > max_speed) {
@@ -89,8 +108,11 @@ extern "C" void stats_update_screen_display() {
       break;
   }
 
-  // 5. Update connection text
-  char connection_text[64];
+  // 5. Update stat pages
+  char buf1[32] = "";
+  char buf2[32] = "";
+  char buf3[32] = "";
+
   if (connection_state == CONNECTION_STATE_CONNECTED) {
     // Show stats on connection state
     bool should_convert = device_settings.temp_units == TEMP_UNITS_FAHRENHEIT;
@@ -103,24 +125,45 @@ extern "C" void stats_update_screen_display() {
     }
     const char* dist_unit = (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) ? "mi" : "km";
 
-    snprintf(connection_text, sizeof(connection_text), "Duty: %d%% | M: %.0f°%s C: %.0f°%s | %.1f%s",
-             remoteStats.dutyCycle, converted_mot, temp_unit, converted_cont, temp_unit, trip_dist, dist_unit);
-  } else {
-    snprintf(connection_text, sizeof(connection_text), "%s", get_connection_state_label());
+    snprintf(buf1, sizeof(buf1), "Duty: %d%%", remoteStats.dutyCycle);
+    snprintf(buf2, sizeof(buf2), "M: %.0f°%s C: %.0f°%s", converted_mot, temp_unit, converted_cont, temp_unit);
+    snprintf(buf3, sizeof(buf3), "Distance: %.1f%s", trip_dist, dist_unit);
   }
+
+  bool connected = connection_state == CONNECTION_STATE_CONNECTED;
+  const char* state_label = get_connection_state_label();
+
+  // Capture strings safely for the event loop
+  slint::SharedString slint_speed_str = speed_str;
+  slint::SharedString slint_speed_unit = (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) ? "MPH" : "KPH";
+  slint::SharedString slint_state_label = state_label;
+  slint::SharedString slint_buf1 = buf1;
+  slint::SharedString slint_buf2 = buf2;
+  slint::SharedString slint_buf3 = buf3;
+  slint::SharedString slint_battery_str = battery_str;
 
   // Push to Slint UI state
   slint::invoke_from_event_loop([=]() {
+    ui_update_pending.store(false);
+    
+    int64_t render_start = esp_timer_get_time();
+    ESP_LOGI("PUBREMOTE-DISPLAY", "UI update task executing after %lld ms delay", (render_start - now) / 1000);
+    
     const auto &state = get_slint_window()->global<UiState>();
-    state.set_speed(speed_str);
-    state.set_speed_unit((device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) ? "MPH" : "KPH");
+    state.set_speed(slint_speed_str);
+    state.set_speed_unit(slint_speed_unit);
     state.set_speed_fraction(speed_fraction);
     state.set_duty_fraction(duty_fraction);
     state.set_left_pad(left_pad);
     state.set_right_pad(right_pad);
     state.set_remote_battery(remoteStats.remoteBatteryPercentage);
-    state.set_connection_text(connection_text);
-    state.set_board_battery(battery_str);
+    state.set_remote_charging(remoteStats.chargeState == CHARGE_STATE_CHARGING || remoteStats.chargeState == CHARGE_STATE_DONE);
+    state.set_is_connected(connected);
+    state.set_connection_state_label(slint_state_label);
+    state.set_stat_page1(slint_buf1);
+    state.set_stat_page2(slint_buf2);
+    state.set_stat_page3(slint_buf3);
+    state.set_board_battery(slint_battery_str);
   });
 }
 

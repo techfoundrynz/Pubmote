@@ -11,6 +11,9 @@
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";
 
+extern "C" bool display_get_hbm();
+extern "C" void display_set_hbm(bool active);
+
 extern "C" void setup_menu_properties() {
   if (!get_slint_window()) return;
   
@@ -26,6 +29,12 @@ extern "C" void setup_menu_properties() {
     state.set_pocket_mode_text("Disable Pocket Mode");
   } else {
     state.set_pocket_mode_text("Enable Pocket Mode");
+  }
+
+  if (display_get_hbm()) {
+    state.set_hbm_mode_text("Disable HBM Mode");
+  } else {
+    state.set_hbm_mode_text("Enable HBM Mode");
   }
 }
 
@@ -55,6 +64,12 @@ extern "C" void handle_menu_pocket_mode() {
   slint::invoke_from_event_loop([]() {
     get_slint_window()->global<UiState>().set_screen(Screen::Stats);
   });
+}
+
+extern "C" void handle_menu_toggle_hbm() {
+  ESP_LOGI(TAG, "HBM mode button pressed");
+  display_set_hbm(!display_get_hbm());
+  setup_menu_properties(); // update the text
 }
 
 // Forward declarations of screen setup functions

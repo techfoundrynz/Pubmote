@@ -11,9 +11,11 @@ import { AppButton } from "app-button.slint";
 export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
     in property <string> pocket-mode-text: "Enable Pocket Mode";
+    in property <string> hbm-mode-text: "Enable HBM Mode";
     callback back;
     callback connect;
     callback pocket-mode;
+    callback toggle-hbm;
     callback settings;
     callback calibration;
     callback pairing;
@@ -31,6 +33,7 @@ export component MenuScreen inherits Rectangle {
             AppButton { text: "Back"; primary: false; clicked => { root.back(); } }
             if root.show-connect: AppButton { text: "Connect"; clicked => { root.connect(); } }
             AppButton { text: root.pocket-mode-text; clicked => { root.pocket-mode(); } }
+            AppButton { text: root.hbm-mode-text; clicked => { root.toggle-hbm(); } }
             AppButton { text: "Settings"; clicked => { root.settings(); } }
             AppButton { text: "Calibration"; clicked => { root.calibration(); } }
             AppButton { text: "Pairing"; clicked => { root.pairing(); } }

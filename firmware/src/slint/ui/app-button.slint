@@ -18,7 +18,7 @@ export component AppButton inherits Rectangle {
 
     Text {
         text: root.text;
-        color: root.enabled ? Theme.text : Theme.text-dim;
+        color: root.enabled ? (root.primary ? Theme.primary-button-text : Theme.text) : Theme.text-dim;
         font-size: Theme.font-14;
         font-weight: Theme.w-bold;
         horizontal-alignment: center;

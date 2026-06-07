@@ -20,9 +20,9 @@ import { AboutScreen } from "ui/about.slint";
 import { UpdateScreen } from "ui/update.slint";
 import { ChargeScreen } from "ui/charge.slint";
 import { FpsOverlay } from "ui/fps-overlay.slint";
-import { ArcGenerator } from "ui/arc-gauge.slint";
-import { StatsArcGenerator } from "ui/stats.slint";
-export { ArcGenerator, StatsArcGenerator }
+import { ColorSliderGenerator } from "ui/color-slider.slint";
+export { ColorSliderGenerator }
+import { ArcGauge } from "ui/arc-gauge.slint";
 
 export enum Screen {
     splash,
@@ -50,12 +50,18 @@ export global UiState {
     in property <bool> left-pad: false;
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;
-    in property <string> connection-text: "Disconnected";
+    in property <bool> remote-charging: false;
+    in property <string> stat-page1: "";
+    in property <string> stat-page2: "";
+    in property <string> stat-page3: "";
+    in property <string> connection-state-label: "Disconnected";
+    in property <bool> is-connected: false;
     in property <string> board-battery: "0%";
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
     in property <string> pocket-mode-text: "Enable Pocket Mode";
+    in property <string> hbm-mode-text: "Enable HBM Mode";
 
     // --- Settings (ui_SettingsScreen) ---
     in-out property <float> brightness: 128;
@@ -65,7 +71,10 @@ export global UiState {
     in-out property <int> temp-units-index: 0;
     in-out property <int> distance-units-index: 0;
     in-out property <int> startup-sound-index: 0;
-    in-out property <bool> dark-text: false;
+
+    in-out property <float> theme-h: 0;
+    in-out property <float> theme-s: 100;
+    in-out property <float> theme-l: 50;
 
     // --- Pairing (ui_PairingScreen) ---
     in property <string> pairing-code: "0000";
@@ -77,6 +86,10 @@ export global UiState {
     in property <string> calibration-primary-text: "Start";
     in property <float> joystick-x: 0;
     in property <float> joystick-y: 0;
+    in property <bool> show-expo-slider: false;
+    in property <bool> show-invert-switch: false;
+    in-out property <float> expo-value: 1.0;
+    in-out property <bool> invert-y: false;
 
     // --- About (ui_AboutScreen) ---
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
@@ -99,6 +112,7 @@ export global UiState {
     callback menu-back();
     callback menu-connect();
     callback menu-pocket-mode();
+    callback menu-toggle-hbm();
     callback open-settings();
     callback open-calibration();
     callback open-pairing();
@@ -106,6 +120,7 @@ export global UiState {
     callback menu-shutdown();
     // Settings
     callback settings-save();
+    callback settings-changed();
     // Pairing
     callback pairing-action();
     // Calibration
@@ -202,7 +217,12 @@ export component AppWindow inherits Window {
         left-pad: UiState.left-pad;
         right-pad: UiState.right-pad;
         remote-battery: UiState.remote-battery;
-        connection-text: UiState.connection-text;
+        remote-charging: UiState.remote-charging;
+        stat-page1: UiState.stat-page1;
+        stat-page2: UiState.stat-page2;
+        stat-page3: UiState.stat-page3;
+        connection-state-label: UiState.connection-state-label;
+        is-connected: UiState.is-connected;
         board-battery: UiState.board-battery;
         swiped-down => { UiState.stats-swiped-down(); }
     }
@@ -215,9 +235,11 @@ export component AppWindow inherits Window {
         animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
         show-connect: UiState.menu-show-connect;
         pocket-mode-text: UiState.pocket-mode-text;
+        hbm-mode-text: UiState.hbm-mode-text;
         back => { UiState.menu-back(); }
         connect => { UiState.menu-connect(); }
         pocket-mode => { UiState.menu-pocket-mode(); }
+        toggle-hbm => { UiState.menu-toggle-hbm(); }
         settings => { UiState.open-settings(); }
         calibration => { UiState.open-calibration(); }
         pairing => { UiState.open-pairing(); }
@@ -238,8 +260,16 @@ export component AppWindow inherits Window {
         temp-units-index <=> UiState.temp-units-index;
         distance-units-index <=> UiState.distance-units-index;
         startup-sound-index <=> UiState.startup-sound-index;
-        dark-text <=> UiState.dark-text;
+
+        theme-h <=> UiState.theme-h;
+        theme-s <=> UiState.theme-s;
+        theme-l <=> UiState.theme-l;
         save => { UiState.settings-save(); }
+        
+        changed brightness => { UiState.settings-changed(); }
+        changed theme-h => { UiState.settings-changed(); }
+        changed theme-s => { UiState.settings-changed(); }
+        changed theme-l => { UiState.settings-changed(); }
     }
 
     if UiState.screen == Screen.pairing || root.previous-screen == Screen.pairing: PairingScreen {
@@ -264,6 +294,10 @@ export component AppWindow inherits Window {
         primary-text: UiState.calibration-primary-text;
         joystick-x: UiState.joystick-x;
         joystick-y: UiState.joystick-y;
+        show-expo-slider: UiState.show-expo-slider;
+        show-invert-switch: UiState.show-invert-switch;
+        expo-value <=> UiState.expo-value;
+        invert-y <=> UiState.invert-y;
         primary => { UiState.calibration-primary(); }
         secondary => { UiState.calibration-secondary(); }
     }

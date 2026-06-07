@@ -21,25 +21,26 @@ export component ArcGauge inherits Rectangle {
     in property <brush> indicator-color: Theme.accent;
     in property <bool> show-track: true;
 
-    property <float> w: self.width / 1px;
-    property <float> h: self.height / 1px;
-    
-    property <angle> active-span: root.span-angle * clamp(root.value, 0.0, 1.0);
-    property <angle> indicator-start: root.reverse ? (root.start-angle + root.span-angle - self.active-span) : root.start-angle;
-
-    // Use native C++ arc generator image to achieve 60 FPS in line-by-line chunk mode
-    Image {
+    if show-track: ArcSegment {
         width: 100%;
         height: 100%;
-        source: ArcGenerator.generate(
-            root.width, 
-            root.thickness, 
-            root.start-angle, 
-            root.span-angle, 
-            root.indicator-start,
-            root.active-span,
-            root.show-track ? root.track-color : Colors.transparent, 
-            root.value > 0 ? root.indicator-color : Colors.transparent
-        );
+        stroke: root.track-color;
+        stroke-width: root.thickness;
+        start-angle: root.start-angle;
+        end-angle: root.start-angle + root.span-angle;
+        stroke-line-cap: LineCap.round;
+    }
+
+    property <angle> ind-start: root.reverse ? root.start-angle + root.span-angle * (1.0 - root.value) : root.start-angle;
+    property <angle> ind-span: root.reverse ? root.span-angle * root.value : root.span-angle * root.value;
+
+    ArcSegment {
+        width: 100%;
+        height: 100%;
+        stroke: root.indicator-color;
+        stroke-width: root.thickness;
+        start-angle: root.ind-start;
+        end-angle: root.ind-start + root.ind-span;
+        stroke-line-cap: LineCap.round;
     }
 }

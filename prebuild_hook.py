@@ -55,6 +55,10 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
             f.write("// Slint placeholder\n")
         with open(cpp_path, "w") as f:
             f.write("// Slint placeholder\n")
+        import time
+        past_time = time.time() - 3600
+        os.utime(h_path, (past_time, past_time))
+        os.utime(cpp_path, (past_time, past_time))
 
     # 2. Define the compiler execution function (runs in compilation phase, after CMake runs)
     def compile_slint_files(target, source, env):

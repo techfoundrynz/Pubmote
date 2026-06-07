@@ -7,133 +7,177 @@
 //       Brightness slider (10..255)         "Screen brightness"
 //       Double-press dropdown (None/Open menu) "Double-press action"
 //       Rotation dropdown (None/90/180/270)   "Screen rotation"
-//       Auto-off dropdown (Disabled/2/5/10/20/30 min) "Auto-off time"
-//       Temp units dropdown (Celsius/Fahrenheit)  "Temp units"
-//       Distance dropdown (Kilometers/Miles)  "Distance units"
-//       Startup sound dropdown (Disabled/Beep/Melody) "Startup sound"
-//       Theme colour wheel                    "Theme color"
-//       Dark text switch                      "Dark text"
-//   ui_SettingsFooter (25%) -> ui_SettingsMainActionButton 80x42 "Save"
+// SettingsScreen — restored to horizontal pages with snapping and artifact-free rendering
 
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { ComboBox } from "combo-box.slint";
-import { Slider, Switch } from "std-widgets.slint";
+import { AppSwitch } from "app-switch.slint";
+import { AppSlider } from "app-slider.slint";
+import { ColorSlider } from "color-slider.slint";
 
-// One settings page: a control slot with a caption below it. Width is governed
-// by the parent HorizontalLayout (equal stretch == one screen width per page).
-component SettingPage inherits VerticalLayout {
+// One settings page: a control slot with a caption below it.
+component SettingPage inherits Rectangle {
     in property <string> caption;
-    horizontal-stretch: 1;
-    padding-left: 40px * Theme.scale;
-    padding-right: 40px * Theme.scale;
-    spacing: 20px * Theme.scale;
-    alignment: center;
-    @children
-    Text {
-        text: root.caption;
-        color: Theme.text;
-        font-size: Theme.font-14;
-        horizontal-alignment: center;
+    background: Theme.bg;
+    
+    VerticalLayout {
+        alignment: center;
+        spacing: round(20px / 1px * Theme.scale) * 1px;
+        padding-left: round(20px / 1px * Theme.scale) * 1px;
+        padding-right: round(20px / 1px * Theme.scale) * 1px;
+        
+        Text {
+            text: root.caption;
+            color: Theme.text;
+            font-size: Theme.font-14;
+            horizontal-alignment: center;
+        }
+        
+        @children
     }
 }
 
 export component SettingsScreen inherits Rectangle {
-    in-out property <float> brightness: 128;     // 10..255
+    in-out property <float> brightness: 128;
     in-out property <int> double-press-index: 0;
     in-out property <int> rotation-index: 0;
     in-out property <int> auto-off-index: 0;
     in-out property <int> temp-units-index: 0;
     in-out property <int> distance-units-index: 0;
     in-out property <int> startup-sound-index: 0;
-    in-out property <bool> dark-text: false;
+
+    
+    in-out property <float> theme-h: 0;
+    in-out property <float> theme-s: 100;
+    in-out property <float> theme-l: 50;
+    
     callback save;
     background: Theme.bg;
+    
+    property <int> current-page: 0;
+    property <int> total-pages: 8;
+
+    // Background swipe detector for page snapping
+    TouchArea {
+        width: 100%;
+        height: 100%;
+        property <length> start-x;
+        pointer-event(evt) => {
+            if evt.button == PointerEventButton.left && evt.kind == PointerEventKind.down {
+                self.start-x = self.mouse-x;
+            } else if evt.button == PointerEventButton.left && evt.kind == PointerEventKind.up {
+                let diff = self.mouse-x - self.start-x;
+                if diff > 40px && root.current-page > 0 {
+                    root.current-page -= 1;
+                } else if diff < -40px && root.current-page < root.total-pages - 1 {
+                    root.current-page += 1;
+                }
+            }
+        }
+    }
 
     VerticalLayout {
-        // ui_SettingsHeader (20%) — empty
-        Rectangle { vertical-stretch: 20; }
-
-        // ui_SettingsBody (55%) — horizontal pager
+        // Page Indicators (Dots)
         Rectangle {
-            vertical-stretch: 55;
-            Flickable {
-                viewport-width: root.width * 9;
-                HorizontalLayout {
-                    width: root.width * 9;
-                    SettingPage {
-                        caption: "Screen brightness";
-                        Slider { minimum: 10; maximum: 255; value <=> root.brightness; }
+            height: round(30px / 1px * Theme.scale) * 1px;
+            HorizontalLayout {
+                alignment: center;
+                spacing: round(4px / 1px * Theme.scale) * 1px;
+                padding-top: round(15px / 1px * Theme.scale) * 1px;
+                for i in root.total-pages: Rectangle {
+                    width: round(6px / 1px * Theme.scale) * 1px;
+                    height: round(6px / 1px * Theme.scale) * 1px;
+                    border-radius: round(self.width / 1px / 2) * 1px;
+                    background: i == root.current-page ? Theme.accent : Theme.track;
+                }
+            }
+        }
+
+        // Horizontal Pager (Animated X)
+        Rectangle {
+            vertical-stretch: 1;
+            
+            HorizontalLayout {
+                spacing: 0;
+                width: root.width * root.total-pages;
+                height: 100%;
+                x: -root.current-page * root.width;
+                animate x { duration: 250ms; easing: ease-out; }
+                
+                SettingPage {
+                    width: root.width;
+                    caption: "Screen brightness";
+                    AppSlider { minimum: 10; maximum: 255; value <=> root.brightness; }
+                }
+                SettingPage {
+                    width: root.width;
+                    caption: "Double-press action";
+                    ComboBox {
+                        model: ["None", "Open menu"];
+                        current-index <=> root.double-press-index;
                     }
-                    SettingPage {
-                        caption: "Double-press action";
-                        ComboBox {
-                            model: ["None", "Open menu"];
-                            current-index <=> root.double-press-index;
-                        }
+                }
+                SettingPage {
+                    width: root.width;
+                    caption: "Screen rotation";
+                    ComboBox {
+                        model: ["None", "90 degrees", "180 degrees", "270 degrees"];
+                        current-index <=> root.rotation-index;
                     }
-                    SettingPage {
-                        caption: "Screen rotation";
-                        ComboBox {
-                            model: ["None", "90 degrees", "180 degrees", "270 degrees"];
-                            current-index <=> root.rotation-index;
-                        }
+                }
+                SettingPage {
+                    width: root.width;
+                    caption: "Auto-off time";
+                    ComboBox {
+                        model: ["Disabled", "2 minutes", "5 minutes", "10 minutes", "20 minutes", "30 minutes"];
+                        current-index <=> root.auto-off-index;
                     }
-                    SettingPage {
-                        caption: "Auto-off time";
-                        ComboBox {
-                            model: ["Disabled", "2 minutes", "5 minutes", "10 minutes", "20 minutes", "30 minutes"];
-                            current-index <=> root.auto-off-index;
-                        }
+                }
+                SettingPage {
+                    width: root.width;
+                    caption: "Temp units";
+                    ComboBox {
+                        model: ["Celsius", "Fahrenheit"];
+                        current-index <=> root.temp-units-index;
                     }
-                    SettingPage {
-                        caption: "Temp units";
-                        ComboBox {
-                            model: ["Celsius", "Fahrenheit"];
-                            current-index <=> root.temp-units-index;
-                        }
+                }
+                SettingPage {
+                    width: root.width;
+                    caption: "Distance units";
+                    ComboBox {
+                        model: ["Kilometers", "Miles"];
+                        current-index <=> root.distance-units-index;
                     }
-                    SettingPage {
-                        caption: "Distance units";
-                        ComboBox {
-                            model: ["Kilometers", "Miles"];
-                            current-index <=> root.distance-units-index;
-                        }
+                }
+                SettingPage {
+                    width: root.width;
+                    caption: "Startup sound";
+                    ComboBox {
+                        model: ["Disabled", "Beep", "Melody"];
+                        current-index <=> root.startup-sound-index;
                     }
-                    SettingPage {
-                        caption: "Startup sound";
-                        ComboBox {
-                            model: ["Disabled", "Beep", "Melody"];
-                            current-index <=> root.startup-sound-index;
-                        }
-                    }
-                    SettingPage {
-                        caption: "Theme color";
-                        // ui_ThemeColor was an lv_colorwheel; Slint has no
-                        // colour-wheel widget, so this is a placeholder swatch.
-                        Rectangle {
-                            width: 75px * Theme.scale;
-                            height: 75px * Theme.scale;
-                            border-radius: self.width / 2;
-                            background: Theme.accent;
-                        }
-                    }
-                    SettingPage {
-                        caption: "Dark text";
-                        Switch { checked <=> root.dark-text; }
+                }
+                SettingPage {
+                    width: root.width;
+                    caption: "Theme color";
+                    ColorSlider {
+                        hue <=> root.theme-h;
+                        sat <=> root.theme-s;
+                        lit <=> root.theme-l;
                     }
                 }
             }
         }
 
-        // ui_SettingsFooter (25%)
+        // Footer
         Rectangle {
-            vertical-stretch: 25;
+            height: round(80px / 1px * Theme.scale) * 1px;
             HorizontalLayout {
                 alignment: center;
-                padding-bottom: 5px * Theme.scale;
+                padding-bottom: round(5px / 1px * Theme.scale) * 1px;
                 AppButton {
-                    width: 80px * Theme.scale;
+                    width: round(120px / 1px * Theme.scale) * 1px;
                     text: "Save";
                     clicked => { root.save(); }
                 }

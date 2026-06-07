@@ -6,16 +6,16 @@ export component ComboBox inherits Rectangle {
     in-out property <int> current-index: 0;
     callback selected(string);
 
-    height: 36px * Theme.scale;
-    border-radius: 8px * Theme.scale;
+    height: round(36px / 1px * Theme.scale) * 1px;
+    border-radius: round(8px / 1px * Theme.scale) * 1px;
+    background: Theme.track;
     border-width: 1px;
     border-color: Theme.track;
-    background: Theme.track-dim;
 
     HorizontalLayout {
-        padding-left: 12px;
-        padding-right: 12px;
-        spacing: 8px;
+        padding-left: round(12px / 1px * Theme.scale) * 1px;
+        padding-right: round(12px / 1px * Theme.scale) * 1px;
+        spacing: round(8px / 1px * Theme.scale) * 1px;
         
         Text {
             text: root.current-index < root.model.length ? root.model[root.current-index] : "";
@@ -23,6 +23,8 @@ export component ComboBox inherits Rectangle {
             font-size: Theme.font-14;
             vertical-alignment: center;
             horizontal-alignment: left;
+            horizontal-stretch: 1;
+            overflow: elide;
         }
         
         Text {
@@ -31,7 +33,7 @@ export component ComboBox inherits Rectangle {
             font-size: Theme.font-14;
             vertical-alignment: center;
             horizontal-alignment: right;
-            width: 14px;
+            horizontal-stretch: 0;
         }
     }
 
@@ -48,7 +50,7 @@ export component ComboBox inherits Rectangle {
         
         Rectangle {
             background: Theme.track-dim;
-            border-radius: 8px * Theme.scale;
+            border-radius: round(8px / 1px * Theme.scale) * 1px;
             border-width: 1px;
             border-color: Theme.track;
             
@@ -56,9 +58,9 @@ export component ComboBox inherits Rectangle {
                 padding: 4px;
                 spacing: 2px;
                 for item[idx] in root.model : Rectangle {
-                    height: 32px * Theme.scale;
+                    height: round(32px / 1px * Theme.scale) * 1px;
                     background: item-touch.pressed ? Theme.accent.darker(0.2) : transparent;
-                    border-radius: 4px * Theme.scale;
+                    border-radius: round(4px / 1px * Theme.scale) * 1px;
                     border-width: (idx == root.current-index) ? 1px : 0px;
                     border-color: (idx == root.current-index) ? Theme.accent : transparent;
                     

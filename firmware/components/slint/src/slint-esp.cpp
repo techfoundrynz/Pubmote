@@ -13,6 +13,9 @@
 #    include "esp_lcd_panel_rgb.h"
 #endif
 #include "esp_log.h"
+#if __has_include("config.h")
+#include "config.h"
+#endif
 
 static const char *TAG = "slint_platform";
 
@@ -168,6 +171,10 @@ void EspPlatform<PixelType>::run_event_loop()
     bool touch_down = false;
 
     while (true) {
+#ifdef TARGET_FPS
+        uint32_t start_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+#endif
+
         slint::platform::update_timers_and_animations();
 
         std::optional<slint::platform::Platform::Task> event;
@@ -229,7 +236,54 @@ void EspPlatform<PixelType>::run_event_loop()
             }
 
             if (std::exchange(m_window->needs_redraw, false)) {
-                extern uint16_t *slint_chunk_buffer[2];
+                extern SemaphoreHandle_t trans_sem;
+                
+                if (buffer1) {
+                    // Smart Bounding Box Chunking using PSRAM state
+                    std::size_t dirty_min_x = size.width, dirty_max_x = 0;
+                    std::size_t dirty_min_y = size.height, dirty_max_y = 0;
+                    
+                    m_window->m_renderer.render_by_line<PixelType>(
+                        [&](std::size_t line_y, std::size_t line_start,
+                            std::size_t line_end, auto &&render_fn) {
+                            
+                            std::span<PixelType> view { buffer1->data() + (line_y * size.width) + line_start, line_end - line_start };
+                            render_fn(view);
+                            
+                            if (byte_swap) {
+                                std::for_each(view.begin(), view.end(), [](auto &rgbpix) { byte_swap_color(&rgbpix); });
+                            }
+                            
+                            dirty_min_x = std::min(dirty_min_x, line_start);
+                            dirty_max_x = std::max(dirty_max_x, line_end);
+                            dirty_min_y = std::min(dirty_min_y, line_y);
+                            dirty_max_y = std::max(dirty_max_y, line_y + 1);
+                        });
+                        
+                    if (dirty_max_x > dirty_min_x && dirty_max_y > dirty_min_y) {
+                        std::size_t w = dirty_max_x - dirty_min_x;
+                        static bool first_transfer = true;
+                        extern const int slint_chunk_lines;
+                        extern uint16_t *slint_chunk_buffer[2];
+                        
+                        for (std::size_t y = dirty_min_y; y < dirty_max_y; y += slint_chunk_lines) {
+                            std::size_t h = std::min(dirty_max_y - y, (std::size_t)slint_chunk_lines);
+                            
+                            if (!first_transfer && trans_sem) {
+                                xSemaphoreTake(trans_sem, portMAX_DELAY);
+                            }
+                            
+                            // Pack the exact bounding box into the fast SRAM bounce buffer
+                            for (std::size_t row = 0; row < h; row++) {
+                                memcpy(slint_chunk_buffer[0] + row * w, buffer1->data() + (y + row) * size.width + dirty_min_x, w * sizeof(PixelType));
+                            }
+                            
+                            esp_lcd_panel_draw_bitmap(panel_handle, dirty_min_x, y, dirty_max_x, y + h, slint_chunk_buffer[0]);
+                            first_transfer = false;
+                        }
+                    }
+                } else {
+                    extern uint16_t *slint_chunk_buffer[2];
                     extern const int slint_chunk_lines;
                     
                     int idx = 0;
@@ -295,10 +349,22 @@ void EspPlatform<PixelType>::run_event_loop()
                     if (!first_transfer && trans_sem) {
                         xSemaphoreTake(trans_sem, portMAX_DELAY);
                     }
+                }
             }
 
             if (m_window->window().has_active_animations()) {
+#ifdef TARGET_FPS
+                uint32_t end_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                uint32_t elapsed = end_time - start_time;
+                uint32_t target_time = 1000 / TARGET_FPS;
+                if (elapsed < target_time) {
+                    vTaskDelay(pdMS_TO_TICKS(target_time - elapsed));
+                } else {
+                    vTaskDelay(pdMS_TO_TICKS(1)); // Yield to IDLE to feed task watchdog
+                }
+#else
                 vTaskDelay(pdMS_TO_TICKS(1)); // Yield to IDLE to feed task watchdog
+#endif
                 continue;
             }
         }

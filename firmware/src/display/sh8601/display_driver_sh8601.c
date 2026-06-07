@@ -93,3 +93,8 @@ esp_err_t sh8601_set_display_brightness(esp_lcd_panel_io_handle_t io_handle, uin
   // Send the command and brightness value over SPI
   return tx_param(io_handle, SH8601_W_WDBRIGHTNESSVALNOR, data, 1);
 }
+
+esp_err_t sh8601_set_hbm_mode(esp_lcd_panel_io_handle_t io_handle, bool hbm_on) {
+  uint8_t ctl_val[1] = { (uint8_t)(hbm_on ? 0xFF : 0x00) };
+  return tx_param(io_handle, SH8601_W_WHBMCTL, ctl_val, 1);
+}

@@ -133,6 +133,7 @@ size_t co5300_get_lcd_init_cmds_size(void);
 esp_err_t sh8601_test_display_communication(esp_lcd_panel_io_handle_t io_handle);
 esp_err_t sh8601_display_driver_preinit();
 esp_err_t sh8601_set_display_brightness(esp_lcd_panel_io_handle_t io_handle, uint8_t brightness);
+esp_err_t sh8601_set_hbm_mode(esp_lcd_panel_io_handle_t io_handle, bool hbm_on);
 
 
 

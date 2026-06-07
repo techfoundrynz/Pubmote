@@ -34,29 +34,16 @@ if (SLINT_ESP_LOCAL_EXAMPLE)
     add_subdirectory(../.. slint_build)
 else()
     list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-    # Download the host compiler manually if it is not present, avoiding find_package target collision.
+    # Define where the compiler and prebuilt files should go for SCons
     set(download_directory "${CMAKE_BINARY_DIR}/slint-prebuilt")
     if (CMAKE_HOST_WIN32)
         set(compiler_name "slint-compiler.exe")
-        set(platform_suffix "windows-${CMAKE_HOST_SYSTEM_PROCESSOR}")
     else()
         set(compiler_name "slint-compiler")
-        set(platform_suffix "${CMAKE_HOST_SYSTEM_NAME}-${CMAKE_HOST_SYSTEM_PROCESSOR}")
     endif()
     
     set(slint_compiler_path "${download_directory}/${compiler_name}")
-
-    if (NOT EXISTS "${slint_compiler_path}")
-        set(SLINT_GITHUB_RELEASE "v1.16.1")
-        set(prebuilt_archive_filename "slint-compiler-${platform_suffix}.tar.gz")
-        set(download_url "https://github.com/slint-ui/slint/releases/download/${SLINT_GITHUB_RELEASE}/${prebuilt_archive_filename}")
-
-        file(MAKE_DIRECTORY "${download_directory}")
-        message(STATUS "Downloading pre-built Slint compiler binary from ${download_url}")
-        file(DOWNLOAD "${download_url}" "${download_directory}/${prebuilt_archive_filename}" SHOW_PROGRESS)
-        file(ARCHIVE_EXTRACT INPUT "${download_directory}/${prebuilt_archive_filename}" DESTINATION "${download_directory}")
-        file(REMOVE "${download_directory}/${prebuilt_archive_filename}")
-    endif()
+    file(MAKE_DIRECTORY "${download_directory}")
 
     set(SLINT_FEATURE_RENDERER_SOFTWARE ON CACHE BOOL "Enable software renderer" FORCE)
     set(SLINT_FEATURE_SOFTWARE_RENDERER_PATH ON CACHE BOOL "Enable path rendering in software renderer" FORCE)
@@ -65,8 +52,8 @@ else()
     include(FetchContent)
     FetchContent_Declare(
         Slint
-        GIT_REPOSITORY https://github.com/slint-ui/slint
-        GIT_TAG v1.16.1
+        GIT_REPOSITORY "https://github.com/techfoundrynz/slint.git"
+        GIT_TAG "feat/mcu-arcs"
         SOURCE_SUBDIR api/cpp
     )
     FetchContent_MakeAvailable(Slint)
@@ -78,7 +65,7 @@ else()
             "CARGO_PROFILE_RELEASE_LTO=fat"
             "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1"
             "CARGO_PROFILE_RELEASE_OPT_LEVEL=3"
-            cargo +esp build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features renderer-software,software-renderer-path,freestanding
+            rustup run esp cargo build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features renderer-software,software-renderer-path,freestanding
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/slint-src"
         RESULT_VARIABLE cargo_result
     )
@@ -86,6 +73,26 @@ else()
         message(FATAL_ERROR "Cargo build for Slint C++ failed!")
     endif()
 
+    # Run Cargo build for the host compiler
+    message(STATUS "Running Cargo build for Slint compiler...")
+    execute_process(
+        COMMAND cargo build --release --bin slint-compiler
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/slint-src"
+        RESULT_VARIABLE compiler_cargo_result
+    )
+    if (NOT compiler_cargo_result EQUAL 0)
+        message(FATAL_ERROR "Cargo build for Slint compiler failed!")
+    endif()
+
+    # Copy the built compiler to slint_compiler_path
+    if (CMAKE_HOST_WIN32)
+        set(compiled_compiler_name "slint-compiler.exe")
+    else()
+        set(compiled_compiler_name "slint-compiler")
+    endif()
+    file(COPY "${CMAKE_BINARY_DIR}/_deps/slint-src/target/release/${compiled_compiler_name}"
+         DESTINATION "${download_directory}")
+         
     # Copy the compiled library to where CMake/ldgen expects it
     file(COPY "${CMAKE_BINARY_DIR}/_deps/slint-src/target/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
          DESTINATION "${CMAKE_BINARY_DIR}/_deps/slint-build")
@@ -94,8 +101,12 @@ else()
     file(COPY "${CMAKE_BINARY_DIR}/_deps/slint-src/target/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
          DESTINATION "${CMAKE_BINARY_DIR}/slint-prebuilt/Slint-cpp-1.16.1-xtensa-esp32s3-none-elf/lib")
 
+    # Copy the main Slint headers to the prebuilt include directory
+    file(COPY "${CMAKE_BINARY_DIR}/_deps/slint-src/api/cpp/include/"
+         DESTINATION "${CMAKE_BINARY_DIR}/slint-prebuilt/Slint-cpp-1.16.1-xtensa-esp32s3-none-elf/include")
+
     # Copy the generated slint_internal.h header to the prebuilt include directory
-    file(GLOB_RECURSE generated_internal_h "${CMAKE_BINARY_DIR}/_deps/slint-src/target/*/slint_internal.h")
+    file(GLOB_RECURSE generated_internal_h "${CMAKE_BINARY_DIR}/_deps/slint-src/target/xtensa-esp32s3-none-elf/release/build/slint-cpp-*/out/generated_include/private/slint_internal.h")
     if (generated_internal_h)
         list(GET generated_internal_h 0 single_internal_h)
         get_filename_component(internal_h_dir "${single_internal_h}" DIRECTORY)
@@ -109,3 +120,11 @@ endif()
 
 target_link_libraries(${COMPONENT_LIB} PUBLIC Slint::Slint)
 target_linker_script(${COMPONENT_LIB} INTERFACE "esp-println.x")
+
+
+# Trigger rebuild for trig optimization
+
+# Trigger rebuild for early return test
+# Trigger rebuild for fixed-point math
+
+# Trigger CMake reconfigure

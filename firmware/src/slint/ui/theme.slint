@@ -18,11 +18,21 @@ export global Theme {
     in-out property <color> text: #ffffff;
     in-out property <color> text-dim: #9a9a9a;
     in-out property <color> accent: #2196f3;        // lv_palette BLUE
+    in-out property <color> primary-button-text: #ffffff;
     out property <color> track: #414141;         // 0x414141 arc track / borders
     out property <color> track-dim: #282828;     // 0x282828 utilization track
     out property <color> grey: #717171;          // 0x717171 RSSI bars
     out property <color> battery-green: #1db200;  // 0x1DB200 battery fill
+    out property <color> battery-yellow: #ffcc00; // battery low
+    out property <color> battery-red: #ff3b30;    // battery critical
     out property <color> calib-red: #ee4266;     // 0xEE4266 calibration crosshair
+
+    // Status colors
+    out property <color> color-caution: #ffc145;
+    out property <color> color-warning: #ff8b3e;
+    out property <color> color-critical: #ff6369;
+    out property <color> color-success: #0ead69;
+    out property <color> color-active: #676767;
 
     // Font sizes scaled dynamically based on font-scale. We use Math.round to
     // ensure they evaluate to exact integer pixels, matching the pre-rasterized
