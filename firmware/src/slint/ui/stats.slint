@@ -84,33 +84,29 @@ export component StatsScreen inherits Rectangle {
     }
 
     // ui_LeftSensor
-    ArcGauge {
+    ArcSegment {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
         width: parent.width;
         height: parent.height;
-        thickness: 8px * Theme.scale;
+        stroke-width: 8px * Theme.scale;
         start-angle: 93deg;
-        span-angle: 12deg;
-        track-color: Theme.track;
-        indicator-color: Theme.text;
-        value: root.left-pad && root.is-connected ? 1.0 : 0.0;
-        show-track: root.is-connected;
+        end-angle: 105deg; // 93 + 12
+        stroke: root.left-pad ? Theme.text : Theme.track;
+        stroke-line-cap: LineCap.round;
     }
 
     // ui_RightSensor
-    ArcGauge {
+    ArcSegment {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
         width: parent.width;
         height: parent.height;
-        thickness: 8px * Theme.scale;
+        stroke-width: 8px * Theme.scale;
         start-angle: 75deg;
-        span-angle: 12deg;
-        track-color: Theme.track;
-        indicator-color: Theme.text;
-        value: root.right-pad && root.is-connected ? 1.0 : 0.0;
-        show-track: root.is-connected;
+        end-angle: 87deg; // 75 + 12
+        stroke: root.right-pad ? Theme.text : Theme.track;
+        stroke-line-cap: LineCap.round;
     }
 
     // --- Content overlay (ui_StatsContent) ---
