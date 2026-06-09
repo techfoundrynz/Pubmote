@@ -1,4 +1,5 @@
 #include "connection.h"
+#include "config.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_now.h"
@@ -46,6 +47,7 @@ void connection_update_state(ConnectionState state) {
 // Use task rather than a timer so we can do heavy lifting in here
 static void connection_task(void *pvParameters) {
   while (1) {
+#if !TEST_MODE
     if (connection_state == CONNECTION_STATE_DISCONNECTED) {
       // Do nothing
     }
@@ -78,6 +80,7 @@ static void connection_task(void *pvParameters) {
         connection_update_state(CONNECTION_STATE_CONNECTED);
       }
     }
+#endif
 
     vTaskDelay(pdMS_TO_TICKS(CONNECTION_TIMER_DELAY_MS));
   }

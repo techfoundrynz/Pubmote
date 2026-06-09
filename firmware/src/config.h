@@ -94,4 +94,7 @@
   #define HAPTIC_ENABLED 0
 #endif
 
+// Emulate connection state and incoming stats for UI testing
+#define TEST_MODE 1
+
 #endif

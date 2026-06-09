@@ -38,6 +38,9 @@ typedef struct lvgl_port_ctx_s {
 *******************************************************************************/
 static lvgl_port_ctx_t lvgl_port_ctx;
 
+uint64_t lvgl_flush_time_us = 0;
+bool lvgl_frame_rendered = false;
+
 /*******************************************************************************
 * Function definitions
 *******************************************************************************/
@@ -168,8 +171,37 @@ static void lvgl_port_task(void *arg)
     lvgl_port_ctx.running = true;
     while (lvgl_port_ctx.running) {
         if (lvgl_port_lock(0)) {
+            lvgl_flush_time_us = 0;
+            lvgl_frame_rendered = false;
+            uint64_t start_time = esp_timer_get_time();
             task_delay_ms = lv_timer_handler();
+            uint64_t end_time = esp_timer_get_time();
             lvgl_port_unlock();
+
+            if (lvgl_frame_rendered) {
+                uint64_t total_draw = end_time - start_time;
+                uint64_t wait_transmit = lvgl_flush_time_us;
+                uint64_t render = (total_draw > wait_transmit) ? (total_draw - wait_transmit) : 0;
+
+                static uint64_t render_sum = 0;
+                static uint64_t wait_transmit_sum = 0;
+                static uint64_t total_draw_sum = 0;
+                static uint32_t frame_count = 0;
+
+                render_sum += render;
+                wait_transmit_sum += wait_transmit;
+                total_draw_sum += total_draw;
+                frame_count++;
+
+                if (frame_count >= 60) {
+                    ESP_LOGI("lvgl_platform", "LVGL Timing [60f avg]: render=%llu us, copy=0 us, wait_transmit=%llu us, total_draw=%llu us",
+                             render_sum / 60, wait_transmit_sum / 60, total_draw_sum / 60);
+                    render_sum = 0;
+                    wait_transmit_sum = 0;
+                    total_draw_sum = 0;
+                    frame_count = 0;
+                }
+            }
         }
         if (task_delay_ms > lvgl_port_ctx.task_max_sleep_ms) {
             task_delay_ms = lvgl_port_ctx.task_max_sleep_ms;

@@ -7,6 +7,7 @@
 #include <string.h>
 #include "esp_log.h"
 #include "esp_err.h"
+#include "esp_timer.h"
 #include "esp_check.h"
 #include "esp_heap_caps.h"
 #include "esp_idf_version.h"
@@ -33,6 +34,9 @@
 #endif
 
 static const char *TAG = "LVGL";
+
+extern uint64_t lvgl_flush_time_us;
+extern bool lvgl_frame_rendered;
 
 /*******************************************************************************
 * Types definitions
@@ -448,6 +452,7 @@ static bool lvgl_port_flush_rgb_vsync_ready_callback(esp_lcd_panel_handle_t pane
 
 static void lvgl_port_flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
 {
+    uint64_t start_time = esp_timer_get_time();
     assert(drv != NULL);
     lvgl_port_display_ctx_t *disp_ctx = (lvgl_port_display_ctx_t *)drv->user_data;
     assert(disp_ctx != NULL);
@@ -515,6 +520,11 @@ static void lvgl_port_flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, 
             y_start_tmp += max_line;
             xSemaphoreTake(disp_ctx->trans_sem, portMAX_DELAY);
         }
+    }
+
+    lvgl_flush_time_us += (esp_timer_get_time() - start_time);
+    if (lv_disp_flush_is_last(drv)) {
+        lvgl_frame_rendered = true;
     }
 }
 
