@@ -6,6 +6,7 @@
 #include "slint-esp.h"
 #include "slint-platform.h"
 #include "esp_lcd_panel_ops.h"
+#include "esp_timer.h"
 #if __has_include("soc/soc_caps.h")
 #    include "soc/soc_caps.h"
 #endif
@@ -236,52 +237,83 @@ void EspPlatform<PixelType>::run_event_loop()
             }
 
             if (std::exchange(m_window->needs_redraw, false)) {
+                uint64_t t_start = esp_timer_get_time();
+                uint64_t t_render = 0;
+                uint64_t t_copy = 0;
+                uint64_t t_wait_transmit = 0;
+
                 extern SemaphoreHandle_t trans_sem;
+                static bool dma_active = false;
+                static bool use_buffer1 = true;
                 
                 if (buffer1) {
-                    // Smart Bounding Box Chunking using PSRAM state
-                    std::size_t dirty_min_x = size.width, dirty_max_x = 0;
-                    std::size_t dirty_min_y = size.height, dirty_max_y = 0;
+                    std::span<PixelType> current_back_buffer = (use_buffer1 || !buffer2) ? *buffer1 : *buffer2;
+                    if (buffer2) {
+                        use_buffer1 = !use_buffer1;
+                    }
                     
-                    m_window->m_renderer.render_by_line<PixelType>(
-                        [&](std::size_t line_y, std::size_t line_start,
-                            std::size_t line_end, auto &&render_fn) {
-                            
-                            std::span<PixelType> view { buffer1->data() + (line_y * size.width) + line_start, line_end - line_start };
-                            render_fn(view);
-                            
-                            if (byte_swap) {
-                                std::for_each(view.begin(), view.end(), [](auto &rgbpix) { byte_swap_color(&rgbpix); });
-                            }
-                            
-                            dirty_min_x = std::min(dirty_min_x, line_start);
-                            dirty_max_x = std::max(dirty_max_x, line_end);
-                            dirty_min_y = std::min(dirty_min_y, line_y);
-                            dirty_max_y = std::max(dirty_max_y, line_y + 1);
-                        });
+                    uint64_t render_start = esp_timer_get_time();
+                    auto region = m_window->m_renderer.render(current_back_buffer, size.width);
+                    t_render = esp_timer_get_time() - render_start;
+                    
+                    uint64_t copy_start = esp_timer_get_time();
+                    auto origin = region.bounding_box_origin();
+                    auto box_size = region.bounding_box_size();
+                    
+                    if (box_size.width > 0 && box_size.height > 0) {
+                        std::size_t dirty_min_x = origin.x;
+                        std::size_t dirty_max_x = origin.x + box_size.width;
+                        std::size_t dirty_min_y = origin.y;
+                        std::size_t dirty_max_y = origin.y + box_size.height;
                         
-                    if (dirty_max_x > dirty_min_x && dirty_max_y > dirty_min_y) {
                         std::size_t w = dirty_max_x - dirty_min_x;
-                        static bool first_transfer = true;
                         extern const int slint_chunk_lines;
                         extern uint16_t *slint_chunk_buffer[2];
+                        int chunk_idx = 0;
                         
                         for (std::size_t y = dirty_min_y; y < dirty_max_y; y += slint_chunk_lines) {
                             std::size_t h = std::min(dirty_max_y - y, (std::size_t)slint_chunk_lines);
                             
-                            if (!first_transfer && trans_sem) {
+                            // Copy chunk from PSRAM to internal SRAM DMA buffer
+                            uint16_t *dst = slint_chunk_buffer[chunk_idx];
+                            for (std::size_t row = 0; row < h; ++row) {
+                                const PixelType *src = current_back_buffer.data() + (y + row) * size.width + dirty_min_x;
+                                uint16_t *row_dst = dst + row * w;
+                                if (byte_swap) {
+                                    std::size_t col = 0;
+                                    // 32-bit aligned 2-pixels-at-a-time copy and swap
+                                    if (w >= 2 && ((uintptr_t)src % 4 == 0) && ((uintptr_t)row_dst % 4 == 0)) {
+                                        const uint32_t *src32 = reinterpret_cast<const uint32_t *>(src);
+                                        uint32_t *dst32 = reinterpret_cast<uint32_t *>(row_dst);
+                                        std::size_t w32 = w / 2;
+                                        for (; col < w32; ++col) {
+                                            uint32_t val = src32[col];
+                                            dst32[col] = ((val & 0xFF00FF00) >> 8) | ((val & 0x00FF00FF) << 8);
+                                        }
+                                        col *= 2;
+                                    }
+                                    for (; col < w; ++col) {
+                                        uint16_t val = *reinterpret_cast<const uint16_t*>(&src[col]);
+                                        row_dst[col] = (val << 8) | (val >> 8);
+                                    }
+                                } else {
+                                    memcpy(row_dst, src, w * sizeof(PixelType));
+                                }
+                            }
+                            
+                            uint64_t wait_start = esp_timer_get_time();
+                            if (dma_active && trans_sem) {
                                 xSemaphoreTake(trans_sem, portMAX_DELAY);
+                                dma_active = false;
                             }
+                            t_wait_transmit += esp_timer_get_time() - wait_start;
                             
-                            // Pack the exact bounding box into the fast SRAM bounce buffer
-                            for (std::size_t row = 0; row < h; row++) {
-                                memcpy(slint_chunk_buffer[0] + row * w, buffer1->data() + (y + row) * size.width + dirty_min_x, w * sizeof(PixelType));
-                            }
-                            
-                            esp_lcd_panel_draw_bitmap(panel_handle, dirty_min_x, y, dirty_max_x, y + h, slint_chunk_buffer[0]);
-                            first_transfer = false;
+                            esp_lcd_panel_draw_bitmap(panel_handle, dirty_min_x, y, dirty_max_x, y + h, dst);
+                            dma_active = true;
+                            chunk_idx = 1 - chunk_idx;
                         }
                     }
+                    t_copy = esp_timer_get_time() - copy_start - t_wait_transmit;
                 } else {
                     extern uint16_t *slint_chunk_buffer[2];
                     extern const int slint_chunk_lines;
@@ -309,9 +341,12 @@ void EspPlatform<PixelType>::run_event_loop()
                                 }
 
                                 if (flush) {
+                                    uint64_t wait_start = esp_timer_get_time();
                                     if (!first_transfer && trans_sem) {
                                         xSemaphoreTake(trans_sem, portMAX_DELAY);
                                     }
+                                    t_wait_transmit += esp_timer_get_time() - wait_start;
+
                                     esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
                                                               chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
                                     idx = (idx + 1) % 2;
@@ -327,28 +362,66 @@ void EspPlatform<PixelType>::run_event_loop()
 
                                 std::size_t chunk_width = chunk_end_x - chunk_start_x;
                                 std::span<PixelType> view { reinterpret_cast<PixelType*>(slint_chunk_buffer[idx]) + (lines_in_chunk * chunk_width), line_end - line_start };
-                                render_fn(view);
                                 
+                                uint64_t chunk_render_start = esp_timer_get_time();
+                                render_fn(view);
+                                t_render += esp_timer_get_time() - chunk_render_start;
+                                
+                                uint64_t chunk_copy_start = esp_timer_get_time();
                                 if (byte_swap) {
                                     std::for_each(view.begin(), view.end(),
                                                   [](auto &rgbpix) { byte_swap_color(&rgbpix); });
                                 }
+                                t_copy += esp_timer_get_time() - chunk_copy_start;
                                 
                                 lines_in_chunk++;
                             });
                     
                     if (lines_in_chunk > 0) {
+                        uint64_t wait_start = esp_timer_get_time();
                         if (!first_transfer && trans_sem) {
                             xSemaphoreTake(trans_sem, portMAX_DELAY);
                         }
+                        t_wait_transmit += esp_timer_get_time() - wait_start;
+
                         esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
                                                   chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
                         first_transfer = false;
                     }
 
-                    if (!first_transfer && trans_sem) {
+                    uint64_t wait_start = esp_timer_get_time();
+                    if (dma_active && trans_sem) {
                         xSemaphoreTake(trans_sem, portMAX_DELAY);
+                        dma_active = false;
                     }
+                    t_wait_transmit += esp_timer_get_time() - wait_start;
+                }
+
+                uint64_t t_total = esp_timer_get_time() - t_start;
+                
+                static uint64_t accum_render = 0;
+                static uint64_t accum_copy = 0;
+                static uint64_t accum_wait_transmit = 0;
+                static uint64_t accum_total = 0;
+                static int frame_count = 0;
+
+                accum_render += t_render;
+                accum_copy += t_copy;
+                accum_wait_transmit += t_wait_transmit;
+                accum_total += t_total;
+                frame_count++;
+
+                if (frame_count >= 60) {
+                    ESP_LOGI(TAG, "Slint Timing [60f avg]: render=%lld us, copy=%lld us, wait_transmit=%lld us, total_draw=%lld us",
+                             accum_render / 60,
+                             accum_copy / 60,
+                             accum_wait_transmit / 60,
+                             accum_total / 60);
+                    accum_render = 0;
+                    accum_copy = 0;
+                    accum_wait_transmit = 0;
+                    accum_total = 0;
+                    frame_count = 0;
                 }
             }
 
