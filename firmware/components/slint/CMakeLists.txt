@@ -1,4 +1,4 @@
-# Copyright © SixtyFPS GmbH <info@slint.dev>
+﻿# Copyright © SixtyFPS GmbH <info@slint.dev>
 # SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0
 
 idf_component_register(
@@ -58,6 +58,12 @@ else()
     )
     FetchContent_MakeAvailable(Slint)
 
+    set(cargo_features "renderer-software,software-renderer-path,freestanding")
+    if (SLINT_FEATURE_DISABLE_AA)
+        string(APPEND cargo_features ",disable-aa")
+        message(STATUS "Slint Anti-Aliasing is DISABLED")
+    endif()
+
     # Run Cargo build at configuration time to ensure the library file is created before SCons ldgen/compilation.
     message(STATUS "Running Cargo build for Slint C++...")
     execute_process(
@@ -65,7 +71,7 @@ else()
             "CARGO_PROFILE_RELEASE_LTO=fat"
             "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1"
             "CARGO_PROFILE_RELEASE_OPT_LEVEL=3"
-            rustup run esp cargo build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features renderer-software,software-renderer-path,freestanding
+            rustup run esp cargo build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features ${cargo_features}
         WORKING_DIRECTORY "${slint_SOURCE_DIR}"
         RESULT_VARIABLE cargo_result
     )
