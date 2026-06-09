@@ -143,6 +143,45 @@ void byte_swap_color(slint::Rgb8Pixel *pixel)
 {
     std::swap(pixel->r, pixel->b);
 }
+void byte_swap_buffer(slint::platform::Rgb565Pixel *ptr, std::size_t len)
+{
+    std::size_t i = 0;
+    uint16_t *p16 = reinterpret_cast<uint16_t *>(ptr);
+    if (len > 0 && ((uintptr_t)p16 % 4 != 0)) {
+        uint16_t val = p16[0];
+        p16[0] = (val << 8) | (val >> 8);
+        i = 1;
+    }
+    std::size_t len32 = (len - i) / 2;
+    uint32_t *ptr32 = reinterpret_cast<uint32_t *>(p16 + i);
+    std::size_t col = 0;
+    for (; col + 3 < len32; col += 4) {
+        uint32_t v0 = ptr32[col];
+        uint32_t v1 = ptr32[col + 1];
+        uint32_t v2 = ptr32[col + 2];
+        uint32_t v3 = ptr32[col + 3];
+
+        ptr32[col]     = ((v0 & 0xFF00FF00) >> 8) | ((v0 & 0x00FF00FF) << 8);
+        ptr32[col + 1] = ((v1 & 0xFF00FF00) >> 8) | ((v1 & 0x00FF00FF) << 8);
+        ptr32[col + 2] = ((v2 & 0xFF00FF00) >> 8) | ((v2 & 0x00FF00FF) << 8);
+        ptr32[col + 3] = ((v3 & 0xFF00FF00) >> 8) | ((v3 & 0x00FF00FF) << 8);
+    }
+    for (; col < len32; ++col) {
+        uint32_t val = ptr32[col];
+        ptr32[col] = ((val & 0xFF00FF00) >> 8) | ((val & 0x00FF00FF) << 8);
+    }
+    if (i + col * 2 < len) {
+        std::size_t last_idx = len - 1;
+        uint16_t val = p16[last_idx];
+        p16[last_idx] = (val << 8) | (val >> 8);
+    }
+}
+void byte_swap_buffer(slint::Rgb8Pixel *ptr, std::size_t len)
+{
+    for (std::size_t i = 0; i < len; ++i) {
+        std::swap(ptr[i].r, ptr[i].b);
+    }
+}
 }
 
 template<typename PixelType>
@@ -261,8 +300,9 @@ void EspPlatform<PixelType>::run_event_loop()
                     auto box_size = region.bounding_box_size();
                     
                     if (box_size.width > 0 && box_size.height > 0) {
-                        std::size_t dirty_min_x = origin.x;
-                        std::size_t dirty_max_x = origin.x + box_size.width;
+                        // Align dirty region boundaries to even indices to guarantee 4-byte pointer alignment
+                        std::size_t dirty_min_x = origin.x & ~1;
+                        std::size_t dirty_max_x = std::min<std::size_t>(size.width, (origin.x + box_size.width + 1) & ~1);
                         std::size_t dirty_min_y = origin.y;
                         std::size_t dirty_max_y = origin.y + box_size.height;
                         
@@ -286,6 +326,19 @@ void EspPlatform<PixelType>::run_event_loop()
                                         const uint32_t *src32 = reinterpret_cast<const uint32_t *>(src);
                                         uint32_t *dst32 = reinterpret_cast<uint32_t *>(row_dst);
                                         std::size_t w32 = w / 2;
+                                        
+                                        // Unroll the loop by 4 to pipeline memory reads from PSRAM
+                                        for (; col + 3 < w32; col += 4) {
+                                            uint32_t v0 = src32[col];
+                                            uint32_t v1 = src32[col + 1];
+                                            uint32_t v2 = src32[col + 2];
+                                            uint32_t v3 = src32[col + 3];
+
+                                            dst32[col]     = ((v0 & 0xFF00FF00) >> 8) | ((v0 & 0x00FF00FF) << 8);
+                                            dst32[col + 1] = ((v1 & 0xFF00FF00) >> 8) | ((v1 & 0x00FF00FF) << 8);
+                                            dst32[col + 2] = ((v2 & 0xFF00FF00) >> 8) | ((v2 & 0x00FF00FF) << 8);
+                                            dst32[col + 3] = ((v3 & 0xFF00FF00) >> 8) | ((v3 & 0x00FF00FF) << 8);
+                                        }
                                         for (; col < w32; ++col) {
                                             uint32_t val = src32[col];
                                             dst32[col] = ((val & 0xFF00FF00) >> 8) | ((val & 0x00FF00FF) << 8);
@@ -330,11 +383,14 @@ void EspPlatform<PixelType>::run_event_loop()
                             [&](std::size_t line_y, std::size_t line_start,
                                 std::size_t line_end, auto &&render_fn) {
                                 
+                                std::size_t aligned_start = line_start & ~1;
+                                std::size_t aligned_end = (line_end + 1) & ~1;
+                                
                                 bool flush = false;
                                 if (lines_in_chunk > 0) {
                                     if (line_y != chunk_start_y + lines_in_chunk || 
-                                        line_start != chunk_start_x || 
-                                        line_end != chunk_end_x || 
+                                        aligned_start != chunk_start_x || 
+                                        aligned_end != chunk_end_x || 
                                         lines_in_chunk == slint_chunk_lines) {
                                         flush = true;
                                     }
@@ -347,6 +403,13 @@ void EspPlatform<PixelType>::run_event_loop()
                                     }
                                     t_wait_transmit += esp_timer_get_time() - wait_start;
 
+                                    uint64_t chunk_copy_start = esp_timer_get_time();
+                                    if (byte_swap) {
+                                        std::size_t chunk_width = chunk_end_x - chunk_start_x;
+                                        byte_swap_buffer(reinterpret_cast<PixelType*>(slint_chunk_buffer[idx]), chunk_width * lines_in_chunk);
+                                    }
+                                    t_copy += esp_timer_get_time() - chunk_copy_start;
+
                                     esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
                                                               chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
                                     idx = (idx + 1) % 2;
@@ -356,23 +419,21 @@ void EspPlatform<PixelType>::run_event_loop()
 
                                 if (lines_in_chunk == 0) {
                                     chunk_start_y = line_y;
-                                    chunk_start_x = line_start;
-                                    chunk_end_x = line_end;
+                                    chunk_start_x = aligned_start;
+                                    chunk_end_x = aligned_end;
+                                    
+                                    // Clear buffer to prevent garbage at aligned borders
+                                    std::size_t chunk_width = chunk_end_x - chunk_start_x;
+                                    memset(slint_chunk_buffer[idx], 0, chunk_width * slint_chunk_lines * sizeof(PixelType));
                                 }
 
                                 std::size_t chunk_width = chunk_end_x - chunk_start_x;
-                                std::span<PixelType> view { reinterpret_cast<PixelType*>(slint_chunk_buffer[idx]) + (lines_in_chunk * chunk_width), line_end - line_start };
+                                std::size_t offset = lines_in_chunk * chunk_width + (line_start - chunk_start_x);
+                                std::span<PixelType> view { reinterpret_cast<PixelType*>(slint_chunk_buffer[idx]) + offset, line_end - line_start };
                                 
                                 uint64_t chunk_render_start = esp_timer_get_time();
                                 render_fn(view);
                                 t_render += esp_timer_get_time() - chunk_render_start;
-                                
-                                uint64_t chunk_copy_start = esp_timer_get_time();
-                                if (byte_swap) {
-                                    std::for_each(view.begin(), view.end(),
-                                                  [](auto &rgbpix) { byte_swap_color(&rgbpix); });
-                                }
-                                t_copy += esp_timer_get_time() - chunk_copy_start;
                                 
                                 lines_in_chunk++;
                             });
@@ -383,6 +444,13 @@ void EspPlatform<PixelType>::run_event_loop()
                             xSemaphoreTake(trans_sem, portMAX_DELAY);
                         }
                         t_wait_transmit += esp_timer_get_time() - wait_start;
+
+                        uint64_t chunk_copy_start = esp_timer_get_time();
+                        if (byte_swap) {
+                            std::size_t chunk_width = chunk_end_x - chunk_start_x;
+                            byte_swap_buffer(reinterpret_cast<PixelType*>(slint_chunk_buffer[idx]), chunk_width * lines_in_chunk);
+                        }
+                        t_copy += esp_timer_get_time() - chunk_copy_start;
 
                         esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
                                                   chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
@@ -532,3 +600,6 @@ void slint_esp_set_rotation(slint::platform::SoftwareRenderer::RenderingRotation
         EspPlatform<slint::Rgb8Pixel>::set_rotation_callback(EspPlatform<slint::Rgb8Pixel>::active_platform, rotation);
     }
 }
+
+// Force recompile for deferred byte swap
+
