@@ -16,10 +16,11 @@
 //     ui_StatsFooter  (25%)  ui_BoardBatteryDisplay "0%" Inter_Bold_14
 
 import { Theme } from "theme.slint";
-import { ArcGauge } from "arc-gauge.slint";
-import { StatsHeader } from "stats-header.slint";
+import { RoundStats } from "round-stats.slint";
+import { SquareStats } from "square-stats.slint";
 
 export component StatsScreen inherits Rectangle {
+    in property <bool> square-mode: Theme.is-square-mode;
     in property <string> speed: "0.0";
     in property <string> speed-unit: "KPH";
     in property <float> speed-fraction: 0;       // 0..1 of the speed dial
@@ -35,7 +36,6 @@ export component StatsScreen inherits Rectangle {
     in property <bool> pocket-mode-active: false;
     in property <string> board-state-message: "";
     callback board-battery-long-pressed();
-    property <bool> was-long-pressed: false;
 
     in property <string> stat-page1: "0.0V";
     in property <string> stat-page2: "0.0A";
@@ -49,70 +49,9 @@ export component StatsScreen inherits Rectangle {
     
     property <int> active-page: 0;
 
-    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical : 
-        root.duty-fraction >= 0.80 ? Theme.color-warning : 
-        root.duty-fraction >= 0.70 ? Theme.color-caution : 
-        Theme.color-active;
-
     callback swiped-down;
 
     background: Theme.bg;
-
-    // --- Dials (centered, drawn first so the content sits on top) ---
-    // ui_SpeedDial: full-size arc (240 of 240 base == 100% of panel).
-    ArcGauge {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
-        thickness: 12px * Theme.scale;
-        start-angle: 140deg;
-        span-angle: 260deg;
-        track-color: Theme.track;
-        indicator-color: Theme.accent;
-        value: root.speed-fraction;
-    }
-
-    // ui_UtilizationDial
-    ArcGauge {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: parent.width - (32px * Theme.scale);
-        height: parent.height - (32px * Theme.scale);
-        thickness: 8px * Theme.scale;
-        start-angle: 140deg;
-        span-angle: 260deg;
-        track-color: Theme.track-dim;
-        indicator-color: root.duty-color;
-        reverse: true;
-        value: root.duty-fraction;
-    }
-
-    // ui_LeftSensor
-    ArcSegment {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
-        stroke-width: 8px * Theme.scale;
-        start-angle: 93deg;
-        end-angle: 105deg; // 93 + 12
-        stroke: root.left-pad ? Theme.text : Theme.track;
-        stroke-line-cap: LineCap.round;
-    }
-
-    // ui_RightSensor
-    ArcSegment {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
-        stroke-width: 8px * Theme.scale;
-        start-angle: 75deg;
-        end-angle: 87deg; // 75 + 12
-        stroke: root.right-pad ? Theme.text : Theme.track;
-        stroke-line-cap: LineCap.round;
-    }
 
     // Swipe down detection
     TouchArea {
@@ -145,119 +84,68 @@ export component StatsScreen inherits Rectangle {
         }
     }
 
-    // --- Content overlay (ui_StatsContent) ---
-    VerticalLayout {
-        padding-left: 20px * Theme.scale;
-        padding-right: 20px * Theme.scale;
-        padding-top: 20px * Theme.scale;
-        padding-bottom: 5px * Theme.scale;
-
-        // ui_StatsHeader (25%) — indicators pinned to the bottom of the region.
-        Rectangle {
-            vertical-stretch: 1;
-            StatsHeader {
-                width: 100%;
-                height: 100%;
-                remote-battery: root.remote-battery;
-                remote-charging: root.remote-charging;
-                is-connected: root.is-connected;
-                rssi-bars: root.rssi-bars;
-                board-state-message: root.board-state-message;
-            }
-        }
-
-        // ui_StatsBody (50%)
-        Rectangle {
-            vertical-stretch: 2;
-            VerticalLayout {
-                alignment: center;
-
-                if root.pocket-mode-active : Text {
-                    text: "POCKET MODE";
-                    color: Theme.color-active;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-bold;
-                    horizontal-alignment: center;
-                }
-
-                // ui_PrimaryStat + ui_PrimaryStatUnit
-                HorizontalLayout {
-                    alignment: center;
-                    spacing: 4px;
-                    Rectangle {
-                        width: unit-text.preferred-width;
-                    }
-                    Text {
-                        text: root.speed;
-                        color: Theme.text;
-                        font-size: Theme.font-96;
-                        font-weight: Theme.w-bold;
-                        vertical-alignment: center;
-                    }
-                    VerticalLayout {
-                        alignment: end;
-                        padding-bottom: 10px * Theme.scale;
-                        unit-text := Text {
-                            text: root.speed-unit;
-                            color: Theme.text;
-                            font-size: Theme.font-14;
-                        }
-                    }
-                }
-                // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
-                Text {
-                    text: root.is-connected ? root.pages[root.active-page] : root.connection-state-label;
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    horizontal-alignment: center;
-                }
-            }
-        }
-
-        // ui_StatsFooter (25%)
-        Rectangle {
-            vertical-stretch: 1;
-
-            // Touch Area to detect board battery tap/long press
-            TouchArea {
-                width: 100%;
-                height: 100%;
-                clicked => {
-                    // Normal click doesn't cycle battery display
-                }
-                pointer-event(event) => {
-                    if (event.button == PointerEventButton.left) {
-                        if (event.kind == PointerEventKind.down) {
-                            root.was-long-pressed = false;
-                            long-press-timer.running = true;
-                        } else if (event.kind == PointerEventKind.up) {
-                            long-press-timer.running = false;
-                        }
-                    }
-                }
-            }
-
-            long-press-timer := Timer {
-                interval: 600ms;
-                running: false;
-                triggered => {
-                    self.running = false;
-                    root.was-long-pressed = true;
-                    root.board-battery-long-pressed();
-                }
-            }
-
-            VerticalLayout {
-                alignment: center;
-                Text {
-                    text: root.board-battery;
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-bold;
-                    horizontal-alignment: center;
-                }
-            }
+    if !root.square-mode : RoundStats {
+        width: 100%;
+        height: 100%;
+        speed: root.speed;
+        speed-unit: root.speed-unit;
+        speed-fraction: root.speed-fraction;
+        duty-fraction: root.duty-fraction;
+        left-pad: root.left-pad;
+        right-pad: root.right-pad;
+        remote-battery: root.remote-battery;
+        remote-charging: root.remote-charging;
+        is-connected: root.is-connected;
+        connection-state-label: root.connection-state-label;
+        board-battery: root.board-battery;
+        rssi-bars: root.rssi-bars;
+        pocket-mode-active: root.pocket-mode-active;
+        board-state-message: root.board-state-message;
+        active-page: root.active-page;
+        pages: root.pages;
+        board-battery-long-pressed => {
+            root.board-battery-long-pressed();
         }
     }
 
+    if root.square-mode : SquareStats {
+        width: 100%;
+        height: 100%;
+        speed: root.speed;
+        speed-unit: root.speed-unit;
+        speed-fraction: root.speed-fraction;
+        duty-fraction: root.duty-fraction;
+        left-pad: root.left-pad;
+        right-pad: root.right-pad;
+        remote-battery: root.remote-battery;
+        remote-charging: root.remote-charging;
+        is-connected: root.is-connected;
+        connection-state-label: root.connection-state-label;
+        board-battery: root.board-battery;
+        rssi-bars: root.rssi-bars;
+        pocket-mode-active: root.pocket-mode-active;
+        board-state-message: root.board-state-message;
+        active-page: root.active-page;
+        pages: root.pages;
+        board-battery-long-pressed => {
+            root.board-battery-long-pressed();
+        }
+    }
+}
+
+export component StatsScreenPreview inherits Window {
+    width: 466px;
+    height: 466px;
+    minimized: false;
+    StatsScreen {
+        square-mode: false;
+        speed: "25.4";
+        speed-fraction: 0.6;
+        duty-fraction: 0.45;
+        left-pad: true;
+        right-pad: false;
+        is-connected: true;
+        board-battery: "85%";
+        pocket-mode-active: true;
+    }
 }

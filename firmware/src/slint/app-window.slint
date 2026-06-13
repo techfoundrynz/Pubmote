@@ -8,8 +8,8 @@
 
 import { Theme } from "ui/theme.slint";
 export { Theme }
-import "../../assets/Inter-Regular.ttf";
-import "../../assets/Inter-Bold.ttf";
+import "../../assets/Saira-SemiBold.ttf";
+import "../../assets/JetBrainsMono-Medium.ttf";
 import { SplashScreen } from "ui/splash.slint";
 import { StatsScreen } from "ui/stats.slint";
 import { MenuScreen } from "ui/menu.slint";
@@ -143,12 +143,12 @@ export global UiState {
 }
 
 export component AppWindow inherits Window {
-    // Default to the Theme.panel-res; dynamically sized at runtime.
-    width: Theme.panel-res;
-    height: Theme.panel-res;
+    // Default to the Theme.panel-width / Theme.panel-height; dynamically sized at runtime.
+    width: Theme.panel-width;
+    height: Theme.panel-height;
     background: Theme.bg;
     title: "PubRemote";
-    default-font-family: "Inter";
+    default-font-family: "Saira";
 
     property <Screen> active-screen: UiState.screen;
     property <Screen> previous-screen: Screen.splash;

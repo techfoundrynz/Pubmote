@@ -1,0 +1,29 @@
+import { Theme } from "theme.slint";
+
+export component LockIcon inherits Rectangle {
+    in property <color> icon-color: Theme.color-caution;
+
+    width: 10px * Theme.scale;
+    height: 14px * Theme.scale;
+
+    // Shackle (upper part of lock)
+    Rectangle {
+        x: 2px * Theme.scale;
+        y: 1px * Theme.scale;
+        width: 6px * Theme.scale;
+        height: 8px * Theme.scale;
+        border-radius: 3px * Theme.scale;
+        border-width: 1.5px * Theme.scale;
+        border-color: root.icon-color;
+    }
+
+    // Body (lower part of lock)
+    Rectangle {
+        x: 0px * Theme.scale;
+        y: 6px * Theme.scale;
+        width: 10px * Theme.scale;
+        height: 8px * Theme.scale;
+        border-radius: 1.5px * Theme.scale;
+        background: root.icon-color;
+    }
+}

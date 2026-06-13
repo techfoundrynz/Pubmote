@@ -361,14 +361,16 @@ extern "C" void apply_theme_settings() {
   const auto &theme = slint_window->global<Theme>();
 
   // Set the actual panel resolution dynamically based on the current screen size
-  theme.set_panel_res(HOR_RES);
+  theme.set_panel_res(std::max(HOR_RES, VER_RES));
+  theme.set_panel_width(HOR_RES);
+  theme.set_panel_height(VER_RES);
 
-// Set the font scale based on SCALE_FONT macro if defined, otherwise panel resolution ratio
-#ifdef SCALE_FONT
-  theme.set_font_scale(SCALE_FONT);
-#else
-  theme.set_font_scale((float)HOR_RES / 240.0f);
+#ifndef UI_SHAPE
+  #define UI_SHAPE (HOR_RES == VER_RES ? 0 : 1)
 #endif
+
+  // Set the screen shape mode (false = circular, true = square/rectangular)
+  theme.set_is_square_mode(UI_SHAPE == 1);
 
   uint8_t r = (device_settings.theme_color >> 16) & 0xFF;
   uint8_t g = (device_settings.theme_color >> 8) & 0xFF;
@@ -684,11 +686,14 @@ static esp_err_t app_lcd_init(void) {
   ESP_ERROR_CHECK(esp_lcd_panel_reset(lcd_panel));
   ESP_ERROR_CHECK(esp_lcd_panel_init(lcd_panel));
   bool invert_color = false;
+  bool mirror_x = false;
 
 #if DISP_GC9A01
   invert_color = true;
+  mirror_x = true;
 #elif DISP_SH8601 || DISP_CO5300
   invert_color = false;
+  mirror_x = false;
 #endif
 
 #ifdef PANEL_X_GAP
@@ -708,7 +713,7 @@ static esp_err_t app_lcd_init(void) {
   }
 
   ESP_ERROR_CHECK(esp_lcd_panel_invert_color(lcd_panel, invert_color));
-  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, false, false));
+  ESP_ERROR_CHECK(esp_lcd_panel_mirror(lcd_panel, mirror_x, false));
   esp_lcd_panel_disp_on_off(lcd_panel, true);
   ESP_ERROR_CHECK(test_display_communication(lcd_io));
 

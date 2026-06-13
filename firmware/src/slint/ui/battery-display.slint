@@ -1,0 +1,26 @@
+import { Theme } from "theme.slint";
+import { BatteryIndicator } from "battery-indicator.slint";
+
+export component BatteryDisplay inherits Rectangle {
+    in property <int> battery: 100;
+    in property <bool> charging: false;
+
+    HorizontalLayout {
+        spacing: 6px * Theme.scale;
+        Text {
+            text: root.battery + "%";
+            color: Theme.text-dim;
+            font-size: Theme.font-12;
+            font-weight: Theme.w-semibold;
+            font-family: "JetBrains Mono";
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            BatteryIndicator {
+                battery: root.battery;
+                charging: root.charging;
+            }
+        }
+    }
+}

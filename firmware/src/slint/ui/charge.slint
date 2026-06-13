@@ -34,13 +34,15 @@ export component ChargeScreen inherits Rectangle {
             text: "Charging";
             color: Theme.text;
             font-size: Theme.font-14;
-            font-weight: Theme.w-bold;
+            font-weight: Theme.w-semibold;
             horizontal-alignment: center;
         }
         Text {
             text: "\{root.battery-percent}%";
             color: Theme.text;
             font-size: Theme.font-14;
+            font-weight: Theme.w-medium;
+            font-family: "JetBrains Mono";
             horizontal-alignment: center;
         }
     }

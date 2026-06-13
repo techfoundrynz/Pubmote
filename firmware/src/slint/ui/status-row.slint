@@ -1,0 +1,54 @@
+import { Theme } from "theme.slint";
+import { RssiIndicator } from "rssi-indicator.slint";
+import { LockIcon } from "lock-icon.slint";
+import { FootpadSensor } from "footpad-sensor.slint";
+
+export component StatusRow inherits Rectangle {
+    in property <bool> is-connected: false;
+    in property <int> rssi-bars: 0;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <string> connection-state-label: "";
+    in property <bool> pocket-mode-active: false;
+    in property <LayoutAlignment> alignment: LayoutAlignment.center;
+
+    HorizontalLayout {
+        alignment: root.alignment;
+        spacing: 8px * Theme.scale;
+        
+        if root.is-connected : HorizontalLayout {
+            spacing: 8px * Theme.scale;
+            
+            if root.rssi-bars >= 0 : VerticalLayout {
+                alignment: center;
+                RssiIndicator {
+                    rssi-bars: root.rssi-bars;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                FootpadSensor {
+                    left-active: root.left-pad;
+                    right-active: root.right-pad;
+                }
+            }
+        }
+
+        if !root.is-connected : Text {
+            text: root.connection-state-label;
+            color: Theme.text;
+            font-size: Theme.font-14;
+            font-weight: Theme.w-medium;
+            font-family: "JetBrains Mono";
+            horizontal-alignment: center;
+        }
+
+        if root.pocket-mode-active : VerticalLayout {
+            alignment: center;
+            LockIcon {
+                icon-color: Theme.color-caution;
+            }
+        }
+    }
+}

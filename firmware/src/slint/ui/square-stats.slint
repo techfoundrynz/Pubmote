@@ -1,0 +1,171 @@
+import { Theme } from "theme.slint";
+import { BatteryDisplay } from "battery-display.slint";
+import { StatusRow } from "status-row.slint";
+import { SpeedDisplay } from "speed-display.slint";
+
+export component SquareStats inherits Rectangle {
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;
+    in property <float> duty-fraction: 0;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;
+    in property <bool> remote-charging: false;
+    in property <bool> is-connected: false;
+    in property <string> connection-state-label: "Disconnected";
+    in property <string> board-battery: "0%";
+    in property <int> rssi-bars: 0;
+    in property <bool> pocket-mode-active: false;
+    in property <string> board-state-message: "";
+    in property <int> active-page: 0;
+    in property <[string]> pages: [];
+    
+    callback board-battery-long-pressed();
+
+    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical : 
+        root.duty-fraction >= 0.80 ? Theme.color-warning : 
+        root.duty-fraction >= 0.70 ? Theme.color-caution : 
+        Theme.color-active;
+
+    property <bool> was-long-pressed: false;
+
+    // --- Content overlay (ui_StatsContent) ---
+    VerticalLayout {
+        padding-left: 24px * Theme.scale;
+        padding-right: 24px * Theme.scale;
+        padding-top: 12px * Theme.scale;
+        padding-bottom: 12px * Theme.scale;
+
+        // Top: Remote Battery Indicator / Board State Message
+        Rectangle {
+            vertical-stretch: 1;
+            VerticalLayout {
+                alignment: space-between;
+                if root.board-state-message != "" : Text {
+                    text: root.board-state-message;
+                    color: Theme.color-warning;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-semibold;
+                    horizontal-alignment: center;
+                }
+                if root.board-state-message == "" : HorizontalLayout {
+                    alignment: center;
+                    BatteryDisplay {
+                        battery: root.remote-battery;
+                        charging: root.remote-charging;
+                    }
+                }
+            }
+        }
+
+        // ui_StatsBody (50%)
+        Rectangle {
+            vertical-stretch: 2;
+            VerticalLayout {
+                alignment: center;
+
+                // ui_PrimaryStat + ui_PrimaryStatUnit
+                SpeedDisplay {
+                    speed: root.speed;
+                    speed-unit: root.speed-unit;
+                }
+                // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
+                Text {
+                    text: root.is-connected ? root.pages[root.active-page] : "";
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-medium;
+                    font-family: "JetBrains Mono";
+                    horizontal-alignment: center;
+                }
+            }
+        }
+
+        // ui_StatsFooter (25%)
+        Rectangle {
+            vertical-stretch: 1;
+
+            // Touch Area to detect board battery tap/long press
+            TouchArea {
+                width: 100%;
+                height: 100%;
+                clicked => {
+                    // Normal click doesn't cycle battery display
+                }
+                pointer-event(event) => {
+                    if (event.button == PointerEventButton.left) {
+                        if (event.kind == PointerEventKind.down) {
+                            root.was-long-pressed = false;
+                            long-press-timer.running = true;
+                        } else if (event.kind == PointerEventKind.up) {
+                            long-press-timer.running = false;
+                        }
+                    }
+                }
+            }
+
+            long-press-timer := Timer {
+                interval: 600ms;
+                running: false;
+                triggered => {
+                    self.running = false;
+                    root.was-long-pressed = true;
+                    root.board-battery-long-pressed();
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: root.board-battery;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-medium;
+                    font-family: "JetBrains Mono";
+                    horizontal-alignment: center;
+                }
+            }
+        }
+
+        // Status row
+        Rectangle {
+            vertical-stretch: 1;
+            StatusRow {
+                is-connected: root.is-connected;
+                rssi-bars: root.rssi-bars;
+                left-pad: root.left-pad;
+                right-pad: root.right-pad;
+                connection-state-label: root.connection-state-label;
+                pocket-mode-active: root.pocket-mode-active;
+            }
+        }
+
+        // Horizontal utilization bar
+        VerticalLayout {
+            spacing: 2px * Theme.scale;
+            Text {
+                text: "Utilization";
+                color: Theme.text-dim;
+                font-size: Theme.font-12;
+                font-family: "JetBrains Mono";
+                font-weight: Theme.w-medium;
+                horizontal-alignment: left;
+            }
+            Rectangle {
+                height: 10px * Theme.scale;
+                background: Theme.track;
+                border-radius: 5px * Theme.scale;
+
+                Rectangle {
+                    x: 0;
+                    y: 0;
+                    width: parent.width * clamp(root.duty-fraction, 0, 1);
+                    height: 100%;
+                    background: root.duty-color;
+                    border-radius: 5px * Theme.scale;
+                }
+            }
+        }
+    }
+}

@@ -79,9 +79,12 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
 
             lv_hor_res = 240
             hor_res_str = get_macro_value("HOR_RES")
-            if hor_res_str:
+            ver_res_str = get_macro_value("VER_RES")
+            if hor_res_str or ver_res_str:
                 try:
-                    lv_hor_res = int(hor_res_str)
+                    h_val = int(hor_res_str) if hor_res_str else 0
+                    v_val = int(ver_res_str) if ver_res_str else 0
+                    lv_hor_res = max(h_val, v_val)
                 except ValueError:
                     pass
 

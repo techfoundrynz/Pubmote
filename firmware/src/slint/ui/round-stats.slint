@@ -1,0 +1,157 @@
+import { Theme } from "theme.slint";
+import { ArcGauge } from "arc-gauge.slint";
+import { StatsHeader } from "stats-header.slint";
+import { SpeedDisplay } from "speed-display.slint";
+
+export component RoundStats inherits Rectangle {
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;
+    in property <float> duty-fraction: 0;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;
+    in property <bool> remote-charging: false;
+    in property <bool> is-connected: false;
+    in property <string> connection-state-label: "Disconnected";
+    in property <string> board-battery: "0%";
+    in property <int> rssi-bars: 0;
+    in property <bool> pocket-mode-active: false;
+    in property <string> board-state-message: "";
+    in property <int> active-page: 0;
+    in property <[string]> pages: [];
+    
+    callback board-battery-long-pressed();
+
+    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical : 
+        root.duty-fraction >= 0.80 ? Theme.color-warning : 
+        root.duty-fraction >= 0.70 ? Theme.color-caution : 
+        Theme.color-active;
+
+    property <bool> was-long-pressed: false;
+
+    // --- Dials (centered, drawn first so the content sits on top) ---
+    // ui_SpeedDial: full-size arc (240 of 240 base == 100% of panel).
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: parent.height;
+        thickness: 12px * Theme.scale;
+        start-angle: 140deg;
+        span-angle: 260deg;
+        track-color: Theme.track;
+        indicator-color: Theme.accent;
+        value: root.speed-fraction;
+    }
+
+    // ui_UtilizationDial
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width - (32px * Theme.scale);
+        height: parent.height - (32px * Theme.scale);
+        thickness: 8px * Theme.scale;
+        start-angle: 140deg;
+        span-angle: 260deg;
+        track-color: Theme.track;
+        indicator-color: root.duty-color;
+        reverse: true;
+        value: root.duty-fraction;
+    }
+
+    // --- Content overlay (ui_StatsContent) ---
+    VerticalLayout {
+        padding-left: 20px * Theme.scale;
+        padding-right: 20px * Theme.scale;
+        padding-top: 20px * Theme.scale;
+        padding-bottom: 5px * Theme.scale;
+
+        // ui_StatsHeader (25%) — indicators pinned to the bottom of the region.
+        Rectangle {
+            vertical-stretch: 1;
+            StatsHeader {
+                width: 100%;
+                height: 100%;
+                remote-battery: root.remote-battery;
+                remote-charging: root.remote-charging;
+                is-connected: root.is-connected;
+                connection-state-label: root.connection-state-label;
+                rssi-bars: root.rssi-bars;
+                board-state-message: root.board-state-message;
+                pocket-mode-active: root.pocket-mode-active;
+                left-pad: root.left-pad;
+                right-pad: root.right-pad;
+            }
+        }
+
+        // ui_StatsBody (50%)
+        Rectangle {
+            vertical-stretch: 2;
+            VerticalLayout {
+                alignment: center;
+
+                // ui_PrimaryStat + ui_PrimaryStatUnit
+                SpeedDisplay {
+                    speed: root.speed;
+                    speed-unit: root.speed-unit;
+                }
+                // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
+                Text {
+                    text: root.is-connected ? root.pages[root.active-page] : "";
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-medium;
+                    font-family: "JetBrains Mono";
+                    horizontal-alignment: center;
+                }
+            }
+        }
+
+        // ui_StatsFooter (25%)
+        Rectangle {
+            vertical-stretch: 1;
+
+            // Touch Area to detect board battery tap/long press
+            TouchArea {
+                width: 100%;
+                height: 100%;
+                clicked => {
+                    // Normal click doesn't cycle battery display
+                }
+                pointer-event(event) => {
+                    if (event.button == PointerEventButton.left) {
+                        if (event.kind == PointerEventKind.down) {
+                            root.was-long-pressed = false;
+                            long-press-timer.running = true;
+                        } else if (event.kind == PointerEventKind.up) {
+                            long-press-timer.running = false;
+                        }
+                    }
+                }
+            }
+
+            long-press-timer := Timer {
+                interval: 600ms;
+                running: false;
+                triggered => {
+                    self.running = false;
+                    root.was-long-pressed = true;
+                    root.board-battery-long-pressed();
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: root.board-battery;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-medium;
+                    font-family: "JetBrains Mono";
+                    horizontal-alignment: center;
+                }
+            }
+        }
+    }
+}

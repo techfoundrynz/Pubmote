@@ -1,0 +1,28 @@
+import { Theme } from "theme.slint";
+
+export component SpeedDisplay inherits Rectangle {
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+
+    HorizontalLayout {
+        alignment: center;
+        spacing: 4px * Theme.scale;
+        Text {
+            text: root.speed;
+            color: Theme.text;
+            font-size: Theme.font-96;
+            font-weight: Theme.w-semibold;
+            vertical-alignment: bottom;
+        }
+        VerticalLayout {
+            alignment: end;
+            padding-bottom: 14px * Theme.scale;
+            Text {
+                text: root.speed-unit;
+                color: Theme.text-dim;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-semibold;
+            }
+        }
+    }
+}

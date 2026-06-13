@@ -41,7 +41,7 @@ export component MenuScreen inherits Rectangle {
             padding: 40px * Theme.scale;
             spacing: 10px * Theme.scale;
 
-            AppButton { text: "Back"; primary: false; clicked => { root.back(); } }
+            AppButton { text: "Back"; variant: "secondary"; clicked => { root.back(); } }
             if root.show-connect: AppButton { text: "Connect"; clicked => { root.connect(); } }
             AppButton { text: root.pocket-mode-text; clicked => { root.pocket-mode(); } }
             AppButton { text: root.hbm-mode-text; clicked => { root.toggle-hbm(); } }

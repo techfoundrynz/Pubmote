@@ -1,37 +1,46 @@
 import { Theme } from "theme.slint";
 
-export component RssiIndicator inherits HorizontalLayout {
+export component RssiIndicator inherits Rectangle {
     in property <int> rssi-bars: 0;
 
-    spacing: 2px * Theme.scale;
-    alignment: center;
-    height: 14px * Theme.scale; // match BatteryIndicator height
+    width: 14px * Theme.scale;
+    height: 14px * Theme.scale;
 
-    VerticalLayout {
-        alignment: end;
-        Rectangle {
-            width: 3px * Theme.scale;
-            height: 6px * Theme.scale;
-            background: root.rssi-bars >= 1 ? Theme.text : Theme.track-dim;
-            border-radius: 1px * Theme.scale;
-        }
+    // Dot at the bottom center
+    Rectangle {
+        x: 5.5px * Theme.scale;
+        y: 11px * Theme.scale;
+        width: 3px * Theme.scale;
+        height: 3px * Theme.scale;
+        border-radius: 1.5px * Theme.scale;
+        background: root.rssi-bars >= 1 ? Theme.text : Theme.track;
     }
-    VerticalLayout {
-        alignment: end;
-        Rectangle {
-            width: 3px * Theme.scale;
-            height: 10px * Theme.scale;
-            background: root.rssi-bars >= 2 ? Theme.text : Theme.track-dim;
-            border-radius: 1px * Theme.scale;
-        }
+
+    // First arc (middle)
+    Path {
+        x: 0;
+        y: 0;
+        width: 100%;
+        height: 100%;
+        viewbox-width: 14;
+        viewbox-height: 14;
+        stroke: root.rssi-bars >= 2 ? Theme.text : Theme.track;
+        stroke-width: 1.5px * Theme.scale;
+        stroke-line-cap: LineCap.round;
+        commands: "M 2.76 8.26 A 6 6 0 0 1 11.24 8.26";
     }
-    VerticalLayout {
-        alignment: end;
-        Rectangle {
-            width: 3px * Theme.scale;
-            height: 14px * Theme.scale;
-            background: root.rssi-bars >= 3 ? Theme.text : Theme.track-dim;
-            border-radius: 1px * Theme.scale;
-        }
+
+    // Second arc (top)
+    Path {
+        x: 0;
+        y: 0;
+        width: 100%;
+        height: 100%;
+        viewbox-width: 14;
+        viewbox-height: 14;
+        stroke: root.rssi-bars >= 3 ? Theme.text : Theme.track;
+        stroke-width: 1.5px * Theme.scale;
+        stroke-line-cap: LineCap.round;
+        commands: "M 0.5 4.25 A 10.5 10.5 0 0 1 13.5 4.25";
     }
 }

@@ -9,7 +9,7 @@ export component ProgressBar inherits Rectangle {
     in property <float> maximum: 100;
 
     // Custom coloring options
-    in property <brush> track-color: Theme.track-dim;
+    in property <brush> track-color: Theme.track;
     in property <brush> progress-color: Theme.accent;
     
     // Auto-color mode: transitions color automatically from success to caution to warning to critical based on progress fraction
@@ -62,7 +62,7 @@ export component ProgressBar inherits Rectangle {
         text: root.label-text;
         color: root.label-color;
         font-size: root.label-font-size;
-        font-weight: Theme.w-bold;
+        font-weight: Theme.w-semibold;
         horizontal-alignment: center;
         vertical-alignment: center;
     }

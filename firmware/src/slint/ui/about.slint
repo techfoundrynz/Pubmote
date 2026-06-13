@@ -11,7 +11,6 @@
 
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
-import { OutlineButton } from "outline-button.slint";
 
 export component AboutScreen inherits Rectangle {
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
@@ -42,9 +41,13 @@ export component AboutScreen inherits Rectangle {
                             text: root.version-info;
                             color: Theme.text;
                             font-size: Theme.font-14;
+                            font-weight: Theme.w-medium;
+                            font-family: "JetBrains Mono";
                             horizontal-alignment: center;
                         }
-                        OutlineButton {
+                        AppButton {
+                            variant: "outline";
+                            size: "small";
                             text: "Check for updates";
                             clicked => { root.check-updates(); }
                         }
@@ -59,6 +62,8 @@ export component AboutScreen inherits Rectangle {
                             text: root.debug-info;
                             color: Theme.text;
                             font-size: Theme.font-14;
+                            font-weight: Theme.w-medium;
+                            font-family: "JetBrains Mono";
                             horizontal-alignment: center;
                         }
                     }

@@ -311,10 +311,32 @@ void EspPlatform<PixelType>::run_event_loop()
                         touch_handle, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
 
                 if (touchpad_pressed && touchpad_cnt > 0) {
+                    float raw_x = touchpad_x[0];
+                    float raw_y = touchpad_y[0];
+                    float rotated_x = raw_x;
+                    float rotated_y = raw_y;
+
+                    switch (rotation) {
+                    case slint::platform::SoftwareRenderer::RenderingRotation::Rotate90:
+                        rotated_x = float(size.height) - raw_y;
+                        rotated_y = raw_x;
+                        break;
+                    case slint::platform::SoftwareRenderer::RenderingRotation::Rotate180:
+                        rotated_x = float(size.width) - raw_x;
+                        rotated_y = float(size.height) - raw_y;
+                        break;
+                    case slint::platform::SoftwareRenderer::RenderingRotation::Rotate270:
+                        rotated_x = raw_y;
+                        rotated_y = float(size.width) - raw_x;
+                        break;
+                    default:
+                        break;
+                    }
+
                     auto scale_factor = m_window->window().scale_factor();
                     // ESP_LOGI(TAG, "x: %i, y: %i", touchpad_x[0], touchpad_y[0]);
-                    last_touch_x = float(touchpad_x[0]) / scale_factor;
-                    last_touch_y = float(touchpad_y[0]) / scale_factor;
+                    last_touch_x = rotated_x / scale_factor;
+                    last_touch_y = rotated_y / scale_factor;
                     m_window->window().dispatch_pointer_move_event(
                             slint::LogicalPosition({ last_touch_x, last_touch_y }));
                     if (!touch_down) {

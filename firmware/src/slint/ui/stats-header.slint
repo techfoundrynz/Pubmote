@@ -1,6 +1,6 @@
 import { Theme } from "theme.slint";
-import { BatteryIndicator } from "battery-indicator.slint";
-import { RssiIndicator } from "rssi-indicator.slint";
+import { BatteryDisplay } from "battery-display.slint";
+import { StatusRow } from "status-row.slint";
 
 export component StatsHeader inherits Rectangle {
     in property <int> remote-battery: 100;
@@ -8,32 +8,48 @@ export component StatsHeader inherits Rectangle {
     in property <bool> is-connected: false;
     in property <int> rssi-bars: 0;
     in property <string> board-state-message: "";
+    in property <bool> pocket-mode-active: false;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <string> connection-state-label: "";
 
     VerticalLayout {
         width: 100%;
         height: 100%;
         alignment: end;
+        spacing: 4px * Theme.scale;
         
         if root.board-state-message != "" : Text {
             text: root.board-state-message;
             color: Theme.color-warning;
             font-size: Theme.font-14;
-            font-weight: Theme.w-bold;
+            font-weight: Theme.w-semibold;
             horizontal-alignment: center;
         }
 
-        if root.board-state-message == "" : HorizontalLayout {
-            alignment: center;
-            spacing: 6px * Theme.scale;
+        if root.board-state-message == "" : VerticalLayout {
+            alignment: end;
+            spacing: 4px * Theme.scale;
             
-            BatteryIndicator {
-                battery: root.remote-battery;
-                charging: root.remote-charging;
+            // Battery indicator row (Row 1)
+            HorizontalLayout {
+                alignment: center;
+                BatteryDisplay {
+                    battery: root.remote-battery;
+                    charging: root.remote-charging;
+                }
             }
 
-            if root.is-connected && root.rssi-bars >= 0 : RssiIndicator {
+            // Status row (Row 2): RSSI, Footpad, and Pocket Mode, or Connection State Label
+            StatusRow {
+                is-connected: root.is-connected;
                 rssi-bars: root.rssi-bars;
+                left-pad: root.left-pad;
+                right-pad: root.right-pad;
+                connection-state-label: root.connection-state-label;
+                pocket-mode-active: root.pocket-mode-active;
             }
         }
     }
 }
+

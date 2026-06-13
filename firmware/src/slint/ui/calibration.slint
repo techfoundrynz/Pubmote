@@ -41,7 +41,8 @@ export component CalibrationScreen inherits Rectangle {
                     text: root.header-text;
                     color: Theme.text;
                     font-size: Theme.font-14;
-                    font-weight: Theme.w-bold;
+                    font-weight: Theme.w-medium;
+                    font-family: "JetBrains Mono";
                     horizontal-alignment: center;
                 }
             }
@@ -66,13 +67,13 @@ export component CalibrationScreen inherits Rectangle {
                     Rectangle {
                         width: 4px;
                         height: parent.height * 1.3;
-                        background: Theme.calib-red;
+                        background: Theme.color-critical;
                     }
                     // ui_CalibrationLineHoriz
                     Rectangle {
                         width: parent.width * 1.3;
                         height: 4px;
-                        background: Theme.calib-red;
+                        background: Theme.color-critical;
                     }
 
                     // ui_PositionIndicatorContainer (live white cross, 20% size)
@@ -117,6 +118,8 @@ export component CalibrationScreen inherits Rectangle {
                     text: root.step-text;
                     color: Theme.text;
                     font-size: Theme.font-14;
+                    font-weight: Theme.w-medium;
+                    font-family: "JetBrains Mono";
                     horizontal-alignment: center;
                     wrap: word-wrap;
                 }
@@ -133,7 +136,7 @@ export component CalibrationScreen inherits Rectangle {
                 AppButton {
                     width: 60px * Theme.scale;
                     text: "Cancel";
-                    primary: false;
+                    variant: "secondary";
                     clicked => { root.secondary(); }
                 }
                 AppButton {

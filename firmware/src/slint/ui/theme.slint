@@ -10,8 +10,12 @@ export global Theme {
     out property <length> base-res: 240px;
     // Target panel size (pingumote = 466). Keep in sync with the window size.
     in-out property <length> panel-res: 466px;
+    in-out property <length> panel-width: root.panel-res;
+    in-out property <length> panel-height: root.panel-res;
     // SCALE_FACTOR from firmware/src/remote/display.h.
     out property <float> scale: root.panel-res / root.base-res;
+    // Square mode UI toggle
+    in-out property <bool> is-square-mode: false;
 
     // Palette (hex values taken verbatim from the SquareLine screens).
     in-out property <color> bg: #000000;
@@ -20,12 +24,6 @@ export global Theme {
     in-out property <color> accent: #2196f3;        // lv_palette BLUE
     in-out property <color> primary-button-text: #ffffff;
     out property <color> track: #414141;         // 0x414141 arc track / borders
-    out property <color> track-dim: #282828;     // 0x282828 utilization track
-    out property <color> grey: #717171;          // 0x717171 RSSI bars
-    out property <color> battery-green: #1db200;  // 0x1DB200 battery fill
-    out property <color> battery-yellow: #ffcc00; // battery low
-    out property <color> battery-red: #ff3b30;    // battery critical
-    out property <color> calib-red: #ee4266;     // 0xEE4266 calibration crosshair
 
     // Status colors
     out property <color> color-caution: #ffc145;
@@ -44,6 +42,6 @@ export global Theme {
     out property <length> font-48: Math.round(48 * root.font-scale) * 1px;
     out property <length> font-96: Math.round(96 * root.font-scale) * 1px;
 
-    out property <int> w-regular: 400;
-    out property <int> w-bold: 700;
+    out property <int> w-semibold: 600;
+    out property <int> w-medium: 500;
 }
