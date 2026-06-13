@@ -38,18 +38,50 @@ export component MenuScreen inherits Rectangle {
             root.scroll-offset-y = -self.viewport-y / 1px;
         }
         menu-layout := VerticalLayout {
-            padding: 40px * Theme.scale;
-            spacing: 10px * Theme.scale;
+            padding-left: 24px * Theme.scale;
+            padding-right: 24px * Theme.scale;
+            padding-top: 12px * Theme.scale;
+            padding-bottom: 12px * Theme.scale;
+            spacing: 6px * Theme.scale;
 
-            AppButton { text: "Back"; variant: "secondary"; clicked => { root.back(); } }
-            if root.show-connect: AppButton { text: "Connect"; clicked => { root.connect(); } }
-            AppButton { text: root.pocket-mode-text; clicked => { root.pocket-mode(); } }
-            AppButton { text: root.hbm-mode-text; clicked => { root.toggle-hbm(); } }
-            AppButton { text: "Settings"; clicked => { root.settings(); } }
-            AppButton { text: "Calibration"; clicked => { root.calibration(); } }
-            AppButton { text: "Pairing"; clicked => { root.pairing(); } }
-            AppButton { text: "About"; clicked => { root.about(); } }
-            AppButton { text: root.shutdown-text; clicked => { root.shutdown(); } long-clicked => { root.shutdown-long-press(); } }
+            AppButton { text: "Back"; variant: "ghost"; right-text: ""; clicked => { root.back(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+            
+            if root.show-connect: VerticalLayout {
+                spacing: 6px * Theme.scale;
+                AppButton { text: "Connect"; variant: "ghost"; right-text: ""; clicked => { root.connect(); } }
+                Rectangle { height: 1px; background: Theme.track; }
+            }
+
+            AppButton {
+                text: "Pocket Mode";
+                right-text: root.pocket-mode-text == "Disable Pocket Mode" ? "On" : "Off";
+                variant: "ghost";
+                clicked => { root.pocket-mode(); }
+            }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton {
+                text: "HBM Mode";
+                right-text: root.hbm-mode-text == "Disable HBM Mode" ? "On" : "Off";
+                variant: "ghost";
+                clicked => { root.toggle-hbm(); }
+            }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: "Settings"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.settings(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: "Calibration"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.calibration(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: "Pairing"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.pairing(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: "About"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.about(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: root.shutdown-text; variant: "ghost"; right-text: ""; clicked => { root.shutdown(); } long-clicked => { root.shutdown-long-press(); } }
         }
     }
 }

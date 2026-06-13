@@ -76,9 +76,7 @@ extern "C" void handle_menu_pocket_mode() {
   }
   save_device_settings();
 
-  slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Stats);
-  });
+  setup_menu_properties();
 }
 
 extern "C" void handle_menu_toggle_hbm() {

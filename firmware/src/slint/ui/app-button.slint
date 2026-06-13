@@ -3,7 +3,8 @@ import { Theme } from "theme.slint";
 // Common touch button component with variant and size options.
 export component AppButton inherits Rectangle {
     in property <string> text;
-    in property <string> variant: "primary"; // "primary", "secondary", "outline"
+    in property <string> right-text: "";
+    in property <string> variant: "primary"; // "primary", "secondary", "outline", "ghost"
     in property <string> size: "medium";     // "medium", "small"
     in property <bool> enabled: true;
     callback clicked;
@@ -22,20 +23,41 @@ export component AppButton inherits Rectangle {
     background: !root.enabled ? Theme.track :
         root.variant == "outline" ? (touch.pressed ? #ffffff20 : transparent) :
         root.variant == "secondary" ? (touch.pressed ? Theme.track.darker(0.2) : Theme.track) :
+        root.variant == "ghost" ? (touch.pressed ? Theme.accent.transparentize(0.7) : transparent) :
         // default/primary
         (touch.pressed ? Theme.accent.darker(0.2) : Theme.accent);
 
-    Text {
-        text: root.text;
-        color: !root.enabled ? Theme.text-dim :
-            root.variant == "outline" ? Theme.text :
-            root.variant == "secondary" ? Theme.text :
-            // default/primary
-            Theme.primary-button-text;
-        font-size: Theme.font-14;
-        font-weight: Theme.w-semibold;
-        horizontal-alignment: center;
-        vertical-alignment: center;
+    HorizontalLayout {
+        width: 100%;
+        height: 100%;
+        padding-left: 12px * Theme.scale;
+        padding-right: 12px * Theme.scale;
+        alignment: (root.variant == "ghost" || root.right-text != "") ? LayoutAlignment.space-between : LayoutAlignment.center;
+
+        Text {
+            text: root.text;
+            color: !root.enabled ? Theme.text-dim :
+                root.variant == "outline" ? Theme.text :
+                root.variant == "secondary" ? Theme.text :
+                root.variant == "ghost" ? Theme.text :
+                // default/primary
+                Theme.primary-button-text;
+            font-size: Theme.font-14;
+            font-weight: Theme.w-semibold;
+            vertical-alignment: center;
+        }
+
+        if root.right-text != "" || root.variant == "ghost" : Text {
+            text: root.right-text;
+            color: !root.enabled ? Theme.text-dim :
+                root.variant == "ghost" ? Theme.text-dim :
+                root.variant == "outline" ? Theme.text-dim :
+                root.variant == "secondary" ? Theme.text-dim :
+                Theme.primary-button-text.transparentize(0.3);
+            font-size: Theme.font-12;
+            font-weight: Theme.w-medium;
+            vertical-alignment: center;
+        }
     }
 
     touch := TouchArea {
