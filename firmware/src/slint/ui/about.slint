@@ -11,6 +11,7 @@
 
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
+import { PageFooter } from "page-footer.slint";
 
 export component AboutScreen inherits Rectangle {
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
@@ -72,16 +73,10 @@ export component AboutScreen inherits Rectangle {
         }
 
         // ui_AboutFooter (25%)
-        Rectangle {
-            vertical-stretch: 25;
-            HorizontalLayout {
-                alignment: center;
-                padding-bottom: 5px * Theme.scale;
-                AppButton {
-                    width: 80px * Theme.scale;
-                    text: "Back";
-                    clicked => { root.back(); }
-                }
+        PageFooter {
+            AppButton {
+                text: "Back";
+                clicked => { root.back(); }
             }
         }
     }

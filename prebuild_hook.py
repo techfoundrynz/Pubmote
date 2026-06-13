@@ -99,7 +99,7 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
             if scale_font is None:
                 scale_font = lv_hor_res / 240.0
 
-            base_sizes = [12, 14, 28, 48, 96]
+            base_sizes = [10, 11, 12, 14, 28, 48, 96]
             # int(x + 0.5) matches Slint's Math.round (Python round() is banker's rounding)
             scaled_sizes = sorted(list(set(int(sz * scale_font + 0.5) for sz in base_sizes)))
             # The compiler embeds the full ~85-glyph charset per size, so very large

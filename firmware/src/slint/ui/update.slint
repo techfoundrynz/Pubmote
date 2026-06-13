@@ -13,6 +13,7 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { ComboBox } from "combo-box.slint";
+import { PageFooter } from "page-footer.slint";
 
 export component UpdateScreen inherits Rectangle {
     in property <string> body-text: "Click next to scan for networks";
@@ -51,23 +52,15 @@ export component UpdateScreen inherits Rectangle {
         }
 
         // ui_UpdateFooter (25%)
-        Rectangle {
-            vertical-stretch: 25;
-            HorizontalLayout {
-                alignment: center;
-                padding-bottom: 5px * Theme.scale;
-                spacing: 10px * Theme.scale;
-                AppButton {
-                    width: 60px * Theme.scale;
-                    text: "Cancel";
-                    variant: "secondary";
-                    clicked => { root.secondary(); }
-                }
-                AppButton {
-                    width: 60px * Theme.scale;
-                    text: root.primary-text;
-                    clicked => { root.primary(); }
-                }
+        PageFooter {
+            AppButton {
+                text: "Cancel";
+                variant: "secondary";
+                clicked => { root.secondary(); }
+            }
+            AppButton {
+                text: root.primary-text;
+                clicked => { root.primary(); }
             }
         }
     }

@@ -8,6 +8,7 @@
 
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
+import { PageFooter } from "page-footer.slint";
 
 export component PairingScreen inherits Rectangle {
     in property <string> pairing-code: "0000";
@@ -51,16 +52,10 @@ export component PairingScreen inherits Rectangle {
             }
         }
         // ui_PairingFooter (25%)
-        Rectangle {
-            vertical-stretch: 25;
-            HorizontalLayout {
-                alignment: center;
-                padding-bottom: 5px * Theme.scale;
-                AppButton {
-                    width: 80px * Theme.scale;
-                    text: root.action-text;
-                    clicked => { root.action(); }
-                }
+        PageFooter {
+            AppButton {
+                text: root.action-text;
+                clicked => { root.action(); }
             }
         }
     }

@@ -36,6 +36,8 @@ export global Theme {
     // ensure they evaluate to exact integer pixels, matching the pre-rasterized
     // font sizes embedded by the Slint compiler for MCU targets.
     in-out property <float> font-scale: root.scale;
+    out property <length> font-10: Math.round(10 * root.font-scale) * 1px;
+    out property <length> font-11: Math.round(11 * root.font-scale) * 1px;
     out property <length> font-12: Math.round(12 * root.font-scale) * 1px;
     out property <length> font-14: Math.round(14 * root.font-scale) * 1px;
     out property <length> font-28: Math.round(28 * root.font-scale) * 1px;

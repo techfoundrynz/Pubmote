@@ -12,7 +12,7 @@ export component AppButton inherits Rectangle {
     property <bool> was-long-pressed: false;
 
     // Height based on size
-    height: root.size == "small" ? 32px * Theme.scale : 42px * Theme.scale;
+    height: root.size == "small" ? 30px * Theme.scale : 38px * Theme.scale;
     border-radius: 8px * Theme.scale;
     
     // Border for outline variant
@@ -42,7 +42,7 @@ export component AppButton inherits Rectangle {
                 root.variant == "ghost" ? Theme.text :
                 // default/primary
                 Theme.primary-button-text;
-            font-size: Theme.font-14;
+            font-size: root.size == "small" ? Theme.font-10 : Theme.font-12;
             font-weight: Theme.w-semibold;
             vertical-alignment: center;
         }
@@ -54,7 +54,7 @@ export component AppButton inherits Rectangle {
                 root.variant == "outline" ? Theme.text-dim :
                 root.variant == "secondary" ? Theme.text-dim :
                 Theme.primary-button-text.transparentize(0.3);
-            font-size: Theme.font-12;
+            font-size: root.size == "small" ? Theme.font-10 : Theme.font-11;
             font-weight: Theme.w-medium;
             vertical-alignment: center;
         }

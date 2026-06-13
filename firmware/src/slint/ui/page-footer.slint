@@ -1,0 +1,13 @@
+import { Theme } from "theme.slint";
+
+export component PageFooter inherits Rectangle {
+    height: round(55px / 1px * Theme.scale) * 1px;
+
+    HorizontalLayout {
+        padding-left: round(10px / 1px * Theme.scale) * 1px;
+        padding-right: round(10px / 1px * Theme.scale) * 1px;
+        padding-bottom: round(8px / 1px * Theme.scale) * 1px;
+        spacing: round(10px / 1px * Theme.scale) * 1px;
+        @children
+    }
+}

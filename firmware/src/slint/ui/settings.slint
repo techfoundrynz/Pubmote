@@ -15,6 +15,7 @@ import { ComboBox } from "combo-box.slint";
 import { AppSwitch } from "app-switch.slint";
 import { AppSlider } from "app-slider.slint";
 import { ColorSlider } from "color-slider.slint";
+import { PageFooter } from "page-footer.slint";
 
 // One settings page: a control slot with a caption below it.
 component SettingPage inherits Rectangle {
@@ -171,16 +172,10 @@ export component SettingsScreen inherits Rectangle {
         }
 
         // Footer
-        Rectangle {
-            height: round(80px / 1px * Theme.scale) * 1px;
-            HorizontalLayout {
-                alignment: center;
-                padding-bottom: round(5px / 1px * Theme.scale) * 1px;
-                AppButton {
-                    width: round(120px / 1px * Theme.scale) * 1px;
-                    text: "Save";
-                    clicked => { root.save(); }
-                }
+        PageFooter {
+            AppButton {
+                text: "Save";
+                clicked => { root.save(); }
             }
         }
     }
