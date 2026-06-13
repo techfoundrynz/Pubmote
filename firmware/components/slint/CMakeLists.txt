@@ -133,4 +133,4 @@ target_linker_script(${COMPONENT_LIB} INTERFACE "esp-println.x")
 # Trigger rebuild for early return test
 # Trigger rebuild for fixed-point math
 
-# Trigger CMake reconfigure (per-buffer arc delta dirty 2026-06-13)
+# Trigger CMake reconfigure
