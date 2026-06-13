@@ -7,6 +7,7 @@
 #include "slint-platform.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_timer.h"
+#include "esp_attr.h"
 #if __has_include("soc/soc_caps.h")
 #    include "soc/soc_caps.h"
 #endif
@@ -19,6 +20,34 @@
 #endif
 
 static const char *TAG = "slint_platform";
+
+static int global_scroll_offset_y = 0;
+static int global_active_screen = 0;
+
+// Interrupt-driven touch: the ISR wakes the event loop so a touch report is
+// processed immediately instead of on the next 20ms poll tick.
+static TaskHandle_t s_touch_notify_task = nullptr;
+static volatile bool s_touch_event_pending = false;
+
+static void IRAM_ATTR touch_interrupt_callback(esp_lcd_touch_handle_t)
+{
+    s_touch_event_pending = true;
+    BaseType_t high_task_wakeup = pdFALSE;
+    if (s_touch_notify_task) {
+        vTaskNotifyGiveFromISR(s_touch_notify_task, &high_task_wakeup);
+    }
+    if (high_task_wakeup == pdTRUE) {
+        portYIELD_FROM_ISR();
+    }
+}
+
+extern "C" {
+    void (*slint_esp_on_before_render_cb)() = nullptr;
+    void slint_esp_set_scroll_offset(int offset_y, int screen_index) {
+        global_scroll_offset_y = offset_y;
+        global_active_screen = screen_index;
+    }
+}
 
 
 using RepaintBufferType = slint::platform::SoftwareRenderer::RepaintBufferType;
@@ -190,11 +219,23 @@ void EspPlatform<PixelType>::run_event_loop()
     esp_lcd_panel_disp_on_off(panel_handle, true);
 
     TickType_t max_ticks_to_wait = portMAX_DELAY;
+    bool touch_interrupt = false;
 
     if (touch_handle) {
-        // Fall back to polling (every 30ms) to avoid CPU starvation from continuous interrupts
-        // or interrupt storms on boards with floating touch interrupt pins.
-        max_ticks_to_wait = pdMS_TO_TICKS(30);
+        // Use the touch controller's interrupt pin when the board has one wired up
+        // (int_gpio_num is only set for targets that define TP_INT).
+        if (touch_handle->config.int_gpio_num != GPIO_NUM_NC) {
+            s_touch_notify_task = task;
+            if (esp_lcd_touch_register_interrupt_callback(touch_handle, touch_interrupt_callback) == ESP_OK) {
+                touch_interrupt = true;
+                ESP_LOGI(TAG, "Touch interrupt enabled on GPIO %d", touch_handle->config.int_gpio_num);
+            }
+        }
+        if (!touch_interrupt) {
+            // Fall back to polling (every 30ms) to avoid CPU starvation from continuous interrupts
+            // or interrupt storms on boards with floating touch interrupt pins.
+            max_ticks_to_wait = pdMS_TO_TICKS(30);
+        }
     }
 #if 0 // disabled for SPI panel compatibility
     if (buffer2) {
@@ -238,10 +279,26 @@ void EspPlatform<PixelType>::run_event_loop()
 
         if (m_window) {
 
-            static uint32_t last_touch_poll = 0;
-            uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
-            if (touch_handle && (now_ms - last_touch_poll >= 20)) {
-                last_touch_poll = now_ms;
+            bool read_touch = false;
+            if (touch_handle) {
+                if (touch_interrupt) {
+                    // Read on every interrupt; while a touch is active also read each
+                    // iteration since some controllers don't pulse INT on release.
+                    if (s_touch_event_pending) {
+                        s_touch_event_pending = false;
+                        read_touch = true;
+                    }
+                    read_touch = read_touch || touch_down;
+                } else {
+                    static uint32_t last_touch_poll = 0;
+                    uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                    if (now_ms - last_touch_poll >= 20) {
+                        last_touch_poll = now_ms;
+                        read_touch = true;
+                    }
+                }
+            }
+            if (read_touch) {
                 uint16_t touchpad_x[1] = { 0 };
                 uint16_t touchpad_y[1] = { 0 };
                 uint8_t touchpad_cnt = 0;
@@ -276,6 +333,9 @@ void EspPlatform<PixelType>::run_event_loop()
             }
 
             if (std::exchange(m_window->needs_redraw, false)) {
+                if (slint_esp_on_before_render_cb) {
+                    slint_esp_on_before_render_cb();
+                }
                 uint64_t t_start = esp_timer_get_time();
                 uint64_t t_render = 0;
                 uint64_t t_copy = 0;
@@ -291,82 +351,215 @@ void EspPlatform<PixelType>::run_event_loop()
                         use_buffer1 = !use_buffer1;
                     }
                     
-                    uint64_t render_start = esp_timer_get_time();
-                    auto region = m_window->m_renderer.render(current_back_buffer, size.width);
-                    t_render = esp_timer_get_time() - render_start;
+                    #if USE_COPY_SCROLLING
+                    static int last_scroll_y = 0;
+                    static int last_screen = 0;
                     
-                    uint64_t copy_start = esp_timer_get_time();
-                    auto origin = region.bounding_box_origin();
-                    auto box_size = region.bounding_box_size();
+                    int current_scroll_y = global_scroll_offset_y;
+                    int current_screen = global_active_screen;
+                    bool screen_changed = (current_screen != last_screen);
+                    last_screen = current_screen;
                     
-                    if (box_size.width > 0 && box_size.height > 0) {
-                        // Align dirty region boundaries to even indices to guarantee 4-byte pointer alignment
-                        std::size_t dirty_min_x = origin.x & ~1;
-                        std::size_t dirty_max_x = std::min<std::size_t>(size.width, (origin.x + box_size.width + 1) & ~1);
-                        std::size_t dirty_min_y = origin.y;
-                        std::size_t dirty_max_y = origin.y + box_size.height;
-                        
-                        std::size_t w = dirty_max_x - dirty_min_x;
-                        extern const int slint_chunk_lines;
-                        extern uint16_t *slint_chunk_buffer[2];
-                        int chunk_idx = 0;
-                        
-                        for (std::size_t y = dirty_min_y; y < dirty_max_y; y += slint_chunk_lines) {
-                            std::size_t h = std::min(dirty_max_y - y, (std::size_t)slint_chunk_lines);
-                            
-                            // Copy chunk from PSRAM to internal SRAM DMA buffer
-                            uint16_t *dst = slint_chunk_buffer[chunk_idx];
-                            for (std::size_t row = 0; row < h; ++row) {
-                                const PixelType *src = current_back_buffer.data() + (y + row) * size.width + dirty_min_x;
-                                uint16_t *row_dst = dst + row * w;
-                                if (byte_swap) {
-                                    std::size_t col = 0;
-                                    // 32-bit aligned 2-pixels-at-a-time copy and swap
-                                    if (w >= 2 && ((uintptr_t)src % 4 == 0) && ((uintptr_t)row_dst % 4 == 0)) {
-                                        const uint32_t *src32 = reinterpret_cast<const uint32_t *>(src);
-                                        uint32_t *dst32 = reinterpret_cast<uint32_t *>(row_dst);
-                                        std::size_t w32 = w / 2;
-                                        
-                                        // Unroll the loop by 4 to pipeline memory reads from PSRAM
-                                        for (; col + 3 < w32; col += 4) {
-                                            uint32_t v0 = src32[col];
-                                            uint32_t v1 = src32[col + 1];
-                                            uint32_t v2 = src32[col + 2];
-                                            uint32_t v3 = src32[col + 3];
+                    int dy = current_scroll_y - last_scroll_y;
+                    last_scroll_y = current_scroll_y;
+                    
+                    bool performed_copy_scroll = false;
+                    int abs_dy = std::abs(dy);
+                    std::span<PixelType> prev_back_buffer;
 
-                                            dst32[col]     = ((v0 & 0xFF00FF00) >> 8) | ((v0 & 0x00FF00FF) << 8);
-                                            dst32[col + 1] = ((v1 & 0xFF00FF00) >> 8) | ((v1 & 0x00FF00FF) << 8);
-                                            dst32[col + 2] = ((v2 & 0xFF00FF00) >> 8) | ((v2 & 0x00FF00FF) << 8);
-                                            dst32[col + 3] = ((v3 & 0xFF00FF00) >> 8) | ((v3 & 0x00FF00FF) << 8);
-                                        }
-                                        for (; col < w32; ++col) {
-                                            uint32_t val = src32[col];
-                                            dst32[col] = ((val & 0xFF00FF00) >> 8) | ((val & 0x00FF00FF) << 8);
-                                        }
-                                        col *= 2;
-                                    }
-                                    for (; col < w; ++col) {
-                                        uint16_t val = *reinterpret_cast<const uint16_t*>(&src[col]);
-                                        row_dst[col] = (val << 8) | (val >> 8);
-                                    }
-                                } else {
-                                    memcpy(row_dst, src, w * sizeof(PixelType));
-                                }
+                    // The actual shift is fused into the flush loop below: rows are staged
+                    // from the previous frame's buffer into the SRAM DMA chunk and written
+                    // back to the current buffer from there, so the previous buffer is only
+                    // read once and the shift overlaps the panel DMA.
+                    if (buffer2 && !screen_changed && dy != 0 && current_screen == 2 && abs_dy < size.height) {
+                        prev_back_buffer = (current_back_buffer.data() == buffer1->data()) ? *buffer2 : *buffer1;
+                        performed_copy_scroll = true;
+                    }
+                    #endif
+                    
+                    // The previous frame's last chunk may still be in flight and the render
+                    // below stages into the same chunk buffers, so wait for it first.
+                    {
+                        uint64_t wait_start = esp_timer_get_time();
+                        if (dma_active && trans_sem) {
+                            xSemaphoreTake(trans_sem, portMAX_DELAY);
+                            dma_active = false;
+                        }
+                        t_wait_transmit += esp_timer_get_time() - wait_start;
+                    }
+
+                    // The PSRAM back-buffer stores panel-ready (byte-swapped) pixels: the
+                    // renderer never reads it back, so each completed SRAM chunk is swapped
+                    // in SRAM, written to the back-buffer and, on regular frames, DMA'd to
+                    // the panel directly. This sends exact dirty spans instead of the dirty
+                    // bounding box and never re-reads the back-buffer for the flush.
+                    #if USE_COPY_SCROLLING
+                    const bool direct_flush = !performed_copy_scroll;
+                    #else
+                    const bool direct_flush = true;
+                    #endif
+
+                    int idx = 0;
+                    int lines_in_chunk = 0;
+                    std::size_t chunk_start_y = 0;
+                    std::size_t chunk_start_x = 0;
+                    std::size_t chunk_end_x = 0;
+                    extern uint16_t *slint_chunk_buffer[2];
+                    extern const int slint_chunk_lines;
+
+                    auto flush_chunk = [&]() {
+                        // The panel wants even x bounds; chunk rows are laid out with the
+                        // aligned width and the 1px padding columns are filled from the
+                        // (already swapped) back-buffer after the swap.
+                        std::size_t aligned_start = chunk_start_x & ~(std::size_t)1;
+                        std::size_t aligned_end = std::min<std::size_t>(size.width, (chunk_end_x + 1) & ~(std::size_t)1);
+                        std::size_t aligned_w = aligned_end - aligned_start;
+                        PixelType *chunk_px = reinterpret_cast<PixelType *>(slint_chunk_buffer[idx]);
+
+                        uint64_t copy_start = esp_timer_get_time();
+                        if (byte_swap) {
+                            byte_swap_buffer(chunk_px, aligned_w * lines_in_chunk);
+                        }
+                        bool pad_left = aligned_start < chunk_start_x;
+                        bool pad_right = aligned_end > chunk_end_x;
+                        for (std::size_t row = 0; row < (std::size_t)lines_in_chunk; ++row) {
+                            PixelType *chunk_row = chunk_px + row * aligned_w;
+                            PixelType *back_row = current_back_buffer.data() + (chunk_start_y + row) * size.width + aligned_start;
+                            if (pad_left) {
+                                chunk_row[0] = back_row[0];
                             }
-                            
+                            if (pad_right) {
+                                chunk_row[aligned_w - 1] = back_row[aligned_w - 1];
+                            }
+                            memcpy(back_row, chunk_row, aligned_w * sizeof(PixelType));
+                        }
+                        t_copy += esp_timer_get_time() - copy_start;
+
+                        if (direct_flush) {
                             uint64_t wait_start = esp_timer_get_time();
                             if (dma_active && trans_sem) {
                                 xSemaphoreTake(trans_sem, portMAX_DELAY);
                                 dma_active = false;
                             }
                             t_wait_transmit += esp_timer_get_time() - wait_start;
-                            
-                            esp_lcd_panel_draw_bitmap(panel_handle, dirty_min_x, y, dirty_max_x, y + h, dst);
+
+                            esp_lcd_panel_draw_bitmap(panel_handle, aligned_start, chunk_start_y,
+                                                      aligned_end, chunk_start_y + lines_in_chunk, chunk_px);
+                            dma_active = true;
+                        }
+
+                        idx = (idx + 1) % 2;
+                        lines_in_chunk = 0;
+                    };
+
+                    // Time the whole pass and subtract the copy/wait time accumulated by
+                    // flush_chunk, rather than timing render_fn per line.
+                    uint64_t render_start = esp_timer_get_time();
+                    uint64_t copy_before_render = t_copy;
+                    uint64_t wait_before_render = t_wait_transmit;
+
+                    auto region = m_window->m_renderer.render_by_line<PixelType>(
+                            [&](std::size_t line_y, std::size_t line_start,
+                                std::size_t line_end, auto &&render_fn) {
+
+                                #if USE_COPY_SCROLLING
+                                if (performed_copy_scroll) {
+                                    if (dy > 0) {
+                                        if (line_y < size.height - abs_dy) {
+                                            return;
+                                        }
+                                    } else {
+                                        if (line_y >= (std::size_t)abs_dy) {
+                                            return;
+                                        }
+                                    }
+                                }
+                                #endif
+
+                                bool flush = false;
+                                if (lines_in_chunk > 0) {
+                                    if (line_y != chunk_start_y + lines_in_chunk ||
+                                        line_start != chunk_start_x ||
+                                        line_end != chunk_end_x ||
+                                        lines_in_chunk == slint_chunk_lines) {
+                                        flush = true;
+                                    }
+                                }
+
+                                if (flush) {
+                                    flush_chunk();
+                                }
+
+                                if (lines_in_chunk == 0) {
+                                    chunk_start_y = line_y;
+                                    chunk_start_x = line_start;
+                                    chunk_end_x = line_end;
+                                }
+
+                                std::size_t aligned_start = chunk_start_x & ~(std::size_t)1;
+                                std::size_t aligned_end = std::min<std::size_t>(size.width, (chunk_end_x + 1) & ~(std::size_t)1);
+                                std::size_t aligned_w = aligned_end - aligned_start;
+                                std::size_t offset = lines_in_chunk * aligned_w + (chunk_start_x - aligned_start);
+                                std::span<PixelType> view { reinterpret_cast<PixelType*>(slint_chunk_buffer[idx]) + offset, line_end - line_start };
+
+                                render_fn(view);
+
+                                lines_in_chunk++;
+                            });
+                    (void)region;
+
+                    if (lines_in_chunk > 0) {
+                        flush_chunk();
+                    }
+
+                    t_render = esp_timer_get_time() - render_start - (t_copy - copy_before_render)
+                            - (t_wait_transmit - wait_before_render);
+
+                    #if USE_COPY_SCROLLING
+                    if (performed_copy_scroll) {
+                        // Full-screen fused scroll flush: every row moved, so stage each row
+                        // from the previous frame's buffer (offset by dy) or from the freshly
+                        // rendered strip in the current buffer. Both buffers already hold
+                        // panel-ready pixels, so no swap pass is needed. Shifted rows are
+                        // written back to the current buffer from SRAM so it stays coherent
+                        // for dirty tracking and as the next scroll frame's source.
+                        std::size_t w = size.width;
+                        int chunk_idx = 0;
+
+                        for (std::size_t y = 0; y < size.height; y += slint_chunk_lines) {
+                            std::size_t h = std::min<std::size_t>(size.height - y, (std::size_t)slint_chunk_lines);
+                            PixelType *dst = reinterpret_cast<PixelType *>(slint_chunk_buffer[chunk_idx]);
+
+                            uint64_t copy_start = esp_timer_get_time();
+                            for (std::size_t row = 0; row < h; ++row) {
+                                std::size_t dst_y = y + row;
+                                int src_y = (int)dst_y + dy;
+                                PixelType *row_dst = dst + row * w;
+                                if (src_y >= 0 && src_y < (int)size.height) {
+                                    const PixelType *src = prev_back_buffer.data() + (std::size_t)src_y * size.width;
+                                    memcpy(row_dst, src, w * sizeof(PixelType));
+                                    memcpy(current_back_buffer.data() + dst_y * size.width, row_dst,
+                                           w * sizeof(PixelType));
+                                } else {
+                                    const PixelType *src = current_back_buffer.data() + dst_y * size.width;
+                                    memcpy(row_dst, src, w * sizeof(PixelType));
+                                }
+                            }
+                            t_copy += esp_timer_get_time() - copy_start;
+
+                            uint64_t wait_start = esp_timer_get_time();
+                            if (dma_active && trans_sem) {
+                                xSemaphoreTake(trans_sem, portMAX_DELAY);
+                                dma_active = false;
+                            }
+                            t_wait_transmit += esp_timer_get_time() - wait_start;
+
+                            esp_lcd_panel_draw_bitmap(panel_handle, 0, y, size.width, y + h, dst);
                             dma_active = true;
                             chunk_idx = 1 - chunk_idx;
                         }
                     }
-                    t_copy = esp_timer_get_time() - copy_start - t_wait_transmit;
+                    #endif
                 } else {
                     extern uint16_t *slint_chunk_buffer[2];
                     extern const int slint_chunk_lines;
@@ -511,6 +704,10 @@ void EspPlatform<PixelType>::run_event_loop()
         }
 
         TickType_t ticks_to_wait = max_ticks_to_wait;
+        if (touch_interrupt && touch_down) {
+            // Poll for the release while a touch is active (see read_touch above)
+            ticks_to_wait = std::min(ticks_to_wait, (TickType_t)pdMS_TO_TICKS(30));
+        }
         if (auto wait_time = slint::platform::duration_until_next_timer_update()) {
             ticks_to_wait = std::min(ticks_to_wait, pdMS_TO_TICKS(wait_time->count()));
         }

@@ -17,7 +17,7 @@
 
 import { Theme } from "theme.slint";
 import { ArcGauge } from "arc-gauge.slint";
-import { BatteryIndicator } from "battery-indicator.slint";
+import { StatsHeader } from "stats-header.slint";
 
 export component StatsScreen inherits Rectangle {
     in property <string> speed: "0.0";
@@ -31,6 +31,11 @@ export component StatsScreen inherits Rectangle {
     in property <bool> is-connected: false;
     in property <string> connection-state-label: "Disconnected";
     in property <string> board-battery: "0%";
+    in property <int> rssi-bars: 0;
+    in property <bool> pocket-mode-active: false;
+    in property <string> board-state-message: "";
+    callback board-battery-long-pressed();
+    property <bool> was-long-pressed: false;
 
     in property <string> stat-page1: "0.0V";
     in property <string> stat-page2: "0.0A";
@@ -109,6 +114,37 @@ export component StatsScreen inherits Rectangle {
         stroke-line-cap: LineCap.round;
     }
 
+    // Swipe down detection
+    TouchArea {
+        width: 100%;
+        height: 100%;
+        property <length> start-y;
+        property <length> start-x;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) {
+                    start-x = self.mouse-x;
+                    start-y = self.mouse-y;
+                } else if (event.kind == PointerEventKind.up) {
+                    let dx = self.mouse-x - start-x;
+                    let dy = self.mouse-y - start-y;
+                    let abs_dx = dx > 0px ? dx : -dx;
+                    let abs_dy = dy > 0px ? dy : -dy;
+                    if (dy > 40px && dy > abs_dx) {
+                        root.swiped-down();
+                    } else if (dx > 40px && dx > abs_dy) {
+                        // swipe right (previous page)
+                        root.active-page = Math.mod(root.active-page - 1 + root.pages.length, root.pages.length);
+                    } else if (dx < -40px && -dx > abs_dy) {
+                        // swipe left (next page)
+                        root.active-page = Math.mod(root.active-page + 1, root.pages.length);
+                    }
+                }
+            }
+        }
+    }
+
     // --- Content overlay (ui_StatsContent) ---
     VerticalLayout {
         padding-left: 20px * Theme.scale;
@@ -119,17 +155,14 @@ export component StatsScreen inherits Rectangle {
         // ui_StatsHeader (25%) — indicators pinned to the bottom of the region.
         Rectangle {
             vertical-stretch: 1;
-            VerticalLayout {
-                alignment: end;
-                // ui_RemoteIndicatorContainer
-                HorizontalLayout {
-                    alignment: center;
-                    // ui_BatteryIndicatorContainer (outline + fill + tip).
-                    BatteryIndicator {
-                        battery: root.remote-battery;
-                        charging: root.remote-charging;
-                    }
-                }
+            StatsHeader {
+                width: 100%;
+                height: 100%;
+                remote-battery: root.remote-battery;
+                remote-charging: root.remote-charging;
+                is-connected: root.is-connected;
+                rssi-bars: root.rssi-bars;
+                board-state-message: root.board-state-message;
             }
         }
 
@@ -138,6 +171,15 @@ export component StatsScreen inherits Rectangle {
             vertical-stretch: 2;
             VerticalLayout {
                 alignment: center;
+
+                if root.pocket-mode-active : Text {
+                    text: "POCKET MODE";
+                    color: Theme.color-active;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-bold;
+                    horizontal-alignment: center;
+                }
+
                 // ui_PrimaryStat + ui_PrimaryStatUnit
                 HorizontalLayout {
                     alignment: center;
@@ -175,6 +217,36 @@ export component StatsScreen inherits Rectangle {
         // ui_StatsFooter (25%)
         Rectangle {
             vertical-stretch: 1;
+
+            // Touch Area to detect board battery tap/long press
+            TouchArea {
+                width: 100%;
+                height: 100%;
+                clicked => {
+                    // Normal click doesn't cycle battery display
+                }
+                pointer-event(event) => {
+                    if (event.button == PointerEventButton.left) {
+                        if (event.kind == PointerEventKind.down) {
+                            root.was-long-pressed = false;
+                            long-press-timer.running = true;
+                        } else if (event.kind == PointerEventKind.up) {
+                            long-press-timer.running = false;
+                        }
+                    }
+                }
+            }
+
+            long-press-timer := Timer {
+                interval: 600ms;
+                running: false;
+                triggered => {
+                    self.running = false;
+                    root.was-long-pressed = true;
+                    root.board-battery-long-pressed();
+                }
+            }
+
             VerticalLayout {
                 alignment: center;
                 Text {
@@ -188,34 +260,4 @@ export component StatsScreen inherits Rectangle {
         }
     }
 
-    // Swipe down detection
-    TouchArea {
-        width: 100%;
-        height: 100%;
-        property <length> start-y;
-        property <length> start-x;
-
-        pointer-event(event) => {
-            if (event.button == PointerEventButton.left) {
-                if (event.kind == PointerEventKind.down) {
-                    start-x = self.mouse-x;
-                    start-y = self.mouse-y;
-                } else if (event.kind == PointerEventKind.up) {
-                    let dx = self.mouse-x - start-x;
-                    let dy = self.mouse-y - start-y;
-                    let abs_dx = dx > 0px ? dx : -dx;
-                    let abs_dy = dy > 0px ? dy : -dy;
-                    if (dy > 40px && dy > abs_dx) {
-                        root.swiped-down();
-                    } else if (dx > 40px && dx > abs_dy) {
-                        // swipe right (previous page)
-                        root.active-page = Math.mod(root.active-page - 1 + root.pages.length, root.pages.length);
-                    } else if (dx < -40px && -dx > abs_dy) {
-                        // swipe left (next page)
-                        root.active-page = Math.mod(root.active-page + 1, root.pages.length);
-                    }
-                }
-            }
-        }
-    }
 }

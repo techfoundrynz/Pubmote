@@ -78,7 +78,7 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
                 return None
 
             lv_hor_res = 240
-            hor_res_str = get_macro_value("LV_HOR_RES")
+            hor_res_str = get_macro_value("HOR_RES")
             if hor_res_str:
                 try:
                     lv_hor_res = int(hor_res_str)
@@ -97,7 +97,12 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
                 scale_font = lv_hor_res / 240.0
 
             base_sizes = [12, 14, 28, 48, 96]
-            scaled_sizes = sorted(list(set(round(sz * scale_font) for sz in base_sizes)))
+            # int(x + 0.5) matches Slint's Math.round (Python round() is banker's rounding)
+            scaled_sizes = sorted(list(set(int(sz * scale_font + 0.5) for sz in base_sizes)))
+            # The compiler embeds the full ~85-glyph charset per size, so very large
+            # sizes cost MBs of flash and overflow the app partition. Text larger
+            # than this cap falls back to runtime scaling from the largest embedded size.
+            scaled_sizes = [sz for sz in scaled_sizes if sz <= 100]
             font_sizes_str = ",".join(str(sz) for sz in scaled_sizes)
 
             print(f"[Slint Compiler] Detected target parameters: LV_HOR_RES={lv_hor_res}, SCALE_FONT={scale_font}")

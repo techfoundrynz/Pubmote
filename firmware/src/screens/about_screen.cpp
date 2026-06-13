@@ -69,11 +69,8 @@ extern "C" void handle_about_back() {
   });
 }
 
-extern "C" void setup_update_properties(); // Forward declaration
-
 extern "C" void handle_about_check_updates() {
   ESP_LOGI(TAG, "Check updates pressed");
-  setup_update_properties();
   slint::invoke_from_event_loop([]() {
     get_slint_window()->global<UiState>().set_screen(Screen::Update);
   });

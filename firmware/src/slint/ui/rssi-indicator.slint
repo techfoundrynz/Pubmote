@@ -1,0 +1,37 @@
+import { Theme } from "theme.slint";
+
+export component RssiIndicator inherits HorizontalLayout {
+    in property <int> rssi-bars: 0;
+
+    spacing: 2px * Theme.scale;
+    alignment: center;
+    height: 14px * Theme.scale; // match BatteryIndicator height
+
+    VerticalLayout {
+        alignment: end;
+        Rectangle {
+            width: 3px * Theme.scale;
+            height: 6px * Theme.scale;
+            background: root.rssi-bars >= 1 ? Theme.text : Theme.track-dim;
+            border-radius: 1px * Theme.scale;
+        }
+    }
+    VerticalLayout {
+        alignment: end;
+        Rectangle {
+            width: 3px * Theme.scale;
+            height: 10px * Theme.scale;
+            background: root.rssi-bars >= 2 ? Theme.text : Theme.track-dim;
+            border-radius: 1px * Theme.scale;
+        }
+    }
+    VerticalLayout {
+        alignment: end;
+        Rectangle {
+            width: 3px * Theme.scale;
+            height: 14px * Theme.scale;
+            background: root.rssi-bars >= 3 ? Theme.text : Theme.track-dim;
+            border-radius: 1px * Theme.scale;
+        }
+    }
+}

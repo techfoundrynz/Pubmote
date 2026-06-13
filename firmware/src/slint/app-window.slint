@@ -57,11 +57,16 @@ export global UiState {
     in property <string> connection-state-label: "Disconnected";
     in property <bool> is-connected: false;
     in property <string> board-battery: "0%";
+    in property <int> rssi-bars: 0;
+    in property <bool> pocket-mode-active: false;
+    in property <string> board-state-message: "";
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
     in property <string> pocket-mode-text: "Enable Pocket Mode";
     in property <string> hbm-mode-text: "Enable HBM Mode";
+    in property <string> shutdown-text: "Shutdown";
+    in-out property <int> scroll-offset-y: 0;
 
     // --- Settings (ui_SettingsScreen) ---
     in-out property <float> brightness: 128;
@@ -108,11 +113,13 @@ export global UiState {
     callback screen-changed(Screen);
     callback splash-tapped();
     callback stats-swiped-down();
+    callback board-battery-long-pressed();
     // Menu
     callback menu-back();
     callback menu-connect();
     callback menu-pocket-mode();
     callback menu-toggle-hbm();
+    callback menu-shutdown-long-press();
     callback open-settings();
     callback open-calibration();
     callback open-pairing();
@@ -148,18 +155,38 @@ export component AppWindow inherits Window {
     property <bool> is-animating: false;
     property <bool> screen-loaded: true;
 
+    // Animated viewport position in screen units. Screens are positioned
+    // relative to this, so during a transition both the incoming and the
+    // outgoing screen genuinely slide while staying fully opaque. All screens
+    //
+    // Viewport layout grid:
+    // Y= 1:  [splash/charge] (X=0)
+    // Y= 0:  [stats] (X=0)
+    // Y=-1:  [menu] (X=0)  ->  [settings/calibration/pairing/about] (X=1)  ->  [update] (X=2)
+    property <float> view-x: screen-x(root.active-screen);
+    property <float> view-y: screen-y(root.active-screen);
+    animate view-x, view-y {
+        duration: (
+            root.active-screen == Screen.splash ||
+            root.active-screen == Screen.charge ||
+            root.previous-screen == Screen.splash ||
+            root.previous-screen == Screen.charge
+        ) ? 0ms : 250ms;
+        easing: ease-in-out;
+    }
+
     pure function screen-x(s: Screen) -> int {
-        if (s == Screen.settings) { return -1; }
+        if (s == Screen.settings) { return 1; }
         if (s == Screen.calibration) { return 1; }
-        if (s == Screen.pairing) { return -2; }
-        if (s == Screen.about) { return 2; }
+        if (s == Screen.pairing) { return 1; }
+        if (s == Screen.about) { return 1; }
         if (s == Screen.update) { return 2; }
         return 0;
     }
 
     pure function screen-y(s: Screen) -> int {
-        if (s == Screen.splash || s == Screen.stats || s == Screen.charge) { return 0; }
-        if (s == Screen.update) { return -2; }
+        if (s == Screen.splash || s == Screen.charge) { return 1; }
+        if (s == Screen.stats) { return 0; }
         return -1;
     }
 
@@ -197,19 +224,15 @@ export component AppWindow inherits Window {
 
     if UiState.screen == Screen.splash || root.previous-screen == Screen.splash: SplashScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.splash) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.splash) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.splash && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.splash) - root.view-x) * self.width;
+        y: (screen-y(Screen.splash) - root.view-y) * self.height;
         clicked => { UiState.splash-tapped(); }
     }
 
     if UiState.screen == Screen.stats || root.previous-screen == Screen.stats: StatsScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.stats) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.stats) - screen-y(root.active-screen)) * self.height;
-        opacity: root.active-screen == Screen.splash ? 0.0 : 1.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.stats) - root.view-x) * self.width;
+        y: (screen-y(Screen.stats) - root.view-y) * self.height;
         speed: UiState.speed;
         speed-unit: UiState.speed-unit;
         speed-fraction: UiState.speed-fraction;
@@ -224,18 +247,22 @@ export component AppWindow inherits Window {
         connection-state-label: UiState.connection-state-label;
         is-connected: UiState.is-connected;
         board-battery: UiState.board-battery;
+        rssi-bars: UiState.rssi-bars;
+        pocket-mode-active: UiState.pocket-mode-active;
+        board-state-message: UiState.board-state-message;
         swiped-down => { UiState.stats-swiped-down(); }
+        board-battery-long-pressed => { UiState.board-battery-long-pressed(); }
     }
 
     if UiState.screen == Screen.menu || root.previous-screen == Screen.menu: MenuScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.menu) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.menu) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.menu && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.menu) - root.view-x) * self.width;
+        y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
         pocket-mode-text: UiState.pocket-mode-text;
         hbm-mode-text: UiState.hbm-mode-text;
+        shutdown-text: UiState.shutdown-text;
+        scroll-offset-y <=> UiState.scroll-offset-y;
         back => { UiState.menu-back(); }
         connect => { UiState.menu-connect(); }
         pocket-mode => { UiState.menu-pocket-mode(); }
@@ -245,14 +272,13 @@ export component AppWindow inherits Window {
         pairing => { UiState.open-pairing(); }
         about => { UiState.open-about(); }
         shutdown => { UiState.menu-shutdown(); }
+        shutdown-long-press => { UiState.menu-shutdown-long-press(); }
     }
 
     if UiState.screen == Screen.settings || root.previous-screen == Screen.settings: SettingsScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.settings) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.settings) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.settings && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.settings) - root.view-x) * self.width;
+        y: (screen-y(Screen.settings) - root.view-y) * self.height;
         brightness <=> UiState.brightness;
         double-press-index <=> UiState.double-press-index;
         rotation-index <=> UiState.rotation-index;
@@ -274,10 +300,8 @@ export component AppWindow inherits Window {
 
     if UiState.screen == Screen.pairing || root.previous-screen == Screen.pairing: PairingScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.pairing) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.pairing) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.pairing && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.pairing) - root.view-x) * self.width;
+        y: (screen-y(Screen.pairing) - root.view-y) * self.height;
         pairing-code: UiState.pairing-code;
         action-text: UiState.pairing-action-text;
         action => { UiState.pairing-action(); }
@@ -285,10 +309,8 @@ export component AppWindow inherits Window {
 
     if UiState.screen == Screen.calibration || root.previous-screen == Screen.calibration: CalibrationScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.calibration) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.calibration) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.calibration && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.calibration) - root.view-x) * self.width;
+        y: (screen-y(Screen.calibration) - root.view-y) * self.height;
         header-text: UiState.calibration-header;
         step-text: UiState.calibration-step;
         primary-text: UiState.calibration-primary-text;
@@ -304,10 +326,8 @@ export component AppWindow inherits Window {
 
     if UiState.screen == Screen.about || root.previous-screen == Screen.about: AboutScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.about) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.about) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.about && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.about) - root.view-x) * self.width;
+        y: (screen-y(Screen.about) - root.view-y) * self.height;
         version-info: UiState.version-info;
         debug-info: UiState.debug-info;
         check-updates => { UiState.about-check-updates(); }
@@ -316,10 +336,8 @@ export component AppWindow inherits Window {
 
     if UiState.screen == Screen.update || root.previous-screen == Screen.update: UpdateScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.update) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.update) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.update && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.update) - root.view-x) * self.width;
+        y: (screen-y(Screen.update) - root.view-y) * self.height;
         body-text: UiState.update-body;
         show-dropdown: UiState.update-show-dropdown;
         updates: UiState.updates;
@@ -331,10 +349,8 @@ export component AppWindow inherits Window {
 
     if UiState.screen == Screen.charge || root.previous-screen == Screen.charge: ChargeScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.charge) - screen-x(root.active-screen)) * self.width;
-        y: (screen-y(Screen.charge) - screen-y(root.active-screen)) * self.height;
-        opacity: (root.active-screen == Screen.charge && root.screen-loaded) ? 1.0 : 0.0;
-        animate x, y, opacity { duration: 250ms; easing: ease-in-out; }
+        x: (screen-x(Screen.charge) - root.view-x) * self.width;
+        y: (screen-y(Screen.charge) - root.view-y) * self.height;
         battery-percent: UiState.charge-percent;
     }
 

@@ -91,6 +91,14 @@ static void update_calibration_ui_strings() {
     const auto &state = get_slint_window()->global<UiState>();
     state.set_calibration_step(step_label);
     state.set_calibration_primary_text(primary_label);
+    state.set_show_expo_slider(calibration_step == CALIBRATION_STEP_EXPO);
+    state.set_show_invert_switch(calibration_step == CALIBRATION_STEP_STICK_FLAGS);
+    if (calibration_step == CALIBRATION_STEP_EXPO) {
+      state.set_expo_value(calibration_data.expo);
+    }
+    if (calibration_step == CALIBRATION_STEP_STICK_FLAGS) {
+      state.set_invert_y(calibration_data.invert_y);
+    }
   });
 }
 
@@ -119,6 +127,9 @@ static void calibration_task(void *pvParameters) {
     // 3. Format header label
     char header_str[64];
     if (calibration_step == CALIBRATION_STEP_EXPO) {
+      if (get_slint_window()) {
+        expo = get_slint_window()->global<UiState>().get_expo_value();
+      }
       snprintf(header_str, sizeof(header_str), "Expo: %.2f", expo);
     } else {
       snprintf(header_str, sizeof(header_str), "X: %.2f | Y: %.2f", curr_x, curr_y);
@@ -199,11 +210,16 @@ extern "C" void handle_calibration_primary() {
     calibration_data.deadband = deadband;
   }
   else if (calibration_step == CALIBRATION_STEP_EXPO) {
-    calibration_data.expo = expo;
+    if (get_slint_window()) {
+      calibration_data.expo = get_slint_window()->global<UiState>().get_expo_value();
+    } else {
+      calibration_data.expo = expo;
+    }
   }
   else if (calibration_step == CALIBRATION_STEP_STICK_FLAGS) {
-    // For simplicity, default invert_y toggler or current setting
-    // calibration_data.invert_y = ...
+    if (get_slint_window()) {
+      calibration_data.invert_y = get_slint_window()->global<UiState>().get_invert_y();
+    }
   }
   else if (calibration_step >= CALIBRATION_STEP_DONE) {
     // Save to NVS

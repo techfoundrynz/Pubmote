@@ -56,7 +56,7 @@ static uint32_t hsv_to_rgb(float h, float s, float v) {
     uint8_t G = (uint8_t)((g + m) * 255.0f);
     uint8_t B = (uint8_t)((b + m) * 255.0f);
     
-    return 0xFF000000 | (R << 16) | (G << 8) | B;
+    return (R << 16) | (G << 8) | B;
 }
 
 extern "C" void setup_settings_properties() {
@@ -103,11 +103,12 @@ extern "C" void handle_settings_changed() {
 
   if (rgb != last_rgb) {
       const auto &theme = get_slint_window()->global<Theme>();
-      theme.set_accent(slint::Color::from_argb_encoded(rgb | 0xFF000000));
 
       uint8_t r = (rgb >> 16) & 0xFF;
       uint8_t g = (rgb >> 8) & 0xFF;
       uint8_t b = rgb & 0xFF;
+      theme.set_accent(slint::Color::from_rgb_uint8(r, g, b));
+
       float luminance = 0.299f * r + 0.587f * g + 0.114f * b;
     
       if (luminance > 140.0f) {

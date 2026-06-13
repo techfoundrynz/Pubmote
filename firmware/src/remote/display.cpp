@@ -18,6 +18,14 @@
 #include "remote/i2c.h"
 #include "remoteinputs.h"
 #include "settings.h"
+#include "screens/stats_screen.h"
+#include "screens/menu_screen.h"
+#include "screens/settings_screen.h"
+#include "screens/calibration_screen.h"
+#include "screens/pairing_screen.h"
+#include "screens/about_screen.h"
+#include "screens/update_screen.h"
+#include "remote/led.h"
 
 // Slint inclusion
 #include "esp_heap_caps.h"
@@ -48,6 +56,11 @@
 #include "remote/haptic.h"
 
 static const char *TAG = "PUBREMOTE-DISPLAY";
+
+extern "C" {
+    extern void (*slint_esp_on_before_render_cb)();
+    void slint_esp_set_scroll_offset(int offset_y, int screen_index);
+}
 
 #define LCD_HOST SPI2_HOST
 #define LCD_CMD_BITS 8
@@ -281,7 +294,41 @@ static slint::Image generate_color_slider_track(float w_len, float h_len, int mo
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
-  state.on_screen_changed([](Screen screen) { cached_active_screen.store(screen); });
+  state.on_screen_changed([](Screen screen) {
+    Screen prev = cached_active_screen.exchange(screen);
+    if (prev != screen) {
+      // Exit hooks
+      if (prev == Screen::Stats) {
+        teardown_stats_properties();
+      }
+      else if (prev == Screen::Pairing) {
+        led_set_effect_default();
+      }
+
+      // Enter hooks
+      if (screen == Screen::Stats) {
+        setup_stats_properties();
+      }
+      else if (screen == Screen::Menu) {
+        setup_menu_properties();
+      }
+      else if (screen == Screen::Settings) {
+        setup_settings_properties();
+      }
+      else if (screen == Screen::Calibration) {
+        setup_calibration_properties();
+      }
+      else if (screen == Screen::Pairing) {
+        setup_pairing_properties();
+      }
+      else if (screen == Screen::About) {
+        setup_about_properties();
+      }
+      else if (screen == Screen::Update) {
+        setup_update_properties();
+      }
+    }
+  });
 
   state.on_splash_tapped([]() { handle_splash_tapped(); });
   state.on_stats_swiped_down([]() { handle_stats_swiped_down(); });
@@ -323,12 +370,12 @@ extern "C" void apply_theme_settings() {
   theme.set_font_scale((float)HOR_RES / 240.0f);
 #endif
 
-  // Custom accent color
-  theme.set_accent(slint::Color::from_argb_encoded(device_settings.theme_color));
-
   uint8_t r = (device_settings.theme_color >> 16) & 0xFF;
   uint8_t g = (device_settings.theme_color >> 8) & 0xFF;
   uint8_t b = device_settings.theme_color & 0xFF;
+
+  // Custom accent color
+  theme.set_accent(slint::Color::from_rgb_uint8(r, g, b));
   float luminance = 0.299f * r + 0.587f * g + 0.114f * b;
 
   if (luminance > 140.0f) {
@@ -402,6 +449,13 @@ static void slint_event_loop(void *pvParameters) {
 
   ESP_LOGI(TAG, "Creating AppWindow...");
   slint_window = AppWindow::create();
+  slint_esp_on_before_render_cb = []() {
+    if (slint_window) {
+      int scroll_y = slint_window->global<UiState>().get_scroll_offset_y();
+      int screen = (int)slint_window->global<UiState>().get_screen();
+      slint_esp_set_scroll_offset(scroll_y, screen);
+    }
+  };
   connect_callbacks();
   apply_theme_settings();
 
@@ -418,6 +472,7 @@ static void slint_event_loop(void *pvParameters) {
   ESP_LOGI(TAG, "Slint event loop exited");
   vTaskDelete(NULL);
 }
+
 
 // Input polling task to map remote control buttons/joystick to Slint navigation
 static void slint_input_task(void *pvParameters) {
@@ -679,8 +734,13 @@ static esp_err_t app_touch_init(void) {
       .x_max = HOR_RES,
       .y_max = VER_RES,
       .rst_gpio_num = (gpio_num_t)TP_RST,
-  #ifdef TP_INT
+  // Only the CST816S and FT5x06 drivers configure the INT pin for interrupts;
+  // the Slint event loop switches from polling to interrupt-driven touch when
+  // int_gpio_num is set. CST9217 never sets up the GPIO, so leave it NC there.
+  #if defined(TP_INT) && (defined(TP_CST816S) || defined(TP_FT3168))
       .int_gpio_num = (gpio_num_t)TP_INT,
+  #else
+      .int_gpio_num = GPIO_NUM_NC,
   #endif
       .flags =
           {

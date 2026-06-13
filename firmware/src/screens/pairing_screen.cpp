@@ -23,7 +23,6 @@ extern "C" void setup_pairing_properties() {
 extern "C" void handle_pairing_action() {
   ESP_LOGI(TAG, "Pairing cancel action");
   pairing_state = PAIRING_STATE_UNPAIRED;
-  led_set_effect_default();
   
   slint::invoke_from_event_loop([]() {
     get_slint_window()->global<UiState>().set_screen(Screen::Menu);

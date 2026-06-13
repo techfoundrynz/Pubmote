@@ -8,7 +8,7 @@
 #endif
 
 // Uncomment to emulate connection state and incoming stats for UI testing
-#define TEST_MODE 0
+#define TEST_MODE 1
 
 #ifndef TARGET_FPS
   #define TARGET_FPS 60

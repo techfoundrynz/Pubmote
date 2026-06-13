@@ -7,6 +7,8 @@ export component AppButton inherits Rectangle {
     in property <bool> primary: true;
     in property <bool> enabled: true;
     callback clicked;
+    callback long-clicked;
+    property <bool> was-long-pressed: false;
 
     height: 42px * Theme.scale;
     border-radius: 8px * Theme.scale;
@@ -27,6 +29,30 @@ export component AppButton inherits Rectangle {
 
     touch := TouchArea {
         enabled: root.enabled;
-        clicked => { root.clicked(); }
+        clicked => {
+            if (!root.was-long-pressed) {
+                root.clicked();
+            }
+        }
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) {
+                    root.was-long-pressed = false;
+                    long-press-timer.running = true;
+                } else if (event.kind == PointerEventKind.up) {
+                    long-press-timer.running = false;
+                }
+            }
+        }
+    }
+
+    long-press-timer := Timer {
+        interval: 800ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.was-long-pressed = true;
+            root.long-clicked();
+        }
     }
 }

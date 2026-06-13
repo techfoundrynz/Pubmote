@@ -12,6 +12,8 @@ export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
     in property <string> pocket-mode-text: "Enable Pocket Mode";
     in property <string> hbm-mode-text: "Enable HBM Mode";
+    in property <string> shutdown-text: "Shutdown";
+    in-out property <int> scroll-offset-y: 0;
     callback back;
     callback connect;
     callback pocket-mode;
@@ -21,11 +23,20 @@ export component MenuScreen inherits Rectangle {
     callback pairing;
     callback about;
     callback shutdown;
+    callback shutdown-long-press;
 
     background: Theme.bg;
 
-    Flickable {
+    flick := Flickable {
         viewport-height: menu-layout.min-height;
+        // Re-sync on creation: the menu is destroyed/recreated when navigating
+        // away and back, which resets viewport-y without firing changed.
+        init => {
+            root.scroll-offset-y = -self.viewport-y / 1px;
+        }
+        changed viewport-y => {
+            root.scroll-offset-y = -self.viewport-y / 1px;
+        }
         menu-layout := VerticalLayout {
             padding: 40px * Theme.scale;
             spacing: 10px * Theme.scale;
@@ -38,7 +49,7 @@ export component MenuScreen inherits Rectangle {
             AppButton { text: "Calibration"; clicked => { root.calibration(); } }
             AppButton { text: "Pairing"; clicked => { root.pairing(); } }
             AppButton { text: "About"; clicked => { root.about(); } }
-            AppButton { text: "Shutdown"; clicked => { root.shutdown(); } }
+            AppButton { text: root.shutdown-text; clicked => { root.shutdown(); } long-clicked => { root.shutdown-long-press(); } }
         }
     }
 }
