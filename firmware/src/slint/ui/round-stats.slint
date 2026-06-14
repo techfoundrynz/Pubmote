@@ -1,7 +1,10 @@
 import { Theme } from "theme.slint";
 import { ArcGauge } from "arc-gauge.slint";
-import { StatsHeader } from "stats-header.slint";
+import { BatteryDisplay } from "battery-display.slint";
+import { StatusRow } from "status-row.slint";
 import { SpeedDisplay } from "speed-display.slint";
+import { AppChip } from "app-chip.slint";
+
 
 export component RoundStats inherits Rectangle {
     in property <string> speed: "0.0";
@@ -20,12 +23,12 @@ export component RoundStats inherits Rectangle {
     in property <string> board-state-message: "";
     in property <int> active-page: 0;
     in property <[string]> pages: [];
-    
+
     callback board-battery-long-pressed();
 
-    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical : 
-        root.duty-fraction >= 0.80 ? Theme.color-warning : 
-        root.duty-fraction >= 0.70 ? Theme.color-caution : 
+    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical :
+        root.duty-fraction >= 0.80 ? Theme.color-warning :
+        root.duty-fraction >= 0.70 ? Theme.color-caution :
         Theme.color-active;
 
     property <bool> was-long-pressed: false;
@@ -70,18 +73,32 @@ export component RoundStats inherits Rectangle {
         // ui_StatsHeader (25%) — indicators pinned to the bottom of the region.
         Rectangle {
             vertical-stretch: 1;
-            StatsHeader {
+
+            VerticalLayout {
                 width: 100%;
                 height: 100%;
-                remote-battery: root.remote-battery;
-                remote-charging: root.remote-charging;
-                is-connected: root.is-connected;
-                connection-state-label: root.connection-state-label;
-                rssi-bars: root.rssi-bars;
-                board-state-message: root.board-state-message;
-                pocket-mode-active: root.pocket-mode-active;
-                left-pad: root.left-pad;
-                right-pad: root.right-pad;
+                alignment: end;
+                spacing: 6px * Theme.scale;
+
+                // Battery indicator row (Row 1)
+                HorizontalLayout {
+                    alignment: center;
+                    BatteryDisplay {
+                        battery: root.remote-battery;
+                        charging: root.remote-charging;
+                        show-percent: false;
+                    }
+                }
+
+                // Chip row (Row 2)
+                HorizontalLayout {
+                    alignment: center;
+                    AppChip {
+                        text: root.board-state-message != "" ? root.board-state-message : root.connection-state-label;
+                        accent-color: root.board-state-message != "" ? Theme.color-warning : Theme.accent;
+                        active: root.is-connected;
+                    }
+                }
             }
         }
 
@@ -145,13 +162,24 @@ export component RoundStats inherits Rectangle {
 
             VerticalLayout {
                 alignment: center;
-                Text {
-                    text: root.board-battery;
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-medium;
-                    font-family: "JetBrains Mono";
-                    horizontal-alignment: center;
+                spacing: 4px * Theme.scale;
+
+                // Text {
+                //     text: root.board-battery;
+                //     color: Theme.text;
+                //     font-size: Theme.font-14;
+                //     font-weight: Theme.w-medium;
+                //     font-family: "JetBrains Mono";
+                //     horizontal-alignment: center;
+                // }
+
+                StatusRow {
+                    is-connected: root.is-connected;
+                    rssi-bars: root.rssi-bars;
+                    left-pad: root.left-pad;
+                    right-pad: root.right-pad;
+                    connection-state-label: root.connection-state-label;
+                    pocket-mode-active: root.pocket-mode-active;
                 }
             }
         }

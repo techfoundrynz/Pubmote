@@ -4,10 +4,11 @@ import { BatteryIndicator } from "battery-indicator.slint";
 export component BatteryDisplay inherits Rectangle {
     in property <int> battery: 100;
     in property <bool> charging: false;
+    in property <bool> show-percent: true;
 
     HorizontalLayout {
         spacing: 6px * Theme.scale;
-        if Theme.panel-width >= 200px : Text {
+        if root.show-percent && Theme.panel-width >= 200px : Text {
             text: root.battery + "%";
             color: Theme.text-dim;
             font-size: Theme.font-10;
