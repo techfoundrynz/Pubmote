@@ -105,7 +105,7 @@ jobs:
       - name: Setup Rust for Xtensa
         uses: esp-rs/xtensa-toolchain@v1.5
         with:
-          default: true
+          default: false
           buildtargets: esp32s3
 
       # Build the project using the extracted build_value
