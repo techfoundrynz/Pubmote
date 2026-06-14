@@ -63,12 +63,16 @@ export component SquareStats inherits Rectangle {
         Rectangle {
             vertical-stretch: 2;
             VerticalLayout {
+                width: 100%;
+                height: 100%;
                 alignment: center;
 
                 // ui_PrimaryStat + ui_PrimaryStatUnit
                 SpeedDisplay {
                     speed: root.speed;
                     speed-unit: root.speed-unit;
+                    center-align: false;
+                    font-size: Theme.font-96;
                 }
                 // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
                 Text {

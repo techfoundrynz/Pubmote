@@ -3,26 +3,39 @@ import { Theme } from "theme.slint";
 export component SpeedDisplay inherits Rectangle {
     in property <string> speed: "0.0";
     in property <string> speed-unit: "KPH";
+    in property <bool> center-align: true;
+    in property <length> font-size: Theme.font-96;
 
-    HorizontalLayout {
-        alignment: center;
-        spacing: 4px * Theme.scale;
+    height: speed-label.preferred-height;
+    width: 100%;
+
+    property <length> speed-max-width: (root.font-size > Theme.font-96 ? 170px : 140px) * Theme.scale;
+
+    speed-label := Text {
+        x: root.center-align ? (parent.width - self.width) / 2 : 0px;
+        width: self.preferred-width;
+        height: self.preferred-height;
+        text: root.speed;
+        color: Theme.text;
+        font-size: root.font-size;
+        font-weight: Theme.w-semibold;
+        vertical-alignment: bottom;
+    }
+
+    unit-container := VerticalLayout {
+        x: root.center-align ? 
+            (speed-label.x + speed-label.width + 4px * Theme.scale) : 
+            (root.speed-max-width + 4px * Theme.scale);
+        y: 0px;
+        height: 100%;
+        alignment: end;
+        padding-bottom: 14px * Theme.scale;
         Text {
-            text: root.speed;
-            color: Theme.text;
-            font-size: Theme.font-96;
+            text: root.speed-unit;
+            color: Theme.text-dim;
+            font-size: Theme.font-14;
             font-weight: Theme.w-semibold;
-            vertical-alignment: bottom;
-        }
-        VerticalLayout {
-            alignment: end;
-            padding-bottom: 14px * Theme.scale;
-            Text {
-                text: root.speed-unit;
-                color: Theme.text-dim;
-                font-size: Theme.font-14;
-                font-weight: Theme.w-semibold;
-            }
+            horizontal-alignment: left;
         }
     }
 }

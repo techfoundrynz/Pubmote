@@ -99,18 +99,40 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
             if scale_font is None:
                 scale_font = lv_hor_res / 240.0
 
+            limit_threshold = 125
+            limit_threshold_str = get_macro_value("LIMIT_GLYPHS_THRESHOLD")
+            if limit_threshold_str:
+                try:
+                    limit_threshold = int(limit_threshold_str)
+                except ValueError:
+                    pass
+
+            limit_chars = get_macro_value("LIMIT_GLYPHS_CHARS")
+            if limit_chars:
+                limit_chars = limit_chars.strip()
+                if limit_chars.startswith('"') and limit_chars.endswith('"'):
+                    limit_chars = limit_chars[1:-1]
+                elif limit_chars.startswith("'") and limit_chars.endswith("'"):
+                    limit_chars = limit_chars[1:-1]
+                limit_chars = limit_chars.replace('\\"', '"').replace("\\'", "'")
+            else:
+                limit_chars = "0123456789., "
+
             base_sizes = [10, 11, 12, 14, 28, 48, 96]
             # int(x + 0.5) matches Slint's Math.round (Python round() is banker's rounding)
             scaled_sizes = sorted(list(set(int(sz * scale_font + 0.5) for sz in base_sizes)))
-            # The compiler embeds the full ~85-glyph charset per size, so very large
-            # sizes cost MBs of flash and overflow the app partition. Text larger
-            # than this cap falls back to runtime scaling from the largest embedded size.
-            scaled_sizes = [sz for sz in scaled_sizes if sz <= 100]
+            # The compiler embeds the full ~85-glyph charset per size by default, which
+            # would overflow flash for large sizes. We have patched the Slint compiler to only
+            # embed configured characters for font sizes over the configured threshold,
+            # making them highly space-efficient. Sizes larger than the 250 cap fall back to runtime scaling.
+            scaled_sizes = [sz for sz in scaled_sizes if sz <= 250]
             font_sizes_str = ",".join(str(sz) for sz in scaled_sizes)
 
-            print(f"[Slint Compiler] Detected target parameters: LV_HOR_RES={lv_hor_res}, SCALE_FONT={scale_font}")
+            print(f"[Slint Compiler] Detected target parameters: LV_HOR_RES={lv_hor_res}, SCALE_FONT={scale_font}, LIMIT_GLYPHS_THRESHOLD={limit_threshold}, LIMIT_GLYPHS_CHARS='{limit_chars}'")
             print(f"[Slint Compiler] Embedding font sizes: {font_sizes_str}")
             os.environ["SLINT_FONT_SIZES"] = font_sizes_str
+            os.environ["SLINT_LIMIT_GLYPHS_THRESHOLD"] = str(limit_threshold)
+            os.environ["SLINT_LIMIT_GLYPHS_CHARS"] = limit_chars
             args = [
                 slint_compiler_path,
                 "firmware/src/slint/app-window.slint",
