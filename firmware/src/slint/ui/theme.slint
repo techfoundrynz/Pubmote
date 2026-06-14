@@ -18,8 +18,8 @@ export global Theme {
     in-out property <bool> is-square-mode: false;
 
     // Standard page paddings
-    out property <length> page-padding-horizontal: 24px * root.scale;
-    out property <length> page-padding-vertical: 12px * root.scale;
+    out property <length> page-padding-horizontal: (root.is-square-mode ? 24px : 36px) * root.scale;
+    out property <length> page-padding-vertical: (root.is-square-mode ? 12px : 18px) * root.scale;
 
     // Palette (hex values taken verbatim from the SquareLine screens).
     in-out property <color> bg: #000000;

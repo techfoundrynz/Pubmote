@@ -8,10 +8,36 @@ export component SplashScreen inherits Rectangle {
     callback clicked;
     background: Theme.bg;
 
-    Image {
-        width: 120px * Theme.scale;
-        height: 120px * Theme.scale;
-        source: @image-url("../../../assets/icon2.png");
+    VerticalLayout {
+        alignment: center;
+        spacing: 10px * Theme.scale;
+        
+        HorizontalLayout {
+            alignment: center;
+            Text {
+                text: "pub";
+                font-family: "Saira";
+                font-weight: 600;
+                font-size: 54px * Theme.scale;
+                color: #389631;
+            }
+            Text {
+                text: "mote";
+                font-family: "Saira";
+                font-weight: 600;
+                font-size: 54px * Theme.scale;
+                color: #EFEFEF;
+            }
+        }
+        
+        Text {
+            horizontal-alignment: center;
+            text: "www.pubmote.com";
+            font-family: "Saira";
+            font-weight: 600;
+            font-size: 14px * Theme.scale;
+            color: #666666;
+        }
     }
 
     TouchArea {
