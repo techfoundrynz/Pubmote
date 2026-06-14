@@ -318,16 +318,16 @@ void EspPlatform<PixelType>::run_event_loop()
 
                     switch (rotation) {
                     case slint::platform::SoftwareRenderer::RenderingRotation::Rotate90:
-                        rotated_x = float(size.height) - raw_y;
-                        rotated_y = raw_x;
+                        rotated_x = raw_y;
+                        rotated_y = float(size.width) - raw_x;
                         break;
                     case slint::platform::SoftwareRenderer::RenderingRotation::Rotate180:
                         rotated_x = float(size.width) - raw_x;
                         rotated_y = float(size.height) - raw_y;
                         break;
                     case slint::platform::SoftwareRenderer::RenderingRotation::Rotate270:
-                        rotated_x = raw_y;
-                        rotated_y = float(size.width) - raw_x;
+                        rotated_x = float(size.height) - raw_y;
+                        rotated_y = raw_x;
                         break;
                     default:
                         break;
@@ -385,6 +385,10 @@ void EspPlatform<PixelType>::run_event_loop()
                     int dy = current_scroll_y - last_scroll_y;
                     last_scroll_y = current_scroll_y;
                     
+                    if (rotation == slint::platform::SoftwareRenderer::RenderingRotation::Rotate180) {
+                        dy = -dy;
+                    }
+                    
                     bool performed_copy_scroll = false;
                     int abs_dy = std::abs(dy);
                     std::span<PixelType> prev_back_buffer;
@@ -394,8 +398,11 @@ void EspPlatform<PixelType>::run_event_loop()
                     // back to the current buffer from there, so the previous buffer is only
                     // read once and the shift overlaps the panel DMA.
                     if (buffer2 && !screen_changed && dy != 0 && current_screen == 2 && abs_dy < size.height) {
-                        prev_back_buffer = (current_back_buffer.data() == buffer1->data()) ? *buffer2 : *buffer1;
-                        performed_copy_scroll = true;
+                        if (rotation == slint::platform::SoftwareRenderer::RenderingRotation::NoRotation || 
+                            rotation == slint::platform::SoftwareRenderer::RenderingRotation::Rotate180) {
+                            prev_back_buffer = (current_back_buffer.data() == buffer1->data()) ? *buffer2 : *buffer1;
+                            performed_copy_scroll = true;
+                        }
                     }
                     #endif
                     
