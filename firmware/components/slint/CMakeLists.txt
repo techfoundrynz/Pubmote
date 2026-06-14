@@ -1,4 +1,4 @@
-﻿# Copyright © SixtyFPS GmbH <info@slint.dev>
+# Copyright © SixtyFPS GmbH <info@slint.dev>
 # SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0
 
 idf_component_register(
@@ -82,7 +82,7 @@ else()
     # Run Cargo build for the host compiler
     message(STATUS "Running Cargo build for Slint compiler...")
     execute_process(
-        COMMAND cargo build --release --bin slint-compiler
+        COMMAND ${CMAKE_COMMAND} -E env --unset=CC --unset=CXX --unset=CFLAGS --unset=CXXFLAGS --unset=LDFLAGS --unset=CPPFLAGS --unset=AR --unset=RANLIB --unset=AS --unset=LD cargo build --release --bin slint-compiler
         WORKING_DIRECTORY "${slint_SOURCE_DIR}"
         RESULT_VARIABLE compiler_cargo_result
     )
