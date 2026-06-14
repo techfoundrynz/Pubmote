@@ -42,6 +42,12 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
+      - name: Setup Rust for Xtensa
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          buildtargets: esp32s3
+
       - name: Build PlatformIO Project
         run: pio run -e leafblaster_esp32s3_touch_amoled_143_co5300
         env:

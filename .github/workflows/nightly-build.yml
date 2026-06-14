@@ -127,6 +127,12 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
+      - name: Setup Rust for Xtensa
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          buildtargets: esp32s3
+
       - name: Build PlatformIO Project
         run: |
           sed -i 's/build_type = debug/build_type = release/g' platformio.ini
