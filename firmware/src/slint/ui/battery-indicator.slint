@@ -7,43 +7,44 @@ export component BatteryIndicator inherits Rectangle {
     width: 24px * Theme.scale;
     height: 11px * Theme.scale;
 
-    // ui_BatteryOutline + ui_BatteryFill
+    // Container/outline
     Rectangle {
         x: 0;
         y: 0;
-        width: 21px * Theme.scale;
-        height: 11px * Theme.scale;
-        border-radius: 3px * Theme.scale;
+        width: parent.width - (4px * Theme.scale); // Leave space for the battery tip
+        height: parent.height;
+        border-radius: parent.height / 4;
         border-width: 1.5px * Theme.scale;
         border-color: Theme.text-dim;
-        
+
+        // Fill level
         Rectangle {
             x: 2px * Theme.scale;
             y: 2px * Theme.scale;
             width: (parent.width - 4px * Theme.scale) * clamp(root.battery / 100.0, 0, 1);
             height: parent.height - 4px * Theme.scale;
-            border-radius: 1.5px * Theme.scale;
+            border-radius: (parent.height - 8px * Theme.scale) / 2;
             background: root.charging ? Theme.color-success : (root.battery > 50 ? Theme.text : (root.battery > 20 ? Theme.color-caution : Theme.color-critical));
         }
 
-        if root.charging: Path {
-            width: 5px * Theme.scale;
-            height: 8px * Theme.scale;
+        // Charge bolt
+        if root.charging : Image {
+            source: @image-url("../assets/charge-bolt.png");
+            width: 8px * Theme.scale;
+            height: 12px * Theme.scale;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
-            viewbox-width: 6;
-            viewbox-height: 10;
-            fill: Theme.bg;
-            commands: "M 3 0 L 0 5.5 L 3 5.5 L 2 10 L 6 4.5 L 3 4.5 Z";
+            colorize: #ffffff;
+            image-fit: contain;
         }
     }
 
-    // ui_BatteryTip
+    // Tip
     Rectangle {
         x: 20px * Theme.scale;
         y: (parent.height - self.height) / 2;
-        width: 3px * Theme.scale;
-        height: 4px * Theme.scale;
+        width: parent.width / 10;
+        height: parent.height / 3;
         border-top-right-radius: 1px * Theme.scale;
         border-bottom-right-radius: 1px * Theme.scale;
         background: Theme.text-dim;

@@ -28,10 +28,10 @@ export component StatusRow inherits Rectangle {
             }
         }
 
-        if root.pocket-mode-active: VerticalLayout {
+        VerticalLayout {
             alignment: center;
             LockIcon {
-                icon-color: root.pocket-mode-active ? Theme.color-caution : Theme.text-dim;
+                icon-color: root.pocket-mode-active ? Theme.color-caution : Theme.track;
             }
         }
     }

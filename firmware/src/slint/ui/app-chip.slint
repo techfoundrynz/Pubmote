@@ -3,7 +3,7 @@ import { Theme } from "theme.slint";
 // Reusable tag/chip component with border and press interactions.
 export component AppChip inherits Rectangle {
     in property <string> text;
-    in property <bool> enabled: true;
+    in property <bool> enabled: false;
     in property <bool> active: false;
     in property <color> accent-color: Theme.accent;
     callback clicked;
@@ -11,10 +11,9 @@ export component AppChip inherits Rectangle {
     // Layout configuration
     height: 24px * Theme.scale;
     border-radius: self.height / 2;
-    
     // Border uses the accent-color when enabled, and Theme.track when disabled
     border-width: 1.5px * Theme.scale;
-    border-color: !root.enabled ? Theme.track : root.accent-color;
+    border-color: root.accent-color;
 
     // Background uses the same opacity (transparentize(0.7), i.e., 30% opacity)
     // for the background (of the accent-color) of the ghost button variant for press.
@@ -34,8 +33,7 @@ export component AppChip inherits Rectangle {
 
         Text {
             text: root.text;
-            color: !root.enabled ? Theme.text-dim : 
-                   root.active ? Theme.text : Theme.text.transparentize(0.1);
+            color: Theme.text;
             font-size: Theme.font-10;
             font-weight: Theme.w-semibold;
             vertical-alignment: center;
