@@ -4,12 +4,12 @@ export component SpeedDisplay inherits Rectangle {
     in property <string> speed: "0.0";
     in property <string> speed-unit: "KPH";
     in property <bool> center-align: true;
-    in property <length> font-size: Theme.font-84;
+    in property <length> font-size: Theme.font-64;
 
     height: speed-label.preferred-height;
     width: 100%;
 
-    property <length> speed-max-width: (root.font-size > Theme.font-84 ? 170px : 140px) * Theme.scale;
+    property <length> speed-max-width: 100px * Theme.scale;
 
     speed-label := Text {
         x: root.center-align ? (parent.width - self.width) / 2 : 0px;
@@ -23,11 +23,11 @@ export component SpeedDisplay inherits Rectangle {
     }
 
     unit-container := VerticalLayout {
-        x: root.center-align ? 
-            (speed-label.x + speed-label.width + 4px * Theme.scale) : 
+        x: root.center-align ?
+            (speed-label.x + speed-label.width + 4px * Theme.scale) :
             (root.speed-max-width + 4px * Theme.scale);
         y: 0px;
-        height: 100%;
+        // height: 100%;
         alignment: end;
         padding-bottom: 14px * Theme.scale;
         Text {

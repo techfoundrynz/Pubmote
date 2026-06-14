@@ -2,6 +2,7 @@ import { Theme } from "theme.slint";
 import { BatteryDisplay } from "battery-display.slint";
 import { StatusRow } from "status-row.slint";
 import { SpeedDisplay } from "speed-display.slint";
+import { AppChip } from "app-chip.slint";
 
 export component SquareStats inherits Rectangle {
     in property <string> speed: "0.0";
@@ -20,12 +21,12 @@ export component SquareStats inherits Rectangle {
     in property <string> board-state-message: "";
     in property <int> active-page: 0;
     in property <[string]> pages: [];
-    
+
     callback board-battery-long-pressed();
 
-    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical : 
-        root.duty-fraction >= 0.80 ? Theme.color-warning : 
-        root.duty-fraction >= 0.70 ? Theme.color-caution : 
+    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical :
+        root.duty-fraction >= 0.80 ? Theme.color-warning :
+        root.duty-fraction >= 0.70 ? Theme.color-caution :
         Theme.color-active;
 
     property <bool> was-long-pressed: false;
@@ -36,105 +37,99 @@ export component SquareStats inherits Rectangle {
         padding-right: 24px * Theme.scale;
         padding-top: 12px * Theme.scale;
         padding-bottom: 12px * Theme.scale;
+        alignment: space-between;
 
-        // Top: Remote Battery Indicator / Board State Message
-        Rectangle {
-            vertical-stretch: 1;
-            VerticalLayout {
-                alignment: space-between;
-                if root.board-state-message != "" : Text {
-                    text: root.board-state-message;
-                    color: Theme.color-warning;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-semibold;
-                    horizontal-alignment: center;
-                }
-                if root.board-state-message == "" : HorizontalLayout {
-                    alignment: center;
-                    BatteryDisplay {
-                        battery: root.remote-battery;
-                        charging: root.remote-charging;
-                    }
-                }
-            }
-        }
+        // Header
+        HorizontalLayout {
+            vertical-stretch: 0;
+            spacing: 12px * Theme.scale;
+            alignment: space-between;
 
-        // ui_StatsBody (50%)
-        Rectangle {
-            vertical-stretch: 2;
             VerticalLayout {
-                width: 100%;
-                height: 100%;
                 alignment: center;
-
-                // ui_PrimaryStat + ui_PrimaryStatUnit
-                SpeedDisplay {
-                    speed: root.speed;
-                    speed-unit: root.speed-unit;
-                    center-align: false;
-                    font-size: Theme.font-84;
-                }
-                // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
-                Text {
-                    text: root.is-connected ? root.pages[root.active-page] : "";
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-medium;
-                    font-family: "JetBrains Mono";
-                    horizontal-alignment: center;
-                }
-            }
-        }
-
-        // ui_StatsFooter (25%)
-        Rectangle {
-            vertical-stretch: 1;
-
-            // Touch Area to detect board battery tap/long press
-            TouchArea {
-                width: 100%;
-                height: 100%;
-                clicked => {
-                    // Normal click doesn't cycle battery display
-                }
-                pointer-event(event) => {
-                    if (event.button == PointerEventButton.left) {
-                        if (event.kind == PointerEventKind.down) {
-                            root.was-long-pressed = false;
-                            long-press-timer.running = true;
-                        } else if (event.kind == PointerEventKind.up) {
-                            long-press-timer.running = false;
-                        }
-                    }
-                }
-            }
-
-            long-press-timer := Timer {
-                interval: 600ms;
-                running: false;
-                triggered => {
-                    self.running = false;
-                    root.was-long-pressed = true;
-                    root.board-battery-long-pressed();
+                AppChip {
+                    text: root.board-state-message != "" ? root.board-state-message : root.connection-state-label;
+                    accent-color: root.board-state-message != "" ? Theme.color-warning : Theme.accent;
+                    active: root.is-connected;
                 }
             }
 
             VerticalLayout {
                 alignment: center;
-                Text {
-                    text: root.board-battery;
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-medium;
-                    font-family: "JetBrains Mono";
-                    horizontal-alignment: center;
+                BatteryDisplay {
+                    battery: root.remote-battery;
+                    charging: root.remote-charging;
                 }
             }
         }
 
-        // Status row
-        Rectangle {
+        // Content (Bottom-aligned)
+        VerticalLayout {
+            alignment: end;
             vertical-stretch: 1;
+            spacing: 6px * Theme.scale;
+
+            // ui_PrimaryStat + ui_PrimaryStatUnit
+            SpeedDisplay {
+                speed: root.speed;
+                speed-unit: root.speed-unit;
+                center-align: false;
+                font-size: Theme.font-64;
+            }
+
+            // // Stats page info (e.g. voltage, current, etc.)
+            // Text {
+            //     text: root.is-connected ? root.pages[root.active-page] : "";
+            //     color: Theme.text;
+            //     font-size: Theme.font-14;
+            //     font-weight: Theme.w-medium;
+            //     font-family: "JetBrains Mono";
+            //     horizontal-alignment: center;
+            // }
+
+            // Rectangle {
+            //     height: 28px * Theme.scale;
+
+            //     // Touch Area to detect board battery tap/long press
+            //     TouchArea {
+            //         width: 100%;
+            //         height: 100%;
+            //         pointer-event(event) => {
+            //             if (event.button == PointerEventButton.left) {
+            //                 if (event.kind == PointerEventKind.down) {
+            //                     root.was-long-pressed = false;
+            //                     long-press-timer.running = true;
+            //                 } else if (event.kind == PointerEventKind.up) {
+            //                     long-press-timer.running = false;
+            //                 }
+            //             }
+            //         }
+            //     }
+
+            //     long-press-timer := Timer {
+            //         interval: 600ms;
+            //         running: false;
+            //         triggered => {
+            //             self.running = false;
+            //             root.was-long-pressed = true;
+            //             root.board-battery-long-pressed();
+            //         }
+            //     }
+
+            //     Text {
+            //         width: 100%;
+            //         height: 100%;
+            //         text: root.board-battery;
+            //         color: Theme.text;
+            //         font-size: Theme.font-14;
+            //         font-weight: Theme.w-medium;
+            //         font-family: "JetBrains Mono";
+            //         horizontal-alignment: center;
+            //         vertical-alignment: center;
+            //     }
+            // }
+
+            // Status row
             StatusRow {
                 is-connected: root.is-connected;
                 rssi-bars: root.rssi-bars;
@@ -142,32 +137,34 @@ export component SquareStats inherits Rectangle {
                 right-pad: root.right-pad;
                 connection-state-label: root.connection-state-label;
                 pocket-mode-active: root.pocket-mode-active;
+                alignment: LayoutAlignment.start;
             }
-        }
 
-        // Horizontal utilization bar
-        VerticalLayout {
-            spacing: 2px * Theme.scale;
-            Text {
-                text: "Utilization";
-                color: Theme.text-dim;
-                font-size: Theme.font-10;
-                font-family: "JetBrains Mono";
-                font-weight: Theme.w-medium;
-                horizontal-alignment: left;
-            }
-            Rectangle {
-                height: 10px * Theme.scale;
-                background: Theme.track;
-                border-radius: 5px * Theme.scale;
+            // Horizontal utilization bar
+            VerticalLayout {
+                spacing: 2px * Theme.scale;
+                Text {
+                    text: "Utilization";
+                    color: Theme.text-dim;
+                    font-size: Theme.font-10;
+                    font-family: "JetBrains Mono";
+                    font-weight: Theme.w-medium;
+                    horizontal-alignment: left;
+                }
 
                 Rectangle {
-                    x: 0;
-                    y: 0;
-                    width: parent.width * clamp(root.duty-fraction, 0, 1);
-                    height: 100%;
-                    background: root.duty-color;
+                    height: 10px * Theme.scale;
+                    background: Theme.track;
                     border-radius: 5px * Theme.scale;
+
+                    Rectangle {
+                        x: 0;
+                        y: 0;
+                        width: parent.width * clamp(root.duty-fraction, 0, 1);
+                        height: 100%;
+                        background: root.duty-color;
+                        border-radius: 5px * Theme.scale;
+                    }
                 }
             }
         }
