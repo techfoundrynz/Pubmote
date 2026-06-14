@@ -742,7 +742,14 @@ void EspPlatform<PixelType>::run_event_loop()
         }
         // ESP_LOGI("SLINT-ESP-LOOP", "Waiting: touch=%p, max_ticks=%u, ticks_to_wait=%u",
         //          touch_handle, (unsigned int)max_ticks_to_wait, (unsigned int)ticks_to_wait);
-        ulTaskNotifyTake(/*reset to zero*/ pdTRUE, ticks_to_wait);
+        uint32_t notified = ulTaskNotifyTake(/*reset to zero*/ pdTRUE, ticks_to_wait);
+        
+        if (notified > 0) {
+            // If we received a notification without blocking (e.g., events were queued while we were drawing),
+            // yield to the IDLE task for 1 tick. This prevents the UI task from running continuously 
+            // at 100% CPU and triggering the task watchdog.
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
     }
 
     vTaskDelete(NULL);
