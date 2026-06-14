@@ -57,8 +57,9 @@ export global UiState {
     in property <string> connection-state-label: "Disconnected";
     in property <bool> is-connected: false;
     in property <string> board-battery: "0%";
-    in property <int> rssi-bars: 0;
+    in property <int> rssi: -100;
     in property <bool> pocket-mode-active: false;
+    in property <bool> lights-on: false;
     in property <string> board-state-message: "";
 
     // --- Menu (ui_MenuScreen) ---
@@ -247,8 +248,9 @@ export component AppWindow inherits Window {
         connection-state-label: UiState.connection-state-label;
         is-connected: UiState.is-connected;
         board-battery: UiState.board-battery;
-        rssi-bars: UiState.rssi-bars;
+        rssi: UiState.rssi;
         pocket-mode-active: UiState.pocket-mode-active;
+        lights-on: UiState.lights-on;
         board-state-message: UiState.board-state-message;
         swiped-down => { UiState.stats-swiped-down(); }
         board-battery-long-pressed => { UiState.board-battery-long-pressed(); }

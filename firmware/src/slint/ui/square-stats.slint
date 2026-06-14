@@ -12,12 +12,13 @@ export component SquareStats inherits Rectangle {
     in property <bool> left-pad: false;
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;
+    in property <int> rssi: -100;
     in property <bool> remote-charging: false;
     in property <bool> is-connected: false;
     in property <string> connection-state-label: "Disconnected";
     in property <string> board-battery: "0%";
-    in property <int> rssi-bars: 0;
     in property <bool> pocket-mode-active: false;
+    in property <bool> lights-on: false;
     in property <string> board-state-message: "";
     in property <int> active-page: 0;
     in property <[string]> pages: [];
@@ -132,11 +133,12 @@ export component SquareStats inherits Rectangle {
             // Status row
             StatusRow {
                 is-connected: root.is-connected;
-                rssi-bars: root.rssi-bars;
+                rssi: root.rssi;
                 left-pad: root.left-pad;
                 right-pad: root.right-pad;
                 connection-state-label: root.connection-state-label;
                 pocket-mode-active: root.pocket-mode-active;
+                lights-on: root.lights-on;
                 alignment: LayoutAlignment.start;
             }
 

@@ -136,20 +136,7 @@ extern "C" void stats_update_screen_display() {
   bool connected = connection_state == CONNECTION_STATE_CONNECTED;
   const char *state_label = get_connection_state_label();
 
-  // Calculate RSSI bars
-  int rssi_bars = 0;
-  if (remoteStats.signalStrength > RSSI_GOOD) {
-    rssi_bars = 3;
-  }
-  else if (remoteStats.signalStrength > RSSI_FAIR) {
-    rssi_bars = 2;
-  }
-  else if (remoteStats.signalStrength > RSSI_POOR) {
-    rssi_bars = 1;
-  }
-  else {
-    rssi_bars = 0;
-  }
+
 
   // Pocket mode active
   bool pocket_mode_active = is_pocket_mode_enabled();
@@ -210,8 +197,9 @@ extern "C" void stats_update_screen_display() {
     state.set_stat_page2(slint_buf2);
     state.set_stat_page3(slint_buf3);
     state.set_board_battery(slint_battery_str);
-    state.set_rssi_bars(rssi_bars);
+    state.set_rssi(remoteStats.signalStrength);
     state.set_pocket_mode_active(pocket_mode_active);
+    state.set_lights_on(false);
     state.set_board_state_message(slint_board_state_message);
   });
 }

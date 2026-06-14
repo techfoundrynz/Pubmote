@@ -6,7 +6,7 @@ export component SpeedDisplay inherits Rectangle {
     in property <bool> center-align: true;
     in property <length> font-size: Theme.font-64;
 
-    height: speed-label.preferred-height;
+    height: root.font-size;
     width: 100%;
 
     speed-label := Text {
@@ -23,9 +23,9 @@ export component SpeedDisplay inherits Rectangle {
     unit-container := VerticalLayout {
         x: speed-label.x + speed-label.width + 4px * Theme.scale;
         y: 0px;
-        // height: 100%;
+        height: 100%;
         alignment: end;
-        padding-bottom: 16px * Theme.scale;
+        padding-bottom: 8px * Theme.scale;
         Text {
             text: root.speed-unit;
             color: Theme.text-dim;

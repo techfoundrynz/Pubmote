@@ -2,22 +2,29 @@ import { Theme } from "theme.slint";
 import { RssiIndicator } from "rssi-indicator.slint";
 import { LockIcon } from "lock-icon.slint";
 import { FootpadSensor } from "footpad-sensor.slint";
+import { BrightnessIcon } from "brightness-icon.slint";
 
 export component StatusRow inherits Rectangle {
     in property <bool> is-connected: false;
-    in property <int> rssi-bars: 0;
+    in property <int> rssi: -100;
     in property <bool> left-pad: false;
     in property <bool> right-pad: false;
     in property <string> connection-state-label: "";
     in property <bool> pocket-mode-active: false;
+    in property <bool> lights-on: false;
     in property <LayoutAlignment> alignment: LayoutAlignment.center;
+    in property <length> icon-size: 14px * Theme.scale;
 
     HorizontalLayout {
         alignment: root.alignment;
         spacing: 8px * Theme.scale;
 
-        RssiIndicator {
-            rssi-bars: root.rssi-bars;
+        VerticalLayout {
+            alignment: center;
+            RssiIndicator {
+                rssi: root.rssi;
+                icon-size: root.icon-size;
+            }
         }
 
         VerticalLayout {
@@ -25,13 +32,24 @@ export component StatusRow inherits Rectangle {
             FootpadSensor {
                 left-active: root.left-pad;
                 right-active: root.right-pad;
+                icon-size: root.icon-size;
             }
         }
 
         VerticalLayout {
             alignment: center;
             LockIcon {
-                icon-color: root.pocket-mode-active ? Theme.color-caution : Theme.track;
+                icon-color: root.pocket-mode-active ? Theme.color-success : Theme.track;
+                icon-size: root.icon-size;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            BrightnessIcon {
+                active: root.lights-on;
+                icon-color: root.lights-on ? Theme.color-caution : Theme.track;
+                icon-size: root.icon-size;
             }
         }
     }
