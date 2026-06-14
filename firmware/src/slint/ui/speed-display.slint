@@ -4,12 +4,12 @@ export component SpeedDisplay inherits Rectangle {
     in property <string> speed: "0.0";
     in property <string> speed-unit: "KPH";
     in property <bool> center-align: true;
-    in property <length> font-size: Theme.font-96;
+    in property <length> font-size: Theme.font-84;
 
     height: speed-label.preferred-height;
     width: 100%;
 
-    property <length> speed-max-width: (root.font-size > Theme.font-96 ? 170px : 140px) * Theme.scale;
+    property <length> speed-max-width: (root.font-size > Theme.font-84 ? 170px : 140px) * Theme.scale;
 
     speed-label := Text {
         x: root.center-align ? (parent.width - self.width) / 2 : 0px;
