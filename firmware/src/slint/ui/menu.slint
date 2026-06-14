@@ -38,10 +38,10 @@ export component MenuScreen inherits Rectangle {
             root.scroll-offset-y = -self.viewport-y / 1px;
         }
         menu-layout := VerticalLayout {
-            padding-left: 24px * Theme.scale;
-            padding-right: 24px * Theme.scale;
-            padding-top: 12px * Theme.scale;
-            padding-bottom: 12px * Theme.scale;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-top: Theme.page-padding-vertical;
+            padding-bottom: Theme.page-padding-vertical;
             spacing: 6px * Theme.scale;
 
             AppButton { text: "Back"; variant: "ghost"; right-text: ""; clicked => { root.back(); } }

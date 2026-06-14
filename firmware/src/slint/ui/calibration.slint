@@ -30,7 +30,7 @@ export component CalibrationScreen inherits Rectangle {
     callback secondary;
     background: Theme.bg;
 
-    property <length> dial: 80px * Theme.scale;
+    property <length> dial: 60px * Theme.scale;
 
     VerticalLayout {
         // ui_CalibrationHeader (20%)
@@ -41,7 +41,7 @@ export component CalibrationScreen inherits Rectangle {
                 Text {
                     text: root.header-text;
                     color: Theme.text;
-                    font-size: Theme.font-14;
+                    font-size: Theme.font-12;
                     font-weight: Theme.w-medium;
                     font-family: "JetBrains Mono";
                     horizontal-alignment: center;
@@ -50,14 +50,15 @@ export component CalibrationScreen inherits Rectangle {
         }
 
         // ui_CalibrationBody (55%)
-        Rectangle {
+        VerticalLayout {
+            alignment: center;
             vertical-stretch: 55;
-            VerticalLayout {
-                alignment: center;
-                spacing: 12px * Theme.scale;
+            spacing: 12px * Theme.scale;
 
-                // ui_CalibrationIndicatorContainer (80x80 circle)
-                if !root.show-expo-slider && !root.show-invert-switch : Rectangle {
+            // ui_CalibrationIndicatorContainer (80x80 circle)
+            if !root.show-expo-slider && !root.show-invert-switch: HorizontalLayout {
+                alignment: center;
+                Rectangle {
                     width: root.dial;
                     height: root.dial;
                     border-radius: self.width / 2;
@@ -69,12 +70,16 @@ export component CalibrationScreen inherits Rectangle {
                         width: 4px;
                         height: parent.height * 1.3;
                         background: Theme.color-critical;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
                     }
                     // ui_CalibrationLineHoriz
                     Rectangle {
                         width: parent.width * 1.3;
                         height: 4px;
                         background: Theme.color-critical;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
                     }
 
                     // ui_PositionIndicatorContainer (live white cross, 20% size)
@@ -86,44 +91,56 @@ export component CalibrationScreen inherits Rectangle {
                             + clamp(root.joystick-x, -1, 1) * (parent.width - self.width) / 2;
                         y: (parent.height - self.height) / 2
                             + clamp(root.joystick-y, -1, 1) * (parent.height - self.height) / 2;
-                        Rectangle { width: 100%; height: 4px; background: Theme.text; }
-                        Rectangle { width: 4px; height: 100%; background: Theme.text; }
-                    }
-                }
-                
-                if root.show-expo-slider : Rectangle {
-                    width: 100%;
-                    height: root.dial;
-                    AppSlider {
-                        width: 80%;
-                        x: (parent.width - self.width) / 2;
-                        y: (parent.height - self.height) / 2;
-                        minimum: 1.0;
-                        maximum: 5.0;
-                        value <=> root.expo-value;
-                    }
-                }
-                
-                if root.show-invert-switch : Rectangle {
-                    width: 100%;
-                    height: root.dial;
-                    AppSwitch {
-                        x: (parent.width - self.width) / 2;
-                        y: (parent.height - self.height) / 2;
-                        checked <=> root.invert-y;
-                    }
-                }
+                        Rectangle {
+                            width: 100%;
+                            height: 4px;
+                            background: Theme.text;
+                            y: (parent.height - self.height) / 2;
+                        }
 
-                // ui_CalibrationStepLabel
-                Text {
-                    text: root.step-text;
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-medium;
-                    font-family: "JetBrains Mono";
-                    horizontal-alignment: center;
-                    wrap: word-wrap;
+                        Rectangle {
+                            width: 4px;
+                            height: 100%;
+                            background: Theme.text;
+                            x: (parent.width - self.width) / 2;
+                        }
+                    }
                 }
+            }
+
+            if root.show-expo-slider: Rectangle {
+                width: 100%;
+                height: root.dial;
+                AppSlider {
+                    width: 80%;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    minimum: 1.0;
+                    maximum: 5.0;
+                    value <=> root.expo-value;
+                }
+            }
+
+            if root.show-invert-switch: Rectangle {
+                width: 100%;
+                height: root.dial;
+                AppSwitch {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    checked <=> root.invert-y;
+                }
+            }
+
+            // ui_CalibrationStepLabel
+            Text {
+                width: 100%;
+                text: root.step-text;
+                color: Theme.text;
+                font-size: Theme.font-12;
+                font-weight: Theme.w-medium;
+                font-family: "JetBrains Mono";
+                horizontal-alignment: center;
+                wrap: word-wrap;
             }
         }
 
@@ -134,6 +151,7 @@ export component CalibrationScreen inherits Rectangle {
                 variant: "secondary";
                 clicked => { root.secondary(); }
             }
+
             AppButton {
                 text: root.primary-text;
                 clicked => { root.primary(); }
