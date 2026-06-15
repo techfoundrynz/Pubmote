@@ -80,7 +80,6 @@ typedef enum {
 typedef enum {
   BATTERY_DISPLAY_PERCENT,
   BATTERY_DISPLAY_VOLTAGE,
-  BATTERY_DISPLAY_ALL,
 } BoardBatteryDisplayOption;
 
 typedef enum {

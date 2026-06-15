@@ -1,0 +1,112 @@
+import { Theme } from "theme.slint";
+import { VerticalSeparator } from "vertical-separator.slint";
+
+export component SecondaryStat inherits HorizontalLayout {
+    in property <string> variant: "inline"; // "inline" or "full"
+    in property <bool> is-connected: false;
+
+    in property <string> left-value: "-";
+    in property <string> left-label: "DUTY";
+    in property <string> right-value: "-";
+    in property <string> right-label: "BATT";
+
+    callback left-clicked();
+    callback right-clicked();
+
+    alignment: root.variant == "inline" ? end : center;
+    spacing: root.variant == "inline" ? 4px * Theme.scale : 12px * Theme.scale;
+
+    if (root.variant == "inline"): TouchArea {
+        clicked => { root.left-clicked(); }
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: root.left-value + " " + root.left-label;
+                color: Theme.text;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-medium;
+                font-family: "JetBrains Mono";
+            }
+        }
+    }
+
+    if (root.variant == "inline"): VerticalLayout {
+        alignment: center;
+        Text {
+            text: "•";
+            color: Theme.text;
+            font-size: Theme.font-14;
+            font-weight: Theme.w-medium;
+            font-family: "JetBrains Mono";
+        }
+    }
+
+    if (root.variant == "inline"): TouchArea {
+        clicked => { root.right-clicked(); }
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: root.right-value;
+                color: Theme.text;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-medium;
+                font-family: "JetBrains Mono";
+            }
+        }
+    }
+
+    if (root.variant == "full"): TouchArea {
+        clicked => { root.left-clicked(); }
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: root.left-value;
+                color: Theme.text;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-medium;
+                font-family: "JetBrains Mono";
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: root.left-label;
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                font-weight: Theme.w-medium;
+                font-family: "JetBrains Mono";
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    if (root.variant == "full"): VerticalLayout {
+        alignment: center;
+        VerticalSeparator {
+            size: 24px * Theme.scale;
+        }
+    }
+
+    if (root.variant == "full"): TouchArea {
+        clicked => { root.right-clicked(); }
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: root.right-value;
+                color: Theme.text;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-medium;
+                font-family: "JetBrains Mono";
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: root.right-label;
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                font-weight: Theme.w-medium;
+                font-family: "JetBrains Mono";
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

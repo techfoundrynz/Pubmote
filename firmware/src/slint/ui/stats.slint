@@ -36,19 +36,11 @@ export component StatsScreen inherits Rectangle {
     in property <bool> pocket-mode-active: false;
     in property <bool> lights-on: false;
     in property <string> board-state-message: "";
-    callback board-battery-long-pressed();
+    callback secondary-stat-left-clicked();
+    callback board-battery-clicked();
 
-    in property <string> stat-page1: "0.0V";
-    in property <string> stat-page2: "0.0A";
-    in property <string> stat-page3: "0°C";
-    
-    in property <[string]> pages: [
-        root.stat-page1,
-        root.stat-page2,
-        root.stat-page3
-    ];
-    
-    property <int> active-page: 0;
+    in property <string> secondary-stat-left-value: "";
+    in property <string> secondary-stat-left-label: "";
 
     callback swiped-down;
 
@@ -73,12 +65,6 @@ export component StatsScreen inherits Rectangle {
                     let abs_dy = dy > 0px ? dy : -dy;
                     if (dy > 40px && dy > abs_dx) {
                         root.swiped-down();
-                    } else if (dx > 40px && dx > abs_dy) {
-                        // swipe right (previous page)
-                        root.active-page = Math.mod(root.active-page - 1 + root.pages.length, root.pages.length);
-                    } else if (dx < -40px && -dx > abs_dy) {
-                        // swipe left (next page)
-                        root.active-page = Math.mod(root.active-page + 1, root.pages.length);
                     }
                 }
             }
@@ -103,11 +89,10 @@ export component StatsScreen inherits Rectangle {
         pocket-mode-active: root.pocket-mode-active;
         lights-on: root.lights-on;
         board-state-message: root.board-state-message;
-        active-page: root.active-page;
-        pages: root.pages;
-        board-battery-long-pressed => {
-            root.board-battery-long-pressed();
-        }
+        secondary-stat-left-value: root.secondary-stat-left-value;
+        secondary-stat-left-label: root.secondary-stat-left-label;
+        secondary-stat-left-clicked => { root.secondary-stat-left-clicked(); }
+        board-battery-clicked => { root.board-battery-clicked(); }
     }
 
     if root.square-mode : SquareStats {
@@ -128,11 +113,10 @@ export component StatsScreen inherits Rectangle {
         pocket-mode-active: root.pocket-mode-active;
         lights-on: root.lights-on;
         board-state-message: root.board-state-message;
-        active-page: root.active-page;
-        pages: root.pages;
-        board-battery-long-pressed => {
-            root.board-battery-long-pressed();
-        }
+        secondary-stat-left-value: root.secondary-stat-left-value;
+        secondary-stat-left-label: root.secondary-stat-left-label;
+        secondary-stat-left-clicked => { root.secondary-stat-left-clicked(); }
+        board-battery-clicked => { root.board-battery-clicked(); }
     }
 }
 

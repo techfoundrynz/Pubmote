@@ -79,16 +79,12 @@ extern "C" void stats_update_screen_display() {
   // 3. Format board battery string
   char battery_str[32] = {0};
   switch (device_settings.battery_display) {
-  case BATTERY_DISPLAY_PERCENT:
-    snprintf(battery_str, sizeof(battery_str), "%d%%", remoteStats.batteryPercentage);
-    break;
   case BATTERY_DISPLAY_VOLTAGE:
     snprintf(battery_str, sizeof(battery_str), "%.1fV", remoteStats.batteryVoltage);
     break;
-  case BATTERY_DISPLAY_ALL:
+  case BATTERY_DISPLAY_PERCENT:
   default:
-    snprintf(battery_str, sizeof(battery_str), "%d%% | %.1fV", remoteStats.batteryPercentage,
-             remoteStats.batteryVoltage);
+    snprintf(battery_str, sizeof(battery_str), "%d%%", remoteStats.batteryPercentage);
     break;
   }
 
@@ -111,32 +107,38 @@ extern "C" void stats_update_screen_display() {
     break;
   }
 
-  // 5. Update stat pages
-  char buf1[32] = "";
-  char buf2[32] = "";
-  char buf3[32] = "";
+  // 5. Update secondary stat
+  char left_val[32] = "";
+  char left_lbl[16] = "";
 
-  if (connection_state == CONNECTION_STATE_CONNECTED) {
-    // Show stats on connection state
+  switch (device_settings.secondary_stat_display) {
+  case SECONDARY_STAT_DUTY:
+    snprintf(left_val, sizeof(left_val), "%d%%", remoteStats.dutyCycle);
+    snprintf(left_lbl, sizeof(left_lbl), "DUTY");
+    break;
+  case SECONDARY_STAT_TEMPS: {
     bool should_convert = device_settings.temp_units == TEMP_UNITS_FAHRENHEIT;
     float converted_mot = should_convert ? convert_c_to_f(remoteStats.motorTemp) : remoteStats.motorTemp;
     float converted_cont = should_convert ? convert_c_to_f(remoteStats.controllerTemp) : remoteStats.controllerTemp;
     const char *temp_unit = should_convert ? "F" : "C";
+    snprintf(left_val, sizeof(left_val), "%.0f%s|%.0f%s", converted_mot, temp_unit, converted_cont, temp_unit);
+    snprintf(left_lbl, sizeof(left_lbl), "TEMPS");
+    break;
+  }
+  case SECONDARY_STAT_DISTANCE: {
     float trip_dist = remoteStats.tripDistance / 1000.0f;
     if (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) {
       trip_dist = convert_kph_to_mph(trip_dist);
     }
     const char *dist_unit = (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) ? "mi" : "km";
-
-    snprintf(buf1, sizeof(buf1), "Duty: %d%%", remoteStats.dutyCycle);
-    snprintf(buf2, sizeof(buf2), "M: %.0f°%s C: %.0f°%s", converted_mot, temp_unit, converted_cont, temp_unit);
-    snprintf(buf3, sizeof(buf3), "Distance: %.1f%s", trip_dist, dist_unit);
+    snprintf(left_val, sizeof(left_val), "%.1f%s", trip_dist, dist_unit);
+    snprintf(left_lbl, sizeof(left_lbl), "TRIP");
+    break;
+  }
   }
 
   bool connected = connection_state == CONNECTION_STATE_CONNECTED;
   const char *state_label = get_connection_state_label();
-
-
 
   // Pocket mode active
   bool pocket_mode_active = is_pocket_mode_enabled();
@@ -146,24 +148,24 @@ extern "C" void stats_update_screen_display() {
       connection_state == CONNECTION_STATE_CONNECTED &&
       (remoteStats.state == BOARD_STATE_RUNNING_FLYWHEEL || remoteStats.state == BOARD_STATE_RUNNING_TILTBACK ||
        remoteStats.state == BOARD_STATE_RUNNING_UPSIDEDOWN || remoteStats.state == BOARD_STATE_RUNNING_WHEELSLIP);
-       
-  const char* board_state_msg = "";
+
+  const char *board_state_msg = "";
   if (should_show_board_state) {
     switch (remoteStats.state) {
-      case BOARD_STATE_RUNNING_FLYWHEEL:
-        board_state_msg = "FLYWHEEL";
-        break;
-      case BOARD_STATE_RUNNING_TILTBACK:
-        board_state_msg = "TILTBACK";
-        break;
-      case BOARD_STATE_RUNNING_WHEELSLIP:
-        board_state_msg = "WHEELSLIP";
-        break;
-      case BOARD_STATE_RUNNING_UPSIDEDOWN:
-        board_state_msg = "UPSIDEDOWN";
-        break;
-      default:
-        break;
+    case BOARD_STATE_RUNNING_FLYWHEEL:
+      board_state_msg = "FLYWHEEL";
+      break;
+    case BOARD_STATE_RUNNING_TILTBACK:
+      board_state_msg = "TILTBACK";
+      break;
+    case BOARD_STATE_RUNNING_WHEELSLIP:
+      board_state_msg = "WHEELSLIP";
+      break;
+    case BOARD_STATE_RUNNING_UPSIDEDOWN:
+      board_state_msg = "UPSIDEDOWN";
+      break;
+    default:
+      break;
     }
   }
 
@@ -171,9 +173,8 @@ extern "C" void stats_update_screen_display() {
   slint::SharedString slint_speed_str = speed_str;
   slint::SharedString slint_speed_unit = (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) ? "MPH" : "KPH";
   slint::SharedString slint_state_label = state_label;
-  slint::SharedString slint_buf1 = buf1;
-  slint::SharedString slint_buf2 = buf2;
-  slint::SharedString slint_buf3 = buf3;
+  slint::SharedString slint_left_val = left_val;
+  slint::SharedString slint_left_lbl = left_lbl;
   slint::SharedString slint_battery_str = battery_str;
   slint::SharedString slint_board_state_message = board_state_msg;
 
@@ -193,9 +194,8 @@ extern "C" void stats_update_screen_display() {
                               remoteStats.chargeState == CHARGE_STATE_DONE);
     state.set_is_connected(connected);
     state.set_connection_state_label(slint_state_label);
-    state.set_stat_page1(slint_buf1);
-    state.set_stat_page2(slint_buf2);
-    state.set_stat_page3(slint_buf3);
+    state.set_secondary_stat_left_value(slint_left_val);
+    state.set_secondary_stat_left_label(slint_left_lbl);
     state.set_board_battery(slint_battery_str);
     state.set_rssi(remoteStats.signalStrength);
     state.set_pocket_mode_active(pocket_mode_active);
@@ -207,9 +207,7 @@ extern "C" void stats_update_screen_display() {
 // Double press navigates to Menu Screen
 static bool double_press_handler() {
   if (device_settings.double_press_action == DOUBLE_PRESS_ACTION_OPEN_MENU) {
-    slint::invoke_from_event_loop([]() {
-      get_slint_window()->global<UiState>().set_screen(Screen::Menu);
-    });
+    slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
   }
   return true;
 }
@@ -219,16 +217,25 @@ extern "C" void setup_stats_properties() {
   ui_update_pending.store(false);
   stats_register_update_cb(stats_update_screen_display);
   register_primary_button_cb(BUTTON_EVENT_DOUBLE_PRESS, double_press_handler);
-  
+
   if (get_slint_window()) {
     const auto &state = get_slint_window()->global<UiState>();
-    state.on_board_battery_long_pressed([]() {
+    state.on_board_battery_clicked([]() {
       // Cycle board battery format
-      if (device_settings.battery_display == BATTERY_DISPLAY_ALL) {
-        device_settings.battery_display = (BoardBatteryDisplayOption)0; // Percent
-      } else {
-        device_settings.battery_display = (BoardBatteryDisplayOption)(device_settings.battery_display + 1);
+      if (device_settings.battery_display == BATTERY_DISPLAY_PERCENT) {
+        device_settings.battery_display = BATTERY_DISPLAY_VOLTAGE;
       }
+      else {
+        device_settings.battery_display = BATTERY_DISPLAY_PERCENT;
+      }
+      save_device_settings();
+      stats_update_screen_display();
+    });
+
+    state.on_secondary_stat_left_clicked([]() {
+      // Cycle secondary stat
+      device_settings.secondary_stat_display =
+          (SecondaryStatDisplayOption)((device_settings.secondary_stat_display + 1) % 3);
       save_device_settings();
       stats_update_screen_display();
     });

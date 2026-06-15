@@ -4,6 +4,7 @@ import { BatteryDisplay } from "battery-display.slint";
 import { StatusRow } from "status-row.slint";
 import { SpeedDisplay } from "speed-display.slint";
 import { AppChip } from "app-chip.slint";
+import { SecondaryStat } from "secondary-stat.slint";
 
 
 export component RoundStats inherits Rectangle {
@@ -22,10 +23,11 @@ export component RoundStats inherits Rectangle {
     in property <bool> pocket-mode-active: false;
     in property <bool> lights-on: false;
     in property <string> board-state-message: "";
-    in property <int> active-page: 0;
-    in property <[string]> pages: [];
+    in property <string> secondary-stat-left-value: "";
+    in property <string> secondary-stat-left-label: "";
 
-    callback board-battery-long-pressed();
+    callback secondary-stat-left-clicked();
+    callback board-battery-clicked();
 
     property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical :
         root.duty-fraction >= 0.80 ? Theme.color-warning :
@@ -68,122 +70,73 @@ export component RoundStats inherits Rectangle {
     VerticalLayout {
         padding-left: 20px * Theme.scale;
         padding-right: 20px * Theme.scale;
-        padding-top: 20px * Theme.scale;
+        padding-top: 30px * Theme.scale;
         padding-bottom: 5px * Theme.scale;
+        alignment: space-between;
 
         // ui_StatsHeader (25%) — indicators pinned to the bottom of the region.
-        Rectangle {
-            vertical-stretch: 1;
 
             VerticalLayout {
-                width: 100%;
-                height: 100%;
-                alignment: end;
-                spacing: 6px * Theme.scale;
+            width: 100%;
+            alignment: end;
+            spacing: 6px * Theme.scale;
 
-                // Battery indicator row (Row 1)
+            // Battery indicator row (Row 1)
                 HorizontalLayout {
-                    alignment: center;
-                    BatteryDisplay {
-                        battery: root.remote-battery;
-                        charging: root.remote-charging;
-                        show-percent: false;
-                    }
+                alignment: center;
+                BatteryDisplay {
+                    battery: root.remote-battery;
+                    charging: root.remote-charging;
+                    show-percent: false;
                 }
+            }
 
-                // Chip row (Row 2)
+            // Chip row (Row 2)
                 HorizontalLayout {
-                    alignment: center;
-                    AppChip {
-                        text: root.board-state-message != "" ? root.board-state-message : root.connection-state-label;
-                        accent-color: root.board-state-message != "" ? Theme.color-warning : Theme.accent;
-                        active: root.is-connected;
-                    }
+                alignment: center;
+                AppChip {
+                    text: root.board-state-message != "" ? root.board-state-message : root.connection-state-label;
+                    accent-color: root.board-state-message != "" ? Theme.color-warning : Theme.accent;
+                    active: root.is-connected;
                 }
             }
         }
 
         // ui_StatsBody (50%)
-        Rectangle {
-            vertical-stretch: 2;
             VerticalLayout {
-                width: 100%;
-                height: 100%;
-                alignment: center;
+            width: 100%;
+            alignment: center;
 
-                // ui_PrimaryStat + ui_PrimaryStatUnit
+            // ui_PrimaryStat + ui_PrimaryStatUnit
                 SpeedDisplay {
-                    speed: root.speed;
-                    speed-unit: root.speed-unit;
-                }
+                speed: root.speed;
+                speed-unit: root.speed-unit;
+            }
                 // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
-                Text {
-                    text: root.is-connected ? root.pages[root.active-page] : "";
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-medium;
-                    font-family: "JetBrains Mono";
-                    horizontal-alignment: center;
-                }
+                SecondaryStat {
+                variant: "full";
+                is-connected: root.is-connected;
+                left-value: root.secondary-stat-left-value;
+                left-label: root.secondary-stat-left-label;
+                right-value: root.board-battery;
+                left-clicked => { root.secondary-stat-left-clicked() }
+                right-clicked => { root.board-battery-clicked() }
             }
         }
 
-        // ui_StatsFooter (25%)
-        Rectangle {
-            vertical-stretch: 1;
+        VerticalLayout {
+            alignment: center;
+            spacing: 4px * Theme.scale;
+            padding-bottom: 8px * Theme.scale;
 
-            // Touch Area to detect board battery tap/long press
-            TouchArea {
-                width: 100%;
-                height: 100%;
-                clicked => {
-                    // Normal click doesn't cycle battery display
-                }
-                pointer-event(event) => {
-                    if (event.button == PointerEventButton.left) {
-                        if (event.kind == PointerEventKind.down) {
-                            root.was-long-pressed = false;
-                            long-press-timer.running = true;
-                        } else if (event.kind == PointerEventKind.up) {
-                            long-press-timer.running = false;
-                        }
-                    }
-                }
-            }
-
-            long-press-timer := Timer {
-                interval: 600ms;
-                running: false;
-                triggered => {
-                    self.running = false;
-                    root.was-long-pressed = true;
-                    root.board-battery-long-pressed();
-                }
-            }
-
-            VerticalLayout {
-                alignment: center;
-                spacing: 4px * Theme.scale;
-                padding-bottom: Theme.page-padding-vertical;
-
-                // Text {
-                //     text: root.board-battery;
-                //     color: Theme.text;
-                //     font-size: Theme.font-14;
-                //     font-weight: Theme.w-medium;
-                //     font-family: "JetBrains Mono";
-                //     horizontal-alignment: center;
-                // }
-
-                StatusRow {
-                    is-connected: root.is-connected;
-                    rssi: root.rssi;
-                    left-pad: root.left-pad;
-                    right-pad: root.right-pad;
-                    connection-state-label: root.connection-state-label;
-                    pocket-mode-active: root.pocket-mode-active;
-                    lights-on: root.lights-on;
-                }
+            StatusRow {
+                is-connected: root.is-connected;
+                rssi: root.rssi;
+                left-pad: root.left-pad;
+                right-pad: root.right-pad;
+                connection-state-label: root.connection-state-label;
+                pocket-mode-active: root.pocket-mode-active;
+                lights-on: root.lights-on;
             }
         }
     }
