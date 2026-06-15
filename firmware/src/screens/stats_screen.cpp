@@ -122,7 +122,7 @@ extern "C" void stats_update_screen_display() {
     float converted_cont = should_convert ? convert_c_to_f(remoteStats.controllerTemp) : remoteStats.controllerTemp;
     const char *temp_unit = should_convert ? "F" : "C";
     snprintf(left_val, sizeof(left_val), "%.0f%s|%.0f%s", converted_mot, temp_unit, converted_cont, temp_unit);
-    snprintf(left_lbl, sizeof(left_lbl), "TEMPS");
+    snprintf(left_lbl, sizeof(left_lbl), "TEMP");
     break;
   }
   case SECONDARY_STAT_DISTANCE: {

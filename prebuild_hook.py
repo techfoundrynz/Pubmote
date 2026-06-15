@@ -84,7 +84,10 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
                 try:
                     h_val = int(hor_res_str) if hor_res_str else 0
                     v_val = int(ver_res_str) if ver_res_str else 0
-                    lv_hor_res = max(h_val, v_val)
+                    if h_val > 0 and v_val > 0:
+                        lv_hor_res = min(h_val, v_val)
+                    else:
+                        lv_hor_res = max(h_val, v_val)
                 except ValueError:
                     pass
 

@@ -361,7 +361,7 @@ extern "C" void apply_theme_settings() {
   const auto &theme = slint_window->global<Theme>();
 
   // Set the actual panel resolution dynamically based on the current screen size
-  theme.set_panel_res(std::max(HOR_RES, VER_RES));
+  theme.set_panel_res(std::min(HOR_RES, VER_RES));
   theme.set_panel_width(HOR_RES);
   theme.set_panel_height(VER_RES);
 
@@ -843,3 +843,4 @@ extern "C" void display_off() {
     esp_lcd_touch_enter_sleep(touch_handle);
   }
 }
+
