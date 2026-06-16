@@ -90,4 +90,9 @@
   #define HAPTIC_ENABLED 0
 #endif
 
+// Timezone configuration (default to US Eastern Time)
+#ifndef DEFAULT_TIMEZONE
+  #define DEFAULT_TIMEZONE "EST5EDT,M3.2.0,M11.1.0"
+#endif
+
 #endif

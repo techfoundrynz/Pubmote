@@ -13,6 +13,7 @@ typedef enum {
   STAT_DISPLAY_DUTY,
   STAT_DISPLAY_TEMP,
   STAT_DISPLAY_TRIP,
+  STAT_DISPLAY_TIME,
 } SecondaryStatDisplayOption;
 
 typedef struct {

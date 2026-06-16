@@ -29,12 +29,17 @@
 #include "ui/ui.h"
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 static const char *TAG = "PUBREMOTE-MAIN";
 
 #define DEBUG_MEMORY 0
 
 void app_main(void) {
+  // Initialize timezone (default to US Eastern Time)
+  setenv("TZ", DEFAULT_TIMEZONE, 1);
+  tzset();
+
   // Enable power for core peripherals
   acc1_power_set_level(1);
   // Core setup

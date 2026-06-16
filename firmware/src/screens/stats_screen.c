@@ -12,6 +12,7 @@
 #include <remote/powermanagement.h>
 #include <remote/settings.h>
 #include <remote/stats.h>
+#include <time.h>
 #include <utilities/conversion_utils.h>
 
 static const char *TAG = "PUBREMOTE-STATS_SCREEN";
@@ -293,11 +294,11 @@ static char *get_connection_state_label() {
 
 static void update_secondary_stat(int direction) {
   if (direction > 0) {
-    stat_display_options.secondary_stat = (stat_display_options.secondary_stat + 1) % 3;
+    stat_display_options.secondary_stat = (stat_display_options.secondary_stat + 1) % 4;
     ESP_LOGI(TAG, "Updated secondary stat forward: %d", stat_display_options.secondary_stat);
   }
   else {
-    stat_display_options.secondary_stat = (stat_display_options.secondary_stat + 3) % 3;
+    stat_display_options.secondary_stat = (stat_display_options.secondary_stat + 4) % 4;
     ESP_LOGI(TAG, "Updated secondary stat backward: %d", stat_display_options.secondary_stat);
   }
 }
@@ -386,6 +387,19 @@ static void update_secondary_stat_display() {
 
       // Update the last value
       last_trip_distance_value = new_trip_distance;
+    }
+
+    // Update time display
+    else if (stat_display_options.secondary_stat == STAT_DISPLAY_TIME) {
+      // Show the current time
+      time_t now = time(NULL);
+      struct tm *time_info = localtime(&now);
+      int hours = time_info->tm_hour;
+      int minutes = time_info->tm_min;
+      int seconds = time_info->tm_sec;
+
+      // Update the displayed text
+      asprintf(&formattedString, "Time: %02d:%02d:%02d", hours, minutes, seconds);
     }
 
     else {

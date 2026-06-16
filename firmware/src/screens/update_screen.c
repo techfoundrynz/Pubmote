@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ui/ui.h>
+#include "esp_netif_sntp.h"
+#include "esp_sntp.h"
+#include <time.h>
 
 static const char *TAG = "PUBREMOTE-UPDATE_SCREEN";
 
@@ -205,6 +208,36 @@ static void update_task(void *pvParameters) {
         current_update_step = UPDATE_STEP_ERROR;
       }
       else {
+        if (LVGL_lock(0)) {
+          lv_label_set_text(ui_UpdateBodyLabel, "Syncing time...");
+          LVGL_unlock();
+        }
+
+        ESP_LOGI(TAG, "WiFi connected. Initializing SNTP sync...");
+        esp_sntp_config_t sntp_config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+        esp_netif_sntp_init(&sntp_config);
+
+        int retry = 0;
+        const int retry_count = 15;
+        while (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(1000)) != ESP_OK && ++retry < retry_count) {
+          ESP_LOGI(TAG, "Waiting for system time to be synchronized... (%d/%d)", retry, retry_count);
+        }
+
+        if (retry < retry_count) {
+          ESP_LOGI(TAG, "System time synchronized successfully");
+          setenv("TZ", DEFAULT_TIMEZONE, 1);
+          tzset();
+          time_t now = time(NULL);
+          struct tm *time_info = localtime(&now);
+          char strftime_buf[64];
+          strftime(strftime_buf, sizeof(strftime_buf), "%c", time_info);
+          ESP_LOGI(TAG, "Current local time: %s", strftime_buf);
+        } else {
+          ESP_LOGW(TAG, "System time synchronization timed out");
+        }
+
+        esp_netif_sntp_deinit();
+
         current_update_step = UPDATE_STEP_CHECKING_UPDATE;
       }
       break;
