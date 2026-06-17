@@ -472,5 +472,5 @@ void power_management_init() {
 #endif
 
   ESP_ERROR_CHECK(
-      xTaskCreate(power_management_task, "power_management_task", 4096, NULL, 2, NULL) == pdPASS ? ESP_OK : ESP_FAIL);
+      xTaskCreate(power_management_task, "power_management_task", 2560, NULL, 2, NULL) == pdPASS ? ESP_OK : ESP_FAIL);
 }

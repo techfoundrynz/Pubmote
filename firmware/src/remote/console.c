@@ -339,6 +339,7 @@ void console_init() {
   ESP_LOGI(TAG, "Initializing console");
   esp_console_repl_t *repl = NULL;
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  repl_config.task_stack_size = 3072; // Reduce from default 4096
   /* Prompt to be printed before each line.
    * This can be customized, made dynamic, etc.
    */
@@ -359,24 +360,33 @@ void console_init() {
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
   esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
+  esp_err_t err = esp_console_new_repl_uart(&hw_config, &repl_config, &repl);
 
 #elif defined(CONFIG_ESP_CONSOLE_USB_CDC)
   esp_console_dev_usb_cdc_config_t hw_config = ESP_CONSOLE_DEV_CDC_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_usb_cdc(&hw_config, &repl_config, &repl));
+  esp_err_t err = esp_console_new_repl_usb_cdc(&hw_config, &repl_config, &repl);
 
 #elif defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
   esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
+  esp_err_t err = esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl);
 
 #else
   #error Unsupported console type
 #endif
 
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to initialize console REPL (err: %s). Insufficient memory?", esp_err_to_name(err));
+    return;
+  }
+
   linenoiseSetCompletionCallback(esp_console_get_completion);
   linenoiseSetHintsCallback((linenoiseHintsCallback*)esp_console_get_hint);
   linenoiseSetFreeHintsCallback(free);
 
-  ESP_ERROR_CHECK(esp_console_start_repl(repl));
+  err = esp_console_start_repl(repl);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to start console REPL (err: %s).", esp_err_to_name(err));
+    return;
+  }
   ESP_LOGI(TAG, "Console initialized");
 }

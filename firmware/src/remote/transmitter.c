@@ -158,7 +158,7 @@ static void transmitter_task(void *pvParameters) {
 }
 
 void transmitter_init() {
-  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20,
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 3072, NULL, 20,
                                           &transmitter_task_handle, 0) == pdPASS
                       ? ESP_OK
                       : ESP_FAIL);
