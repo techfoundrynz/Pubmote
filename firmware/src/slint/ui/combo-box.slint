@@ -1,0 +1,86 @@
+import { Theme } from "theme.slint";
+
+// Custom ComboBox without image dependencies (uses a text triangle indicator and PopupWindow).
+export component ComboBox inherits Rectangle {
+    in property <[string]> model;
+    in-out property <int> current-index: 0;
+    callback selected(string);
+
+    height: round(36px / 1px * Theme.scale) * 1px;
+    border-radius: round(8px / 1px * Theme.scale) * 1px;
+    background: Theme.track;
+    border-width: 1px;
+    border-color: Theme.track;
+
+    HorizontalLayout {
+        padding-left: round(12px / 1px * Theme.scale) * 1px;
+        padding-right: round(12px / 1px * Theme.scale) * 1px;
+        spacing: round(8px / 1px * Theme.scale) * 1px;
+        
+        Text {
+            text: root.current-index < root.model.length ? root.model[root.current-index] : "";
+            color: Theme.text;
+            font-size: Theme.font-14;
+            vertical-alignment: center;
+            horizontal-alignment: left;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        
+        Text {
+            text: "▼";
+            color: Theme.text-dim;
+            font-size: Theme.font-14;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+            horizontal-stretch: 0;
+        }
+    }
+
+    TouchArea {
+        clicked => {
+            popup.show();
+        }
+    }
+
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        
+        Rectangle {
+            background: Theme.track;
+            border-radius: round(8px / 1px * Theme.scale) * 1px;
+            border-width: 1px;
+            border-color: Theme.track;
+            
+            VerticalLayout {
+                padding: 4px;
+                spacing: 2px;
+                for item[idx] in root.model : Rectangle {
+                    height: round(32px / 1px * Theme.scale) * 1px;
+                    background: item-touch.pressed ? Theme.accent.darker(0.2) : transparent;
+                    border-radius: round(4px / 1px * Theme.scale) * 1px;
+                    border-width: (idx == root.current-index) ? 1px : 0px;
+                    border-color: (idx == root.current-index) ? Theme.accent : transparent;
+                    
+                    Text {
+                        x: 12px;
+                        text: item;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        vertical-alignment: center;
+                    }
+                    
+                    item-touch := TouchArea {
+                        clicked => {
+                            root.current-index = idx;
+                            root.selected(item);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

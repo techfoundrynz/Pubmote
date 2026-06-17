@@ -3,6 +3,12 @@
 #include "colors.h"
 #include <stdint.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum {
   DUTY_STATUS_NONE,
   DUTY_STATUS_CAUTION,
@@ -27,5 +33,11 @@ DutyStatus get_duty_status(uint8_t duty);
 DutyStatusColor get_duty_color(DutyStatus status);
 void vehicle_monitor_init();
 void vehicle_monitor_deinit();
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

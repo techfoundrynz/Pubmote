@@ -3,6 +3,12 @@
 #include <esp_err.h>
 #include <esp_lcd_types.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum {
   CHARGE_STATE_NOT_CHARGING,
   CHARGE_STATE_CHARGING,
@@ -31,5 +37,11 @@ uint8_t battery_mv_to_percent(uint16_t voltage_mv);
 void disable_watchdog();
 void enable_watchdog();
 void enter_protection_mode();
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

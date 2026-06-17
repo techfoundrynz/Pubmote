@@ -1,0 +1,131 @@
+import { Theme } from "theme.slint";
+import { VerticalSeparator } from "vertical-separator.slint";
+
+export component SecondaryStat inherits Rectangle {
+    in property <string> variant: "inline"; // "inline" or "full"
+    in property <bool> is-connected: false;
+
+    in property <string> left-value: "-";
+    in property <string> left-label: "DUTY";
+    in property <string> right-value: "-";
+    in property <string> right-label: "BATT";
+
+    callback left-clicked();
+    callback right-clicked();
+
+    width: layout.preferred-width;
+    height: layout.preferred-height;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+
+    layout := VerticalLayout {
+        if (root.variant == "inline"): VerticalLayout {
+            alignment: end;
+            spacing: 6px * Theme.scale;
+
+            TouchArea {
+                clicked => { root.left-clicked(); }
+                HorizontalLayout {
+                    alignment: end;
+                    spacing: 4px * Theme.scale;
+                    Text {
+                        text: root.left-value;
+                        color: Theme.text;
+                        font-size: Theme.font-10;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                    }
+                    Text {
+                        text: root.left-label;
+                        color: Theme.text-dim;
+                        font-size: Theme.font-10;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                    }
+                }
+            }
+
+            TouchArea {
+                clicked => { root.right-clicked(); }
+                HorizontalLayout {
+                    alignment: end;
+                    spacing: 4px * Theme.scale;
+                    Text {
+                        text: root.right-value;
+                        color: Theme.text;
+                        font-size: Theme.font-10;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                    }
+                    Text {
+                        text: root.right-label;
+                        color: Theme.text-dim;
+                        font-size: Theme.font-10;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                    }
+                }
+            }
+        }
+
+        if (root.variant == "full"): HorizontalLayout {
+            alignment: center;
+            spacing: 12px * Theme.scale;
+
+            TouchArea {
+                clicked => { root.left-clicked(); }
+                VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: root.left-value;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: root.left-label;
+                        color: Theme.text-dim;
+                        font-size: Theme.font-10;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                VerticalSeparator {
+                    size: 24px * Theme.scale;
+                }
+            }
+
+            TouchArea {
+                clicked => { root.right-clicked(); }
+                VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: root.right-value;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: root.right-label;
+                        color: Theme.text-dim;
+                        font-size: Theme.font-10;
+                        font-weight: Theme.w-medium;
+                        font-family: "JetBrains Mono";
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}

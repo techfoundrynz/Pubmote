@@ -1,0 +1,53 @@
+// Shared theme for the PubRemote Slint UI. Density scaling active.
+//
+// Colours and sizes mirror the LVGL/SquareLine UI. The LVGL screens were
+// designed against a 240px base (BASE_RES) and scaled up to the panel size at
+// runtime via apply_ui_scale (SCALE_FACTOR = LV_HOR_RES / BASE_RES). We
+// reproduce that here with Theme.scale so fixed pixel dimensions match.
+
+export global Theme {
+    // Base design resolution the LVGL screens were authored at.
+    out property <length> base-res: 240px;
+    // Target panel size (pingumote = 466). Keep in sync with the window size.
+    in-out property <length> panel-res: 466px;
+    in-out property <length> panel-width: root.panel-res;
+    in-out property <length> panel-height: root.panel-res;
+    // SCALE_FACTOR from firmware/src/remote/display.h.
+    out property <float> scale: root.panel-res / root.base-res;
+    // Square mode UI toggle
+    in-out property <bool> is-square-mode: false;
+
+    // Standard page paddings
+    out property <length> page-padding-horizontal: (root.is-square-mode ? 24px : 36px) * root.scale;
+    out property <length> page-padding-vertical: (root.is-square-mode ? 12px : 18px) * root.scale;
+
+    // Palette (hex values taken verbatim from the SquareLine screens).
+    in-out property <color> bg: #000000;
+    in-out property <color> text: #ffffff;
+    in-out property <color> text-dim: #9a9a9a;
+    in-out property <color> accent: #2196f3;        // lv_palette BLUE
+    in-out property <color> primary-button-text: #ffffff;
+    out property <color> track: #414141;         // 0x414141 arc track / borders
+
+    // Status colors
+    out property <color> color-caution: #ffc145;
+    out property <color> color-warning: #ff8b3e;
+    out property <color> color-critical: #ff6369;
+    out property <color> color-success: #0ead69;
+    out property <color> color-active: #676767;
+
+    // Font sizes scaled dynamically based on font-scale. We use Math.round to
+    // ensure they evaluate to exact integer pixels, matching the pre-rasterized
+    // font sizes embedded by the Slint compiler for MCU targets.
+    in-out property <float> font-scale: root.scale;
+    out property <length> font-10: Math.round(10 * root.font-scale) * 1px;
+    out property <length> font-11: Math.round(11 * root.font-scale) * 1px;
+    out property <length> font-12: Math.round(12 * root.font-scale) * 1px;
+    out property <length> font-14: Math.round(14 * root.font-scale) * 1px;
+    out property <length> font-28: Math.round(28 * root.font-scale) * 1px;
+    out property <length> font-48: Math.round(48 * root.font-scale) * 1px;
+    out property <length> font-64: Math.round(64 * root.font-scale) * 1px;
+
+    out property <int> w-semibold: 600;
+    out property <int> w-medium: 500;
+}

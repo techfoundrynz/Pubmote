@@ -1,0 +1,138 @@
+// StatsScreen — main riding display. Faithful reproduction of ui_StatsScreen.
+//
+// LVGL hierarchy:
+//   ui_SpeedDial        lv_arc 240x240, range 0-40, default angles (135->45)
+//   ui_UtilizationDial  lv_arc 240x240, pad 20, REVERSE, track 0x282828, w12
+//   ui_LeftSensor       lv_arc, bg angles 93-105, track 0x414141, indic white
+//   ui_RightSensor      lv_arc, bg angles 75-87,  track 0x414141, indic white
+//   ui_StatsContent     flex column SPACE_BETWEEN, pad 20/20/20/5
+//     ui_StatsHeader  (25%)  column align end
+//       ui_RemoteIndicatorContainer  row: battery pill + RSSI bars (RSSI hidden)
+//       ui_MessageText  "PUSHBACK" (hidden)
+//     ui_StatsBody    (50%)  column center
+//       ui_RemoteModeContainer "POCKET MODE" (hidden)
+//       ui_PrimaryStat "0.0" Inter_Bold_48  + ui_PrimaryStatUnit "KPH" Inter_14
+//       ui_SecondaryStatContainer  -> ui_ConnectionStateLabel "Disconnected"
+//     ui_StatsFooter  (25%)  ui_BoardBatteryDisplay "0%" Inter_Bold_14
+
+import { Theme } from "theme.slint";
+import { RoundStats } from "round-stats.slint";
+import { SquareStats } from "square-stats.slint";
+
+export component StatsScreen inherits Rectangle {
+    in property <bool> square-mode: Theme.is-square-mode;
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;       // 0..1 of the speed dial
+    in property <float> duty-fraction: 0;        // 0..1 of the utilization dial
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;       // 0..100, small battery pill
+    in property <int> rssi: -100;
+    in property <bool> remote-charging: false;   // is remote charging
+    in property <bool> is-connected: false;
+    in property <string> connection-state-label: "Disconnected";
+    in property <string> board-battery: "0%";
+    in property <bool> pocket-mode-active: false;
+    in property <bool> lights-on: false;
+    in property <string> board-state-message: "";
+    callback secondary-stat-left-clicked();
+    callback board-battery-clicked();
+
+    in property <string> secondary-stat-left-value: "";
+    in property <string> secondary-stat-left-label: "";
+
+    callback swiped-down;
+
+    background: Theme.bg;
+
+    // Swipe down detection
+    TouchArea {
+        width: 100%;
+        height: 100%;
+        property <length> start-y;
+        property <length> start-x;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) {
+                    start-x = self.mouse-x;
+                    start-y = self.mouse-y;
+                } else if (event.kind == PointerEventKind.up) {
+                    let dx = self.mouse-x - start-x;
+                    let dy = self.mouse-y - start-y;
+                    let abs_dx = dx > 0px ? dx : -dx;
+                    let abs_dy = dy > 0px ? dy : -dy;
+                    if (dy > 40px && dy > abs_dx) {
+                        root.swiped-down();
+                    }
+                }
+            }
+        }
+    }
+
+    if !root.square-mode : RoundStats {
+        width: 100%;
+        height: 100%;
+        speed: root.speed;
+        speed-unit: root.speed-unit;
+        speed-fraction: root.speed-fraction;
+        duty-fraction: root.duty-fraction;
+        left-pad: root.left-pad;
+        right-pad: root.right-pad;
+        remote-battery: root.remote-battery;
+        remote-charging: root.remote-charging;
+        is-connected: root.is-connected;
+        connection-state-label: root.connection-state-label;
+        board-battery: root.board-battery;
+        rssi: root.rssi;
+        pocket-mode-active: root.pocket-mode-active;
+        lights-on: root.lights-on;
+        board-state-message: root.board-state-message;
+        secondary-stat-left-value: root.secondary-stat-left-value;
+        secondary-stat-left-label: root.secondary-stat-left-label;
+        secondary-stat-left-clicked => { root.secondary-stat-left-clicked(); }
+        board-battery-clicked => { root.board-battery-clicked(); }
+    }
+
+    if root.square-mode : SquareStats {
+        width: 100%;
+        height: 100%;
+        speed: root.speed;
+        speed-unit: root.speed-unit;
+        speed-fraction: root.speed-fraction;
+        duty-fraction: root.duty-fraction;
+        left-pad: root.left-pad;
+        right-pad: root.right-pad;
+        remote-battery: root.remote-battery;
+        remote-charging: root.remote-charging;
+        is-connected: root.is-connected;
+        connection-state-label: root.connection-state-label;
+        board-battery: root.board-battery;
+        rssi: root.rssi;
+        pocket-mode-active: root.pocket-mode-active;
+        lights-on: root.lights-on;
+        board-state-message: root.board-state-message;
+        secondary-stat-left-value: root.secondary-stat-left-value;
+        secondary-stat-left-label: root.secondary-stat-left-label;
+        secondary-stat-left-clicked => { root.secondary-stat-left-clicked(); }
+        board-battery-clicked => { root.board-battery-clicked(); }
+    }
+}
+
+export component StatsScreenPreview inherits Window {
+    width: 466px;
+    height: 466px;
+    minimized: false;
+    StatsScreen {
+        square-mode: false;
+        speed: "25.4";
+        speed-fraction: 0.6;
+        duty-fraction: 0.45;
+        left-pad: true;
+        right-pad: false;
+        is-connected: true;
+        board-battery: "85%";
+        pocket-mode-active: true;
+    }
+}

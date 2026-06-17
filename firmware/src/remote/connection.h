@@ -2,6 +2,12 @@
 #define __CONNECTION_H
 #include <esp_timer.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum {
   CONNECTION_STATE_DISCONNECTED,
   CONNECTION_STATE_CONNECTING,
@@ -24,5 +30,11 @@ void connection_init();
 void connection_deinit();
 void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel);
 void connection_connect_to_default_peer();
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

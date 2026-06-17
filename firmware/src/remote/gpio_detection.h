@@ -5,6 +5,18 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 bool gpio_supports_wakeup_from_deep_sleep(gpio_num_t gpio_num);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

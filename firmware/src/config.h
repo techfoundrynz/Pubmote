@@ -7,6 +7,13 @@
   #define RELEASE_VARIANT "dev"
 #endif
 
+// Uncomment to emulate connection state and incoming stats for UI testing
+#define TEST_MODE 0
+
+#ifndef TARGET_FPS
+  #define TARGET_FPS 60
+#endif
+
 #define MIN_BATTERY_VOLTAGE 3000
 #define MAX_BATTERY_VOLTAGE 4200
 

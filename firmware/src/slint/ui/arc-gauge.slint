@@ -1,0 +1,47 @@
+import { Theme } from "theme.slint";
+
+export global ArcGenerator {
+    pure callback generate(length, length, angle, angle, angle, angle, brush, brush) -> image;
+}
+
+// Arc gauge, the equivalent of LVGL's lv_arc. Draws a background "track" arc and
+// an "indicator" arc on top, using SVG-style Path arcs.
+//
+// Angles follow the LVGL convention: 0deg = 3 o'clock, increasing clockwise
+// (90deg = 6 o'clock / bottom). `start-angle` is where the arc begins and
+// `span-angle` how far it sweeps clockwise. `value` (0..1) is the filled
+// fraction; `reverse` fills from the far end backwards (LVGL ARC_MODE_REVERSE).
+export component ArcGauge inherits Rectangle {
+    in property <angle> start-angle: 135deg;   // lv_arc default background start
+    in property <angle> span-angle: 270deg;    // lv_arc default 135->45 == 270deg
+    in property <float> value: 0;              // 0..1
+    in property <bool> reverse: false;
+    in property <length> thickness: 16px;
+    in property <brush> track-color: Theme.track;
+    in property <brush> indicator-color: Theme.accent;
+    in property <bool> show-track: true;
+
+    if show-track: ArcSegment {
+        cache-rendering-hint: true;
+        width: 100%;
+        height: 100%;
+        stroke: root.track-color;
+        stroke-width: root.thickness;
+        start-angle: root.start-angle;
+        end-angle: root.start-angle + root.span-angle;
+        stroke-line-cap: LineCap.round;
+    }
+
+    property <angle> ind-start: root.reverse ? root.start-angle + root.span-angle * (1.0 - root.value) : root.start-angle;
+    property <angle> ind-span: root.reverse ? root.span-angle * root.value : root.span-angle * root.value;
+
+    ArcSegment {
+        width: 100%;
+        height: 100%;
+        stroke: root.indicator-color;
+        stroke-width: root.thickness;
+        start-angle: root.ind-start;
+        end-angle: root.ind-start + root.ind-span;
+        stroke-line-cap: LineCap.round;
+    }
+}

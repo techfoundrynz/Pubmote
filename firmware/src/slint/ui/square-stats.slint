@@ -1,0 +1,150 @@
+import { Theme } from "theme.slint";
+import { BatteryDisplay } from "battery-display.slint";
+import { StatusRow } from "status-row.slint";
+import { SpeedDisplay } from "speed-display.slint";
+import { AppChip } from "app-chip.slint";
+import { SecondaryStat } from "secondary-stat.slint";
+
+export component SquareStats inherits Rectangle {
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;
+    in property <float> duty-fraction: 0;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;
+    in property <int> rssi: -100;
+    in property <bool> remote-charging: false;
+    in property <bool> is-connected: false;
+    in property <string> connection-state-label: "Disconnected";
+    in property <string> board-battery: "0%";
+    in property <bool> pocket-mode-active: false;
+    in property <bool> lights-on: false;
+    in property <string> board-state-message: "";
+    in property <string> secondary-stat-left-value: "";
+    in property <string> secondary-stat-left-label: "";
+
+    callback secondary-stat-left-clicked();
+    callback board-battery-clicked();
+
+    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical :
+        root.duty-fraction >= 0.80 ? Theme.color-warning :
+        root.duty-fraction >= 0.70 ? Theme.color-caution :
+        Theme.color-active;
+
+    property <bool> was-long-pressed: false;
+
+    // --- Content overlay (ui_StatsContent) ---
+    VerticalLayout {
+        padding-left: Theme.page-padding-horizontal;
+        padding-right: Theme.page-padding-horizontal;
+        padding-top: Theme.page-padding-vertical;
+        padding-bottom: Theme.page-padding-vertical;
+        alignment: space-between;
+
+        // Header Area
+        VerticalLayout {
+            vertical-stretch: 0;
+            spacing: 8px * Theme.scale;
+
+            HorizontalLayout {
+                spacing: 12px * Theme.scale;
+                alignment: space-between;
+
+                VerticalLayout {
+                    alignment: center;
+                    AppChip {
+                        text: root.board-state-message != "" ? root.board-state-message : root.connection-state-label;
+                        accent-color: root.board-state-message != "" ? Theme.color-warning : Theme.accent;
+                        active: root.is-connected;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    BatteryDisplay {
+                        battery: root.remote-battery;
+                        charging: root.remote-charging;
+                    }
+                }
+            }
+        }
+
+        // Content (Bottom-aligned)
+        VerticalLayout {
+            alignment: end;
+            vertical-stretch: 1;
+            spacing: 6px * Theme.scale;
+
+            // ui_PrimaryStat + ui_PrimaryStatUnit
+            SpeedDisplay {
+                speed: root.speed;
+                speed-unit: root.speed-unit;
+                center-align: false;
+                font-size: Theme.font-64;
+            }
+
+            // Horizontal utilization bar container
+            VerticalLayout {
+                spacing: 2px * Theme.scale;
+
+                // Top row: Label on left, secondary stats on right
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    VerticalLayout {
+                        spacing: 2px * Theme.scale;
+
+                        alignment: end;
+            // Status row
+            StatusRow {
+                            is-connected: root.is-connected;
+                            rssi: root.rssi;
+                            left-pad: root.left-pad;
+                            right-pad: root.right-pad;
+                            connection-state-label: root.connection-state-label;
+                            pocket-mode-active: root.pocket-mode-active;
+                            lights-on: root.lights-on;
+                            alignment: LayoutAlignment.start;
+                        }
+
+                        Text {
+                            text: "UTILIZATION";
+                            color: Theme.text-dim;
+                            font-size: Theme.font-10;
+                            font-family: "JetBrains Mono";
+                            font-weight: Theme.w-medium;
+                            horizontal-alignment: left;
+                        }
+                    }
+
+                    SecondaryStat {
+                        variant: "inline";
+                        is-connected: root.is-connected;
+                        left-value: root.secondary-stat-left-value;
+                        left-label: root.secondary-stat-left-label;
+                        right-value: root.board-battery;
+                        left-clicked => { root.secondary-stat-left-clicked() }
+                        right-clicked => { root.board-battery-clicked() }
+                    }
+                }
+
+                // Bottom row: Full width utilization progress bar
+                Rectangle {
+                    height: 10px * Theme.scale;
+                    background: Theme.track;
+                    border-radius: 5px * Theme.scale;
+
+                    Rectangle {
+                        x: 0;
+                        y: 0;
+                        width: parent.width * clamp(root.duty-fraction, 0, 1);
+                        height: 100%;
+                        background: root.duty-color;
+                        border-radius: 5px * Theme.scale;
+                    }
+                }
+            }
+        }
+    }
+}

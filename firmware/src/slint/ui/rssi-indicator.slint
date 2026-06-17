@@ -1,0 +1,48 @@
+import { Theme } from "theme.slint";
+
+export component RssiIndicator inherits Rectangle {
+    in property <int> rssi: -100;
+    in property <length> icon-size: 14px * Theme.scale;
+
+    property <float> s: root.icon-size / 14px;
+    property <int> rssi-bars: root.rssi > -75 ? 3 : root.rssi > -85 ? 2 : root.rssi > -95 ? 1 : 0;
+
+    width: 14px * root.s;
+    height: 14px * root.s;
+
+    // Dot at the bottom center
+    Rectangle {
+        x: 5.5px * root.s;
+        y: 11px * root.s;
+        width: 3px * root.s;
+        height: 3px * root.s;
+        border-radius: 1.5px * root.s;
+        background: root.rssi-bars >= 1 ? Theme.text : Theme.track;
+    }
+
+    // First arc (middle)
+    ArcSegment {
+        x: 1px * root.s;
+        y: 6.5px * root.s;
+        width: 12px * root.s;
+        height: 12px * root.s;
+        stroke: root.rssi-bars >= 2 ? Theme.text : Theme.track;
+        stroke-width: 1.5px * root.s;
+        start-angle: 225deg;
+        end-angle: 315deg;
+        stroke-line-cap: LineCap.round;
+    }
+
+    // Second arc (top)
+    ArcSegment {
+        x: -3px * root.s;
+        y: 2.5px * root.s;
+        width: 20px * root.s;
+        height: 20px * root.s;
+        stroke: root.rssi-bars >= 3 ? Theme.text : Theme.track;
+        stroke-width: 1.5px * root.s;
+        start-angle: 225deg;
+        end-angle: 315deg;
+        stroke-line-cap: LineCap.round;
+    }
+}

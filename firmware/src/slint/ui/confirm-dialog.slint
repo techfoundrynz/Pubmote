@@ -1,0 +1,69 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+
+export component ConfirmDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> message;
+    in property <string> confirm-text: "Confirm";
+    in property <string> cancel-text: "Cancel";
+    in property <string> confirm-variant: "standard";
+    
+    callback confirmed;
+    callback cancelled;
+
+    background: #000000a0;
+
+    // Intercept touch to prevent interacting with background
+    TouchArea {
+        clicked => {}
+    }
+
+    Rectangle {
+        background: Theme.bg;
+        width: 100%;
+
+        VerticalLayout {
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-top: Theme.page-padding-vertical;
+            padding-bottom: Theme.page-padding-vertical;
+            spacing: 12px * Theme.scale;
+            alignment: center;
+
+            Text {
+                text: root.title;
+                color: Theme.text;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: root.message;
+                color: Theme.text-dim;
+                font-size: Theme.font-11;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+
+            HorizontalLayout {
+                spacing: 8px * Theme.scale;
+                alignment: stretch;
+                
+                AppButton {
+                    text: root.cancel-text;
+                    variant: "secondary";
+                    size: "small";
+                    clicked => { root.cancelled(); }
+                }
+                AppButton {
+                    text: root.confirm-text;
+                    variant: "primary";
+                    button-color: root.confirm-variant;
+                    size: "small";
+                    clicked => { root.confirmed(); }
+                }
+            }
+        }
+    }
+}

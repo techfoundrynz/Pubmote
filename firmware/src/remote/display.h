@@ -1,26 +1,11 @@
 #ifndef __DISPLAY_H
 #define __DISPLAY_H
+
 #include "esp_err.h"
-#include "lvgl.h"
+#include <stdbool.h>
 
-#define BASE_RES 240
-
-#ifndef UI_SHAPE
-  #define UI_SHAPE (LV_HOR_RES == LV_VER_RES ? 0 : 1)
-#endif
-
-#ifndef SCALE_UI
-  #define SCALE_UI 1
-#endif
-
-#define SCALE_FACTOR (((float)LV_HOR_RES / BASE_RES) * SCALE_UI)
-
-#ifndef SCALE_FONT
-  #define SCALE_FONT 1
-#endif
-
-#ifndef SCALE_PADDING
-  #define SCALE_PADDING 1
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 typedef enum {
@@ -30,15 +15,52 @@ typedef enum {
   SCREEN_ROTATION_270,
 } ScreenRotation;
 
-void display_task(void *pvParameters);
-
-bool LVGL_lock(int timeout_ms);
-void LVGL_unlock();
 void display_init();
 void display_deinit();
 uint8_t display_get_bl_level();
 void display_set_bl_level(uint8_t level);
 void display_set_rotation(ScreenRotation rot);
-lv_indev_t *get_encoder();
 void display_off();
+bool display_get_hbm();
+void display_set_hbm(bool active);
+bool display_supports_hbm();
+
+void apply_theme_settings();
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+#include <optional>
+#include "generated/app-window.h"
+
+class SlintWindowPtr {
+    std::optional<slint::ComponentHandle<AppWindow>> handle;
+public:
+    SlintWindowPtr() = default;
+    SlintWindowPtr(std::optional<slint::ComponentHandle<AppWindow>> h) : handle(h) {}
+    SlintWindowPtr(slint::ComponentHandle<AppWindow> h) : handle(h) {}
+    
+    SlintWindowPtr& operator=(slint::ComponentHandle<AppWindow> h) {
+        handle = h;
+        return *this;
+    }
+    
+    void reset() { handle.reset(); }
+    
+    operator bool() const { return handle.has_value(); }
+    bool operator!() const { return !handle.has_value(); }
+    
+    AppWindow* operator->() const {
+        return const_cast<AppWindow*>(handle.value().operator->());
+    }
+    AppWindow& operator*() const {
+        return const_cast<AppWindow&>(*handle.value());
+    }
+};
+
+SlintWindowPtr get_slint_window();
+#endif
+
 #endif

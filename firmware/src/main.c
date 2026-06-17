@@ -19,14 +19,13 @@
 #include "remote/powermanagement.h"
 #include "remote/receiver.h"
 #include "remote/remoteinputs.h"
-#include "remote/screen.h"
 #include "remote/settings.h"
 #include "remote/startup.h"
 #include "remote/stats.h"
+#include "remote/test_mode.h"
 #include "remote/time.h"
 #include "remote/transmitter.h"
 #include "remote/vehicle_state.h"
-#include "ui/ui.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -67,6 +66,10 @@ void app_main(void) {
   console_init();
 
   ESP_LOGI(TAG, "Boot complete");
+
+#if TEST_MODE
+  test_mode_init();
+#endif
 
 #if DEBUG_MEMORY
   while (1) {

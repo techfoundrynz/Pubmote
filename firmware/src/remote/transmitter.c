@@ -1,4 +1,5 @@
 #include "transmitter.h"
+#include "config.h"
 #include "commands.h"
 #include "connection.h"
 #include "esp_event.h"
@@ -75,6 +76,10 @@ static void transmitter_task(void *pvParameters) {
         is_stats_screen_active() && !is_pocket_mode_enabled() &&
         (connection_state == CONNECTION_STATE_CONNECTED || connection_state == CONNECTION_STATE_RECONNECTING ||
          connection_state == CONNECTION_STATE_CONNECTING);
+
+#if TEST_MODE
+    should_transmit = false;
+#endif
 
     if (should_transmit) {
       // Check if data is the same as last time
@@ -153,7 +158,7 @@ static void transmitter_task(void *pvParameters) {
 }
 
 void transmitter_init() {
-  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20,
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 3072, NULL, 20,
                                           &transmitter_task_handle, 0) == pdPASS
                       ? ESP_OK
                       : ESP_FAIL);

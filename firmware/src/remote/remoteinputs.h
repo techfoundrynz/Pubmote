@@ -8,6 +8,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum {
   BUTTON_EVENT_DOWN,
   BUTTON_EVENT_UP,
@@ -44,5 +50,11 @@ void buttons_deinit();
 void register_primary_button_cb(ButtonEvent event, button_callback_t cb);
 void unregister_primary_button_cb(ButtonEvent event);
 float convert_adc_to_axis(int adc_value, int min_val, int mid_val, int max_val, int deadband, float expo, bool invert);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

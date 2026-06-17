@@ -1,0 +1,125 @@
+import { Theme } from "theme.slint";
+
+export global ColorSliderGenerator {
+    pure callback generate-track(length, length, int, float, float, float) -> image;
+}
+
+export component ColorSlider inherits Rectangle {
+    in-out property <float> hue: 0;   // 0..360
+    in-out property <float> sat: 100; // 0..100
+    in-out property <float> lit: 50;  // 0..100
+    
+    // mode: 0=Hue, 1=Sat, 2=Lit
+    property <int> mode: 0;
+    
+    property <float> value: root.mode == 0 ? root.hue : (root.mode == 1 ? root.sat : root.lit);
+    property <float> minimum: 0;
+    property <float> maximum: root.mode == 0 ? 360 : 100;
+    
+    property <color> current-color: Colors.hsv(root.hue * 1deg, root.sat / 100.0, root.lit / 100.0);
+    
+    height: round(70px / 1px * Theme.scale) * 1px;
+    min-width: round(100px / 1px * Theme.scale) * 1px;
+    
+    VerticalLayout {
+        width: 100%;
+        spacing: round(15px / 1px * Theme.scale) * 1px;
+        alignment: center;
+        
+        Text {
+            text: root.mode == 0 ? "Mode: Hue (Hold to cycle)" : (root.mode == 1 ? "Mode: Saturation (Hold to cycle)" : "Mode: Lightness (Hold to cycle)");
+            color: Theme.text;
+            font-size: Theme.font-14;
+            horizontal-alignment: center;
+            overflow: elide;
+            width: 100%;
+        }
+        
+        Rectangle {
+            height: round(24px / 1px * Theme.scale) * 1px;
+            width: 100%;
+            
+            // Track
+            track := Rectangle {
+                width: parent.width;
+                height: round(12px / 1px * Theme.scale) * 1px; // Slightly thicker to show the gradient better
+                y: round((parent.height - self.height) / 1px / 2) * 1px;
+                
+                Image {
+                    width: track.width;
+                    height: track.height;
+                    source: ColorSliderGenerator.generate-track(track.width, track.height, root.mode, root.hue, root.sat, root.lit);
+                }
+            }
+            
+            // Thumb
+            thumb := Rectangle {
+                width: round(28px / 1px * Theme.scale) * 1px; // Slightly smaller to look better on a thick track
+                height: round(28px / 1px * Theme.scale) * 1px;
+                border-radius: self.width / 2;
+                border-width: round(3px / 1px * Theme.scale) * 1px;
+                border-color: #ffffff;
+                background: root.current-color;
+                
+                // Position logic
+                x: round(((root.value - root.minimum) / (root.maximum - root.minimum) * (parent.width - self.width)) / 1px) * 1px;
+                y: round((parent.height - self.height) / 1px / 2) * 1px;
+            }
+            
+            touch := TouchArea {
+                width: 100%;
+                height: 100%;
+                
+                property <float> start-val;
+                property <length> start-x;
+                property <bool> is-long-press: false;
+                
+                pointer-event(evt) => {
+                    if evt.button == PointerEventButton.left && evt.kind == PointerEventKind.down {
+                        self.start-val = root.value;
+                        self.start-x = self.mouse-x;
+                        self.is-long-press = false;
+                        long-press-timer.running = true;
+                    } else if evt.button == PointerEventButton.left && evt.kind == PointerEventKind.up {
+                        long-press-timer.running = false;
+                    }
+                }
+                
+                moved => {
+                    let diff = self.mouse-x - self.start-x;
+                    // If dragged more than 10px, cancel long press
+                    if (diff > 10px || diff < -10px) {
+                        long-press-timer.running = false;
+                    }
+                    
+                    if (!self.is-long-press) {
+                        let span = parent.width - thumb.width;
+                        if span > 0 {
+                            let drag-val = (diff / span) * (root.maximum - root.minimum);
+                            let new-val = Math.max(root.minimum, Math.min(root.maximum, self.start-val + drag-val));
+                            
+                            if (root.mode == 0) {
+                                root.hue = new-val;
+                            } else if (root.mode == 1) {
+                                root.sat = new-val;
+                            } else {
+                                root.lit = new-val;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    long-press-timer := Timer {
+        interval: 500ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            touch.is-long-press = true;
+            // Cycle mode
+            root.mode = root.mode == 0 ? 1 : (root.mode == 1 ? 2 : 0);
+        }
+    }
+}
