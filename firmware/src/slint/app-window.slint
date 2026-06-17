@@ -23,6 +23,7 @@ import { FpsOverlay } from "ui/fps-overlay.slint";
 import { ColorSliderGenerator } from "ui/color-slider.slint";
 export { ColorSliderGenerator }
 import { ArcGauge } from "ui/arc-gauge.slint";
+import { ConfirmDialog } from "ui/confirm-dialog.slint";
 
 export enum Screen {
     splash,
@@ -109,6 +110,14 @@ export global UiState {
     // --- Charge (ui_ChargeScreen) ---
     in property <int> charge-percent: 0;
 
+    // --- Confirm Dialog ---
+    in-out property <bool> show-confirm-dialog: false;
+    in property <string> confirm-dialog-title: "";
+    in property <string> confirm-dialog-message: "";
+    in property <string> confirm-dialog-confirm-text: "Confirm";
+    in property <string> confirm-dialog-cancel-text: "Cancel";
+    in property <string> confirm-dialog-variant: "standard";
+
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
     callback splash-tapped();
@@ -141,6 +150,9 @@ export global UiState {
     callback update-primary();
     callback update-secondary();
     callback update-selected(int);
+    // Confirm Dialog
+    callback confirm-dialog-accepted();
+    callback confirm-dialog-rejected();
 }
 
 export component AppWindow inherits Window {
@@ -195,6 +207,7 @@ export component AppWindow inherits Window {
         root.screen-loaded = false;
         root.is-animating = false;
         root.is-animating = true;
+        UiState.show-confirm-dialog = false;
         UiState.screen-changed(self.active-screen);
     }
 
@@ -361,5 +374,16 @@ export component AppWindow inherits Window {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
         fps: UiState.fps;
+    }
+
+    if UiState.show-confirm-dialog: ConfirmDialog {
+        title: UiState.confirm-dialog-title;
+        message: UiState.confirm-dialog-message;
+        confirm-text: UiState.confirm-dialog-confirm-text;
+        cancel-text: UiState.confirm-dialog-cancel-text;
+        confirm-variant: UiState.confirm-dialog-variant;
+        
+        confirmed => { UiState.confirm-dialog-accepted(); }
+        cancelled => { UiState.confirm-dialog-rejected(); }
     }
 }

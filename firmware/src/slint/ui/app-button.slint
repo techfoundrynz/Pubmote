@@ -6,10 +6,17 @@ export component AppButton inherits Rectangle {
     in property <string> right-text: "";
     in property <string> variant: "primary"; // "primary", "secondary", "outline", "ghost"
     in property <string> size: "medium";     // "medium", "small"
+    in property <string> button-color: "standard";  // "standard", "success", "danger"
     in property <bool> enabled: true;
     callback clicked;
     callback long-clicked;
     property <bool> was-long-pressed: false;
+
+    pure function get-base-color() -> color {
+        if (root.button-color == "success") { return Theme.color-success; }
+        if (root.button-color == "danger") { return Theme.color-critical; }
+        return Theme.accent;
+    }
 
     // Height based on size
     height: root.size == "small" ? 30px * Theme.scale : 38px * Theme.scale;
@@ -23,9 +30,9 @@ export component AppButton inherits Rectangle {
     background: !root.enabled ? Theme.track :
         root.variant == "outline" ? (touch.pressed ? #ffffff20 : transparent) :
         root.variant == "secondary" ? (touch.pressed ? Theme.track.darker(0.2) : Theme.track) :
-        root.variant == "ghost" ? (touch.pressed ? Theme.accent.transparentize(0.7) : transparent) :
+        root.variant == "ghost" ? (touch.pressed ? root.get-base-color().transparentize(0.7) : transparent) :
         // default/primary
-        (touch.pressed ? Theme.accent.darker(0.2) : Theme.accent);
+        (touch.pressed ? root.get-base-color().darker(0.2) : root.get-base-color());
 
     HorizontalLayout {
         width: 100%;
