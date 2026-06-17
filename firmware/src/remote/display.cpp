@@ -21,9 +21,10 @@
 #include "screens/stats_screen.h"
 #include "screens/menu_screen.h"
 #include "screens/settings_screen.h"
-#include "screens/calibration_screen.h"
+#include "screens/input_calibration_screen.h"
 #include "screens/pairing_screen.h"
 #include "screens/about_screen.h"
+#include "screens/imu_calibration_screen.h"
 #include "screens/update_screen.h"
 #include "remote/led.h"
 
@@ -107,8 +108,12 @@ extern "C" bool is_about_screen_active() {
   return cached_active_screen.load() == Screen::About;
 }
 
-extern "C" bool is_calibration_screen_active() {
-  return cached_active_screen.load() == Screen::Calibration;
+extern "C" bool is_imu_calibration_screen_active() {
+  return cached_active_screen.load() == Screen::ImuCalibration;
+}
+
+extern "C" bool is_input_calibration_screen_active() {
+  return cached_active_screen.load() == Screen::InputCalibration;
 }
 
 extern "C" bool is_menu_screen_active() {
@@ -146,6 +151,11 @@ extern "C" void display_set_hbm(bool active) {
     } else {
       set_display_brightness(lcd_io, bl_level);
     }
+    slint::invoke_from_event_loop([active]() {
+      if (get_slint_window()) {
+        get_slint_window()->global<UiState>().set_hbm_mode_active(active);
+      }
+    });
   }
 }
 
@@ -177,17 +187,20 @@ extern "C"
   void handle_menu_pocket_mode();
   void handle_menu_toggle_hbm();
   void handle_open_settings();
-  void handle_open_calibration();
+  void handle_open_input_calibration();
   void handle_open_pairing();
   void handle_open_about();
+  void handle_open_imu_calibration();
   void handle_menu_shutdown();
   void handle_settings_save();
   void handle_settings_changed();
   void handle_pairing_action();
-  void handle_calibration_primary();
-  void handle_calibration_secondary();
+  void handle_input_calibration_primary();
+  void handle_input_calibration_secondary();
   void handle_about_check_updates();
   void handle_about_back();
+  void handle_imu_calibration_back();
+  void handle_imu_calibration_primary();
   void handle_update_primary();
   void handle_update_secondary();
   void handle_update_selected(int index);
@@ -305,6 +318,9 @@ static slint::Image generate_color_slider_track(float w_len, float h_len, int mo
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
+  state.set_imu_supported(IMU_ENABLED);
+  state.set_joystick_supported(JOYSTICK_ENABLED);
+
   state.on_screen_changed([](Screen screen) {
     Screen prev = cached_active_screen.exchange(screen);
     if (prev != screen) {
@@ -326,14 +342,17 @@ static void connect_callbacks() {
       else if (screen == Screen::Settings) {
         setup_settings_properties();
       }
-      else if (screen == Screen::Calibration) {
-        setup_calibration_properties();
+      else if (screen == Screen::InputCalibration) {
+        setup_input_calibration_properties();
       }
       else if (screen == Screen::Pairing) {
         setup_pairing_properties();
       }
       else if (screen == Screen::About) {
         setup_about_properties();
+      }
+      else if (screen == Screen::ImuCalibration) {
+        setup_imu_calibration_properties();
       }
       else if (screen == Screen::Update) {
         setup_update_properties();
@@ -348,15 +367,18 @@ static void connect_callbacks() {
   state.on_menu_pocket_mode([]() { handle_menu_pocket_mode(); });
   state.on_menu_toggle_hbm([]() { handle_menu_toggle_hbm(); });
   state.on_open_settings([]() { handle_open_settings(); });
-  state.on_open_calibration([]() { handle_open_calibration(); });
+  state.on_open_input_calibration([]() { handle_open_input_calibration(); });
   state.on_open_pairing([]() { handle_open_pairing(); });
   state.on_open_about([]() { handle_open_about(); });
+  state.on_open_imu_calibration([]() { handle_open_imu_calibration(); });
+  state.on_imu_calibration_back([]() { handle_imu_calibration_back(); });
+  state.on_imu_calibration_primary([]() { handle_imu_calibration_primary(); });
   state.on_menu_shutdown([]() { handle_menu_shutdown(); });
   state.on_settings_save([]() { handle_settings_save(); });
   state.on_settings_changed([]() { handle_settings_changed(); });
   state.on_pairing_action([]() { handle_pairing_action(); });
-  state.on_calibration_primary([]() { handle_calibration_primary(); });
-  state.on_calibration_secondary([]() { handle_calibration_secondary(); });
+  state.on_input_calibration_primary([]() { handle_input_calibration_primary(); });
+  state.on_input_calibration_secondary([]() { handle_input_calibration_secondary(); });
   state.on_about_check_updates([]() { handle_about_check_updates(); });
   state.on_about_back([]() { handle_about_back(); });
   state.on_update_primary([]() { handle_update_primary(); });

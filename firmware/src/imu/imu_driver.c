@@ -1,5 +1,6 @@
 #include "imu_driver.h"
 #include "esp_log.h"
+#include "remote/settings.h"
 #if IMU_QMI8658
   #include "imu/qmi8658/imu_driver_qmi8658.hpp"
 #endif
@@ -35,5 +36,45 @@ void imu_driver_get_data(imu_data_t *data) {
   qmi8658_get_data(data);
 #elif IMU_BHI260
   // bhi260_get_data(data);
+#endif
+
+  // Apply calibration offsets
+  data->accel_x -= imu_calibration.accel_x_offset;
+  data->accel_y -= imu_calibration.accel_y_offset;
+  data->accel_z -= imu_calibration.accel_z_offset;
+
+  float ax = data->accel_x;
+  float ay = data->accel_y;
+  float gx = data->gyro_x;
+  float gy = data->gyro_y;
+
+  if (imu_calibration.swap_xy) {
+    ax = data->accel_y;
+    ay = data->accel_x;
+    gx = data->gyro_y;
+    gy = data->gyro_x;
+  }
+
+  if (imu_calibration.invert_x) {
+    ax = -ax;
+    gx = -gx;
+  }
+  if (imu_calibration.invert_y) {
+    ay = -ay;
+    gy = -gy;
+  }
+
+  data->accel_x = ax;
+  data->accel_y = ay;
+  data->gyro_x = gx;
+  data->gyro_y = gy;
+}
+
+bool imu_driver_is_initialized() {
+#if IMU_QMI8658
+  extern bool qmi8658_is_active();
+  return qmi8658_is_active();
+#else
+  return false;
 #endif
 }

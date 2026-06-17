@@ -1,3 +1,4 @@
+#include "config.h"
 #include <cmath>
 #include "imu_driver_qmi8658.hpp"
 #include "esp_log.h"
@@ -6,7 +7,6 @@
 #include "SensorQMI8658.hpp"
 #include "remote/i2c.h"
 #include <driver/gpio.h>
-#include "config.h"
 #include "imu/imu_datatypes.h"
 
 static const char *TAG = "PUBREMOTE-IMU_DRIVER_QMI8658";
@@ -16,20 +16,20 @@ static const char *TAG = "PUBREMOTE-IMU_DRIVER_QMI8658";
 static SensorQMI8658 imu;
 static bool imu_initialized = false;
 
-static bool qmi8658_write_reg(uint8_t reg_addr, const uint8_t *data, size_t len)
+static bool qmi8658_write_reg(uint8_t device_addr, uint8_t reg_addr, const uint8_t *data, size_t len)
 {
-    esp_err_t result = i2c_write_with_mutex(QMI8658_ADDR, reg_addr, (uint8_t*)data, len, 500);
+    esp_err_t result = i2c_write(device_addr, reg_addr, (uint8_t*)data, len, 500);
     return (result == ESP_OK);
 }
 
 static bool qmi8658_read_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t* data, size_t len) {
-    esp_err_t result = i2c_read_with_mutex(device_addr, reg_addr, data, len, 500);
+    esp_err_t result = i2c_read(device_addr, reg_addr, data, len, 500);
     return (result == ESP_OK);
 }
 
 static bool qmi8658_reg_cb(uint8_t addr, uint8_t reg, uint8_t *buf, size_t len, bool writeReg, bool isWrite) {
     if (isWrite) {
-        return qmi8658_write_reg(reg, buf, len);
+        return qmi8658_write_reg(addr, reg, buf, len);
     } else {
         return qmi8658_read_reg(addr, reg, buf, len);
     }
@@ -124,31 +124,42 @@ static esp_err_t qmi8658_init()
     // begin QMI8658 sensor
     bool success = imu.begin(qmi8658_reg_cb, hal_callback, QMI8658_ADDR);
     if (!success) {
-        ESP_LOGE(TAG, "Failed to initialize QMI8658 sensor");
+        uint8_t fallback_addr = (QMI8658_ADDR == 0x6A) ? 0x6B : 0x6A;
+        ESP_LOGW(TAG, "Failed to initialize QMI8658 at 0x%02X, trying fallback at 0x%02X...", QMI8658_ADDR, fallback_addr);
+        success = imu.begin(qmi8658_reg_cb, hal_callback, fallback_addr);
+    }
+    if (!success) {
+        ESP_LOGE(TAG, "Failed to initialize QMI8658 sensor at both addresses (0x6A/0x6B)");
         return ESP_FAIL;
     }
     ESP_LOGI(TAG, "QMI8658 I2C communication established. Device ID: 0x%02X", imu.getChipID());
 
+    // Configure accelerometer
+    if (imu.configAccelerometer(SensorQMI8658::ACC_RANGE_4G, SensorQMI8658::ACC_ODR_250Hz) != 0) {
+        ESP_LOGE(TAG, "Failed to configure accelerometer");
+        return ESP_FAIL;
+    }
     success = imu.enableAccelerometer();
     if (!success) {
         ESP_LOGE(TAG, "Failed to enable accelerometer");
         return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "Accelerometer enabled");
+    ESP_LOGI(TAG, "Accelerometer configured and enabled");
 
+    // Configure gyroscope
+    if (imu.configGyroscope(SensorQMI8658::GYR_RANGE_512DPS, SensorQMI8658::GYR_ODR_224_2Hz) != 0) {
+        ESP_LOGE(TAG, "Failed to configure gyroscope");
+        return ESP_FAIL;
+    }
     success = imu.enableGyroscope();
     if (!success) {
         ESP_LOGE(TAG, "Failed to enable gyroscope");
         return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "Gyroscope enabled");
+    ESP_LOGI(TAG, "Gyroscope configured and enabled");
 
-    success = imu.configWakeOnMotion();
-    if (!success) {
-        ESP_LOGE(TAG, "Failed to configure QMI8658 Wake-On-Motion");
-        return ESP_FAIL;
-    }
-    ESP_LOGI(TAG, "QMI8658 Wake-On-Motion configured");
+    // Skip Wake-On-Motion configuration to avoid co-processor timeouts and reset issues
+    ESP_LOGW(TAG, "Skipping QMI8658 Wake-On-Motion configuration to prevent reset timeout bugs");
 
     return ESP_OK;
 }
@@ -161,7 +172,12 @@ bool qmi8658_is_active() {
 
 void qmi8658_get_data(imu_data_t *data) {
     if (!imu_initialized) {
-        ESP_LOGW(TAG, "IMU not initialized");
+        static uint32_t last_warn_time = 0;
+        uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
+        if (now - last_warn_time > 5000) {
+            last_warn_time = now;
+            ESP_LOGW(TAG, "IMU not initialized");
+        }
         return;
     }
 
@@ -188,7 +204,8 @@ void qmi8658_get_data(imu_data_t *data) {
     data->event = IMU_EVENT_NONE;
 }
 
-    IMUdata acc, gyr;
+    IMUdata acc = {0};
+    IMUdata gyr = {0};
     // Read accelerometer data
     imu.getAccelerometer(acc.x, acc.y, acc.z);
     data->accel_x = acc.x;

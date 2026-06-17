@@ -72,6 +72,7 @@ extern "C" void setup_settings_properties() {
     state.set_temp_units_index(device_settings.temp_units);
     state.set_distance_units_index(device_settings.distance_units);
     state.set_startup_sound_index(device_settings.startup_sound);
+    state.set_raise_to_hbm_enabled(device_settings.raise_to_hbm);
 
 
     float h, s, v;
@@ -135,6 +136,7 @@ extern "C" void handle_settings_save() {
     device_settings.temp_units = (TempUnits)state.get_temp_units_index();
     device_settings.distance_units = (DistanceUnits)state.get_distance_units_index();
     device_settings.startup_sound = (StartupSoundOptions)state.get_startup_sound_index();
+    device_settings.raise_to_hbm = state.get_raise_to_hbm_enabled();
 
 
     float h = state.get_theme_h();

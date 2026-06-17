@@ -113,4 +113,16 @@
   #define QMI8658_ADDR 0x6A
 #endif
 
+#ifndef IMU_INVERT_X
+  #define IMU_INVERT_X 0
+#endif
+
+#ifndef IMU_INVERT_Y
+  #define IMU_INVERT_Y 0
+#endif
+
+#ifndef IMU_SWAP_XY
+  #define IMU_SWAP_XY 0
+#endif
+
 #endif

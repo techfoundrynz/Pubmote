@@ -1,17 +1,17 @@
-#include "screens/calibration_screen.h"
+#include "screens/input_calibration_screen.h"
 #include "config.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "generated/app-window.h"
 #include "remote/display.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
-#include "generated/app-window.h"
 #include <stdio.h>
 #include <string.h>
 
-static const char *TAG = "PUBREMOTE-CALIBRATION_SCREEN";
+static const char *TAG = "PUBREMOTE-INPUT_CALIBRATION_SCREEN";
 
 #define CALIBRATION_STEP_START 0
 #define CALIBRATION_STEP_CENTER 1
@@ -56,41 +56,42 @@ static int16_t get_deadband() {
 }
 
 static void update_calibration_ui_strings() {
-  if (!get_slint_window()) return;
+  if (!get_slint_window())
+    return;
 
-  const char* step_label = "";
-  const char* primary_label = "Next";
+  const char *step_label = "";
+  const char *primary_label = "Next";
 
   switch (calibration_step) {
-    case CALIBRATION_STEP_START:
-      step_label = "Press start to begin calibration";
-      primary_label = "Start";
-      break;
-    case CALIBRATION_STEP_CENTER:
-      step_label = "Move stick to center";
-      break;
-    case CALIBRATION_STEP_MINMAX:
-      step_label = "Move stick to min/max";
-      break;
-    case CALIBRATION_STEP_DEADBAND:
-      step_label = "Move stick within deadband";
-      break;
-    case CALIBRATION_STEP_EXPO:
-      step_label = "Set expo factor";
-      break;
-    case CALIBRATION_STEP_STICK_FLAGS:
-      step_label = "Axis options (Invert Y)";
-      break;
-    case CALIBRATION_STEP_DONE:
-      step_label = "Calibration complete!";
-      primary_label = "Save";
-      break;
+  case CALIBRATION_STEP_START:
+    step_label = "Press start to begin calibration";
+    primary_label = "Start";
+    break;
+  case CALIBRATION_STEP_CENTER:
+    step_label = "Move stick to center";
+    break;
+  case CALIBRATION_STEP_MINMAX:
+    step_label = "Move stick to min/max";
+    break;
+  case CALIBRATION_STEP_DEADBAND:
+    step_label = "Move stick within deadband";
+    break;
+  case CALIBRATION_STEP_EXPO:
+    step_label = "Set expo factor";
+    break;
+  case CALIBRATION_STEP_STICK_FLAGS:
+    step_label = "Axis options (Invert Y)";
+    break;
+  case CALIBRATION_STEP_DONE:
+    step_label = "Calibration complete!";
+    primary_label = "Save";
+    break;
   }
 
   slint::invoke_from_event_loop([=]() {
     const auto &state = get_slint_window()->global<UiState>();
-    state.set_calibration_step(step_label);
-    state.set_calibration_primary_text(primary_label);
+    state.set_input_calibration_step(step_label);
+    state.set_input_calibration_primary_text(primary_label);
     state.set_show_expo_slider(calibration_step == CALIBRATION_STEP_EXPO);
     state.set_show_invert_switch(calibration_step == CALIBRATION_STEP_STICK_FLAGS);
     if (calibration_step == CALIBRATION_STEP_EXPO) {
@@ -103,12 +104,16 @@ static void update_calibration_ui_strings() {
 }
 
 static void calibration_task(void *pvParameters) {
-  while (is_calibration_screen_active()) {
+  while (is_input_calibration_screen_active()) {
     // 1. Update min/max ranges
-    if (joystick_data.x < min_max_data.x_min) min_max_data.x_min = joystick_data.x;
-    if (joystick_data.x > min_max_data.x_max) min_max_data.x_max = joystick_data.x;
-    if (joystick_data.y < min_max_data.y_min) min_max_data.y_min = joystick_data.y;
-    if (joystick_data.y > min_max_data.y_max) min_max_data.y_max = joystick_data.y;
+    if (joystick_data.x < min_max_data.x_min)
+      min_max_data.x_min = joystick_data.x;
+    if (joystick_data.x > min_max_data.x_max)
+      min_max_data.x_max = joystick_data.x;
+    if (joystick_data.y < min_max_data.y_min)
+      min_max_data.y_min = joystick_data.y;
+    if (joystick_data.y > min_max_data.y_max)
+      min_max_data.y_max = joystick_data.y;
 
     // 2. Convert ADC to current axis values (-1.0 to 1.0)
     float curr_x = 0;
@@ -119,9 +124,9 @@ static void calibration_task(void *pvParameters) {
 
     float curr_y = 0;
 #if JOYSTICK_Y_ENABLED
-    curr_y = convert_adc_to_axis(joystick_data.y, calibration_data.y_min, calibration_data.y_center,
-                                 calibration_data.y_max, calibration_data.deadband, calibration_data.expo,
-                                 calibration_data.invert_y);
+    curr_y =
+        convert_adc_to_axis(joystick_data.y, calibration_data.y_min, calibration_data.y_center, calibration_data.y_max,
+                            calibration_data.deadband, calibration_data.expo, calibration_data.invert_y);
 #endif
 
     // 3. Format header label
@@ -131,7 +136,8 @@ static void calibration_task(void *pvParameters) {
         expo = get_slint_window()->global<UiState>().get_expo_value();
       }
       snprintf(header_str, sizeof(header_str), "Expo: %.2f", expo);
-    } else {
+    }
+    else {
       snprintf(header_str, sizeof(header_str), "X: %.2f | Y: %.2f", curr_x, curr_y);
     }
 
@@ -142,7 +148,7 @@ static void calibration_task(void *pvParameters) {
     // 4. Update Slint properties
     slint::invoke_from_event_loop([=]() {
       const auto &state = get_slint_window()->global<UiState>();
-      state.set_calibration_header(header_str);
+      state.set_input_calibration_header(header_str);
       state.set_joystick_x(curr_x);
       state.set_joystick_y(curr_y); // Slint dial moves down on positive Y, matching joystick inversion
     });
@@ -155,9 +161,9 @@ static void calibration_task(void *pvParameters) {
   vTaskDelete(NULL);
 }
 
-extern "C" void setup_calibration_properties() {
+extern "C" void setup_input_calibration_properties() {
   calibration_step = CALIBRATION_STEP_START;
-  
+
   // Load current values
   calibration_data.x_center = calibration_settings.x_center;
   calibration_data.y_center = calibration_settings.y_center;
@@ -181,7 +187,7 @@ extern "C" void setup_calibration_properties() {
 }
 
 // Slint Event callbacks
-extern "C" void handle_calibration_primary() {
+extern "C" void handle_input_calibration_primary() {
   ESP_LOGI(TAG, "Calibration primary action at step %d", calibration_step);
 
   if (calibration_step == CALIBRATION_STEP_START) {
@@ -212,7 +218,8 @@ extern "C" void handle_calibration_primary() {
   else if (calibration_step == CALIBRATION_STEP_EXPO) {
     if (get_slint_window()) {
       calibration_data.expo = get_slint_window()->global<UiState>().get_expo_value();
-    } else {
+    }
+    else {
       calibration_data.expo = expo;
     }
   }
@@ -224,11 +231,9 @@ extern "C" void handle_calibration_primary() {
   else if (calibration_step >= CALIBRATION_STEP_DONE) {
     // Save to NVS
     calibration_settings = calibration_data;
-    save_calibration();
+    save_input_calibration();
 
-    slint::invoke_from_event_loop([]() {
-      get_slint_window()->global<UiState>().set_screen(Screen::Menu);
-    });
+    slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
     return;
   }
 
@@ -239,9 +244,7 @@ extern "C" void handle_calibration_primary() {
   update_calibration_ui_strings();
 }
 
-extern "C" void handle_calibration_secondary() {
+extern "C" void handle_input_calibration_secondary() {
   ESP_LOGI(TAG, "Calibration secondary action (Cancel)");
-  slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Menu);
-  });
+  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
 }

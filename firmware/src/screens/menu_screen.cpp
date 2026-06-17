@@ -117,10 +117,10 @@ extern "C" void handle_open_settings() {
   });
 }
 
-extern "C" void handle_open_calibration() {
-  ESP_LOGI(TAG, "Open calibration pressed");
+extern "C" void handle_open_input_calibration() {
+  ESP_LOGI(TAG, "Open input calibration pressed");
   slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Calibration);
+    get_slint_window()->global<UiState>().set_screen(Screen::InputCalibration);
   });
 }
 

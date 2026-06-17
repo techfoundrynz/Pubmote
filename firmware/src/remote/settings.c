@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "config.h"
 #include "display.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -37,6 +38,7 @@ DeviceSettings device_settings = {
     .secondary_stat_display = SECONDARY_STAT_DUTY,
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
+    .raise_to_hbm = true,
 };
 
 CalibrationSettings calibration_settings = {
@@ -48,9 +50,17 @@ CalibrationSettings calibration_settings = {
     .y_center = STICK_MID_VAL,
     .deadband = STICK_DEADBAND,
     .expo = STICK_EXPO,
-    // .invert_x = INVERT_X_AXIS,
+    .invert_x = INVERT_X_AXIS,
     .invert_y = INVERT_Y_AXIS,
-    // .invert_xy = INVERT_XY_AXIS,
+};
+
+ImuCalibrationSettings imu_calibration = {
+    .accel_x_offset = 0.0f,
+    .accel_y_offset = 0.0f,
+    .accel_z_offset = 0.0f,
+    .invert_x = IMU_INVERT_X,
+    .invert_y = IMU_INVERT_Y,
+    .swap_xy = IMU_SWAP_XY,
 };
 
 PairingSettings pairing_settings = {
@@ -298,6 +308,7 @@ void save_device_settings() {
   nvs_write_int("sec_stat_disp", device_settings.secondary_stat_display);
   nvs_write_int("pocket_mode", device_settings.pocket_mode);
   nvs_write_int("stats_dp", device_settings.double_press_action);
+  nvs_write_int("raise_to_hbm", device_settings.raise_to_hbm);
 }
 
 esp_err_t save_wifi_ssid(const char *ssid) {
@@ -433,7 +444,7 @@ esp_err_t save_pairing_data() {
   return ESP_OK;
 }
 
-void save_calibration() {
+void save_input_calibration() {
   nvs_write_int("x_min", calibration_settings.x_min);
   nvs_write_int("x_max", calibration_settings.x_max);
   nvs_write_int("y_min", calibration_settings.y_min);
@@ -443,6 +454,15 @@ void save_calibration() {
   nvs_write_int("deadband", calibration_settings.deadband);
   nvs_write_int("expo", (int)(calibration_settings.expo * EXPO_ADJUST_FACTOR));
   nvs_write_int("invert_y", calibration_settings.invert_y);
+}
+
+void save_imu_calibration() {
+  nvs_write_int("imu_off_x", (int32_t)(imu_calibration.accel_x_offset * 1000.0f));
+  nvs_write_int("imu_off_y", (int32_t)(imu_calibration.accel_y_offset * 1000.0f));
+  nvs_write_int("imu_off_z", (int32_t)(imu_calibration.accel_z_offset * 1000.0f));
+  nvs_write_int("imu_inv_x", imu_calibration.invert_x ? 1 : 0);
+  nvs_write_int("imu_inv_y", imu_calibration.invert_y ? 1 : 0);
+  nvs_write_int("imu_swap_xy", imu_calibration.swap_xy ? 1 : 0);
 }
 
 // Function to initialize NVS
@@ -494,14 +514,13 @@ esp_err_t settings_init() {
   device_settings.theme_color =
       nvs_read_int("theme_color", &device_settings.theme_color) == ESP_OK ? device_settings.theme_color : COLOR_PRIMARY;
 
-
   device_settings.battery_display = nvs_read_int("battery_display", &temp_setting_value) == ESP_OK
                                         ? (BoardBatteryDisplayOption)temp_setting_value
                                         : BATTERY_DISPLAY_PERCENT;
 
   device_settings.secondary_stat_display = nvs_read_int("sec_stat_disp", &temp_setting_value) == ESP_OK
-                                                ? (SecondaryStatDisplayOption)temp_setting_value
-                                                : SECONDARY_STAT_DUTY;
+                                               ? (SecondaryStatDisplayOption)temp_setting_value
+                                               : SECONDARY_STAT_DUTY;
 
   device_settings.pocket_mode =
       nvs_read_int("pocket_mode", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : POCKET_MODE_DISABLED;
@@ -509,6 +528,9 @@ esp_err_t settings_init() {
   device_settings.double_press_action = nvs_read_int("stats_dp", &temp_setting_value) == ESP_OK
                                             ? (StatsDoublePressAction)temp_setting_value
                                             : DEFAULT_DOUBLE_PRESS_ACTION;
+
+  device_settings.raise_to_hbm =
+      nvs_read_int("raise_to_hbm", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : true;
 
   // Reading calibration settings
   calibration_settings.x_min =
@@ -537,6 +559,20 @@ esp_err_t settings_init() {
 
   calibration_settings.invert_y =
       nvs_read_int("invert_y", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : INVERT_Y_AXIS;
+
+  uint32_t temp_val;
+  imu_calibration.accel_x_offset =
+      nvs_read_int("imu_off_x", &temp_val) == ESP_OK ? ((float)(int32_t)temp_val / 1000.0f) : 0.0f;
+  imu_calibration.accel_y_offset =
+      nvs_read_int("imu_off_y", &temp_val) == ESP_OK ? ((float)(int32_t)temp_val / 1000.0f) : 0.0f;
+  imu_calibration.accel_z_offset =
+      nvs_read_int("imu_off_z", &temp_val) == ESP_OK ? ((float)(int32_t)temp_val / 1000.0f) : 0.0f;
+  imu_calibration.invert_x =
+      nvs_read_int("imu_inv_x", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : IMU_INVERT_X;
+  imu_calibration.invert_y =
+      nvs_read_int("imu_inv_y", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : IMU_INVERT_Y;
+  imu_calibration.swap_xy =
+      nvs_read_int("imu_swap_xy", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : IMU_SWAP_XY;
 
   // Reading pairing settings
   pairing_settings.secret_code = nvs_read_int("secret_code", &temp_setting_value) == ESP_OK ? temp_setting_value : -1;
