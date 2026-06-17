@@ -5,6 +5,12 @@
 
 #include "esp_now.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #define FIRMWARE_ID "PUBREMOTE-0_0_1"
 
 typedef struct {
@@ -18,5 +24,11 @@ typedef struct {
 
 void transmitter_init();
 void transmitter_deinit();
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

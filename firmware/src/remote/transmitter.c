@@ -1,4 +1,5 @@
 #include "transmitter.h"
+#include "config.h"
 #include "commands.h"
 #include "connection.h"
 #include "esp_event.h"
@@ -22,7 +23,8 @@ static const char *TAG = "PUBREMOTE-TRANSMITTER";
 static int64_t last_send_time = 0;
 static TaskHandle_t transmitter_task_handle = NULL;
 
-static void on_data_sent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+static void on_data_sent(const esp_now_send_info_t *tx_info, esp_now_send_status_t status) {
+  const uint8_t *mac_addr = tx_info->des_addr;
   // This callback runs in WiFi task context!
   if (status == ESP_NOW_SEND_SUCCESS) {
     ESP_LOGD(TAG, "Data sent successfully to %02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2],
@@ -74,6 +76,10 @@ static void transmitter_task(void *pvParameters) {
         is_stats_screen_active() && !is_pocket_mode_enabled() &&
         (connection_state == CONNECTION_STATE_CONNECTED || connection_state == CONNECTION_STATE_RECONNECTING ||
          connection_state == CONNECTION_STATE_CONNECTING);
+
+#if TEST_MODE
+    should_transmit = false;
+#endif
 
     if (should_transmit) {
       // Check if data is the same as last time
@@ -148,10 +154,14 @@ static void transmitter_task(void *pvParameters) {
   // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "TX task ended");
   vTaskDelete(NULL);
+  transmitter_task_handle = NULL;
 }
 
 void transmitter_init() {
-  xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20, &transmitter_task_handle, 0);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 3072, NULL, 20,
+                                          &transmitter_task_handle, 0) == pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 }
 
 void transmitter_deinit() {

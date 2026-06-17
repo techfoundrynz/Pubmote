@@ -102,11 +102,21 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
+      - name: Setup Rust for Xtensa
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: false
+          buildtargets: esp32s3
+
       # Build the project using the extracted build_value
       - name: Build PlatformIO Project
-        run: pio run -e ${{ needs.check_comment.outputs.build_value }}
+        run: |
+          sed -i 's/build_type = debug/build_type = release/g' platformio.ini
+          pio run -e ${{ needs.check_comment.outputs.build_value }}
         env:
-          PLATFORMIO_BUILD_FLAGS: '-D RELEASE_VARIANT=\"qa\"'
+          PLATFORMIO_BUILD_FLAGS: |
+            -D RELEASE_VARIANT=\"qa\"
+            -D RELEASES_AUTH_TOKEN=\"${{ secrets.RELEASES_AUTH_TOKEN }}\"
   
       # Create a folder named according to the build and copy the build files into it
       - name: Create build folder and copy files

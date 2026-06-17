@@ -3,6 +3,12 @@
 
 #include <stdio.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef struct {
   uint8_t r;
   uint8_t g;
@@ -23,5 +29,12 @@ void led_set_effect_solid(uint32_t color);
 void led_set_effect_pulse(uint32_t color);
 void led_set_effect_rainbow();
 void led_set_effect_none();
+void led_set_effect_default();
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

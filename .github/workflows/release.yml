@@ -133,10 +133,20 @@ jobs:
     - name: Install PlatformIO Core
       run: pip install --upgrade platformio
 
+    - name: Setup Rust for Xtensa
+      uses: esp-rs/xtensa-toolchain@v1.5
+      with:
+        default: false
+        buildtargets: esp32s3
+
     - name: Build PlatformIO Project
-      run: pio run
+      run: |
+          sed -i 's/build_type = debug/build_type = release/g' platformio.ini
+          pio run
       env:
-        PLATFORMIO_BUILD_FLAGS: '-D RELEASE_VARIANT=\"release\"'
+          PLATFORMIO_BUILD_FLAGS: |
+            -D RELEASE_VARIANT=\"release\"
+            -D RELEASES_AUTH_TOKEN=\"${{ secrets.RELEASES_AUTH_TOKEN }}\"
 
     - name: Create Git Tag
       run: |
@@ -153,6 +163,7 @@ jobs:
         files: |
           *.zip
           *.bin
+          *.elf
         prerelease: true
         fail_on_unmatched_files: true
         generate_release_notes: true

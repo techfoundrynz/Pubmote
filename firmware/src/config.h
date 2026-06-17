@@ -7,6 +7,13 @@
   #define RELEASE_VARIANT "dev"
 #endif
 
+// Uncomment to emulate connection state and incoming stats for UI testing
+#define TEST_MODE 0
+
+#ifndef TARGET_FPS
+  #define TARGET_FPS 60
+#endif
+
 #define MIN_BATTERY_VOLTAGE 3000
 #define MAX_BATTERY_VOLTAGE 4200
 
@@ -19,7 +26,7 @@
 #endif
 
 #if defined(ACC2_POWER) && !defined(ACC2_POWER_DEFAULT_LEVEL)
-  #define ACC2_POWER_DEFAULT 60 // Default to 60% brightness
+  #define ACC2_POWER_DEFAULT 30 // Default to x% brightness
 #endif
 
 // i2c configuration
@@ -49,6 +56,10 @@
 #endif
 
 #define JOYSTICK_ENABLED (JOYSTICK_X_ENABLED || JOYSTICK_Y_ENABLED)
+
+#ifndef JOYSTICK_BUTTON_LEVEL
+  #define JOYSTICK_BUTTON_LEVEL 0 // 0: active low, 1: active high (switch = 0, ps5 = 1)
+#endif
 
 // Display configuration
 #if defined(TP_CST816S) || defined(TP_FT3168) || defined(TP_CST9217)

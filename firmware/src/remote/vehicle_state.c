@@ -99,7 +99,7 @@ static void monitor_task(void *pvParameters) {
       }
       else {
         ESP_LOGD(TAG, "Duty cycle normal: %d%%", remoteStats.dutyCycle);
-        led_set_effect_none();
+        led_set_effect_default();
         haptic_stop_vibration();
         buzzer_stop();
       }
@@ -110,10 +110,12 @@ static void monitor_task(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(VEHICLE_STATE_LOOP_TIME_MS));
   }
   vTaskDelete(NULL);
+  monitor_task_handle = NULL;
 }
 
 void vehicle_monitor_init() {
-  xTaskCreate(monitor_task, "monitor_task", 4096, NULL, 5, &monitor_task_handle);
+  ESP_ERROR_CHECK(xTaskCreate(monitor_task, "monitor_task", 4096, NULL, 5, &monitor_task_handle) == pdPASS ? ESP_OK
+                                                                                                           : ESP_FAIL);
   ESP_LOGI("VEHICLE_STATE", "Vehicle state monitor initialized");
 }
 

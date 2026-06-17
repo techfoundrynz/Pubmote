@@ -3,7 +3,7 @@
 ## First-Time Pubmote Setup
 
 1. Ensure you have completed the [Hardware Prerequisites](/README.md#hardware-prerequisites)
-2. Flash your Pubmote's ESP32-S3 controller using the included flashing tool at [pubmote.techfoundry.nz](https://pubmote.techfoundry.nz/)
+2. Flash your Pubmote's ESP32-S3 controller using the included flashing tool at [pubmote.com](https://pubmote.com/)
 3. Configure Pubmote settings:
     - On the Pubmote, navigate to the main menu by swiping down from the top of the main screen
     - Select "Settings" and swipe through the options to set your preferences
@@ -27,7 +27,7 @@
 5. Pair the remote to your VESC Express:
     
     1. If you haven't already, install Float Accessories on your VESC Express:
-        - Instructions for this may be found at the bottom of [pubmote.techfoundry.nz](https://pubmote.techfoundry.nz)
+        - Instructions for this may be found at the bottom of [pubmote.com](https://pubmote.com)
     2. Configure your VESC Express wifi and bluetooth settings:
         - Navigate to VESC Express > WiFi > WiFi Mode: Set this to "Access Point"
         - Navigate to VESC Express > Bluetooth > Bluetooth Mode: Set this to "Enabled" or "Enabled with Scripting" (if needed)

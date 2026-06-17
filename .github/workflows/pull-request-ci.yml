@@ -3,6 +3,10 @@ name: PlatformIO CI
 # Runs on every opened, reopened, or updated PR
 on:
   pull_request:
+    paths:
+      - 'firmware/**'
+      - 'platformio.ini'
+      - '.github/workflows/pull-request-ci.yml'
     types: 
       - opened
       - reopened
@@ -38,7 +42,15 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
+      - name: Setup Rust for Xtensa
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: false
+          buildtargets: esp32s3
+
       - name: Build PlatformIO Project
         run: pio run -e leafblaster_esp32s3_touch_amoled_143_co5300
         env:
-          PLATFORMIO_BUILD_FLAGS: '-D RELEASE_VARIANT=\"release\"'
+          PLATFORMIO_BUILD_FLAGS: |
+            -D RELEASE_VARIANT=\"release\"
+            -D RELEASES_AUTH_TOKEN=\"${{ secrets.RELEASES_AUTH_TOKEN }}\"

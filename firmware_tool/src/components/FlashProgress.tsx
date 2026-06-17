@@ -7,9 +7,10 @@ interface Props {
   isDeviceConnected?: boolean;
   eraseFlash: boolean;
   onEraseFlashChange: (value: boolean) => void;
+  hasFirmwareFiles?: boolean;
 }
 
-export function FlashProgress({ progress, isDeviceConnected = false, eraseFlash, onEraseFlashChange }: Props) {
+export function FlashProgress({ progress, isDeviceConnected = false, eraseFlash, onEraseFlashChange, hasFirmwareFiles = false }: Props) {
   const getStatusIcon = () => {
     switch (progress.status) {
       case 'idle':
@@ -30,7 +31,7 @@ export function FlashProgress({ progress, isDeviceConnected = false, eraseFlash,
 
     switch (progress.status) {
       case 'idle':
-        return 'Device connected - Ready to flash';
+        return hasFirmwareFiles ? 'Device connected - Ready to flash' : 'Device connected - No files selected';
       case 'connecting':
         return 'Connecting to device...';
       case 'erasing':
@@ -49,15 +50,15 @@ export function FlashProgress({ progress, isDeviceConnected = false, eraseFlash,
   };
 
   return (
-    <div className="space-y-4 rounded-lg bg-gray-800/50 p-4">
+    <div className="space-y-4 rounded-lg bg-[var(--color-bg-tertiary)] p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {getStatusIcon()}
-          <span className="text-sm font-medium text-gray-200">
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">
             {getStatusText()}
           </span>
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-300">
+        <label className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
           <input
             type="checkbox"
             checked={eraseFlash}
@@ -73,7 +74,7 @@ export function FlashProgress({ progress, isDeviceConnected = false, eraseFlash,
         progress.status !== 'complete' &&
         progress.status !== 'error' && (
           <div className="space-y-2">
-            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--color-bg-primary)]">
               <div
                 className="h-full bg-blue-500 transition-all duration-300"
                 style={{ width: `${progress.progress}%` }}

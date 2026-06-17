@@ -9,8 +9,6 @@
 
 static const char *TAG = "PUBREMOTE-I2C";
 
-static SemaphoreHandle_t i2c_mutex = NULL;
-
 #define I2C_MASTER_NUM I2C_NUM_0
 
 // Global handles for new API
@@ -63,22 +61,10 @@ i2c_master_bus_handle_t i2c_get_bus_handle() {
   return i2c_bus_handle;
 }
 
-// I2C write function with mutex protection
-esp_err_t i2c_write_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t len, int timeout_ms) {
-  if (i2c_mutex == NULL) {
-    ESP_LOGE(TAG, "I2C mutex not initialized");
-    return ESP_FAIL;
-  }
-
+esp_err_t i2c_write(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t len, int timeout_ms) {
   if (i2c_bus_handle == NULL) {
     ESP_LOGE(TAG, "I2C bus not initialized");
     return ESP_FAIL;
-  }
-
-  // Take mutex with timeout
-  if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
-    ESP_LOGE(TAG, "Failed to take I2C mutex for write");
-    return ESP_ERR_TIMEOUT;
   }
 
   esp_err_t ret = ESP_OK;
@@ -86,7 +72,6 @@ esp_err_t i2c_write_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *d
 
   if (dev_handle == NULL) {
     ESP_LOGE(TAG, "Failed to get device handle for address 0x%02X", device_addr);
-    xSemaphoreGive(i2c_mutex);
     return ESP_FAIL;
   }
 
@@ -94,7 +79,6 @@ esp_err_t i2c_write_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *d
   uint8_t *write_buf = malloc(1 + len);
   if (write_buf == NULL) {
     ESP_LOGE(TAG, "Failed to allocate write buffer");
-    xSemaphoreGive(i2c_mutex);
     return ESP_ERR_NO_MEM;
   }
 
@@ -109,9 +93,6 @@ esp_err_t i2c_write_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *d
   // Clean up
   free(write_buf);
 
-  // Release mutex
-  xSemaphoreGive(i2c_mutex);
-
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "I2C write failed: %s", esp_err_to_name(ret));
   }
@@ -119,13 +100,7 @@ esp_err_t i2c_write_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *d
   return ret;
 }
 
-// I2C read function with mutex protection
-esp_err_t i2c_read_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t len, int timeout_ms) {
-  if (i2c_mutex == NULL) {
-    ESP_LOGE(TAG, "I2C mutex not initialized");
-    return ESP_FAIL;
-  }
-
+esp_err_t i2c_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t len, int timeout_ms) {
   if (i2c_bus_handle == NULL) {
     ESP_LOGE(TAG, "I2C bus not initialized");
     return ESP_FAIL;
@@ -136,26 +111,16 @@ esp_err_t i2c_read_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *da
     return ESP_ERR_INVALID_ARG;
   }
 
-  // Take mutex with timeout
-  if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
-    ESP_LOGE(TAG, "Failed to take I2C mutex for read");
-    return ESP_ERR_TIMEOUT;
-  }
-
   esp_err_t ret = ESP_OK;
   i2c_master_dev_handle_t dev_handle = get_device_handle(device_addr);
 
   if (dev_handle == NULL) {
     ESP_LOGE(TAG, "Failed to get device handle for address 0x%02X", device_addr);
-    xSemaphoreGive(i2c_mutex);
     return ESP_FAIL;
   }
 
   // Execute the read (write register address, then read data)
   ret = i2c_master_transmit_receive(dev_handle, &reg_addr, 1, data, len, timeout_ms);
-
-  // Release mutex
-  xSemaphoreGive(i2c_mutex);
 
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "I2C read failed: %s", esp_err_to_name(ret));
@@ -164,42 +129,8 @@ esp_err_t i2c_read_with_mutex(uint8_t device_addr, uint8_t reg_addr, uint8_t *da
   return ret;
 }
 
-// i2c_mutex_lock
-bool i2c_lock(int timeout_ms) {
-  if (i2c_mutex == NULL) {
-    ESP_LOGE(TAG, "I2C not initialized");
-    return false;
-  }
-
-  if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE) {
-    return true;
-  }
-  else {
-    ESP_LOGE(TAG, "Failed to acquire I2C mutex");
-    return false;
-  }
-}
-
-bool i2c_unlock() {
-  if (i2c_mutex == NULL) {
-    ESP_LOGE(TAG, "I2C not initialized");
-    return false;
-  }
-
-  if (xSemaphoreGive(i2c_mutex) == pdTRUE) {
-    return true;
-  }
-  else {
-    ESP_LOGE(TAG, "Failed to release I2C mutex");
-    return false;
-  }
-}
-
 void init_i2c() {
 #if defined(I2C_SDA) && defined(I2C_SCL)
-  // Create a mutex for I2C operations
-  i2c_mutex = xSemaphoreCreateMutex();
-
   // Initialize I2C master bus
   i2c_master_bus_config_t i2c_bus_config = {
       .clk_source = I2C_CLK_SRC_DEFAULT,
@@ -233,11 +164,5 @@ void deinit_i2c() {
   if (i2c_bus_handle != NULL) {
     i2c_del_master_bus(i2c_bus_handle);
     i2c_bus_handle = NULL;
-  }
-
-  // Delete mutex
-  if (i2c_mutex != NULL) {
-    vSemaphoreDelete(i2c_mutex);
-    i2c_mutex = NULL;
   }
 }

@@ -4,6 +4,12 @@
 #include <esp_now.h>
 #include <stdio.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 void espnow_init();
 void espnow_deinit();
 bool espnow_is_initialized();
@@ -17,5 +23,11 @@ typedef struct {
 } esp_now_event_t;
 
 bool is_same_mac(const uint8_t *mac1, const uint8_t *mac2);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

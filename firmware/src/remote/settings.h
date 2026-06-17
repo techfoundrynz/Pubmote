@@ -3,9 +3,15 @@
 #include "display.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
-#include <core/lv_obj.h>
+
 #include <esp_now.h>
 #include <remote/receiver.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 // Function to initialize settings (and NVS)
 esp_err_t settings_init();
@@ -69,21 +75,28 @@ typedef enum {
   STARTUP_SOUND_MELODY,
 } StartupSoundOptions;
 
-typedef enum {
-  DARK_TEXT_DISABLED,
-  DARK_TEXT_ENABLED,
-} DarkTextOptions;
+
 
 typedef enum {
   BATTERY_DISPLAY_PERCENT,
   BATTERY_DISPLAY_VOLTAGE,
-  BATTERY_DISPLAY_ALL,
 } BoardBatteryDisplayOption;
+
+typedef enum {
+  SECONDARY_STAT_DUTY,
+  SECONDARY_STAT_TEMPS,
+  SECONDARY_STAT_DISTANCE,
+} SecondaryStatDisplayOption;
 
 typedef enum {
   POCKET_MODE_DISABLED,
   POCKET_MODE_ENABLED,
 } PocketModeOptions;
+
+typedef enum {
+  DOUBLE_PRESS_ACTION_NONE,
+  DOUBLE_PRESS_ACTION_OPEN_MENU,
+} StatsDoublePressAction;
 
 #define DEFAULT_PAIRING_SECRET_CODE -1
 
@@ -113,9 +126,11 @@ typedef struct {
   DistanceUnits distance_units;
   StartupSoundOptions startup_sound;
   uint32_t theme_color;
-  bool dark_text;
+
   BoardBatteryDisplayOption battery_display;
+  SecondaryStatDisplayOption secondary_stat_display;
   PocketModeOptions pocket_mode;
+  StatsDoublePressAction double_press_action;
 } DeviceSettings;
 
 uint64_t get_auto_off_ms();
@@ -124,5 +139,11 @@ bool is_pocket_mode_enabled();
 extern CalibrationSettings calibration_settings;
 extern DeviceSettings device_settings;
 extern PairingSettings pairing_settings;
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

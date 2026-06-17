@@ -16,10 +16,9 @@
 #include "utilities/conversion_utils.h"
 #include <freertos/queue.h>
 #include <math.h>
-#include <remote/settings.h>
+#include "settings.h"
 #include <stdlib.h>
 #include <string.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-RECEIVER";
 #define RX_QUEUE_SIZE 10
@@ -201,11 +200,15 @@ static void receiver_task(void *pvParameters) {
   // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "RX task ended");
   vTaskDelete(NULL);
+  receiver_task_handle = NULL;
 }
 
 void receiver_init() {
   ESP_LOGI(TAG, "Starting receiver task");
-  xTaskCreatePinnedToCore(receiver_task, "receiver_task", 4096, NULL, 20, &receiver_task_handle, 0);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(receiver_task, "receiver_task", 4096, NULL, 20, &receiver_task_handle, 0) ==
+                          pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 }
 
 void receiver_deinit() {

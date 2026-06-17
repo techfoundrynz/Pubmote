@@ -29,4 +29,5 @@
 *.jar binary
 *.pdf binary
 *.zip binary
-.vescpkg binary
+*.vescpkg binary
+*.wasm binary

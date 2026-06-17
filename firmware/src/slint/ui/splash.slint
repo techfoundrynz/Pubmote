@@ -1,0 +1,47 @@
+// SplashScreen — centered Pubmote logo on black, tap to continue.
+// LVGL: ui_SplashScreen -> ui_SplashScreenLogo (ui_img_icon2_png), centered;
+// the screen advances to Stats on load (here: on tap).
+
+import { Theme } from "theme.slint";
+
+export component SplashScreen inherits Rectangle {
+    callback clicked;
+    background: Theme.bg;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 0px * Theme.scale;
+
+        HorizontalLayout {
+            alignment: center;
+            Text {
+                text: "pub";
+                font-family: "Saira";
+                font-weight: 600;
+                font-size: 54px * Theme.scale;
+                color: Theme.accent;
+            }
+
+            Text {
+                text: "mote";
+                font-family: "Saira";
+                font-weight: 600;
+                font-size: 54px * Theme.scale;
+                color: #FFFFFF;
+            }
+        }
+
+        Text {
+            horizontal-alignment: center;
+            text: "www.pubmote.com";
+            font-family: "Saira";
+            font-weight: 600;
+            font-size: 14px * Theme.scale;
+            color: #666666;
+        }
+    }
+
+    TouchArea {
+        clicked => { root.clicked(); }
+    }
+}

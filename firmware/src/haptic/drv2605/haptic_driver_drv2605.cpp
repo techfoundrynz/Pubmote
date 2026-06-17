@@ -26,12 +26,12 @@ static bool haptic_initialized = false;
 
 static bool drv2605_write_reg(uint8_t reg_addr, const uint8_t *data, size_t len)
 {
-    esp_err_t result = i2c_write_with_mutex(DRV2605_ADDR, reg_addr, (uint8_t*)data, len, 500);
+    esp_err_t result = i2c_write(DRV2605_ADDR, reg_addr, (uint8_t*)data, len, 500);
     return (result == ESP_OK);
 }
 
 bool drv2605_read_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t* data, size_t len) {
-    esp_err_t result = i2c_read_with_mutex(device_addr, reg_addr, data, len, 500);
+    esp_err_t result = i2c_read(device_addr, reg_addr, data, len, 500);
     return (result == ESP_OK);
 }
 
@@ -62,41 +62,33 @@ void drv2605_haptic_play_vibration(HapticFeedbackPattern pattern) {
             break;
         case HAPTIC_SINGLE_CLICK:
             drv.setWaveform(0, 1);
-            drv.setWaveform(1, 0);
             break;
         case HAPTIC_DOUBLE_CLICK:
-            drv.setWaveform(10, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 10);
             break;
             
         case HAPTIC_TRIPLE_CLICK:
-            drv.setWaveform(12, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 12);
             break;
             
         case HAPTIC_SOFT_BUMP:
-            drv.setWaveform(7, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 7);
             break;
             
         case HAPTIC_SOFT_BUZZ:
-            drv.setWaveform(13, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 13);
             break;
             
         case HAPTIC_STRONG_BUZZ:
-            drv.setWaveform(14, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 14);
             break;
             
         case HAPTIC_ALERT_750MS:
-            drv.setWaveform(15, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 15);
             break;
             
         case HAPTIC_ALERT_1000MS:
-            drv.setWaveform(16, 1);
-            drv.setWaveform(1, 0);
+            drv.setWaveform(0, 16);
             break;
             
         default:
@@ -190,6 +182,8 @@ bool drv2605_is_active() {
     return  haptic_initialized;
 }
 
+#define DRV2606_MAX_INIT_WAIT_MS 300
+#define DRV2605_INIT_POLL_INTERVAL_MS 20
 esp_err_t drv2605_haptic_driver_init() {
     ESP_LOGI(TAG, "Initializing DRV2605 haptic driver");
     
@@ -199,8 +193,19 @@ esp_err_t drv2605_haptic_driver_init() {
         haptic_initialized = false;
         return ret;
     }
+
+    int waited_ms = 0;
+    while (!haptic_initialized) {
+        if (waited_ms >= DRV2606_MAX_INIT_WAIT_MS) {
+            ESP_LOGE(TAG, "DRV2605 calibration timeout");
+            break;
+        }
+        ESP_LOGI(TAG, "Waiting for DRV2605 calibration to complete...");
+        waited_ms += DRV2605_INIT_POLL_INTERVAL_MS;
+        vTaskDelay(pdMS_TO_TICKS(DRV2605_INIT_POLL_INTERVAL_MS));
+    }
     
-    ESP_LOGI(TAG, "DRV2605 haptic driver initialized successfully");
+    ESP_LOGI(TAG, "DRV2605 haptic driver initialized successfully. Took %d ms", waited_ms);
     return ESP_OK;
 }
 
@@ -208,6 +213,7 @@ void drv2605_haptic_driver_deinit() {
     ESP_LOGI(TAG, "Deinitializing DRV2605 haptic driver");
     
     drv.stop();
+    vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to ensure stop command is processed
     haptic_initialized = false;
     
     #ifdef HAPTIC_EN

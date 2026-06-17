@@ -9,16 +9,16 @@ By ZiNc
 - [WaveShare 1.43in Amoled display](https://www.waveshare.com/esp32-s3-touch-amoled-1.43.htm?sku=30106)
 - [PS5 hall joystick](https://www.aliexpress.us/item/3256806823053436.html)
 - Battery
-  - [1500mAh Lipo battery](https://www.amazon.com/dp/B09DPNCLQZ)
+  - [1500mAh Lipo battery](https://www.amazon.com/dp/B09DPNCLQZ) (this is the one the case is designed for, but others of similar dimensions or smaller will work)
   - [1.25mm JST connectors](https://www.amazon.com/dp/B088NQBF3V)
 - Case
   - [ZiNc Leaf Blaster remix case](https://www.printables.com/model/1265591) by ZiNc
   - [Leaf Blaster case](https://www.printables.com/model/1191785) by Markoblaster
-  - 5 x [M3xD5xL4 heat set inserts](https://www.amazon.com/dp/B0CS6VZYL8)
   - 3 x M3x20 countersunk screws
   - 2 x M3x8 cap head screws
+  - 5 x [M3xD5xL4 heat set inserts](https://www.amazon.com/dp/B0CS6VZYL8)
   - 6 x 1.27mm header pins
-  - 1 x 10k Ohm resistor (TBD)
+  - 1 x Pull-up resistor (10k Ohm will do)
 
 ## Instructions
 

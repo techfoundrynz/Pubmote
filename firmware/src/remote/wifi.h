@@ -14,6 +14,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 // Event group bits for WiFi events
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
@@ -150,5 +156,18 @@ void wifi_set_auto_reconnect(bool enable);
 bool wifi_is_auto_reconnect_enabled(void);
 
 bool wifi_is_initialized();
+
+/**
+ * @brief Get current WiFi RSSI
+ * 
+ * @return RSSI in dBm, or 0 if not connected
+ */
+int8_t wifi_get_rssi(void);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __WIFI_H

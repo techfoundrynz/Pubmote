@@ -9,14 +9,15 @@
 #include "freertos/task.h"
 #include "iot_button.h"
 #include "powermanagement.h"
+#include "remote/haptic.h"
 #include "rom/gpio.h"
 #include "settings.h"
 #include "time.h"
+#include <button_gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
 #include <math.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-REMOTEINPUTS";
 
@@ -172,51 +173,96 @@ static void thumbstick_task(void *pvParameters) {
 
 void thumbstick_init() {
 #if (JOYSTICK_Y_ENABLED || JOYSTICK_X_ENABLED)
-  xTaskCreatePinnedToCore(thumbstick_task, "thumbstick_task", 4096, NULL, 20, NULL, 0);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(thumbstick_task, "thumbstick_task", 2048, NULL, 20, NULL, 0) == pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 #endif
 }
 
+static button_callback_t registered_single_click_cb = NULL;
 static void button_single_click_cb(void *arg, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON SINGLE CLICK");
-  reset_sleep_timer();
+  bool handled = false;
+
+  if (registered_single_click_cb) {
+    handled = registered_single_click_cb();
+  }
+
+  if (!handled) {
+    reset_sleep_timer();
+  }
 }
 
+static button_callback_t registered_button_down_cb = NULL;
 static void button_down_cb(void *arg, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON DOWN");
-  remote_data.bt_c = 1;
+  bool handled = false;
+
+  if (registered_button_down_cb) {
+    handled = registered_button_down_cb();
+  }
+
+  haptic_vibrate(HAPTIC_SINGLE_CLICK);
+
+  if (!handled) {
+    remote_data.bt_c = 1;
+  }
 }
 
+static button_callback_t registered_button_up_cb = NULL;
 static void button_up_cb(void *arg, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON UP");
-  remote_data.bt_c = 0;
+  bool handled = false;
+  if (registered_button_up_cb) {
+    handled = registered_button_up_cb();
+  }
+
+  if (!handled) {
+    remote_data.bt_c = 0;
+  }
 }
+
+static button_callback_t registered_double_click_cb = NULL;
 static void button_double_click_cb(void *arg, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON DOUBLE CLICK");
-  reset_sleep_timer();
+  bool handled = false;
+
+  if (registered_double_click_cb) {
+    handled = registered_double_click_cb();
+  }
+
+  if (!handled) {
+    reset_sleep_timer();
+  }
 }
 
-void reset_button_state() {
-  remote_data.bt_c = 0;
-}
+static button_callback_t registered_long_press_hold_cb = NULL;
+static void button_long_press_hold_cb(void *button_handle, void *usr_data) {
+  ESP_LOGI(TAG, "BUTTON LONG PRESS HOLD");
+  bool handled = false;
 
-void buttons_deinit() {
-  if (gpio_btn_handle) {
-    iot_button_delete(gpio_btn_handle);
-    gpio_btn_handle = NULL;
+  if (registered_long_press_hold_cb) {
+    handled = registered_long_press_hold_cb();
   }
 }
 
 void buttons_init() {
 #if JOYSTICK_BUTTON_ENABLED
   // create gpio button
-  button_config_t gpio_btn_cfg = {
-      .type = BUTTON_TYPE_GPIO,
+  const button_config_t btn_cfg = {
       .long_press_time = CONFIG_BUTTON_LONG_PRESS_TIME_MS,
       .short_press_time = CONFIG_BUTTON_SHORT_PRESS_TIME_MS,
-      .gpio_button_config =
+  };
+
+  const button_gpio_config_t btn_gpio_cfg = {
+      .gpio_num = PRIMARY_BUTTON,
+      .active_level = JOYSTICK_BUTTON_LEVEL,
+  };
+
+  button_event_args_t btn_args = {
+      .long_press =
           {
-              .gpio_num = PRIMARY_BUTTON,
-              .active_level = JOYSTICK_BUTTON_LEVEL,
+              .press_time = CONFIG_BUTTON_LONG_PRESS_TIME_MS,
           },
   };
 
@@ -225,22 +271,68 @@ void buttons_init() {
     return;
   }
 
-  gpio_btn_handle = iot_button_create(&gpio_btn_cfg);
+  iot_button_new_gpio_device(&btn_cfg, &btn_gpio_cfg, &gpio_btn_handle);
   if (gpio_btn_handle == NULL) {
     ESP_LOGE(TAG, "Button create failed");
   }
 
-  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_DOWN, button_down_cb, NULL);
-  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_UP, button_up_cb, NULL);
-  iot_button_register_cb(gpio_btn_handle, BUTTON_SINGLE_CLICK, button_single_click_cb, NULL);
-  iot_button_register_cb(gpio_btn_handle, BUTTON_DOUBLE_CLICK, button_double_click_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_DOWN, &btn_args, button_down_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_PRESS_UP, &btn_args, button_up_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_SINGLE_CLICK, &btn_args, button_single_click_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_DOUBLE_CLICK, &btn_args, button_double_click_cb, NULL);
+  iot_button_register_cb(gpio_btn_handle, BUTTON_LONG_PRESS_HOLD, &btn_args, button_long_press_hold_cb, NULL);
 #endif
 }
 
-void register_primary_button_cb(button_event_t event, button_cb_t cb) {
-  iot_button_register_cb(gpio_btn_handle, event, cb, NULL);
+void buttons_deinit() {
+  if (gpio_btn_handle) {
+    iot_button_delete(gpio_btn_handle);
+    gpio_btn_handle = NULL;
+  }
+}
+void register_primary_button_cb(ButtonEvent event, button_callback_t cb) {
+  switch (event) {
+  case BUTTON_EVENT_DOWN:
+    registered_button_down_cb = cb;
+    break;
+  case BUTTON_EVENT_UP:
+    registered_button_up_cb = cb;
+    break;
+  case BUTTON_EVENT_PRESS:
+    registered_single_click_cb = cb;
+    break;
+  case BUTTON_EVENT_DOUBLE_PRESS:
+    registered_double_click_cb = cb;
+    break;
+  case BUTTON_EVENT_LONG_PRESS_HOLD:
+    registered_long_press_hold_cb = cb;
+    break;
+
+  default:
+    ESP_LOGW(TAG, "Unknown button event type");
+    break;
+  }
 }
 
-void unregister_primary_button_cb(button_event_t event) {
-  iot_button_unregister_cb(gpio_btn_handle, event);
+void unregister_primary_button_cb(ButtonEvent event) {
+  switch (event) {
+  case BUTTON_EVENT_DOWN:
+    registered_button_down_cb = NULL;
+    break;
+  case BUTTON_EVENT_UP:
+    registered_button_up_cb = NULL;
+    break;
+  case BUTTON_EVENT_PRESS:
+    registered_single_click_cb = NULL;
+    break;
+  case BUTTON_EVENT_DOUBLE_PRESS:
+    registered_double_click_cb = NULL;
+    break;
+  case BUTTON_EVENT_LONG_PRESS_HOLD:
+    registered_long_press_hold_cb = NULL;
+    break;
+  default:
+    ESP_LOGW(TAG, "Unknown button event type");
+    break;
+  }
 }

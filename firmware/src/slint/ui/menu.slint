@@ -1,0 +1,91 @@
+// MenuScreen — faithful reproduction of ui_MenuScreen.
+//
+// LVGL: ui_MenuContent (column SPACE_BETWEEN) -> ui_MenuBody (scrollable column,
+// pad 40, row gap 10) with buttons in this exact order:
+//   Back, Connect (hidden), Enable Pocket Mode, Settings, Calibration, Pairing,
+//   About, Shutdown. Each lv_btn is 42px tall, 100% width.
+
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+
+export component MenuScreen inherits Rectangle {
+    in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
+    in property <bool> pocket-mode-active: false;
+    in property <bool> hbm-mode-active: false;
+    in property <bool> hbm-mode-supported: false;
+    in property <string> shutdown-text: "Shutdown";
+    in-out property <int> scroll-offset-y: 0;
+    callback back;
+    callback connect;
+    callback pocket-mode;
+    callback toggle-hbm;
+    callback settings;
+    callback calibration;
+    callback pairing;
+    callback about;
+    callback shutdown;
+    callback shutdown-long-press;
+
+    background: Theme.bg;
+
+    flick := Flickable {
+        viewport-height: menu-layout.min-height;
+        // Re-sync on creation: the menu is destroyed/recreated when navigating
+        // away and back, which resets viewport-y without firing changed.
+        init => {
+            root.scroll-offset-y = -self.viewport-y / 1px;
+        }
+        changed viewport-y => {
+            root.scroll-offset-y = -self.viewport-y / 1px;
+        }
+        menu-layout := VerticalLayout {
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-top: Theme.page-padding-vertical;
+            padding-bottom: Theme.page-padding-vertical;
+            spacing: 6px * Theme.scale;
+
+            AppButton { text: "Back"; variant: "ghost"; right-text: ""; clicked => { root.back(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+            
+            if root.show-connect: VerticalLayout {
+                spacing: 6px * Theme.scale;
+                AppButton { text: "Connect"; variant: "ghost"; right-text: ""; clicked => { root.connect(); } }
+                Rectangle { height: 1px; background: Theme.track; }
+            }
+
+            AppButton {
+                text: "Pocket Mode";
+                right-text: root.pocket-mode-active ? "ON" : "OFF";
+                variant: "ghost";
+                clicked => { root.pocket-mode(); }
+            }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            if root.hbm-mode-supported: VerticalLayout {
+                spacing: 6px * Theme.scale;
+                AppButton {
+                    text: "HBM Mode";
+                    right-text: root.hbm-mode-active ? "ON" : "OFF";
+                    variant: "ghost";
+                    clicked => { root.toggle-hbm(); }
+                }
+                Rectangle { height: 1px; background: Theme.track; }
+            }
+
+            AppButton { text: "Settings"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.settings(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: "Calibration"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.calibration(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: "Pairing"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.pairing(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: "About"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.about(); } }
+            Rectangle { height: 1px; background: Theme.track; }
+
+            AppButton { text: root.shutdown-text; variant: "ghost"; right-text: ""; clicked => { root.shutdown(); } long-clicked => { root.shutdown-long-press(); } }
+        }
+    }
+}

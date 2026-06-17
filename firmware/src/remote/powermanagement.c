@@ -11,6 +11,7 @@
 #include "esp_sleep.h"
 #include "esp_timer.h"
 #include "gpio_detection.h"
+#include "haptic.h"
 #include "remote/tones.h"
 #include "remoteinputs.h"
 #include "screens/charge_screen.h"
@@ -24,11 +25,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include "connection.h"
+#include "led.h"
 #include <math.h>
-#include <remote/connection.h>
-#include <remote/led.h>
-#include <ui/ui.h>
-
 static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
 
 #define INT_SETTLE_TIME_MS 200
@@ -87,40 +86,45 @@ static esp_err_t enable_wake() {
 
   // Use PMU as secondary wake source if available
 #ifdef PMU_INT
-  res = esp_sleep_enable_ext0_wakeup(PMU_INT, 0);
-  if (res != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to enable PMU interrupt wake-up.");
-  }
+// Temp disabled as it seems to case immediate wake
+// res = esp_sleep_enable_ext0_wakeup(PMU_INT, 0);
+// if (res != ESP_OK) {
+//   ESP_LOGE(TAG, "Failed to enable PMU interrupt wake-up.");
+// }
 #endif
 
   return res;
 }
 
-static void power_button_long_press_hold(void *arg, void *usr_data) {
+static bool empty_long_press_hold() {
+  return true;
+}
+
+static bool power_button_long_press_hold() {
   BoardState state = remoteStats.state;
   if (state == BOARD_STATE_RUNNING || state == BOARD_STATE_RUNNING_FLYWHEEL || state == BOARD_STATE_RUNNING_TILTBACK ||
       state == BOARD_STATE_RUNNING_UPSIDEDOWN || state == BOARD_STATE_RUNNING_WHEELSLIP) {
     ESP_LOGI(TAG, "Power button long press hold detected. Ignoring.");
-    return;
+    return false;
   }
 
   shutdown_initiated = true;
+  return true;
 }
 
-void bind_power_button() {
-  register_primary_button_cb(BUTTON_LONG_PRESS_HOLD, power_button_long_press_hold);
+static void bind_power_button() {
+  register_primary_button_cb(BUTTON_EVENT_LONG_PRESS_HOLD, power_button_long_press_hold);
 }
 
-void unbind_power_button() {
-  unregister_primary_button_cb(BUTTON_LONG_PRESS_HOLD);
+// Specifically bind with empty handler to mark event as handled
+static void unbind_power_button() {
+  register_primary_button_cb(BUTTON_EVENT_LONG_PRESS_HOLD, empty_long_press_hold);
 }
 
-static void power_button_initial_release(void *arg, void *usr_data) {
-  unregister_primary_button_cb(BUTTON_PRESS_UP);
-  buttons_deinit();
-  buttons_init(); // Reinit buttons after detect to ensure correct gpio config
-
+static bool power_button_initial_release() {
+  unregister_primary_button_cb(BUTTON_EVENT_UP);
   bind_power_button();
+  return true;
 }
 
 #ifdef PMU_INT
@@ -209,24 +213,25 @@ static void enter_sleep_internal() {
   // Disable some things so they don't run during wake check
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   unbind_power_button();
+  haptic_vibrate(HAPTIC_ALERT_750MS);
 
-  // Turn off screen before sleep
+  // Turn off things
   display_off();
-  led_set_brightness(0);
-  acc1_power_set_level(0);
-  acc2_power_set_level(0);
+  led_set_effect_none();
 
   // wait for button release
   while (get_button_pressed()) {
     vTaskDelay(pdMS_TO_TICKS(10));
     ESP_LOGI(TAG, "Waiting for button release before sleep...");
   }
+  vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow effects to finish
+
+  acc1_power_set_level(0);
+  acc2_power_set_level(0);
 
 #if PMU_SY6970
   disable_watchdog();
 #endif
-
-  vTaskDelay(pdMS_TO_TICKS(50)); // Allow gpio level to settle before going into sleep
 
   enable_wake();
 
@@ -277,25 +282,23 @@ void reset_sleep_timer() {
 
   int duration_ms = get_sleep_timer_time_ms();
 
-  // Handle existing timer
-  if (sleep_timer != NULL) {
-    if (esp_timer_is_active(sleep_timer)) {
-      ESP_ERROR_CHECK(esp_timer_stop(sleep_timer));
-    }
-    ESP_ERROR_CHECK(esp_timer_delete(sleep_timer));
-    sleep_timer = NULL;
-  }
-
   if (duration_ms == 0) {
     ESP_LOGD(TAG, "Deep sleep timer disabled.");
     xSemaphoreGive(timer_mutex);
     return;
   }
 
-  // Create new timer
-  esp_timer_create_args_t sleep_timer_args = {
-      .callback = sleep_timer_callback, .arg = NULL, .dispatch_method = ESP_TIMER_TASK, .name = "SleepTimer"};
-  ESP_ERROR_CHECK(esp_timer_create(&sleep_timer_args, &sleep_timer));
+  // Handle existing timer or create a new one
+  if (sleep_timer != NULL) {
+    if (esp_timer_is_active(sleep_timer)) {
+      ESP_ERROR_CHECK(esp_timer_stop(sleep_timer));
+    }
+  } else {
+    esp_timer_create_args_t sleep_timer_args = {
+        .callback = sleep_timer_callback, .arg = NULL, .dispatch_method = ESP_TIMER_TASK, .name = "SleepTimer"};
+    ESP_ERROR_CHECK(esp_timer_create(&sleep_timer_args, &sleep_timer));
+  }
+
   ESP_ERROR_CHECK(esp_timer_start_once(sleep_timer, duration_ms * 1000));
   ESP_LOGD(TAG, "Sleep timer started for %d ms", duration_ms);
 
@@ -442,13 +445,16 @@ void power_management_init() {
     ESP_LOGI(TAG, "Not a deep sleep wakeup or other wake-up sources.");
     break;
   }
+  // Bind empty long press hold so we can mark event as handled
+  unbind_power_button();
+
   reset_sleep_timer();
   if (get_button_pressed()) {
     // Enable the power button once released if it wasn't already
-    register_primary_button_cb(BUTTON_PRESS_UP, power_button_initial_release);
+    register_primary_button_cb(BUTTON_EVENT_UP, power_button_initial_release);
   }
   else {
-    power_button_initial_release(NULL, NULL);
+    power_button_initial_release();
   }
 
 #ifdef PMU_INT
@@ -464,5 +470,6 @@ void power_management_init() {
   gpio_isr_handler_add(PMU_INT, pmu_isr_handler, (void *)PMU_INT);
 #endif
 
-  xTaskCreate(power_management_task, "power_management_task", 4096, NULL, 2, NULL);
+  ESP_ERROR_CHECK(
+      xTaskCreate(power_management_task, "power_management_task", 2560, NULL, 2, NULL) == pdPASS ? ESP_OK : ESP_FAIL);
 }

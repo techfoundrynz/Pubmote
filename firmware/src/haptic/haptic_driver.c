@@ -36,3 +36,11 @@ void haptic_driver_stop_vibration() {
   drv2605_haptic_stop();
 #endif
 }
+
+void haptic_driver_deinit() {
+#if HAPTIC_DRV2605
+  // Deinitialize the DRV2605 haptic driver
+  ESP_LOGI(TAG, "Deinitializing DRV2605 haptic driver");
+  drv2605_haptic_driver_deinit();
+#endif
+}

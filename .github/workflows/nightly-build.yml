@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   check_tag_up_to_date:
-    if: github.repository == 'contactsimonwilson/PubRemote'
+    if: github.repository == 'techfoundrynz/Pubmote'
     runs-on: ubuntu-latest
 
     outputs:
@@ -63,7 +63,7 @@ jobs:
           exit 0
 
   delete_old_release:
-    if: ${{ github.repository == 'contactsimonwilson/PubRemote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
+    if: ${{ github.repository == 'techfoundrynz/Pubmote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
     needs: check_tag_up_to_date
 
     permissions:
@@ -100,7 +100,7 @@ jobs:
 
   build_and_release:
     # Access the output from the previous job
-    if: ${{ github.repository == 'contactsimonwilson/PubRemote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
+    if: ${{ github.repository == 'techfoundrynz/Pubmote' && needs.check_tag_up_to_date.outputs.tag_up_to_date == 'NO' }}
     needs: [check_tag_up_to_date, delete_old_release]
 
     permissions:
@@ -127,10 +127,20 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
+      - name: Setup Rust for Xtensa
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: false
+          buildtargets: esp32s3
+
       - name: Build PlatformIO Project
-        run: pio run
+        run: |
+          sed -i 's/build_type = debug/build_type = release/g' platformio.ini
+          pio run
         env:
-          PLATFORMIO_BUILD_FLAGS: '-D RELEASE_VARIANT=\"nightly\"'
+          PLATFORMIO_BUILD_FLAGS: |
+            -D RELEASE_VARIANT=\"nightly\"
+            -D RELEASES_AUTH_TOKEN=\"${{ secrets.RELEASES_AUTH_TOKEN }}\"
 
       - name: Get Current Date
         id: get_date

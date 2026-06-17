@@ -274,3 +274,7 @@ def update_primary_button_press(event_struct):
 def update_secondary_button_press(event_struct):
     return
 
+
+def double_press_action_select_change(event_struct):
+    return
+

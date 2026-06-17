@@ -1,5 +1,87 @@
 # ChangeLog
 
+## v4.1.4 - 2025-10-08
+
+### Fix:
+
+* Fixed requires in CMake for IDF6.
+
+## v4.1.3 - 2025-04-11
+
+### Fix:
+
+* Added initialization for gpio_config. [!485](https://github.com/espressif/esp-iot-solution/pull/485)
+
+## v4.1.2 - 2025-03-24
+
+### Fix:
+
+* fix incorrect long press start and release check.
+
+## v4.1.1 - 2025-03-13
+
+### Improve:
+
+* include stdbool.h before using bool
+
+## v4.1.0 - 2025-02-28
+
+### Improve:
+
+* Update the version of dependent cmake_utilities to *
+
+## v4.0.0 - 2025-1-9
+
+### Enhancements:
+
+* Use the factory pattern to reduce the build size.
+* Change the state machine to use enumerated values.
+
+### Break change:
+
+* Standardize the return value of the iot_button interface to esp_err_t.
+* Remove support for the old ADC driver.
+* Modify the callback registration interface to:
+    ```c
+    esp_err_t iot_button_register_cb(button_handle_t btn_handle, button_event_t event, button_event_args_t *event_args, button_cb_t cb, void *usr_data);
+    ```
+* Modify the callback unregistration interface to:
+    ```c
+    esp_err_t iot_button_unregister_cb(button_handle_t btn_handle, button_event_t event, button_event_args_t *event_args);
+    ```
+
+## v3.5.0 - 2024-12-27
+
+### Enhancements:
+
+* Add config to disable gpio button internal pull resistor.
+
+## v3.4.1 - 2024-12-6
+
+### Fix:
+
+* Fix the issue where `BUTTON_LONG_PRESS_START` is not triggered when the polling interval exceeds 20ms.
+* Remove the `BUTTON_LONG_PRESS_TOLERANCE_MS` configuration option.
+
+## v3.4.0 - 2024-10-22
+
+### Enhancements:
+
+* Supports a maximum button polling interval of 500ms.
+* Fixed a potential counter overflow issue.
+
+### Break change:
+
+* The return value of `iot_button_get_ticks_time` has been changed from `uint16_t` to `uint32_t`.
+
+## v3.3.2 - 2024-8-28
+
+### Enhancements:
+
+* Support macro CONFIG_PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP in power save mode.
+* Supports retrieving and printing the string corresponding to a button event.
+* Fixed the bug where the event was not assigned to `BUTTON_LONG_PRESS_START` before the `BUTTON_LONG_PRESS_START` event occurred.
+
 ## v3.3.1 - 2024-8-8
 
 ### Enhancements:
