@@ -112,15 +112,17 @@ export component RoundStats inherits Rectangle {
                 speed: root.speed;
                 speed-unit: root.speed-unit;
             }
-                // ui_SecondaryStatContainer -> ui_ConnectionStateLabel
+            HorizontalLayout {
+                alignment: center;
                 SecondaryStat {
-                variant: "full";
-                is-connected: root.is-connected;
-                left-value: root.secondary-stat-left-value;
-                left-label: root.secondary-stat-left-label;
-                right-value: root.board-battery;
-                left-clicked => { root.secondary-stat-left-clicked() }
-                right-clicked => { root.board-battery-clicked() }
+                    variant: "full";
+                    is-connected: root.is-connected;
+                    left-value: root.secondary-stat-left-value;
+                    left-label: root.secondary-stat-left-label;
+                    right-value: root.board-battery;
+                    left-clicked => { root.secondary-stat-left-clicked() }
+                    right-clicked => { root.board-battery-clicked() }
+                }
             }
         }
 

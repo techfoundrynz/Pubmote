@@ -11,9 +11,6 @@
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";
 
-extern "C" bool display_get_hbm();
-extern "C" void display_set_hbm(bool active);
-
 static bool confirm_reset = false;
 
 extern "C" void handle_menu_shutdown_long_press() {
@@ -40,17 +37,9 @@ extern "C" void setup_menu_properties() {
     state.set_menu_show_connect(false);
   }
 
-  if (is_pocket_mode_enabled()) {
-    state.set_pocket_mode_text("Disable Pocket Mode");
-  } else {
-    state.set_pocket_mode_text("Enable Pocket Mode");
-  }
-
-  if (display_get_hbm()) {
-    state.set_hbm_mode_text("Disable HBM Mode");
-  } else {
-    state.set_hbm_mode_text("Enable HBM Mode");
-  }
+  state.set_pocket_mode_active(is_pocket_mode_enabled());
+  state.set_hbm_mode_active(display_get_hbm());
+  state.set_hbm_mode_supported(display_supports_hbm());
 }
 
 
@@ -80,6 +69,9 @@ extern "C" void handle_menu_pocket_mode() {
 }
 
 extern "C" void handle_menu_toggle_hbm() {
+  if (!display_supports_hbm()) {
+    return;
+  }
   ESP_LOGI(TAG, "HBM mode button pressed");
   display_set_hbm(!display_get_hbm());
   setup_menu_properties(); // update the text

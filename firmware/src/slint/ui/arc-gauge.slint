@@ -22,6 +22,7 @@ export component ArcGauge inherits Rectangle {
     in property <bool> show-track: true;
 
     if show-track: ArcSegment {
+        cache-rendering-hint: true;
         width: 100%;
         height: 100%;
         stroke: root.track-color;

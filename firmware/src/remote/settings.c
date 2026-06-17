@@ -34,6 +34,7 @@ DeviceSettings device_settings = {
     .startup_sound = STARTUP_SOUND_BEEP,
     .theme_color = COLOR_PRIMARY,
     .battery_display = DEFAULT_BATTERY_DISPLAY,
+    .secondary_stat_display = SECONDARY_STAT_DUTY,
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
 };
@@ -294,6 +295,7 @@ void save_device_settings() {
   nvs_write_int("theme_color", device_settings.theme_color);
 
   nvs_write_int("battery_display", device_settings.battery_display);
+  nvs_write_int("sec_stat_disp", device_settings.secondary_stat_display);
   nvs_write_int("pocket_mode", device_settings.pocket_mode);
   nvs_write_int("stats_dp", device_settings.double_press_action);
 }
@@ -496,6 +498,10 @@ esp_err_t settings_init() {
   device_settings.battery_display = nvs_read_int("battery_display", &temp_setting_value) == ESP_OK
                                         ? (BoardBatteryDisplayOption)temp_setting_value
                                         : BATTERY_DISPLAY_PERCENT;
+
+  device_settings.secondary_stat_display = nvs_read_int("sec_stat_disp", &temp_setting_value) == ESP_OK
+                                                ? (SecondaryStatDisplayOption)temp_setting_value
+                                                : SECONDARY_STAT_DUTY;
 
   device_settings.pocket_mode =
       nvs_read_int("pocket_mode", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : POCKET_MODE_DISABLED;

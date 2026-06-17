@@ -10,8 +10,9 @@ import { AppButton } from "app-button.slint";
 
 export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
-    in property <string> pocket-mode-text: "Enable Pocket Mode";
-    in property <string> hbm-mode-text: "Enable HBM Mode";
+    in property <bool> pocket-mode-active: false;
+    in property <bool> hbm-mode-active: false;
+    in property <bool> hbm-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
     callback back;
@@ -55,19 +56,22 @@ export component MenuScreen inherits Rectangle {
 
             AppButton {
                 text: "Pocket Mode";
-                right-text: root.pocket-mode-text == "Disable Pocket Mode" ? "On" : "Off";
+                right-text: root.pocket-mode-active ? "ON" : "OFF";
                 variant: "ghost";
                 clicked => { root.pocket-mode(); }
             }
             Rectangle { height: 1px; background: Theme.track; }
 
-            AppButton {
-                text: "HBM Mode";
-                right-text: root.hbm-mode-text == "Disable HBM Mode" ? "On" : "Off";
-                variant: "ghost";
-                clicked => { root.toggle-hbm(); }
+            if root.hbm-mode-supported: VerticalLayout {
+                spacing: 6px * Theme.scale;
+                AppButton {
+                    text: "HBM Mode";
+                    right-text: root.hbm-mode-active ? "ON" : "OFF";
+                    variant: "ghost";
+                    clicked => { root.toggle-hbm(); }
+                }
+                Rectangle { height: 1px; background: Theme.track; }
             }
-            Rectangle { height: 1px; background: Theme.track; }
 
             AppButton { text: "Settings"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.settings(); } }
             Rectangle { height: 1px; background: Theme.track; }

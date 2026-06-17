@@ -63,8 +63,8 @@ export global UiState {
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
-    in property <string> pocket-mode-text: "Enable Pocket Mode";
-    in property <string> hbm-mode-text: "Enable HBM Mode";
+    in property <bool> hbm-mode-active: false;
+    in property <bool> hbm-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
 
@@ -261,8 +261,9 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
-        pocket-mode-text: UiState.pocket-mode-text;
-        hbm-mode-text: UiState.hbm-mode-text;
+        pocket-mode-active: UiState.pocket-mode-active;
+        hbm-mode-active: UiState.hbm-mode-active;
+        hbm-mode-supported: UiState.hbm-mode-supported;
         shutdown-text: UiState.shutdown-text;
         scroll-offset-y <=> UiState.scroll-offset-y;
         back => { UiState.menu-back(); }

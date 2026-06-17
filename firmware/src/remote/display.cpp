@@ -137,20 +137,31 @@ extern "C" bool display_get_hbm() {
 
 extern "C" void display_set_hbm(bool active) {
   hbm_mode_active = active;
-  display_set_bl_level(bl_level);
+  if (is_initialized) {
+#if DISP_SH8601 || DISP_CO5300
+    sh8601_set_hbm_mode(lcd_io, hbm_mode_active);
+#endif
+    if (hbm_mode_active) {
+      set_display_brightness(lcd_io, 0);
+    } else {
+      set_display_brightness(lcd_io, bl_level);
+    }
+  }
+}
+
+extern "C" bool display_supports_hbm() {
+#if DISP_SH8601 || DISP_CO5300
+  return true;
+#else
+  return false;
+#endif
 }
 
 extern "C" void display_set_bl_level(uint8_t level) {
   ESP_LOGI(TAG, "display_set_bl_level: %d (is_initialized: %d)", level, is_initialized);
   if (is_initialized) {
     bl_level = level;
-#if DISP_SH8601 || DISP_CO5300
-    sh8601_set_hbm_mode(lcd_io, hbm_mode_active);
-#endif
-    if (hbm_mode_active) {
-      set_display_brightness(lcd_io, 0);
-    }
-    else {
+    if (!hbm_mode_active) {
       set_display_brightness(lcd_io, bl_level);
     }
   }

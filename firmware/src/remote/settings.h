@@ -83,6 +83,12 @@ typedef enum {
 } BoardBatteryDisplayOption;
 
 typedef enum {
+  SECONDARY_STAT_DUTY,
+  SECONDARY_STAT_TEMPS,
+  SECONDARY_STAT_DISTANCE,
+} SecondaryStatDisplayOption;
+
+typedef enum {
   POCKET_MODE_DISABLED,
   POCKET_MODE_ENABLED,
 } PocketModeOptions;
@@ -122,6 +128,7 @@ typedef struct {
   uint32_t theme_color;
 
   BoardBatteryDisplayOption battery_display;
+  SecondaryStatDisplayOption secondary_stat_display;
   PocketModeOptions pocket_mode;
   StatsDoublePressAction double_press_action;
 } DeviceSettings;

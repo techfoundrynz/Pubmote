@@ -68,7 +68,6 @@ export component SquareStats inherits Rectangle {
                     }
                 }
             }
-
         }
 
         // Content (Bottom-aligned)
@@ -85,31 +84,40 @@ export component SquareStats inherits Rectangle {
                 font-size: Theme.font-64;
             }
 
-            // Status row
-            StatusRow {
-                is-connected: root.is-connected;
-                rssi: root.rssi;
-                left-pad: root.left-pad;
-                right-pad: root.right-pad;
-                connection-state-label: root.connection-state-label;
-                pocket-mode-active: root.pocket-mode-active;
-                lights-on: root.lights-on;
-                alignment: LayoutAlignment.start;
-            }
-
-            // Horizontal utilization bar
+            // Horizontal utilization bar container
             VerticalLayout {
                 spacing: 2px * Theme.scale;
+
+                // Top row: Label on left, secondary stats on right
                 HorizontalLayout {
                     alignment: space-between;
-                    Text {
-                        text: "UTILIZATION";
-                        color: Theme.text-dim;
-                        font-size: Theme.font-10;
-                        font-family: "JetBrains Mono";
-                        font-weight: Theme.w-medium;
-                        horizontal-alignment: left;
+
+                    VerticalLayout {
+                        spacing: 2px * Theme.scale;
+
+                        alignment: end;
+            // Status row
+            StatusRow {
+                            is-connected: root.is-connected;
+                            rssi: root.rssi;
+                            left-pad: root.left-pad;
+                            right-pad: root.right-pad;
+                            connection-state-label: root.connection-state-label;
+                            pocket-mode-active: root.pocket-mode-active;
+                            lights-on: root.lights-on;
+                            alignment: LayoutAlignment.start;
+                        }
+
+                        Text {
+                            text: "UTILIZATION";
+                            color: Theme.text-dim;
+                            font-size: Theme.font-10;
+                            font-family: "JetBrains Mono";
+                            font-weight: Theme.w-medium;
+                            horizontal-alignment: left;
+                        }
                     }
+
                     SecondaryStat {
                         variant: "inline";
                         is-connected: root.is-connected;
@@ -121,6 +129,7 @@ export component SquareStats inherits Rectangle {
                     }
                 }
 
+                // Bottom row: Full width utilization progress bar
                 Rectangle {
                     height: 10px * Theme.scale;
                     background: Theme.track;

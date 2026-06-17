@@ -18,7 +18,7 @@ static void test_mode_task(void *pvParameters) {
   float mock_speed = 0.0f;
 
   while (1) {
-    mock_speed += 0.5f;
+    mock_speed += 0.2f;
     if (mock_speed > 40.0f) {
       mock_speed = 0.0f;
     }
