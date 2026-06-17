@@ -22,7 +22,9 @@ export component AboutScreen inherits Rectangle {
 
     VerticalLayout {
         // ui_AboutHeader (20%) — empty
-        Rectangle { vertical-stretch: 20; }
+        Rectangle {
+            vertical-stretch: 20;
+        }
 
         // ui_AboutBody (55%) — horizontally scrollable pages
         Rectangle {
@@ -42,10 +44,9 @@ export component AboutScreen inherits Rectangle {
                             text: root.version-info;
                             color: Theme.text;
                             font-size: Theme.font-14;
-                            font-weight: Theme.w-medium;
-                            font-family: "JetBrains Mono";
                             horizontal-alignment: center;
                         }
+
                         AppButton {
                             variant: "outline";
                             size: "small";
