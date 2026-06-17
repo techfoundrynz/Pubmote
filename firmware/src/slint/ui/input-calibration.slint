@@ -15,9 +15,10 @@ import { AppButton } from "app-button.slint";
 import { AppSlider } from "app-slider.slint";
 import { AppSwitch } from "app-switch.slint";
 import { PageFooter } from "page-footer.slint";
+import { JoystickDial } from "joystick-dial.slint";
 
 export component InputCalibrationScreen inherits Rectangle {
-    in property <string> header-text: "X: 0.0 | Y: 0.0";
+    in property <string> readout-text: "X: 0.0 | Y: 0.0";
     in property <string> step-text: "Press start to begin calibration";
     in property <string> primary-text: "Start";
     in property <float> joystick-x: 0;   // -1..1
@@ -30,79 +31,24 @@ export component InputCalibrationScreen inherits Rectangle {
     callback secondary;
     background: Theme.bg;
 
-    property <length> dial: 60px * Theme.scale;
+    property <length> dial: Math.round((90px * Theme.scale) / 1px) * 1px;
 
     VerticalLayout {
-        // ui_CalibrationHeader (20%)
-        Rectangle {
-            vertical-stretch: 20;
-            VerticalLayout {
-                alignment: center;
-                Text {
-                    text: root.header-text;
-                    color: Theme.text;
-                    font-size: Theme.font-12;
-                    horizontal-alignment: center;
-                }
-            }
-        }
+        padding-top: Theme.page-padding-vertical;
 
-        // ui_CalibrationBody (55%)
+        // ui_CalibrationBody (75%)
         VerticalLayout {
             alignment: center;
-            vertical-stretch: 55;
+            vertical-stretch: 75;
             spacing: 12px * Theme.scale;
 
             // ui_CalibrationIndicatorContainer (80x80 circle)
             if !root.show-expo-slider && !root.show-invert-switch: HorizontalLayout {
                 alignment: center;
-                Rectangle {
-                    width: root.dial;
-                    height: root.dial;
-                    border-radius: self.width / 2;
-                    border-width: 6px;
-                    border-color: Theme.track;
-
-                    // ui_CalibrationLineVert (red crosshair, overflows 130%)
-                    Rectangle {
-                        width: 4px;
-                        height: parent.height * 1.3;
-                        background: Theme.color-critical;
-                        x: (parent.width - self.width) / 2;
-                        y: (parent.height - self.height) / 2;
-                    }
-                    // ui_CalibrationLineHoriz
-                    Rectangle {
-                        width: parent.width * 1.3;
-                        height: 4px;
-                        background: Theme.color-critical;
-                        x: (parent.width - self.width) / 2;
-                        y: (parent.height - self.height) / 2;
-                    }
-
-                    // ui_PositionIndicatorContainer (live white cross, 20% size)
-                    Rectangle {
-                        width: parent.width * 0.2;
-                        height: parent.height * 0.2;
-                        // Move within the dial proportionally to the stick.
-                        x: (parent.width - self.width) / 2
-                            + clamp(root.joystick-x, -1, 1) * (parent.width - self.width) / 2;
-                        y: (parent.height - self.height) / 2
-                            + clamp(root.joystick-y, -1, 1) * (parent.height - self.height) / 2;
-                        Rectangle {
-                            width: 100%;
-                            height: 4px;
-                            background: Theme.text;
-                            y: (parent.height - self.height) / 2;
-                        }
-
-                        Rectangle {
-                            width: 4px;
-                            height: 100%;
-                            background: Theme.text;
-                            x: (parent.width - self.width) / 2;
-                        }
-                    }
+                JoystickDial {
+                    joystick-x: root.joystick-x;
+                    joystick-y: root.joystick-y;
+                    dial-size: root.dial;
                 }
             }
 
@@ -129,14 +75,27 @@ export component InputCalibrationScreen inherits Rectangle {
                 }
             }
 
-            // ui_CalibrationStepLabel
-            Text {
-                width: 100%;
-                text: root.step-text;
-                color: Theme.text;
-                font-size: Theme.font-12;
-                horizontal-alignment: center;
-                wrap: word-wrap;
+            // ui_CalibrationStepLabel & Readout Group
+            VerticalLayout {
+                spacing: 6px * Theme.scale;
+                alignment: center;
+
+                Text {
+                    text: root.readout-text;
+                    color: Theme.text;
+                    font-size: Theme.font-12;
+                    font-family: "JetBrains Mono";
+                    horizontal-alignment: center;
+                }
+
+                Text {
+                    width: 100%;
+                    text: root.step-text;
+                    color: Theme.text-dim;
+                    font-size: Theme.font-12;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
             }
         }
 

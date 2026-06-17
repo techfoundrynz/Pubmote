@@ -21,25 +21,21 @@ static void update_imu_calibration_ui_strings() {
       
       switch (imu_calibration_step) {
         case 1:
-          state.set_imu_calibration_header_text("Step 1 of 4: Preview");
           state.set_imu_calibration_step_text("Verify the bubble level moves. Tap Next to begin calibration.");
           state.set_imu_calibration_primary_button_text("Next");
           state.set_imu_calibration_show_axis_controls(false);
           break;
         case 2:
-          state.set_imu_calibration_header_text("Step 2 of 4: Level Offset");
           state.set_imu_calibration_step_text("Place the remote on a flat, level surface and tap Calibrate.");
           state.set_imu_calibration_primary_button_text("Calibrate");
           state.set_imu_calibration_show_axis_controls(false);
           break;
         case 3:
-          state.set_imu_calibration_header_text("Step 3 of 4: Axis Orientation");
           state.set_imu_calibration_step_text("Verify direction. Use Inv X/Y and Swap XY buttons below if needed.");
           state.set_imu_calibration_primary_button_text("Next");
           state.set_imu_calibration_show_axis_controls(true);
           break;
         case 4:
-          state.set_imu_calibration_header_text("Step 4 of 4: Final Preview");
           state.set_imu_calibration_step_text("Confirm the bubble level tilts correctly. Tap Save to apply.");
           state.set_imu_calibration_primary_button_text("Save");
           state.set_imu_calibration_show_axis_controls(false);
@@ -77,14 +73,19 @@ static void imu_calibration_task(void *pvParameters) {
 
     char accel_str[64];
     char gyro_str[64];
+    char gesture_str[64];
     snprintf(accel_str, sizeof(accel_str), "A: X=%.2f Y=%.2f Z=%.2f", data.accel_x, data.accel_y, data.accel_z);
     snprintf(gyro_str, sizeof(gyro_str), "G: X=%.1f Y=%.1f Z=%.1f", data.gyro_x, data.gyro_y, data.gyro_z);
-    const char* event_str = event_to_string(data.event);
+    
+    // Reconstruct raw Z to evaluate viewing tilt angle
+    float raw_z = data.accel_z + imu_calibration.accel_z_offset;
+    bool is_viewing = (raw_z > 0.70f);
+    snprintf(gesture_str, sizeof(gesture_str), "Look: %s (Z=%.2f)", is_viewing ? "YES" : "NO", raw_z);
 
     if (++log_counter >= 20) { // Log at 1Hz (20 * 50ms)
       log_counter = 0;
-      ESP_LOGI(TAG, "Live IMU - Accel: [%.2f, %.2f, %.2f], Gyro: [%.1f, %.1f, %.1f], Event: %s",
-               data.accel_x, data.accel_y, data.accel_z, data.gyro_x, data.gyro_y, data.gyro_z, event_str);
+      ESP_LOGI(TAG, "Live IMU - Accel: [%.2f, %.2f, %.2f], Gyro: [%.1f, %.1f, %.1f], Look: %s",
+               data.accel_x, data.accel_y, data.accel_z, data.gyro_x, data.gyro_y, data.gyro_z, is_viewing ? "YES" : "NO");
     }
 
     slint::invoke_from_event_loop([=]() {
@@ -98,7 +99,7 @@ static void imu_calibration_task(void *pvParameters) {
         state.set_imu_calibration_gyro_z(data.gyro_z);
         state.set_imu_calibration_accel_text(accel_str);
         state.set_imu_calibration_gyro_text(gyro_str);
-        state.set_imu_calibration_event_text(event_str);
+        state.set_imu_calibration_event_text(gesture_str);
       }
     });
 #endif

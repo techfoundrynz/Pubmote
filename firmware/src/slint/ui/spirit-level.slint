@@ -1,0 +1,34 @@
+import { Theme } from "theme.slint";
+import { CalibrationTrack } from "calibration-track.slint";
+
+export component SpiritLevel inherits Rectangle {
+    in property <float> accel-x: 0.0;
+    in property <float> accel-y: 0.0;
+    
+    width: track.width;
+    height: track.height;
+    
+    track := CalibrationTrack {
+        crosshair-color: #333333;
+
+        // Spirit bubble level wrapper (larger to prevent anti-aliasing artifacts on software renderer)
+        Rectangle {
+            width: Math.round((16px * Theme.scale) / 1px) * 1px + 4px;
+            height: Math.round((16px * Theme.scale) / 1px) * 1px + 4px;
+            background: transparent;
+
+            x: Math.round(((parent.width - self.width)/2 / 1px) + clamp(root.accel-x, -1.0, 1.0) * ((parent.width - self.width)/2 / 1px)) * 1px;
+            y: Math.round(((parent.height - self.height)/2 / 1px) - clamp(root.accel-y, -1.0, 1.0) * ((parent.height - self.height)/2 / 1px)) * 1px;
+
+            // Actual bubble circle
+            Rectangle {
+                width: Math.round((16px * Theme.scale) / 1px) * 1px;
+                height: Math.round((16px * Theme.scale) / 1px) * 1px;
+                border-radius: self.width / 2;
+                background: Theme.accent;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+    }
+}

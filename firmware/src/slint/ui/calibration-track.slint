@@ -1,0 +1,30 @@
+import { Theme } from "theme.slint";
+
+export component CalibrationTrack inherits Rectangle {
+    in property <length> dial-size: Math.round((90px * Theme.scale) / 1px) * 1px;
+    in property <color> crosshair-color: #333333;
+
+    width: root.dial-size;
+    height: root.dial-size;
+    border-radius: self.width / 2;
+    border-width: Math.round((2px * Theme.scale) / 1px) * 1px;
+    border-color: Theme.track;
+    background: #151515;
+
+    // Crosshair guides
+    Rectangle {
+        width: Math.round((1px * Theme.scale) / 1px) * 1px;
+        height: parent.height;
+        background: root.crosshair-color;
+        x: Math.round(((parent.width - self.width) / 2) / 1px) * 1px;
+    }
+
+    Rectangle {
+        width: parent.width;
+        height: Math.round((1px * Theme.scale) / 1px) * 1px;
+        background: root.crosshair-color;
+        y: Math.round(((parent.height - self.height) / 2) / 1px) * 1px;
+    }
+
+    @children
+}

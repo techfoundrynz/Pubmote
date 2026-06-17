@@ -90,7 +90,7 @@ export global UiState {
     in property <string> pairing-action-text: "Cancel";
 
     // --- Input Calibration (ui_InputCalibrationScreen) ---
-    in property <string> input-calibration-header: "X: 0.0 | Y: 0.0";
+    in property <string> input-calibration-readout: "X: 0.0 | Y: 0.0";
     in property <string> input-calibration-step: "Press start to begin calibration";
     in property <string> input-calibration-primary-text: "Start";
     in property <float> joystick-x: 0;
@@ -120,7 +120,6 @@ export global UiState {
     in property <bool> imu-calibration-invert-x: false;
     in property <bool> imu-calibration-invert-y: false;
     in property <bool> imu-calibration-swap-xy: false;
-    in property <string> imu-calibration-header-text: "IMU Calibration";
     in property <string> imu-calibration-step-text: "";
     in property <string> imu-calibration-primary-button-text: "Next";
     in property <bool> imu-calibration-show-axis-controls: false;
@@ -364,7 +363,7 @@ export component AppWindow inherits Window {
         width: 100%; height: 100%;
         x: (screen-x(Screen.input-calibration) - root.view-x) * self.width;
         y: (screen-y(Screen.input-calibration) - root.view-y) * self.height;
-        header-text: UiState.input-calibration-header;
+        readout-text: UiState.input-calibration-readout;
         step-text: UiState.input-calibration-step;
         primary-text: UiState.input-calibration-primary-text;
         joystick-x: UiState.joystick-x;
@@ -404,7 +403,6 @@ export component AppWindow inherits Window {
         imu-invert-x: UiState.imu-calibration-invert-x;
         imu-invert-y: UiState.imu-calibration-invert-y;
         imu-swap-xy: UiState.imu-calibration-swap-xy;
-        header-text: UiState.imu-calibration-header-text;
         step-text: UiState.imu-calibration-step-text;
         primary-button-text: UiState.imu-calibration-primary-button-text;
         show-axis-controls: UiState.imu-calibration-show-axis-controls;
