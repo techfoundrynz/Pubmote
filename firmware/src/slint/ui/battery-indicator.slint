@@ -1,0 +1,52 @@
+import { Theme } from "theme.slint";
+
+export component BatteryIndicator inherits Rectangle {
+    in property <int> battery: 100;
+    in property <bool> charging: false;
+
+    width: 24px * Theme.scale;
+    height: 11px * Theme.scale;
+
+    // Container/outline
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width - (4px * Theme.scale); // Leave space for the battery tip
+        height: parent.height;
+        border-radius: parent.height / 4;
+        border-width: 1.5px * Theme.scale;
+        border-color: Theme.text-dim;
+
+        // Fill level
+        Rectangle {
+            x: 2px * Theme.scale;
+            y: 2px * Theme.scale;
+            width: (parent.width - 4px * Theme.scale) * clamp(root.battery / 100.0, 0, 1);
+            height: parent.height - 4px * Theme.scale;
+            border-radius: (parent.height - 8px * Theme.scale) / 2;
+            background: root.charging ? Theme.color-success : (root.battery > 50 ? Theme.text : (root.battery > 20 ? Theme.color-caution : Theme.color-critical));
+        }
+
+        // Charge bolt
+        if root.charging : Image {
+            source: @image-url("../assets/charge-bolt.svg");
+            width: 8px * Theme.scale;
+            height: 12px * Theme.scale;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            colorize: #ffffff;
+            image-fit: contain;
+        }
+    }
+
+    // Tip
+    Rectangle {
+        x: 20px * Theme.scale;
+        y: (parent.height - self.height) / 2;
+        width: parent.width / 10;
+        height: parent.height / 3;
+        border-top-right-radius: 1px * Theme.scale;
+        border-bottom-right-radius: 1px * Theme.scale;
+        background: Theme.text-dim;
+    }
+}

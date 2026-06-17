@@ -1,0 +1,67 @@
+// UpdateScreen — faithful reproduction of ui_UpdateScreen.
+//
+// LVGL: ui_UpdateContent (column SPACE_BETWEEN)
+//   ui_UpdateHeader (20%) (empty row)
+//   ui_UpdateBody   (55%) -> ui_UpdateBodyLabel "Click next to scan for networks"
+//                            ui_UpdateBodyDropdown (hidden)
+//   ui_UpdateFooter (25%) -> Secondary 60x42 "Cancel" + Primary 60x42 "Next"
+//
+// The status label is updated through several steps at runtime (Checking,
+// Connecting, Downloading, Update complete, ...); here it is a single bound
+// property plus an optional dropdown for choosing an update.
+
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { ComboBox } from "combo-box.slint";
+import { PageFooter } from "page-footer.slint";
+
+export component UpdateScreen inherits Rectangle {
+    in property <string> body-text: "Click next to scan for networks";
+    in property <bool> show-dropdown: false;
+    in property <[string]> updates: [];
+    in property <string> primary-text: "Next";
+    callback primary;
+    callback secondary;
+    callback update-selected(int);
+    background: Theme.bg;
+
+    VerticalLayout {
+        // ui_UpdateHeader (20%) — empty
+        Rectangle { vertical-stretch: 20; }
+
+        // ui_UpdateBody (55%)
+        Rectangle {
+            vertical-stretch: 55;
+            VerticalLayout {
+                alignment: center;
+                spacing: 10px * Theme.scale;
+                padding-left: 40px * Theme.scale;
+                padding-right: 40px * Theme.scale;
+                Text {
+                    text: root.body-text;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+                if root.show-dropdown: ComboBox {
+                    model: root.updates;
+                    selected(i) => { root.update-selected(self.current-index); }
+                }
+            }
+        }
+
+        // ui_UpdateFooter (25%)
+        PageFooter {
+            AppButton {
+                text: "Cancel";
+                variant: "secondary";
+                clicked => { root.secondary(); }
+            }
+            AppButton {
+                text: root.primary-text;
+                clicked => { root.primary(); }
+            }
+        }
+    }
+}

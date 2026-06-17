@@ -9,9 +9,7 @@
 #include "remoteinputs.h"
 #include "stats.h"
 #include "time.h"
-#include "transmitter.h"
-#include "ui/ui.h"
-#include <esp_err.h>
+
 #include <esp_timer.h>
 #include <remote/settings.h>
 #include <stdbool.h>
@@ -129,7 +127,7 @@ void connection_init() {
   }
 
   ESP_ERROR_CHECK(
-      xTaskCreatePinnedToCore(connection_task, "connection_task", 4096, NULL, 20, &connection_task_handle, 0) == pdPASS
+      xTaskCreatePinnedToCore(connection_task, "connection_task", 3072, NULL, 20, &connection_task_handle, 0) == pdPASS
           ? ESP_OK
           : ESP_FAIL);
 }

@@ -1,0 +1,63 @@
+// PairingScreen — faithful reproduction of ui_PairingScreen.
+//
+// LVGL: ui_PairingContent (column SPACE_BETWEEN)
+//   ui_PairingHeader (20%) -> ui_PairingHeaderLabel "Pairing" Inter_Bold_14
+//   ui_PairingBody   (55%) -> ui_PairingCode "0000" Inter_Bold_48
+//                             ui_PairingCodeLabel "Your pairing code" Inter_14
+//   ui_PairingFooter (25%, 65% wide) -> ui_PairingMainActionButton "Cancel"
+
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { PageFooter } from "page-footer.slint";
+
+export component PairingScreen inherits Rectangle {
+    in property <string> pairing-code: "0000";
+    in property <string> action-text: "Cancel";
+    callback action;
+    background: Theme.bg;
+
+    VerticalLayout {
+        // ui_PairingHeader (20%)
+        Rectangle {
+            vertical-stretch: 20;
+            VerticalLayout {
+                alignment: center;
+                // Text {
+                //     text: "Pairing";
+                //     color: Theme.text;
+                //     font-size: Theme.font-14;
+                //     font-weight: Theme.w-semibold;
+                //     horizontal-alignment: center;
+                // }
+            }
+        }
+        // ui_PairingBody (55%)
+        Rectangle {
+            vertical-stretch: 55;
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: root.pairing-code;
+                    color: Theme.text;
+                    font-size: Theme.font-48;
+                    font-weight: Theme.w-semibold;
+                    horizontal-alignment: center;
+                }
+
+                Text {
+                    text: "Your pairing code";
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+        // ui_PairingFooter (25%)
+        PageFooter {
+            AppButton {
+                text: root.action-text;
+                clicked => { root.action(); }
+            }
+        }
+    }
+}

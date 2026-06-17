@@ -1,0 +1,389 @@
+// Top-level PubRemote Slint UI.
+//
+// Holds every screen ported from the LVGL/SquareLine UI and switches between
+// them based on `UiState.screen`. All dynamic data and actions are funnelled
+// through the `UiState` global so the C++ side has a single, stable surface to
+// bind against (set properties, connect callbacks) — analogous to how the LVGL
+// code updated named widgets and registered event callbacks.
+
+import { Theme } from "ui/theme.slint";
+export { Theme }
+import "../../assets/Saira-SemiBold.ttf";
+import "../../assets/JetBrainsMono-Medium.ttf";
+import { SplashScreen } from "ui/splash.slint";
+import { StatsScreen } from "ui/stats.slint";
+import { MenuScreen } from "ui/menu.slint";
+import { SettingsScreen } from "ui/settings.slint";
+import { PairingScreen } from "ui/pairing.slint";
+import { CalibrationScreen } from "ui/calibration.slint";
+import { AboutScreen } from "ui/about.slint";
+import { UpdateScreen } from "ui/update.slint";
+import { ChargeScreen } from "ui/charge.slint";
+import { FpsOverlay } from "ui/fps-overlay.slint";
+import { ColorSliderGenerator } from "ui/color-slider.slint";
+export { ColorSliderGenerator }
+import { ArcGauge } from "ui/arc-gauge.slint";
+import { ConfirmDialog } from "ui/confirm-dialog.slint";
+
+export enum Screen {
+    splash,
+    stats,
+    menu,
+    settings,
+    pairing,
+    calibration,
+    about,
+    update,
+    charge,
+}
+
+// Single binding surface for the firmware.
+export global UiState {
+    in-out property <Screen> screen: Screen.splash;
+    in-out property <int> fps: 0;
+    in property <bool> show-fps: false;
+
+    // --- Stats (ui_StatsScreen) ---
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;
+    in property <float> duty-fraction: 0;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;
+    in property <bool> remote-charging: false;
+    in property <string> secondary-stat-left-value: "";
+    in property <string> secondary-stat-left-label: "";
+    in property <string> connection-state-label: "Disconnected";
+    in property <bool> is-connected: false;
+    in property <string> board-battery: "0%";
+    in property <int> rssi: -100;
+    in property <bool> pocket-mode-active: false;
+    in property <bool> lights-on: false;
+    in property <string> board-state-message: "";
+
+    // --- Menu (ui_MenuScreen) ---
+    in property <bool> menu-show-connect: false;
+    in property <bool> hbm-mode-active: false;
+    in property <bool> hbm-mode-supported: false;
+    in property <string> shutdown-text: "Shutdown";
+    in-out property <int> scroll-offset-y: 0;
+
+    // --- Settings (ui_SettingsScreen) ---
+    in-out property <float> brightness: 128;
+    in-out property <int> double-press-index: 0;
+    in-out property <int> rotation-index: 0;
+    in-out property <int> auto-off-index: 0;
+    in-out property <int> temp-units-index: 0;
+    in-out property <int> distance-units-index: 0;
+    in-out property <int> startup-sound-index: 0;
+
+    in-out property <float> theme-h: 0;
+    in-out property <float> theme-s: 100;
+    in-out property <float> theme-l: 50;
+
+    // --- Pairing (ui_PairingScreen) ---
+    in property <string> pairing-code: "0000";
+    in property <string> pairing-action-text: "Cancel";
+
+    // --- Calibration (ui_CalibrationScreen) ---
+    in property <string> calibration-header: "X: 0.0 | Y: 0.0";
+    in property <string> calibration-step: "Press start to begin calibration";
+    in property <string> calibration-primary-text: "Start";
+    in property <float> joystick-x: 0;
+    in property <float> joystick-y: 0;
+    in property <bool> show-expo-slider: false;
+    in property <bool> show-invert-switch: false;
+    in-out property <float> expo-value: 1.0;
+    in-out property <bool> invert-y: false;
+
+    // --- About (ui_AboutScreen) ---
+    in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
+    in property <string> debug-info: "Battery: unknown";
+
+    // --- Update (ui_UpdateScreen) ---
+    in property <string> update-body: "Click next to scan for networks";
+    in property <bool> update-show-dropdown: false;
+    in property <[string]> updates: [];
+    in property <string> update-primary-text: "Next";
+
+    // --- Charge (ui_ChargeScreen) ---
+    in property <int> charge-percent: 0;
+
+    // --- Confirm Dialog ---
+    in-out property <bool> show-confirm-dialog: false;
+    in property <string> confirm-dialog-title: "";
+    in property <string> confirm-dialog-message: "";
+    in property <string> confirm-dialog-confirm-text: "Confirm";
+    in property <string> confirm-dialog-cancel-text: "Cancel";
+    in property <string> confirm-dialog-variant: "standard";
+
+    // --- Actions (the firmware connects these) ---
+    callback screen-changed(Screen);
+    callback splash-tapped();
+    callback stats-swiped-down();
+    callback secondary-stat-left-clicked();
+    callback board-battery-clicked();
+    // Menu
+    callback menu-back();
+    callback menu-connect();
+    callback menu-pocket-mode();
+    callback menu-toggle-hbm();
+    callback menu-shutdown-long-press();
+    callback open-settings();
+    callback open-calibration();
+    callback open-pairing();
+    callback open-about();
+    callback menu-shutdown();
+    // Settings
+    callback settings-save();
+    callback settings-changed();
+    // Pairing
+    callback pairing-action();
+    // Calibration
+    callback calibration-primary();
+    callback calibration-secondary();
+    // About
+    callback about-check-updates();
+    callback about-back();
+    // Update
+    callback update-primary();
+    callback update-secondary();
+    callback update-selected(int);
+    // Confirm Dialog
+    callback confirm-dialog-accepted();
+    callback confirm-dialog-rejected();
+}
+
+export component AppWindow inherits Window {
+    // Default to the Theme.panel-width / Theme.panel-height; dynamically sized at runtime.
+    width: Theme.panel-width;
+    height: Theme.panel-height;
+    background: Theme.bg;
+    title: "PubRemote";
+    default-font-family: "Saira";
+
+    property <Screen> active-screen: UiState.screen;
+    property <Screen> previous-screen: Screen.splash;
+    property <bool> is-animating: false;
+    property <bool> screen-loaded: true;
+
+    // Animated viewport position in screen units. Screens are positioned
+    // relative to this, so during a transition both the incoming and the
+    // outgoing screen genuinely slide while staying fully opaque. All screens
+    //
+    // Viewport layout grid:
+    // Y= 1:  [splash/charge] (X=0)
+    // Y= 0:  [stats] (X=0)
+    // Y=-1:  [menu] (X=0)  ->  [settings/calibration/pairing/about] (X=1)  ->  [update] (X=2)
+    property <float> view-x: screen-x(root.active-screen);
+    property <float> view-y: screen-y(root.active-screen);
+    animate view-x, view-y {
+        duration: (
+            root.active-screen == Screen.splash ||
+            root.active-screen == Screen.charge ||
+            root.previous-screen == Screen.splash ||
+            root.previous-screen == Screen.charge
+        ) ? 0ms : 250ms;
+        easing: ease-in-out;
+    }
+
+    pure function screen-x(s: Screen) -> int {
+        if (s == Screen.settings) { return 1; }
+        if (s == Screen.calibration) { return 1; }
+        if (s == Screen.pairing) { return 1; }
+        if (s == Screen.about) { return 1; }
+        if (s == Screen.update) { return 2; }
+        return 0;
+    }
+
+    pure function screen-y(s: Screen) -> int {
+        if (s == Screen.splash || s == Screen.charge) { return 1; }
+        if (s == Screen.stats) { return 0; }
+        return -1;
+    }
+
+    changed active-screen => {
+        root.screen-loaded = false;
+        root.is-animating = false;
+        root.is-animating = true;
+        UiState.show-confirm-dialog = false;
+        UiState.screen-changed(self.active-screen);
+    }
+
+    Timer {
+        interval: 20ms;
+        running: !root.screen-loaded;
+        triggered => {
+            root.screen-loaded = true;
+        }
+    }
+
+    Timer {
+        interval: 250ms;
+        running: root.is-animating;
+        triggered => {
+            root.is-animating = false;
+            root.previous-screen = root.active-screen;
+        }
+    }
+
+    Timer {
+        interval: 1000ms;
+        running: active-screen == Screen.splash;
+        triggered => {
+            UiState.splash-tapped();
+        }
+    }
+
+    if UiState.screen == Screen.splash || root.previous-screen == Screen.splash: SplashScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.splash) - root.view-x) * self.width;
+        y: (screen-y(Screen.splash) - root.view-y) * self.height;
+        clicked => { UiState.splash-tapped(); }
+    }
+
+    if UiState.screen == Screen.stats || root.previous-screen == Screen.stats: StatsScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.stats) - root.view-x) * self.width;
+        y: (screen-y(Screen.stats) - root.view-y) * self.height;
+        speed: UiState.speed;
+        speed-unit: UiState.speed-unit;
+        speed-fraction: UiState.speed-fraction;
+        duty-fraction: UiState.duty-fraction;
+        left-pad: UiState.left-pad;
+        right-pad: UiState.right-pad;
+        remote-battery: UiState.remote-battery;
+        remote-charging: UiState.remote-charging;
+        secondary-stat-left-value: UiState.secondary-stat-left-value;
+        secondary-stat-left-label: UiState.secondary-stat-left-label;
+        connection-state-label: UiState.connection-state-label;
+        is-connected: UiState.is-connected;
+        board-battery: UiState.board-battery;
+        rssi: UiState.rssi;
+        pocket-mode-active: UiState.pocket-mode-active;
+        lights-on: UiState.lights-on;
+        board-state-message: UiState.board-state-message;
+        swiped-down => { UiState.stats-swiped-down(); }
+        secondary-stat-left-clicked => { UiState.secondary-stat-left-clicked(); }
+        board-battery-clicked => { UiState.board-battery-clicked(); }
+    }
+
+    if UiState.screen == Screen.menu || root.previous-screen == Screen.menu: MenuScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.menu) - root.view-x) * self.width;
+        y: (screen-y(Screen.menu) - root.view-y) * self.height;
+        show-connect: UiState.menu-show-connect;
+        pocket-mode-active: UiState.pocket-mode-active;
+        hbm-mode-active: UiState.hbm-mode-active;
+        hbm-mode-supported: UiState.hbm-mode-supported;
+        shutdown-text: UiState.shutdown-text;
+        scroll-offset-y <=> UiState.scroll-offset-y;
+        back => { UiState.menu-back(); }
+        connect => { UiState.menu-connect(); }
+        pocket-mode => { UiState.menu-pocket-mode(); }
+        toggle-hbm => { UiState.menu-toggle-hbm(); }
+        settings => { UiState.open-settings(); }
+        calibration => { UiState.open-calibration(); }
+        pairing => { UiState.open-pairing(); }
+        about => { UiState.open-about(); }
+        shutdown => { UiState.menu-shutdown(); }
+        shutdown-long-press => { UiState.menu-shutdown-long-press(); }
+    }
+
+    if UiState.screen == Screen.settings || root.previous-screen == Screen.settings: SettingsScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.settings) - root.view-x) * self.width;
+        y: (screen-y(Screen.settings) - root.view-y) * self.height;
+        brightness <=> UiState.brightness;
+        double-press-index <=> UiState.double-press-index;
+        rotation-index <=> UiState.rotation-index;
+        auto-off-index <=> UiState.auto-off-index;
+        temp-units-index <=> UiState.temp-units-index;
+        distance-units-index <=> UiState.distance-units-index;
+        startup-sound-index <=> UiState.startup-sound-index;
+
+        theme-h <=> UiState.theme-h;
+        theme-s <=> UiState.theme-s;
+        theme-l <=> UiState.theme-l;
+        save => { UiState.settings-save(); }
+        
+        changed brightness => { UiState.settings-changed(); }
+        changed theme-h => { UiState.settings-changed(); }
+        changed theme-s => { UiState.settings-changed(); }
+        changed theme-l => { UiState.settings-changed(); }
+    }
+
+    if UiState.screen == Screen.pairing || root.previous-screen == Screen.pairing: PairingScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.pairing) - root.view-x) * self.width;
+        y: (screen-y(Screen.pairing) - root.view-y) * self.height;
+        pairing-code: UiState.pairing-code;
+        action-text: UiState.pairing-action-text;
+        action => { UiState.pairing-action(); }
+    }
+
+    if UiState.screen == Screen.calibration || root.previous-screen == Screen.calibration: CalibrationScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.calibration) - root.view-x) * self.width;
+        y: (screen-y(Screen.calibration) - root.view-y) * self.height;
+        header-text: UiState.calibration-header;
+        step-text: UiState.calibration-step;
+        primary-text: UiState.calibration-primary-text;
+        joystick-x: UiState.joystick-x;
+        joystick-y: UiState.joystick-y;
+        show-expo-slider: UiState.show-expo-slider;
+        show-invert-switch: UiState.show-invert-switch;
+        expo-value <=> UiState.expo-value;
+        invert-y <=> UiState.invert-y;
+        primary => { UiState.calibration-primary(); }
+        secondary => { UiState.calibration-secondary(); }
+    }
+
+    if UiState.screen == Screen.about || root.previous-screen == Screen.about: AboutScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.about) - root.view-x) * self.width;
+        y: (screen-y(Screen.about) - root.view-y) * self.height;
+        version-info: UiState.version-info;
+        debug-info: UiState.debug-info;
+        check-updates => { UiState.about-check-updates(); }
+        back => { UiState.about-back(); }
+    }
+
+    if UiState.screen == Screen.update || root.previous-screen == Screen.update: UpdateScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.update) - root.view-x) * self.width;
+        y: (screen-y(Screen.update) - root.view-y) * self.height;
+        body-text: UiState.update-body;
+        show-dropdown: UiState.update-show-dropdown;
+        updates: UiState.updates;
+        primary-text: UiState.update-primary-text;
+        primary => { UiState.update-primary(); }
+        secondary => { UiState.update-secondary(); }
+        update-selected(i) => { UiState.update-selected(i); }
+    }
+
+    if UiState.screen == Screen.charge || root.previous-screen == Screen.charge: ChargeScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.charge) - root.view-x) * self.width;
+        y: (screen-y(Screen.charge) - root.view-y) * self.height;
+        battery-percent: UiState.charge-percent;
+    }
+
+    if UiState.show-fps: FpsOverlay {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        fps: UiState.fps;
+    }
+
+    if UiState.show-confirm-dialog: ConfirmDialog {
+        title: UiState.confirm-dialog-title;
+        message: UiState.confirm-dialog-message;
+        confirm-text: UiState.confirm-dialog-confirm-text;
+        cancel-text: UiState.confirm-dialog-cancel-text;
+        confirm-variant: UiState.confirm-dialog-variant;
+        
+        confirmed => { UiState.confirm-dialog-accepted(); }
+        cancelled => { UiState.confirm-dialog-rejected(); }
+    }
+}

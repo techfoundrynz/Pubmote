@@ -1,0 +1,74 @@
+import { Theme } from "theme.slint";
+
+export component AppSlider inherits Rectangle {
+    in-out property <float> value: 0;
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    
+    height: round(40px / 1px * Theme.scale) * 1px;
+    min-width: round(100px / 1px * Theme.scale) * 1px;
+    
+    // NUCLEAR HACK: Mutate the background color imperceptibly (RGB 0 vs 1) when value changes.
+    // This forces the Slint ESP32 backend to discard partial redraws and invalidate the ENTIRE
+    // component bounds, perfectly annihilating all pixel trailing and off-by-one artifacts.
+    background: Math.mod(root.value, 2) < 1 ? rgb(0, 0, 0) : rgb(0, 0, 1);
+    
+    track := Rectangle {
+        height: round(12px / 1px * Theme.scale) * 1px;
+        width: parent.width - 4px;
+        x: 2px;
+        border-radius: self.height / 2;
+        background: Theme.track;
+        border-width: 1px;
+        border-color: Theme.track;
+        y: round((parent.height - self.height) / 1px / 2) * 1px;
+        
+        // Active track fill
+        active := Rectangle {
+            x: 0;
+            width: round((thumb.x + thumb.width / 2) / 1px) * 1px;
+            height: 100%;
+            border-radius: self.height / 2;
+            background: Theme.accent;
+            border-width: 1px;
+            border-color: Theme.accent;
+        }
+    }
+    
+    thumb := Rectangle {
+        width: round(28px / 1px * Theme.scale) * 1px;
+        height: round(28px / 1px * Theme.scale) * 1px;
+        border-radius: self.width / 2;
+        background: Theme.text;
+        border-width: 1px;
+        border-color: Theme.text;
+        
+        // Position logic
+        x: round(((root.value - root.minimum) / (root.maximum - root.minimum) * (parent.width - self.width)) / 1px) * 1px;
+        y: round((parent.height - self.height) / 1px / 2) * 1px;
+    }
+    
+    touch := TouchArea {
+        width: 100%;
+        height: 100%;
+        
+        property <float> start-val;
+        property <length> start-x;
+        
+        pointer-event(evt) => {
+            if evt.button == PointerEventButton.left && evt.kind == PointerEventKind.down {
+                self.start-val = root.value;
+                self.start-x = self.mouse-x;
+            }
+        }
+        
+        moved => {
+            let span = parent.width - thumb.width;
+            if span > 0 {
+                let diff = self.mouse-x - self.start-x;
+                let drag-val = (diff / span) * (root.maximum - root.minimum);
+                root.value = Math.max(root.minimum, Math.min(root.maximum, self.start-val + drag-val));
+            }
+        }
+    }
+}

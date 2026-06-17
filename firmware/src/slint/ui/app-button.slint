@@ -1,0 +1,98 @@
+import { Theme } from "theme.slint";
+
+// Common touch button component with variant and size options.
+export component AppButton inherits Rectangle {
+    in property <string> text;
+    in property <string> right-text: "";
+    in property <string> variant: "primary"; // "primary", "secondary", "outline", "ghost"
+    in property <string> size: "medium";     // "medium", "small"
+    in property <string> button-color: "standard";  // "standard", "success", "danger"
+    in property <bool> enabled: true;
+    callback clicked;
+    callback long-clicked;
+    property <bool> was-long-pressed: false;
+
+    pure function get-base-color() -> color {
+        if (root.button-color == "success") { return Theme.color-success; }
+        if (root.button-color == "danger") { return Theme.color-critical; }
+        return Theme.accent;
+    }
+
+    // Height based on size
+    height: root.size == "small" ? 30px * Theme.scale : 38px * Theme.scale;
+    border-radius: 8px * Theme.scale;
+    
+    // Border for outline variant
+    border-width: root.variant == "outline" ? 2px : 0px;
+    border-color: root.variant == "outline" ? Theme.text : transparent;
+
+    // Background color based on variant and state
+    background: !root.enabled ? Theme.track :
+        root.variant == "outline" ? (touch.pressed ? #ffffff20 : transparent) :
+        root.variant == "secondary" ? (touch.pressed ? Theme.track.darker(0.2) : Theme.track) :
+        root.variant == "ghost" ? (touch.pressed ? root.get-base-color().transparentize(0.7) : transparent) :
+        // default/primary
+        (touch.pressed ? root.get-base-color().darker(0.2) : root.get-base-color());
+
+    HorizontalLayout {
+        width: 100%;
+        height: 100%;
+        padding-left: 12px * Theme.scale;
+        padding-right: 12px * Theme.scale;
+        alignment: (root.variant == "ghost" || root.right-text != "") ? LayoutAlignment.space-between : LayoutAlignment.center;
+
+        Text {
+            text: root.text;
+            color: !root.enabled ? Theme.text-dim :
+                root.variant == "outline" ? Theme.text :
+                root.variant == "secondary" ? Theme.text :
+                root.variant == "ghost" ? Theme.text :
+                // default/primary
+                Theme.primary-button-text;
+            font-size: root.size == "small" ? Theme.font-10 : Theme.font-12;
+            font-weight: Theme.w-semibold;
+            vertical-alignment: center;
+        }
+
+        if root.right-text != "" || root.variant == "ghost" : Text {
+            text: root.right-text;
+            color: !root.enabled ? Theme.text-dim :
+                root.variant == "ghost" ? Theme.text-dim :
+                root.variant == "outline" ? Theme.text-dim :
+                root.variant == "secondary" ? Theme.text-dim :
+                Theme.primary-button-text.transparentize(0.3);
+            font-size: root.size == "small" ? Theme.font-10 : Theme.font-11;
+            font-weight: Theme.w-medium;
+            vertical-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            if (!root.was-long-pressed) {
+                root.clicked();
+            }
+        }
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) {
+                    root.was-long-pressed = false;
+                    long-press-timer.running = true;
+                } else if (event.kind == PointerEventKind.up) {
+                    long-press-timer.running = false;
+                }
+            }
+        }
+    }
+
+    long-press-timer := Timer {
+        interval: 800ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.was-long-pressed = true;
+            root.long-clicked();
+        }
+    }
+}

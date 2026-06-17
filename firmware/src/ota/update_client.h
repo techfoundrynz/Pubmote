@@ -3,6 +3,12 @@
 #include <esp_err.h>
 #include <stdbool.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef struct {
   char stable_url[512];     // Latest stable release asset URL
   char stable_tag[32];      // Stable release tag (e.g., "v1.0.0")
@@ -27,5 +33,11 @@ esp_err_t fetch_all_asset_urls(const char *asset_name, github_asset_urls_t *resu
 firmware_version_t parse_version_string(const char *version_str);
 bool is_version_greater(const firmware_version_t *a, const firmware_version_t *b);
 esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

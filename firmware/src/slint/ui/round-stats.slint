@@ -1,0 +1,145 @@
+import { Theme } from "theme.slint";
+import { ArcGauge } from "arc-gauge.slint";
+import { BatteryDisplay } from "battery-display.slint";
+import { StatusRow } from "status-row.slint";
+import { SpeedDisplay } from "speed-display.slint";
+import { AppChip } from "app-chip.slint";
+import { SecondaryStat } from "secondary-stat.slint";
+
+
+export component RoundStats inherits Rectangle {
+    in property <string> speed: "0.0";
+    in property <string> speed-unit: "KPH";
+    in property <float> speed-fraction: 0;
+    in property <float> duty-fraction: 0;
+    in property <bool> left-pad: false;
+    in property <bool> right-pad: false;
+    in property <int> remote-battery: 100;
+    in property <int> rssi: -100;
+    in property <bool> remote-charging: false;
+    in property <bool> is-connected: false;
+    in property <string> connection-state-label: "Disconnected";
+    in property <string> board-battery: "0%";
+    in property <bool> pocket-mode-active: false;
+    in property <bool> lights-on: false;
+    in property <string> board-state-message: "";
+    in property <string> secondary-stat-left-value: "";
+    in property <string> secondary-stat-left-label: "";
+
+    callback secondary-stat-left-clicked();
+    callback board-battery-clicked();
+
+    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical :
+        root.duty-fraction >= 0.80 ? Theme.color-warning :
+        root.duty-fraction >= 0.70 ? Theme.color-caution :
+        Theme.color-active;
+
+    property <bool> was-long-pressed: false;
+
+    // --- Dials (centered, drawn first so the content sits on top) ---
+    // ui_SpeedDial: full-size arc (240 of 240 base == 100% of panel).
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: parent.height;
+        thickness: 12px * Theme.scale;
+        start-angle: 140deg;
+        span-angle: 260deg;
+        track-color: Theme.track;
+        indicator-color: Theme.accent;
+        value: root.speed-fraction;
+    }
+
+    // ui_UtilizationDial
+    ArcGauge {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width - (32px * Theme.scale);
+        height: parent.height - (32px * Theme.scale);
+        thickness: 8px * Theme.scale;
+        start-angle: 140deg;
+        span-angle: 260deg;
+        track-color: Theme.track;
+        indicator-color: root.duty-color;
+        reverse: true;
+        value: root.duty-fraction;
+    }
+
+    // --- Content overlay (ui_StatsContent) ---
+    VerticalLayout {
+        padding-left: 20px * Theme.scale;
+        padding-right: 20px * Theme.scale;
+        padding-top: 30px * Theme.scale;
+        padding-bottom: 5px * Theme.scale;
+        alignment: space-between;
+
+        // ui_StatsHeader (25%) — indicators pinned to the bottom of the region.
+
+            VerticalLayout {
+            width: 100%;
+            alignment: end;
+            spacing: 6px * Theme.scale;
+
+            // Battery indicator row (Row 1)
+                HorizontalLayout {
+                alignment: center;
+                BatteryDisplay {
+                    battery: root.remote-battery;
+                    charging: root.remote-charging;
+                    show-percent: false;
+                }
+            }
+
+            // Chip row (Row 2)
+                HorizontalLayout {
+                alignment: center;
+                AppChip {
+                    text: root.board-state-message != "" ? root.board-state-message : root.connection-state-label;
+                    accent-color: root.board-state-message != "" ? Theme.color-warning : Theme.accent;
+                    active: root.is-connected;
+                }
+            }
+        }
+
+        // ui_StatsBody (50%)
+            VerticalLayout {
+            width: 100%;
+            alignment: center;
+
+            // ui_PrimaryStat + ui_PrimaryStatUnit
+                SpeedDisplay {
+                speed: root.speed;
+                speed-unit: root.speed-unit;
+            }
+            HorizontalLayout {
+                alignment: center;
+                SecondaryStat {
+                    variant: "full";
+                    is-connected: root.is-connected;
+                    left-value: root.secondary-stat-left-value;
+                    left-label: root.secondary-stat-left-label;
+                    right-value: root.board-battery;
+                    left-clicked => { root.secondary-stat-left-clicked() }
+                    right-clicked => { root.board-battery-clicked() }
+                }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 4px * Theme.scale;
+            padding-bottom: 8px * Theme.scale;
+
+            StatusRow {
+                is-connected: root.is-connected;
+                rssi: root.rssi;
+                left-pad: root.left-pad;
+                right-pad: root.right-pad;
+                connection-state-label: root.connection-state-label;
+                pocket-mode-active: root.pocket-mode-active;
+                lights-on: root.lights-on;
+            }
+        }
+    }
+}

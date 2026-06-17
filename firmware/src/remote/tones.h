@@ -1,6 +1,12 @@
 #ifndef __TONES_H
 #define __TONES_H
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum {
   NOTE_C4 = 261,
   NOTE_D4 = 294,
@@ -16,5 +22,11 @@ typedef enum {
   NOTE_WARNING = 440,
   NOTE_CRITICAL = 523,
 } BuzzerToneFrequency;
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

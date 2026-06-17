@@ -1,0 +1,9 @@
+import { Theme } from "theme.slint";
+
+export component PageFooter inherits HorizontalLayout {
+    padding-left: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.35;
+    padding-right: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.35;
+    padding-bottom: Theme.page-padding-vertical;
+    spacing: round(10px / 1px * Theme.scale) * 1px;
+    @children
+}

@@ -1,0 +1,69 @@
+import { Theme } from "theme.slint";
+
+export component ProgressBar inherits Rectangle {
+    // Current value of progress
+    in-out property <float> value: 0;
+    // Minimum value of progress range
+    in property <float> minimum: 0;
+    // Maximum value of progress range
+    in property <float> maximum: 100;
+
+    // Custom coloring options
+    in property <brush> track-color: Theme.track;
+    in property <brush> progress-color: Theme.accent;
+    
+    // Auto-color mode: transitions color automatically from success to caution to warning to critical based on progress fraction
+    in property <bool> auto-color: false;
+
+    // Optional text overlay properties
+    in property <string> label-text: "";
+    in property <color> label-color: Theme.text;
+    in property <length> label-font-size: Theme.font-12;
+
+    // Dimensions: default to a standard utilization bar height, scalable via Theme.scale
+    height: 14px * Theme.scale;
+    min-width: 100px * Theme.scale;
+    border-radius: self.height / 2;
+    background: transparent;
+
+    // Calculate normalized progress fraction (clamped between 0.0 and 1.0)
+    property <float> fraction: clamp((root.value - root.minimum) / (root.maximum - root.minimum), 0, 1);
+    
+    // Choose active color dynamically based on thresholds if auto-color is enabled
+    property <brush> active-color: root.auto-color ? (
+        root.fraction >= 0.90 ? Theme.color-critical : 
+        root.fraction >= 0.80 ? Theme.color-warning : 
+        root.fraction >= 0.70 ? Theme.color-caution : 
+        Theme.color-success
+    ) : root.progress-color;
+
+    // Background track container
+    track := Rectangle {
+        width: 100%;
+        height: 100%;
+        border-radius: parent.border-radius;
+        background: root.track-color;
+        border-width: 1px * Theme.scale;
+        border-color: Theme.track;
+        
+        // Active progress fill
+        fill := Rectangle {
+            x: 0;
+            y: 0;
+            width: parent.width * root.fraction;
+            height: 100%;
+            border-radius: parent.border-radius;
+            background: root.active-color;
+        }
+    }
+
+    // Optional text label centered on top of the progress bar
+    if root.label-text != "" : Text {
+        text: root.label-text;
+        color: root.label-color;
+        font-size: root.label-font-size;
+        font-weight: Theme.w-semibold;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}

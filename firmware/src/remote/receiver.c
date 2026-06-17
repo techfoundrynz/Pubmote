@@ -16,10 +16,9 @@
 #include "utilities/conversion_utils.h"
 #include <freertos/queue.h>
 #include <math.h>
-#include <remote/settings.h>
+#include "settings.h"
 #include <stdlib.h>
 #include <string.h>
-#include <ui/ui.h>
 
 static const char *TAG = "PUBREMOTE-RECEIVER";
 #define RX_QUEUE_SIZE 10

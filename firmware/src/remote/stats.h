@@ -6,6 +6,12 @@
 #include <charge/charge_driver.h>
 #include <stdio.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum {
   SPEED_UNIT_KMH,
   SPEED_UNIT_MPH
@@ -66,5 +72,11 @@ void stats_update();
 void stats_init();
 void stats_register_update_cb(callback_t callback);
 void stats_unregister_update_cb(callback_t callback);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
