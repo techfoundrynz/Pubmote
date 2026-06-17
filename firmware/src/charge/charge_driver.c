@@ -53,7 +53,7 @@ char *charge_state_to_string(RemoteChargeState state) {
 }
 
 static const VoltagePoint dischargeCurve[] = {
-    {4200, 100}, // Fully charged (4.2V)
+    {4150, 100}, // Fully charged (accounting for load drop)
     {4100, 90},  // Very high
     {4000, 78},  // High
     {3900, 66},  // Good
