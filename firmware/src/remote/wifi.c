@@ -322,9 +322,26 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
     return err;
   }
 
-  // Wait for connection result
-  EventBits_t bits =
-      xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+  // Wait for connection result with a timeout and abort check if the update screen is exited
+  extern bool is_update_screen_active(void);
+  EventBits_t bits = 0;
+  const int check_interval_ms = 200;
+  const int max_wait_ms = 30000; // 30 seconds timeout
+  int waited_ms = 0;
+
+  while (waited_ms < max_wait_ms) {
+    if (!is_update_screen_active()) {
+      ESP_LOGW(TAG, "WiFi connection aborted: update screen is no longer active");
+      s_wifi_state = WIFI_STATE_DISCONNECTED;
+      return ESP_ERR_TIMEOUT;
+    }
+
+    bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(check_interval_ms));
+    if (bits & (WIFI_CONNECTED_BIT | WIFI_FAIL_BIT)) {
+      break;
+    }
+    waited_ms += check_interval_ms;
+  }
 
   if (bits & WIFI_CONNECTED_BIT) {
     ESP_LOGI(TAG, "Successfully connected to WiFi network: %s", ssid);
@@ -335,7 +352,7 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
     return ESP_FAIL;
   }
   else {
-    ESP_LOGE(TAG, "Unexpected event");
+    ESP_LOGE(TAG, "Unexpected event or connection timeout");
     s_wifi_state = WIFI_STATE_DISCONNECTED;
     return ESP_ERR_TIMEOUT;
   }

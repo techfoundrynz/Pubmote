@@ -20,6 +20,7 @@ export component UpdateScreen inherits Rectangle {
     in property <bool> show-dropdown: false;
     in property <[string]> updates: [];
     in property <string> primary-text: "Next";
+    in property <bool> primary-enabled: true;
     callback primary;
     callback secondary;
     callback update-selected(int);
@@ -60,6 +61,7 @@ export component UpdateScreen inherits Rectangle {
             }
             AppButton {
                 text: root.primary-text;
+                enabled: root.primary-enabled;
                 clicked => { root.primary(); }
             }
         }
