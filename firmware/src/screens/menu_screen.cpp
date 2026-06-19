@@ -1,4 +1,5 @@
 #include "screens/menu_screen.h"
+#include "config.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
@@ -71,7 +72,7 @@ extern "C" void setup_menu_properties() {
   }
 
   state.set_pocket_mode_active(is_pocket_mode_enabled());
-  state.set_hbm_mode_active(display_get_hbm());
+  state.set_hbm_mode((int)device_settings.hbm_mode);
   state.set_hbm_mode_supported(display_supports_hbm());
 }
 
@@ -106,7 +107,24 @@ extern "C" void handle_menu_toggle_hbm() {
     return;
   }
   ESP_LOGI(TAG, "HBM mode button pressed");
-  display_set_hbm(!display_get_hbm());
+#if IMU_ENABLED
+  device_settings.hbm_mode = (HbmModeOptions)((device_settings.hbm_mode + 1) % 3);
+#else
+  if (device_settings.hbm_mode == HBM_MODE_OFF) {
+    device_settings.hbm_mode = HBM_MODE_ON;
+  } else {
+    device_settings.hbm_mode = HBM_MODE_OFF;
+  }
+#endif
+  save_device_settings();
+
+  // Apply immediately: HBM is only active if HBM mode is set to ON
+  if (device_settings.hbm_mode == HBM_MODE_ON) {
+    display_set_hbm(true);
+  } else {
+    display_set_hbm(false);
+  }
+
   setup_menu_properties(); // update the text
 }
 
@@ -117,10 +135,10 @@ extern "C" void handle_open_settings() {
   });
 }
 
-extern "C" void handle_open_calibration() {
-  ESP_LOGI(TAG, "Open calibration pressed");
+extern "C" void handle_open_input_calibration() {
+  ESP_LOGI(TAG, "Open input calibration pressed");
   slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Calibration);
+    get_slint_window()->global<UiState>().set_screen(Screen::InputCalibration);
   });
 }
 

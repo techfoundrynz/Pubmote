@@ -467,7 +467,6 @@ void power_management_init() {
   gpio_config(&pmu_io_conf);
   pmu_evt_queue = xQueueCreate(1, sizeof(uint32_t));
 
-  gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
   gpio_isr_handler_add(PMU_INT, pmu_isr_handler, (void *)PMU_INT);
 #endif
 

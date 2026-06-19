@@ -1,0 +1,39 @@
+import { Theme } from "theme.slint";
+import { CalibrationTrack } from "calibration-track.slint";
+
+export component JoystickDial inherits Rectangle {
+    in property <float> joystick-x: 0.0;
+    in property <float> joystick-y: 0.0;
+    in property <length> dial-size: Math.round((90px * Theme.scale) / 1px) * 1px;
+
+    width: root.dial-size;
+    height: root.dial-size;
+
+    track := CalibrationTrack {
+        dial-size: root.dial-size;
+        crosshair-color: Theme.color-critical;
+
+        // ui_PositionIndicatorContainer (live white cross)
+        Rectangle {
+            width: parent.width * 0.2;
+            height: parent.height * 0.2;
+            // Move within the dial proportionally to the stick.
+            x: Math.round(((parent.width - self.width)/2 / 1px) + clamp(root.joystick-x, -1.0, 1.0) * ((parent.width - self.width)/2 / 1px)) * 1px;
+            y: Math.round(((parent.height - self.height)/2 / 1px) + clamp(root.joystick-y, -1.0, 1.0) * ((parent.height - self.height)/2 / 1px)) * 1px;
+
+            Rectangle {
+                width: 100%;
+                height: Math.round((2px * Theme.scale) / 1px) * 1px;
+                background: Theme.text;
+                y: (parent.height - self.height) / 2;
+            }
+
+            Rectangle {
+                width: Math.round((2px * Theme.scale) / 1px) * 1px;
+                height: 100%;
+                background: Theme.text;
+                x: (parent.width - self.width) / 2;
+            }
+        }
+    }
+}

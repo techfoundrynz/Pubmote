@@ -11,10 +11,12 @@ import { AppButton } from "app-button.slint";
 export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
     in property <bool> pocket-mode-active: false;
-    in property <bool> hbm-mode-active: false;
+    in property <int> hbm-mode: 0;
     in property <bool> hbm-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
+    in property <bool> imu-supported: false;
+    in property <bool> joystick-supported: false;
     callback back;
     callback connect;
     callback pocket-mode;
@@ -23,6 +25,7 @@ export component MenuScreen inherits Rectangle {
     callback calibration;
     callback pairing;
     callback about;
+    callback imu-calibration;
     callback shutdown;
     callback shutdown-long-press;
 
@@ -45,13 +48,31 @@ export component MenuScreen inherits Rectangle {
             padding-bottom: Theme.page-padding-vertical;
             spacing: 6px * Theme.scale;
 
-            AppButton { text: "Back"; variant: "ghost"; right-text: ""; clicked => { root.back(); } }
-            Rectangle { height: 1px; background: Theme.track; }
-            
+            AppButton {
+                text: "Back";
+                variant: "ghost";
+                right-text: "";
+                clicked => { root.back(); }
+            }
+
+            Rectangle {
+                height: 1px;
+                background: Theme.track;
+            }
+
             if root.show-connect: VerticalLayout {
                 spacing: 6px * Theme.scale;
-                AppButton { text: "Connect"; variant: "ghost"; right-text: ""; clicked => { root.connect(); } }
-                Rectangle { height: 1px; background: Theme.track; }
+                AppButton {
+                    text: "Connect";
+                    variant: "ghost";
+                    right-text: "";
+                    clicked => { root.connect(); }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Theme.track;
+                }
             }
 
             AppButton {
@@ -60,32 +81,100 @@ export component MenuScreen inherits Rectangle {
                 variant: "ghost";
                 clicked => { root.pocket-mode(); }
             }
-            Rectangle { height: 1px; background: Theme.track; }
+
+            Rectangle {
+                height: 1px;
+                background: Theme.track;
+            }
 
             if root.hbm-mode-supported: VerticalLayout {
                 spacing: 6px * Theme.scale;
                 AppButton {
                     text: "HBM Mode";
-                    right-text: root.hbm-mode-active ? "ON" : "OFF";
+                    right-text: root.hbm-mode == 0 ? "OFF" : (root.hbm-mode == 1 ? "ON" : "RAISED");
                     variant: "ghost";
                     clicked => { root.toggle-hbm(); }
                 }
-                Rectangle { height: 1px; background: Theme.track; }
+
+                Rectangle {
+                    height: 1px;
+                    background: Theme.track;
+                }
             }
 
-            AppButton { text: "Settings"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.settings(); } }
-            Rectangle { height: 1px; background: Theme.track; }
+            AppButton {
+                text: "Settings";
+                variant: "ghost";
+                right-text: "\u{203a}";
+                clicked => { root.settings(); }
+            }
 
-            AppButton { text: "Calibration"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.calibration(); } }
-            Rectangle { height: 1px; background: Theme.track; }
+            Rectangle {
+                height: 1px;
+                background: Theme.track;
+            }
 
-            AppButton { text: "Pairing"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.pairing(); } }
-            Rectangle { height: 1px; background: Theme.track; }
+            if root.joystick-supported: VerticalLayout {
+                spacing: 0;
+                AppButton {
+                    text: "Inputs";
+                    variant: "ghost";
+                    right-text: "\u{203a}";
+                    clicked => { root.calibration(); }
+                }
 
-            AppButton { text: "About"; variant: "ghost"; right-text: "\u{203a}"; clicked => { root.about(); } }
-            Rectangle { height: 1px; background: Theme.track; }
+                Rectangle {
+                    height: 1px;
+                    background: Theme.track;
+                }
+            }
 
-            AppButton { text: root.shutdown-text; variant: "ghost"; right-text: ""; clicked => { root.shutdown(); } long-clicked => { root.shutdown-long-press(); } }
+            if root.imu-supported: VerticalLayout {
+                spacing: 0;
+                AppButton {
+                    text: "IMU";
+                    variant: "ghost";
+                    right-text: "\u{203a}";
+                    clicked => { root.imu-calibration(); }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Theme.track;
+                }
+            }
+
+            AppButton {
+                text: "Pairing";
+                variant: "ghost";
+                right-text: "\u{203a}";
+                clicked => { root.pairing(); }
+            }
+
+            Rectangle {
+                height: 1px;
+                background: Theme.track;
+            }
+
+            AppButton {
+                text: "About";
+                variant: "ghost";
+                right-text: "\u{203a}";
+                clicked => { root.about(); }
+            }
+
+            Rectangle {
+                height: 1px;
+                background: Theme.track;
+            }
+
+            AppButton {
+                text: root.shutdown-text;
+                variant: "ghost";
+                right-text: "";
+                clicked => { root.shutdown(); }
+                long-clicked => { root.shutdown-long-press(); }
+            }
         }
     }
 }

@@ -21,11 +21,13 @@
 #include "screens/stats_screen.h"
 #include "screens/menu_screen.h"
 #include "screens/settings_screen.h"
-#include "screens/calibration_screen.h"
+#include "screens/input_calibration_screen.h"
 #include "screens/pairing_screen.h"
 #include "screens/about_screen.h"
+#include "screens/imu_calibration_screen.h"
 #include "screens/update_screen.h"
 #include "remote/led.h"
+#include "remote/imu.h"
 
 // Slint inclusion
 #include "esp_heap_caps.h"
@@ -107,8 +109,12 @@ extern "C" bool is_about_screen_active() {
   return cached_active_screen.load() == Screen::About;
 }
 
-extern "C" bool is_calibration_screen_active() {
-  return cached_active_screen.load() == Screen::Calibration;
+extern "C" bool is_imu_calibration_screen_active() {
+  return cached_active_screen.load() == Screen::ImuCalibration;
+}
+
+extern "C" bool is_input_calibration_screen_active() {
+  return cached_active_screen.load() == Screen::InputCalibration;
 }
 
 extern "C" bool is_menu_screen_active() {
@@ -177,17 +183,20 @@ extern "C"
   void handle_menu_pocket_mode();
   void handle_menu_toggle_hbm();
   void handle_open_settings();
-  void handle_open_calibration();
+  void handle_open_input_calibration();
   void handle_open_pairing();
   void handle_open_about();
+  void handle_open_imu_calibration();
   void handle_menu_shutdown();
   void handle_settings_save();
   void handle_settings_changed();
   void handle_pairing_action();
-  void handle_calibration_primary();
-  void handle_calibration_secondary();
+  void handle_input_calibration_primary();
+  void handle_input_calibration_secondary();
   void handle_about_check_updates();
   void handle_about_back();
+  void handle_imu_calibration_back();
+  void handle_imu_calibration_primary();
   void handle_update_primary();
   void handle_update_secondary();
   void handle_update_selected(int index);
@@ -302,8 +311,13 @@ static slint::Image generate_color_slider_track(float w_len, float h_len, int mo
   return slint::Image(buffer);
 }
 
+static void handle_imu_gesture(imu_gesture_t gesture);
+
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
+
+  state.set_imu_supported(IMU_ENABLED);
+  state.set_joystick_supported(JOYSTICK_ENABLED);
 
   state.on_screen_changed([](Screen screen) {
     Screen prev = cached_active_screen.exchange(screen);
@@ -311,6 +325,10 @@ static void connect_callbacks() {
       // Exit hooks
       if (prev == Screen::Stats) {
         teardown_stats_properties();
+        imu_unregister_gesture_callback(handle_imu_gesture);
+        if (device_settings.hbm_mode == HBM_MODE_RAISED) {
+          display_set_hbm(false);
+        }
       }
       else if (prev == Screen::Pairing) {
         led_set_effect_default();
@@ -319,6 +337,7 @@ static void connect_callbacks() {
       // Enter hooks
       if (screen == Screen::Stats) {
         setup_stats_properties();
+        imu_register_gesture_callback(handle_imu_gesture);
       }
       else if (screen == Screen::Menu) {
         setup_menu_properties();
@@ -326,14 +345,17 @@ static void connect_callbacks() {
       else if (screen == Screen::Settings) {
         setup_settings_properties();
       }
-      else if (screen == Screen::Calibration) {
-        setup_calibration_properties();
+      else if (screen == Screen::InputCalibration) {
+        setup_input_calibration_properties();
       }
       else if (screen == Screen::Pairing) {
         setup_pairing_properties();
       }
       else if (screen == Screen::About) {
         setup_about_properties();
+      }
+      else if (screen == Screen::ImuCalibration) {
+        setup_imu_calibration_properties();
       }
       else if (screen == Screen::Update) {
         setup_update_properties();
@@ -348,15 +370,18 @@ static void connect_callbacks() {
   state.on_menu_pocket_mode([]() { handle_menu_pocket_mode(); });
   state.on_menu_toggle_hbm([]() { handle_menu_toggle_hbm(); });
   state.on_open_settings([]() { handle_open_settings(); });
-  state.on_open_calibration([]() { handle_open_calibration(); });
+  state.on_open_input_calibration([]() { handle_open_input_calibration(); });
   state.on_open_pairing([]() { handle_open_pairing(); });
   state.on_open_about([]() { handle_open_about(); });
+  state.on_open_imu_calibration([]() { handle_open_imu_calibration(); });
+  state.on_imu_calibration_back([]() { handle_imu_calibration_back(); });
+  state.on_imu_calibration_primary([]() { handle_imu_calibration_primary(); });
   state.on_menu_shutdown([]() { handle_menu_shutdown(); });
   state.on_settings_save([]() { handle_settings_save(); });
   state.on_settings_changed([]() { handle_settings_changed(); });
   state.on_pairing_action([]() { handle_pairing_action(); });
-  state.on_calibration_primary([]() { handle_calibration_primary(); });
-  state.on_calibration_secondary([]() { handle_calibration_secondary(); });
+  state.on_input_calibration_primary([]() { handle_input_calibration_primary(); });
+  state.on_input_calibration_secondary([]() { handle_input_calibration_secondary(); });
   state.on_about_check_updates([]() { handle_about_check_updates(); });
   state.on_about_back([]() { handle_about_back(); });
   state.on_update_primary([]() { handle_update_primary(); });
@@ -477,6 +502,11 @@ static void slint_event_loop(void *pvParameters) {
   vTaskDelay(pdMS_TO_TICKS(350));
   ESP_LOGI(TAG, "Restoring target backlight level: %d", device_settings.bl_level);
   display_set_bl_level(device_settings.bl_level);
+  if (device_settings.hbm_mode == HBM_MODE_ON) {
+    display_set_hbm(true);
+  } else {
+    display_set_hbm(false);
+  }
 
   // Blocks until event loop ends
   ESP_LOGI(TAG, "Running Slint window event loop...");
@@ -781,6 +811,34 @@ static esp_err_t app_touch_init(void) {
 }
 #endif
 
+static void handle_imu_gesture(imu_gesture_t gesture) {
+  if (gesture == IMU_GESTURE_DOUBLE_TAP) {
+    ESP_LOGI("PUBREMOTE-DISPLAY", "Double tap gesture callback triggered. Resetting sleep timer.");
+    reset_sleep_timer();
+    return;
+  }
+
+  if (device_settings.hbm_mode == HBM_MODE_RAISED && display_supports_hbm() && !is_pocket_mode_enabled()) {
+    if (gesture == IMU_GESTURE_RAISED) {
+      if (!display_get_hbm()) {
+        ESP_LOGI("PUBREMOTE-DISPLAY", "Raise-to-HBM: viewing position detected. Enabling HBM.");
+        display_set_hbm(true);
+      }
+      reset_sleep_timer();
+    } else if (gesture == IMU_GESTURE_TABLE_FLAT) {
+      if (display_get_hbm()) {
+        ESP_LOGI("PUBREMOTE-DISPLAY", "Table detection: flat & motionless. Disabling HBM.");
+        display_set_hbm(false);
+      }
+    } else if (gesture == IMU_GESTURE_LOWERED) {
+      if (display_get_hbm()) {
+        ESP_LOGI("PUBREMOTE-DISPLAY", "Wrist/remote lowered. Disabling HBM.");
+        display_set_hbm(false);
+      }
+    }
+  }
+}
+
 extern "C" void display_init() {
   ESP_LOGI(TAG, "Initializing Slint display wrapper");
 
@@ -820,6 +878,8 @@ extern "C" void display_init() {
 
 extern "C" void display_deinit() {
   ESP_LOGI(TAG, "Deinit display");
+  imu_unregister_gesture_callback(handle_imu_gesture);
+
   display_set_bl_level(0);
   if (slint_window) {
     slint::quit_event_loop();

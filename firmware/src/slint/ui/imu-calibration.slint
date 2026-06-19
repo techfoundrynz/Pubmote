@@ -1,0 +1,170 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { PageFooter } from "page-footer.slint";
+import { SpiritLevel } from "spirit-level.slint";
+
+export component ImuCalibrationScreen inherits Rectangle {
+    in property <float> accel-x: 0.0;
+    in property <float> accel-y: 0.0;
+    in property <float> accel-z: 0.0;
+    in property <float> gyro-x: 0.0;
+    in property <float> gyro-y: 0.0;
+    in property <float> gyro-z: 0.0;
+    in property <string> accel-text: "A: X=0.00 Y=0.00 Z=0.00";
+    in property <string> gyro-text: "G: X=0.00 Y=0.00 Z=0.00";
+    in property <string> event-text: "None";
+    in property <bool> imu-enabled: false;
+
+    in property <bool> imu-invert-x: false;
+    in property <bool> imu-invert-y: false;
+    in property <bool> imu-swap-xy: false;
+
+    // Wizard properties
+    in property <string> step-text: "";
+    in property <string> primary-button-text: "Next";
+    in property <bool> show-axis-controls: false;
+
+    callback back;   // Acts as Cancel
+    callback primary; // Acts as Next/Calibrate/Save
+    callback calibrate-level;
+    callback toggle-invert-x;
+    callback toggle-invert-y;
+    callback toggle-swap-xy;
+
+    background: Theme.bg;
+
+    VerticalLayout {
+        padding-top: Theme.page-padding-vertical;
+
+        flick := Flickable {
+            vertical-stretch: 1;
+            viewport-height: body-layout.min-height;
+
+            body-layout := VerticalLayout {
+                padding-left: Theme.page-padding-horizontal;
+                padding-right: Theme.page-padding-horizontal;
+                padding-bottom: Theme.page-padding-vertical;
+                alignment: center;
+                spacing: 12px * Theme.scale;
+
+                // Title Area (Removed)
+
+                // Live Graphic / Spirit level
+                if root.imu-enabled: VerticalLayout {
+                    spacing: 8px * Theme.scale;
+                    alignment: center;
+
+                    // Visual Bubble Indicator
+                    HorizontalLayout {
+                        alignment: center;
+                        SpiritLevel {
+                            accel-x: root.accel-x;
+                            accel-y: root.accel-y;
+                        }
+                    }
+
+                    // Numerical readouts
+                    VerticalLayout {
+                        spacing: 4px * Theme.scale;
+                        alignment: center;
+
+                        Text {
+                            text: root.accel-text;
+                            color: Theme.text;
+                            font-size: Theme.font-12;
+                            font-family: "JetBrains Mono";
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: root.gyro-text;
+                            color: Theme.text-dim;
+                            font-size: Theme.font-12;
+                            font-family: "JetBrains Mono";
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: root.event-text;
+                            color: Theme.accent;
+                            font-size: Theme.font-12;
+                            font-family: "JetBrains Mono";
+                            horizontal-alignment: center;
+                        }
+                    }
+
+                    // Step instruction label
+                    if root.step-text != "": Text {
+                        text: root.step-text;
+                        color: Theme.text;
+                        font-size: Theme.font-12;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 90%;
+                    }
+
+                    // Orientation controls (Only visible during Axis Config step)
+                    if root.show-axis-controls: VerticalLayout {
+                        spacing: 6px * Theme.scale;
+                        alignment: center;
+
+                        HorizontalLayout {
+                            spacing: 6px * Theme.scale;
+                            alignment: center;
+
+                            AppButton {
+                                text: root.imu-invert-x ? "Inv X: On" : "Inv X: Off";
+                                size: "small";
+                                variant: root.imu-invert-x ? "primary" : "secondary";
+                                clicked => { root.toggle-invert-x(); }
+                            }
+
+                            AppButton {
+                                text: root.imu-invert-y ? "Inv Y: On" : "Inv Y: Off";
+                                size: "small";
+                                variant: root.imu-invert-y ? "primary" : "secondary";
+                                clicked => { root.toggle-invert-y(); }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            alignment: center;
+
+                            AppButton {
+                                text: root.imu-swap-xy ? "Swap XY: On" : "Swap XY: Off";
+                                size: "small";
+                                variant: root.imu-swap-xy ? "primary" : "secondary";
+                                clicked => { root.toggle-swap-xy(); }
+                            }
+                        }
+                    }
+                }
+
+                if !root.imu-enabled: VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: "IMU Not Configured\nor Disabled";
+                        color: Theme.color-critical;
+                        font-size: Theme.font-14;
+                        font-weight: Theme.w-semibold;
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+        }
+
+        // Save and Cancel buttons / PageFooter - naturally sized
+        PageFooter {
+            AppButton {
+                text: "Cancel";
+                variant: "secondary";
+                clicked => { root.back(); }
+            }
+
+            AppButton {
+                text: root.primary-button-text;
+                clicked => { root.primary(); }
+            }
+        }
+    }
+}

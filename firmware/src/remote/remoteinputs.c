@@ -173,7 +173,7 @@ static void thumbstick_task(void *pvParameters) {
 
 void thumbstick_init() {
 #if (JOYSTICK_Y_ENABLED || JOYSTICK_X_ENABLED)
-  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(thumbstick_task, "thumbstick_task", 2048, NULL, 20, NULL, 0) == pdPASS
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(thumbstick_task, "thumbstick_task", 3072, NULL, 20, NULL, 0) == pdPASS
                       ? ESP_OK
                       : ESP_FAIL);
 #endif

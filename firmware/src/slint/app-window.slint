@@ -15,8 +15,9 @@ import { StatsScreen } from "ui/stats.slint";
 import { MenuScreen } from "ui/menu.slint";
 import { SettingsScreen } from "ui/settings.slint";
 import { PairingScreen } from "ui/pairing.slint";
-import { CalibrationScreen } from "ui/calibration.slint";
+import { InputCalibrationScreen } from "ui/input-calibration.slint";
 import { AboutScreen } from "ui/about.slint";
+import { ImuCalibrationScreen } from "ui/imu-calibration.slint";
 import { UpdateScreen } from "ui/update.slint";
 import { ChargeScreen } from "ui/charge.slint";
 import { FpsOverlay } from "ui/fps-overlay.slint";
@@ -31,10 +32,11 @@ export enum Screen {
     menu,
     settings,
     pairing,
-    calibration,
+    input-calibration,
     about,
     update,
     charge,
+    imu-calibration,
 }
 
 // Single binding surface for the firmware.
@@ -64,7 +66,7 @@ export global UiState {
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
-    in property <bool> hbm-mode-active: false;
+    in property <int> hbm-mode: 0;
     in property <bool> hbm-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
@@ -86,10 +88,10 @@ export global UiState {
     in property <string> pairing-code: "0000";
     in property <string> pairing-action-text: "Cancel";
 
-    // --- Calibration (ui_CalibrationScreen) ---
-    in property <string> calibration-header: "X: 0.0 | Y: 0.0";
-    in property <string> calibration-step: "Press start to begin calibration";
-    in property <string> calibration-primary-text: "Start";
+    // --- Input Calibration (ui_InputCalibrationScreen) ---
+    in property <string> input-calibration-readout: "X: 0.0 | Y: 0.0";
+    in property <string> input-calibration-step: "Press start to begin calibration";
+    in property <string> input-calibration-primary-text: "Start";
     in property <float> joystick-x: 0;
     in property <float> joystick-y: 0;
     in property <bool> show-expo-slider: false;
@@ -100,6 +102,31 @@ export global UiState {
     // --- About (ui_AboutScreen) ---
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
     in property <string> debug-info: "Battery: unknown";
+
+    // --- IMU Calibration ---
+    in property <float> imu-calibration-accel-x: 0.0;
+    in property <float> imu-calibration-accel-y: 0.0;
+    in property <float> imu-calibration-accel-z: 0.0;
+    in property <float> imu-calibration-gyro-x: 0.0;
+    in property <float> imu-calibration-gyro-y: 0.0;
+    in property <float> imu-calibration-gyro-z: 0.0;
+    in property <string> imu-calibration-accel-text: "A: X=0.00 Y=0.00 Z=0.00";
+    in property <string> imu-calibration-gyro-text: "G: X=0.00 Y=0.00 Z=0.00";
+    in property <string> imu-calibration-event-text: "None";
+    in property <bool> imu-calibration-enabled: false;
+    in property <bool> imu-supported: false;
+    in property <bool> joystick-supported: false;
+    in property <bool> imu-calibration-invert-x: false;
+    in property <bool> imu-calibration-invert-y: false;
+    in property <bool> imu-calibration-swap-xy: false;
+    in property <string> imu-calibration-step-text: "";
+    in property <string> imu-calibration-primary-button-text: "Next";
+    in property <bool> imu-calibration-show-axis-controls: false;
+    callback imu-calibration-calibrate-level();
+    callback imu-calibration-toggle-invert-x();
+    callback imu-calibration-toggle-invert-y();
+    callback imu-calibration-toggle-swap-xy();
+    callback imu-calibration-primary();
 
     // --- Update (ui_UpdateScreen) ---
     in property <string> update-body: "Click next to scan for networks";
@@ -131,7 +158,7 @@ export global UiState {
     callback menu-toggle-hbm();
     callback menu-shutdown-long-press();
     callback open-settings();
-    callback open-calibration();
+    callback open-input-calibration();
     callback open-pairing();
     callback open-about();
     callback menu-shutdown();
@@ -140,12 +167,15 @@ export global UiState {
     callback settings-changed();
     // Pairing
     callback pairing-action();
-    // Calibration
-    callback calibration-primary();
-    callback calibration-secondary();
+    // Input Calibration
+    callback input-calibration-primary();
+    callback input-calibration-secondary();
     // About
     callback about-check-updates();
     callback about-back();
+    // IMU Calibration
+    callback open-imu-calibration();
+    callback imu-calibration-back();
     // Update
     callback update-primary();
     callback update-secondary();
@@ -190,9 +220,10 @@ export component AppWindow inherits Window {
 
     pure function screen-x(s: Screen) -> int {
         if (s == Screen.settings) { return 1; }
-        if (s == Screen.calibration) { return 1; }
+        if (s == Screen.input-calibration) { return 1; }
         if (s == Screen.pairing) { return 1; }
         if (s == Screen.about) { return 1; }
+        if (s == Screen.imu-calibration) { return 1; }
         if (s == Screen.update) { return 2; }
         return 0;
     }
@@ -275,18 +306,21 @@ export component AppWindow inherits Window {
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
         pocket-mode-active: UiState.pocket-mode-active;
-        hbm-mode-active: UiState.hbm-mode-active;
+        hbm-mode: UiState.hbm-mode;
         hbm-mode-supported: UiState.hbm-mode-supported;
         shutdown-text: UiState.shutdown-text;
         scroll-offset-y <=> UiState.scroll-offset-y;
+        imu-supported: UiState.imu-supported;
+        joystick-supported: UiState.joystick-supported;
         back => { UiState.menu-back(); }
         connect => { UiState.menu-connect(); }
         pocket-mode => { UiState.menu-pocket-mode(); }
         toggle-hbm => { UiState.menu-toggle-hbm(); }
         settings => { UiState.open-settings(); }
-        calibration => { UiState.open-calibration(); }
+        calibration => { UiState.open-input-calibration(); }
         pairing => { UiState.open-pairing(); }
         about => { UiState.open-about(); }
+        imu-calibration => { UiState.open-imu-calibration(); }
         shutdown => { UiState.menu-shutdown(); }
         shutdown-long-press => { UiState.menu-shutdown-long-press(); }
     }
@@ -323,21 +357,21 @@ export component AppWindow inherits Window {
         action => { UiState.pairing-action(); }
     }
 
-    if UiState.screen == Screen.calibration || root.previous-screen == Screen.calibration: CalibrationScreen {
+    if UiState.screen == Screen.input-calibration || root.previous-screen == Screen.input-calibration: InputCalibrationScreen {
         width: 100%; height: 100%;
-        x: (screen-x(Screen.calibration) - root.view-x) * self.width;
-        y: (screen-y(Screen.calibration) - root.view-y) * self.height;
-        header-text: UiState.calibration-header;
-        step-text: UiState.calibration-step;
-        primary-text: UiState.calibration-primary-text;
+        x: (screen-x(Screen.input-calibration) - root.view-x) * self.width;
+        y: (screen-y(Screen.input-calibration) - root.view-y) * self.height;
+        readout-text: UiState.input-calibration-readout;
+        step-text: UiState.input-calibration-step;
+        primary-text: UiState.input-calibration-primary-text;
         joystick-x: UiState.joystick-x;
         joystick-y: UiState.joystick-y;
         show-expo-slider: UiState.show-expo-slider;
         show-invert-switch: UiState.show-invert-switch;
         expo-value <=> UiState.expo-value;
         invert-y <=> UiState.invert-y;
-        primary => { UiState.calibration-primary(); }
-        secondary => { UiState.calibration-secondary(); }
+        primary => { UiState.input-calibration-primary(); }
+        secondary => { UiState.input-calibration-secondary(); }
     }
 
     if UiState.screen == Screen.about || root.previous-screen == Screen.about: AboutScreen {
@@ -348,6 +382,34 @@ export component AppWindow inherits Window {
         debug-info: UiState.debug-info;
         check-updates => { UiState.about-check-updates(); }
         back => { UiState.about-back(); }
+    }
+
+    if UiState.screen == Screen.imu-calibration || root.previous-screen == Screen.imu-calibration: ImuCalibrationScreen {
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.imu-calibration) - root.view-x) * self.width;
+        y: (screen-y(Screen.imu-calibration) - root.view-y) * self.height;
+        accel-x: UiState.imu-calibration-accel-x;
+        accel-y: UiState.imu-calibration-accel-y;
+        accel-z: UiState.imu-calibration-accel-z;
+        gyro-x: UiState.imu-calibration-gyro-x;
+        gyro-y: UiState.imu-calibration-gyro-y;
+        gyro-z: UiState.imu-calibration-gyro-z;
+        accel-text: UiState.imu-calibration-accel-text;
+        gyro-text: UiState.imu-calibration-gyro-text;
+        event-text: UiState.imu-calibration-event-text;
+        imu-enabled: UiState.imu-calibration-enabled;
+        imu-invert-x: UiState.imu-calibration-invert-x;
+        imu-invert-y: UiState.imu-calibration-invert-y;
+        imu-swap-xy: UiState.imu-calibration-swap-xy;
+        step-text: UiState.imu-calibration-step-text;
+        primary-button-text: UiState.imu-calibration-primary-button-text;
+        show-axis-controls: UiState.imu-calibration-show-axis-controls;
+        calibrate-level => { UiState.imu-calibration-calibrate-level(); }
+        toggle-invert-x => { UiState.imu-calibration-toggle-invert-x(); }
+        toggle-invert-y => { UiState.imu-calibration-toggle-invert-y(); }
+        toggle-swap-xy => { UiState.imu-calibration-toggle-swap-xy(); }
+        primary => { UiState.imu-calibration-primary(); }
+        back => { UiState.imu-calibration-back(); }
     }
 
     if UiState.screen == Screen.update || root.previous-screen == Screen.update: UpdateScreen {
