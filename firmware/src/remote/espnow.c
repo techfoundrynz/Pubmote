@@ -4,6 +4,7 @@
 #include "nvs_flash.h"
 #include "settings.h"
 #include <esp_log.h>
+#include <esp_netif.h>
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
 #include <nvs.h>
@@ -45,6 +46,12 @@ void espnow_init() {
     ESP_LOGI(TAG, "Event loop already exists, reusing it");
   }
 
+  // Create default WiFi station network interface before esp_wifi_init
+  extern esp_netif_t *wifi_netif_sta;
+  if (wifi_netif_sta == NULL) {
+    wifi_netif_sta = esp_netif_create_default_wifi_sta();
+  }
+
   // Initialize WiFi (should be fresh after wifi_uninit())
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   esp_err_t wifi_init_ret = esp_wifi_init(&cfg);
@@ -84,8 +91,6 @@ void espnow_init() {
 
 void espnow_deinit() {
   ESP_ERROR_CHECK(esp_now_deinit());
-  ESP_ERROR_CHECK(esp_wifi_stop());
-  ESP_ERROR_CHECK(esp_wifi_deinit());
   ESP_LOGI(TAG, "ESP-NOW deinitialized");
   is_initialized = false;
 }

@@ -133,6 +133,7 @@ export global UiState {
     in property <bool> update-show-dropdown: false;
     in property <[string]> updates: [];
     in property <string> update-primary-text: "Next";
+    in property <bool> update-primary-enabled: true;
 
     // --- Charge (ui_ChargeScreen) ---
     in property <int> charge-percent: 0;
@@ -420,6 +421,7 @@ export component AppWindow inherits Window {
         show-dropdown: UiState.update-show-dropdown;
         updates: UiState.updates;
         primary-text: UiState.update-primary-text;
+        primary-enabled: UiState.update-primary-enabled;
         primary => { UiState.update-primary(); }
         secondary => { UiState.update-secondary(); }
         update-selected(i) => { UiState.update-selected(i); }
