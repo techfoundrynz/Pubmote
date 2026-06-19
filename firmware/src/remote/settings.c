@@ -38,7 +38,7 @@ DeviceSettings device_settings = {
     .secondary_stat_display = SECONDARY_STAT_DUTY,
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
-    .raise_to_hbm = true,
+    .hbm_mode = HBM_MODE_OFF,
 };
 
 CalibrationSettings calibration_settings = {
@@ -309,7 +309,7 @@ void save_device_settings() {
   nvs_write_int("sec_stat_disp", device_settings.secondary_stat_display);
   nvs_write_int("pocket_mode", device_settings.pocket_mode);
   nvs_write_int("stats_dp", device_settings.double_press_action);
-  nvs_write_int("raise_to_hbm", device_settings.raise_to_hbm);
+  nvs_write_int("hbm_mode", device_settings.hbm_mode);
 }
 
 esp_err_t save_wifi_ssid(const char *ssid) {
@@ -531,8 +531,8 @@ esp_err_t settings_init() {
                                             ? (StatsDoublePressAction)temp_setting_value
                                             : DEFAULT_DOUBLE_PRESS_ACTION;
 
-  device_settings.raise_to_hbm =
-      nvs_read_int("raise_to_hbm", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : true;
+  device_settings.hbm_mode =
+      nvs_read_int("hbm_mode", &temp_setting_value) == ESP_OK ? (HbmModeOptions)temp_setting_value : HBM_MODE_OFF;
 
   // Reading calibration settings
   calibration_settings.x_min =

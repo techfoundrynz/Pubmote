@@ -47,7 +47,6 @@ export component SettingsScreen inherits Rectangle {
     in-out property <int> temp-units-index: 0;
     in-out property <int> distance-units-index: 0;
     in-out property <int> startup-sound-index: 0;
-    in-out property <bool> raise-to-hbm-enabled: false;
 
     
     in-out property <float> theme-h: 0;
@@ -58,7 +57,7 @@ export component SettingsScreen inherits Rectangle {
     background: Theme.bg;
     
     property <int> current-page: 0;
-    property <int> total-pages: 9;
+    property <int> total-pages: 8;
 
     // Background swipe detector for page snapping
     TouchArea {
@@ -167,13 +166,6 @@ export component SettingsScreen inherits Rectangle {
                         hue <=> root.theme-h;
                         sat <=> root.theme-s;
                         lit <=> root.theme-l;
-                    }
-                }
-                SettingPage {
-                    width: root.width;
-                    caption: "Raise to HBM";
-                    AppSwitch {
-                        checked <=> root.raise-to-hbm-enabled;
                     }
                 }
             }

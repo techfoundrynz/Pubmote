@@ -66,7 +66,7 @@ export global UiState {
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
-    in property <bool> hbm-mode-active: false;
+    in property <int> hbm-mode: 0;
     in property <bool> hbm-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
@@ -83,7 +83,6 @@ export global UiState {
     in-out property <float> theme-h: 0;
     in-out property <float> theme-s: 100;
     in-out property <float> theme-l: 50;
-    in-out property <bool> raise-to-hbm-enabled: false;
 
     // --- Pairing (ui_PairingScreen) ---
     in property <string> pairing-code: "0000";
@@ -307,7 +306,7 @@ export component AppWindow inherits Window {
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
         pocket-mode-active: UiState.pocket-mode-active;
-        hbm-mode-active: UiState.hbm-mode-active;
+        hbm-mode: UiState.hbm-mode;
         hbm-mode-supported: UiState.hbm-mode-supported;
         shutdown-text: UiState.shutdown-text;
         scroll-offset-y <=> UiState.scroll-offset-y;
@@ -341,7 +340,6 @@ export component AppWindow inherits Window {
         theme-h <=> UiState.theme-h;
         theme-s <=> UiState.theme-s;
         theme-l <=> UiState.theme-l;
-        raise-to-hbm-enabled <=> UiState.raise-to-hbm-enabled;
         save => { UiState.settings-save(); }
         
         changed brightness => { UiState.settings-changed(); }

@@ -152,11 +152,6 @@ extern "C" void display_set_hbm(bool active) {
     } else {
       set_display_brightness(lcd_io, bl_level);
     }
-    slint::invoke_from_event_loop([active]() {
-      if (get_slint_window()) {
-        get_slint_window()->global<UiState>().set_hbm_mode_active(active);
-      }
-    });
   }
 }
 
@@ -331,6 +326,9 @@ static void connect_callbacks() {
       if (prev == Screen::Stats) {
         teardown_stats_properties();
         imu_unregister_gesture_callback(handle_imu_gesture);
+        if (device_settings.hbm_mode == HBM_MODE_RAISED) {
+          display_set_hbm(false);
+        }
       }
       else if (prev == Screen::Pairing) {
         led_set_effect_default();
@@ -504,6 +502,11 @@ static void slint_event_loop(void *pvParameters) {
   vTaskDelay(pdMS_TO_TICKS(350));
   ESP_LOGI(TAG, "Restoring target backlight level: %d", device_settings.bl_level);
   display_set_bl_level(device_settings.bl_level);
+  if (device_settings.hbm_mode == HBM_MODE_ON) {
+    display_set_hbm(true);
+  } else {
+    display_set_hbm(false);
+  }
 
   // Blocks until event loop ends
   ESP_LOGI(TAG, "Running Slint window event loop...");
@@ -815,7 +818,7 @@ static void handle_imu_gesture(imu_gesture_t gesture) {
     return;
   }
 
-  if (device_settings.raise_to_hbm && display_supports_hbm() && !is_pocket_mode_enabled()) {
+  if (device_settings.hbm_mode == HBM_MODE_RAISED && display_supports_hbm() && !is_pocket_mode_enabled()) {
     if (gesture == IMU_GESTURE_RAISED) {
       if (!display_get_hbm()) {
         ESP_LOGI("PUBREMOTE-DISPLAY", "Raise-to-HBM: viewing position detected. Enabling HBM.");

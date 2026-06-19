@@ -97,6 +97,12 @@ extern "C"
     DOUBLE_PRESS_ACTION_OPEN_MENU,
   } StatsDoublePressAction;
 
+  typedef enum {
+    HBM_MODE_OFF,
+    HBM_MODE_ON,
+    HBM_MODE_RAISED,
+  } HbmModeOptions;
+
 #define DEFAULT_PAIRING_SECRET_CODE -1
 
   typedef struct {
@@ -141,7 +147,7 @@ extern "C"
     SecondaryStatDisplayOption secondary_stat_display;
     PocketModeOptions pocket_mode;
     StatsDoublePressAction double_press_action;
-    bool raise_to_hbm;
+    HbmModeOptions hbm_mode;
   } DeviceSettings;
 
   uint64_t get_auto_off_ms();

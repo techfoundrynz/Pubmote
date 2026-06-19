@@ -11,7 +11,7 @@ import { AppButton } from "app-button.slint";
 export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
     in property <bool> pocket-mode-active: false;
-    in property <bool> hbm-mode-active: false;
+    in property <int> hbm-mode: 0;
     in property <bool> hbm-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
@@ -91,7 +91,7 @@ export component MenuScreen inherits Rectangle {
                 spacing: 6px * Theme.scale;
                 AppButton {
                     text: "HBM Mode";
-                    right-text: root.hbm-mode-active ? "ON" : "OFF";
+                    right-text: root.hbm-mode == 0 ? "OFF" : (root.hbm-mode == 1 ? "ON" : "RAISED");
                     variant: "ghost";
                     clicked => { root.toggle-hbm(); }
                 }
