@@ -35,6 +35,12 @@ static const char *TAG = "PUBREMOTE-MAIN";
 #define DEBUG_MEMORY 0
 
 void app_main(void) {
+  // Suppress noisy I2C/Touch driver error logs (e.g. on unpowered/sleep NACKs)
+  esp_log_level_set("FT5x06", ESP_LOG_NONE);
+  esp_log_level_set("CST816S", ESP_LOG_NONE);
+  esp_log_level_set("i2c.master", ESP_LOG_NONE);
+  esp_log_level_set("lcd_panel.io.i2c", ESP_LOG_NONE);
+
   // Enable power for core peripherals
   acc1_power_set_level(1);
   gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
@@ -57,8 +63,8 @@ void app_main(void) {
 
   // Peripherals
   thumbstick_init();
-  imu_init();
   display_init();
+  imu_init();
   vehicle_monitor_init();
 
   // Comms

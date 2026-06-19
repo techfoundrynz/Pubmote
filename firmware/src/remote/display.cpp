@@ -27,6 +27,7 @@
 #include "screens/imu_calibration_screen.h"
 #include "screens/update_screen.h"
 #include "remote/led.h"
+#include "remote/imu.h"
 
 // Slint inclusion
 #include "esp_heap_caps.h"
@@ -315,6 +316,8 @@ static slint::Image generate_color_slider_track(float w_len, float h_len, int mo
   return slint::Image(buffer);
 }
 
+static void handle_imu_gesture(imu_gesture_t gesture);
+
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
@@ -327,6 +330,7 @@ static void connect_callbacks() {
       // Exit hooks
       if (prev == Screen::Stats) {
         teardown_stats_properties();
+        imu_unregister_gesture_callback(handle_imu_gesture);
       }
       else if (prev == Screen::Pairing) {
         led_set_effect_default();
@@ -335,6 +339,7 @@ static void connect_callbacks() {
       // Enter hooks
       if (screen == Screen::Stats) {
         setup_stats_properties();
+        imu_register_gesture_callback(handle_imu_gesture);
       }
       else if (screen == Screen::Menu) {
         setup_menu_properties();
@@ -803,6 +808,34 @@ static esp_err_t app_touch_init(void) {
 }
 #endif
 
+static void handle_imu_gesture(imu_gesture_t gesture) {
+  if (gesture == IMU_GESTURE_DOUBLE_TAP) {
+    ESP_LOGI("PUBREMOTE-DISPLAY", "Double tap gesture callback triggered. Resetting sleep timer.");
+    reset_sleep_timer();
+    return;
+  }
+
+  if (device_settings.raise_to_hbm && display_supports_hbm() && !is_pocket_mode_enabled()) {
+    if (gesture == IMU_GESTURE_RAISED) {
+      if (!display_get_hbm()) {
+        ESP_LOGI("PUBREMOTE-DISPLAY", "Raise-to-HBM: viewing position detected. Enabling HBM.");
+        display_set_hbm(true);
+      }
+      reset_sleep_timer();
+    } else if (gesture == IMU_GESTURE_TABLE_FLAT) {
+      if (display_get_hbm()) {
+        ESP_LOGI("PUBREMOTE-DISPLAY", "Table detection: flat & motionless. Disabling HBM.");
+        display_set_hbm(false);
+      }
+    } else if (gesture == IMU_GESTURE_LOWERED) {
+      if (display_get_hbm()) {
+        ESP_LOGI("PUBREMOTE-DISPLAY", "Wrist/remote lowered. Disabling HBM.");
+        display_set_hbm(false);
+      }
+    }
+  }
+}
+
 extern "C" void display_init() {
   ESP_LOGI(TAG, "Initializing Slint display wrapper");
 
@@ -842,6 +875,8 @@ extern "C" void display_init() {
 
 extern "C" void display_deinit() {
   ESP_LOGI(TAG, "Deinit display");
+  imu_unregister_gesture_callback(handle_imu_gesture);
+
   display_set_bl_level(0);
   if (slint_window) {
     slint::quit_event_loop();

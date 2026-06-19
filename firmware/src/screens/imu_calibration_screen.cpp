@@ -77,15 +77,20 @@ static void imu_calibration_task(void *pvParameters) {
     snprintf(accel_str, sizeof(accel_str), "A: X=%.2f Y=%.2f Z=%.2f", data.accel_x, data.accel_y, data.accel_z);
     snprintf(gyro_str, sizeof(gyro_str), "G: X=%.1f Y=%.1f Z=%.1f", data.gyro_x, data.gyro_y, data.gyro_z);
     
-    // Reconstruct raw Z to evaluate viewing tilt angle
-    float raw_z = data.accel_z + imu_calibration.accel_z_offset;
-    bool is_viewing = (raw_z > 0.70f);
-    snprintf(gesture_str, sizeof(gesture_str), "Look: %s (Z=%.2f)", is_viewing ? "YES" : "NO", raw_z);
+    // Use calibrated/inverted Z directly to evaluate viewing tilt angle and orientation status
+    float raw_z = data.accel_z;
+    const char *face_status = "Tilted";
+    if (raw_z > 0.70f) {
+      face_status = "Face Up";
+    } else if (raw_z < -0.70f) {
+      face_status = "Face Down";
+    }
+    snprintf(gesture_str, sizeof(gesture_str), "Orient: %s (Z=%.2f)", face_status, raw_z);
 
     if (++log_counter >= 20) { // Log at 1Hz (20 * 50ms)
       log_counter = 0;
-      ESP_LOGI(TAG, "Live IMU - Accel: [%.2f, %.2f, %.2f], Gyro: [%.1f, %.1f, %.1f], Look: %s",
-               data.accel_x, data.accel_y, data.accel_z, data.gyro_x, data.gyro_y, data.gyro_z, is_viewing ? "YES" : "NO");
+      ESP_LOGI(TAG, "Live IMU - Accel: [%.2f, %.2f, %.2f], Gyro: [%.1f, %.1f, %.1f], Orient: %s",
+               data.accel_x, data.accel_y, data.accel_z, data.gyro_x, data.gyro_y, data.gyro_z, face_status);
     }
 
     slint::invoke_from_event_loop([=]() {
@@ -147,13 +152,20 @@ extern "C" void setup_imu_calibration_properties() {
         imu_calibration.accel_z_offset = 0.0f;
         imu_calibration.invert_x = false;
         imu_calibration.invert_y = false;
+        imu_calibration.invert_z = false;
         imu_calibration.swap_xy = false;
         imu_data_t raw_data = {0};
         imu_driver_get_data(&raw_data);
         imu_calibration = temp;
         imu_calibration.accel_x_offset = raw_data.accel_x;
         imu_calibration.accel_y_offset = raw_data.accel_y;
-        imu_calibration.accel_z_offset = raw_data.accel_z;
+        if (raw_data.accel_z < 0.0f) {
+          imu_calibration.invert_z = true;
+          imu_calibration.accel_z_offset = raw_data.accel_z + 1.0f;
+        } else {
+          imu_calibration.invert_z = false;
+          imu_calibration.accel_z_offset = raw_data.accel_z - 1.0f;
+        }
         ESP_LOGI(TAG, "Level calibrated (in-memory). Offsets: X=%.4f, Y=%.4f, Z=%.4f",
                  imu_calibration.accel_x_offset, imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);
       });
@@ -232,6 +244,7 @@ extern "C" void handle_imu_calibration_primary() {
     imu_calibration.accel_z_offset = 0.0f;
     imu_calibration.invert_x = false;
     imu_calibration.invert_y = false;
+    imu_calibration.invert_z = false;
     imu_calibration.swap_xy = false;
     
     imu_data_t raw_data = {0};
@@ -240,7 +253,13 @@ extern "C" void handle_imu_calibration_primary() {
     imu_calibration = temp;
     imu_calibration.accel_x_offset = raw_data.accel_x;
     imu_calibration.accel_y_offset = raw_data.accel_y;
-    imu_calibration.accel_z_offset = raw_data.accel_z;
+    if (raw_data.accel_z < 0.0f) {
+      imu_calibration.invert_z = true;
+      imu_calibration.accel_z_offset = raw_data.accel_z + 1.0f;
+    } else {
+      imu_calibration.invert_z = false;
+      imu_calibration.accel_z_offset = raw_data.accel_z - 1.0f;
+    }
     
     ESP_LOGI(TAG, "Level calibrated. Offsets: X=%.4f, Y=%.4f, Z=%.4f",
              imu_calibration.accel_x_offset, imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);

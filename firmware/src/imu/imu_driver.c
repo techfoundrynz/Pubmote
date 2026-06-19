@@ -45,8 +45,10 @@ void imu_driver_get_data(imu_data_t *data) {
 
   float ax = data->accel_x;
   float ay = data->accel_y;
+  float az = data->accel_z;
   float gx = data->gyro_x;
   float gy = data->gyro_y;
+  float gz = data->gyro_z;
 
   if (imu_calibration.swap_xy) {
     ax = data->accel_y;
@@ -63,11 +65,17 @@ void imu_driver_get_data(imu_data_t *data) {
     ay = -ay;
     gy = -gy;
   }
+  if (imu_calibration.invert_z) {
+    az = -az;
+    gz = -gz;
+  }
 
   data->accel_x = ax;
   data->accel_y = ay;
+  data->accel_z = az;
   data->gyro_x = gx;
   data->gyro_y = gy;
+  data->gyro_z = gz;
 }
 
 bool imu_driver_is_initialized() {

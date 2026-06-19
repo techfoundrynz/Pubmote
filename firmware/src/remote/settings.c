@@ -60,6 +60,7 @@ ImuCalibrationSettings imu_calibration = {
     .accel_z_offset = 0.0f,
     .invert_x = IMU_INVERT_X,
     .invert_y = IMU_INVERT_Y,
+    .invert_z = IMU_INVERT_Z,
     .swap_xy = IMU_SWAP_XY,
 };
 
@@ -374,7 +375,7 @@ char *get_wifi_ssid() {
     return NULL;
   }
 
-  char ssid[ssid_length];
+  char ssid[ssid_length + 1];
   size_t required_size = sizeof(ssid);
   err = nvs_read_str("wifi_ssid", ssid, &required_size);
   if (err != ESP_OK) {
@@ -382,7 +383,7 @@ char *get_wifi_ssid() {
     return NULL;
   }
 
-  static char final_ssid[32]; // Static to ensure it remains valid after function returns
+  static char final_ssid[33]; // Static to ensure it remains valid after function returns
   if (required_size > sizeof(final_ssid)) {
     ESP_LOGE(TAG, "SSID size exceeds buffer size!");
     return NULL;
@@ -401,7 +402,7 @@ char *get_wifi_password() {
     return NULL;
   }
 
-  char password[password_length];
+  char password[password_length + 1];
   size_t required_size = sizeof(password);
   err = nvs_read_str("wifi_password", password, &required_size);
   if (err != ESP_OK) {
@@ -409,7 +410,7 @@ char *get_wifi_password() {
     return NULL;
   }
 
-  static char final_password[64]; // Static to ensure it remains valid after function returns
+  static char final_password[65]; // Static to ensure it remains valid after function returns
   if (required_size > sizeof(final_password)) {
     ESP_LOGE(TAG, "Password size exceeds buffer size!");
     return NULL;
@@ -462,6 +463,7 @@ void save_imu_calibration() {
   nvs_write_int("imu_off_z", (int32_t)(imu_calibration.accel_z_offset * 1000.0f));
   nvs_write_int("imu_inv_x", imu_calibration.invert_x ? 1 : 0);
   nvs_write_int("imu_inv_y", imu_calibration.invert_y ? 1 : 0);
+  nvs_write_int("imu_inv_z", imu_calibration.invert_z ? 1 : 0);
   nvs_write_int("imu_swap_xy", imu_calibration.swap_xy ? 1 : 0);
 }
 
@@ -571,6 +573,8 @@ esp_err_t settings_init() {
       nvs_read_int("imu_inv_x", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : IMU_INVERT_X;
   imu_calibration.invert_y =
       nvs_read_int("imu_inv_y", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : IMU_INVERT_Y;
+  imu_calibration.invert_z =
+      nvs_read_int("imu_inv_z", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : IMU_INVERT_Z;
   imu_calibration.swap_xy =
       nvs_read_int("imu_swap_xy", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : IMU_SWAP_XY;
 

@@ -124,6 +124,7 @@ extern "C"
     float accel_z_offset;
     bool invert_x;
     bool invert_y;
+    bool invert_z;
     bool swap_xy;
   } ImuCalibrationSettings;
 

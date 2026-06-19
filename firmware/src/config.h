@@ -121,6 +121,10 @@
   #define IMU_INVERT_Y 0
 #endif
 
+#ifndef IMU_INVERT_Z
+  #define IMU_INVERT_Z 0
+#endif
+
 #ifndef IMU_SWAP_XY
   #define IMU_SWAP_XY 0
 #endif

@@ -164,6 +164,19 @@ static esp_err_t qmi8658_init()
     // Skip Wake-On-Motion configuration to avoid co-processor timeouts and reset issues
     ESP_LOGW(TAG, "Skipping QMI8658 Wake-On-Motion configuration to prevent reset timeout bugs");
 
+    // Configure tap detection
+    int config_ret = imu.configTap(SensorQMI8658::PRIORITY0, 15, 40, 200, 0.0625f, 0.25f, 0.6f, 0.25f);
+    if (config_ret != 0) {
+        ESP_LOGE(TAG, "Failed to configure tap detection: %d", config_ret);
+    } else {
+        bool enabled = imu.enableTap(SensorQMI8658::INTERRUPT_PIN_1);
+        if (!enabled) {
+            ESP_LOGE(TAG, "Failed to enable tap detection");
+        } else {
+            ESP_LOGI(TAG, "Tap detection configured and enabled on INT1");
+        }
+    }
+
     return ESP_OK;
 }
 
@@ -191,21 +204,17 @@ void qmi8658_get_data(imu_data_t *data) {
 
     uint8_t status =  imu.getStatusRegister();
 
-    if (status) {
-    switch (status) {
-        case  SensorQMI8658::EVENT_WOM_MOTION:
-            data->event = IMU_EVENT_WOM_MOTION;
-            break;
-        case  SensorQMI8658::EVENT_TAP_MOTION:
-            data->event = IMU_EVENT_TAP;
-            break;
-        default:
-            data->event = IMU_EVENT_NONE;
-            break;
-    }
-} else {
     data->event = IMU_EVENT_NONE;
-}
+    if (status & SensorQMI8658::EVENT_TAP_MOTION) {
+        SensorQMI8658::TapEvent tap = imu.getTapStatus();
+        if (tap == SensorQMI8658::SINGLE_TAP) {
+            data->event = IMU_EVENT_TAP;
+        } else if (tap == SensorQMI8658::DOUBLE_TAP) {
+            data->event = IMU_EVENT_DOUBLE_TAP;
+        }
+    } else if (status & SensorQMI8658::EVENT_WOM_MOTION) {
+        data->event = IMU_EVENT_WOM_MOTION;
+    }
 
     IMUdata acc = {0};
     IMUdata gyr = {0};

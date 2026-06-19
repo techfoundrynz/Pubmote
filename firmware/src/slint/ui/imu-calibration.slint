@@ -43,13 +43,14 @@ export component ImuCalibrationScreen inherits Rectangle {
             body-layout := VerticalLayout {
                 padding-left: Theme.page-padding-horizontal;
                 padding-right: Theme.page-padding-horizontal;
+                padding-bottom: Theme.page-padding-vertical;
                 alignment: center;
                 spacing: 12px * Theme.scale;
 
                 // Title Area (Removed)
 
                 // Live Graphic / Spirit level
-                if root.imu-enabled : VerticalLayout {
+                if root.imu-enabled: VerticalLayout {
                     spacing: 8px * Theme.scale;
                     alignment: center;
 
@@ -93,7 +94,7 @@ export component ImuCalibrationScreen inherits Rectangle {
                     }
 
                     // Step instruction label
-                    if root.step-text != "" : Text {
+                    if root.step-text != "": Text {
                         text: root.step-text;
                         color: Theme.text;
                         font-size: Theme.font-12;
@@ -103,7 +104,7 @@ export component ImuCalibrationScreen inherits Rectangle {
                     }
 
                     // Orientation controls (Only visible during Axis Config step)
-                    if root.show-axis-controls : VerticalLayout {
+                    if root.show-axis-controls: VerticalLayout {
                         spacing: 6px * Theme.scale;
                         alignment: center;
 
@@ -124,6 +125,10 @@ export component ImuCalibrationScreen inherits Rectangle {
                                 variant: root.imu-invert-y ? "primary" : "secondary";
                                 clicked => { root.toggle-invert-y(); }
                             }
+                        }
+
+                        HorizontalLayout {
+                            alignment: center;
 
                             AppButton {
                                 text: root.imu-swap-xy ? "Swap XY: On" : "Swap XY: Off";
@@ -155,6 +160,7 @@ export component ImuCalibrationScreen inherits Rectangle {
                 variant: "secondary";
                 clicked => { root.back(); }
             }
+
             AppButton {
                 text: root.primary-button-text;
                 clicked => { root.primary(); }
