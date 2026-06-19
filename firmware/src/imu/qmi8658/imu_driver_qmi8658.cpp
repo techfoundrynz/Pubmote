@@ -1,4 +1,7 @@
 #include "config.h"
+
+#if IMU_QMI8658
+
 #include <cmath>
 #include "imu_driver_qmi8658.hpp"
 #include "esp_log.h"
@@ -249,3 +252,5 @@ void qmi8658_imu_driver_deinit() {
     
     ESP_LOGI(TAG, "QMI8658 IMU driver deinitialized");
 }
+
+#endif
