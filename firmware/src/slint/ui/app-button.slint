@@ -22,9 +22,9 @@ export component AppButton inherits Rectangle {
     height: root.size == "small" ? 30px * Theme.scale : 38px * Theme.scale;
     border-radius: 8px * Theme.scale;
     
-    // Border for outline variant
-    border-width: root.variant == "outline" ? 2px : 0px;
-    border-color: root.variant == "outline" ? Theme.text : transparent;
+    // Always have a 2px border to prevent layout shifts on focus
+    border-width: 2px;
+    border-color: f-scope.has-focus ? #ffffff : (root.variant == "outline" ? Theme.text : transparent);
 
     // Background color based on variant and state
     background: !root.enabled ? Theme.track :
@@ -33,6 +33,19 @@ export component AppButton inherits Rectangle {
         root.variant == "ghost" ? (touch.pressed ? root.get-base-color().transparentize(0.7) : transparent) :
         // default/primary
         (touch.pressed ? root.get-base-color().darker(0.2) : root.get-base-color());
+
+    f-scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if (event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
 
     HorizontalLayout {
         width: 100%;

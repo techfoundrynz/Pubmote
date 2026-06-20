@@ -32,7 +32,7 @@ void haptic_stop_vibration() {
 
 static void haptic_play_startup_effect() {
 #if HAPTIC_ENABLED
-  haptic_vibrate(HAPTIC_ALERT_750MS);
+  // haptic_vibrate(HAPTIC_ALERT_750MS);
   // Additional startup effects can be added here
 #endif
 }

@@ -545,27 +545,19 @@ static void slint_input_task(void *pvParameters) {
         });
       }
 
-      // 2. Joystick Y mapping to Tab/Backtab for focus navigation (DISABLED)
-      // The custom UI widgets (AppButton) do not use keyboard focus. Leaving this
-      // enabled causes standard widgets (like Sliders in Settings) to rapidly cycle
-      // focus when the joystick drifts or is held, causing violent layout scrolling.
-      /*
+      // 2. Joystick Y mapping to Tab/Backtab for focus navigation
+      // Using an edge-triggered approach to prevent rapid scrolling on hold or drift.
       int current_dir = 0;
-      if (remote_data.js_y > 0.5) {
+      if (remote_data.js_y > 0.7) {
         current_dir = 1; // Down -> Tab
       }
-      else if (remote_data.js_y < -0.5) {
+      else if (remote_data.js_y < -0.7) {
         current_dir = -1; // Up -> Backtab
       }
-      */
 
-      uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-
-      /*
-      if (current_dir != 0) {
-        if (current_dir != last_dir || (now - last_move_time) > 250) {
-          last_dir = current_dir;
-          last_move_time = now;
+      if (current_dir != last_dir) {
+        // Trigger only on transition (neutral -> active)
+        if (current_dir != 0) {
           slint::invoke_from_event_loop([=]() {
             if (current_dir == 1) {
               slint_window->window().dispatch_key_press_event("\t");
@@ -577,11 +569,10 @@ static void slint_input_task(void *pvParameters) {
             }
           });
         }
+        last_dir = current_dir;
       }
-      else {
-        last_dir = 0;
-      }
-      */
+
+      uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
 #if SHOW_FPS
       // Keep event loop saturated with a single counting payload
