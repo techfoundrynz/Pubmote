@@ -145,7 +145,7 @@ extern "C" void handle_open_input_calibration() {
 extern "C" void handle_open_pairing() {
   ESP_LOGI(TAG, "Open pairing pressed");
   slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Pairing);
+    get_slint_window()->global<UiState>().set_screen(Screen::Boards);
   });
 }
 

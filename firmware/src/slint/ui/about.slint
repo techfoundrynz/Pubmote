@@ -12,6 +12,7 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { PageFooter } from "page-footer.slint";
+import { Pager } from "pager.slint";
 
 export component AboutScreen inherits Rectangle {
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
@@ -20,54 +21,50 @@ export component AboutScreen inherits Rectangle {
     callback back;
     background: Theme.bg;
 
+    property <int> current-page: 0;
+
     VerticalLayout {
-        // ui_AboutHeader (20%) — empty
-        Rectangle {
-            vertical-stretch: 20;
-        }
+        Pager {
+            current-page <=> root.current-page;
+            total-pages: 2;
 
-        // ui_AboutBody (55%) — horizontally scrollable pages
-        Rectangle {
-            vertical-stretch: 55;
-            Flickable {
-                viewport-width: root.width * 2;
-                HorizontalLayout {
-                    width: root.width * 2;
-                    // Page 1: version + update button
-                    VerticalLayout {
-                        width: root.width;
-                        padding-left: 40px * Theme.scale;
-                        padding-right: 40px * Theme.scale;
-                        spacing: 10px * Theme.scale;
-                        alignment: center;
-                        Text {
-                            text: root.version-info;
-                            color: Theme.text;
-                            font-size: Theme.font-14;
-                            horizontal-alignment: center;
-                        }
-
-                        AppButton {
-                            variant: "outline";
-                            size: "small";
-                            text: "Check for updates";
-                            clicked => { root.check-updates(); }
-                        }
+            // Page 1: version + update button
+            Rectangle {
+                width: root.width;
+                background: Theme.bg;
+                VerticalLayout {
+                    padding-left: 40px * Theme.scale;
+                    padding-right: 40px * Theme.scale;
+                    spacing: 10px * Theme.scale;
+                    alignment: center;
+                    Text {
+                        text: root.version-info;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        horizontal-alignment: center;
                     }
-                    // Page 2: debug info
-                    VerticalLayout {
-                        width: root.width;
-                        padding-left: 40px * Theme.scale;
-                        padding-right: 40px * Theme.scale;
-                        alignment: center;
-                        Text {
-                            text: root.debug-info;
-                            color: Theme.text;
-                            font-size: Theme.font-14;
-                            font-weight: Theme.w-medium;
-                            font-family: "JetBrains Mono";
-                            horizontal-alignment: center;
-                        }
+
+                    AppButton {
+                        variant: "outline";
+                        size: "small";
+                        text: "Check for updates";
+                        clicked => { root.check-updates(); }
+                    }
+                }
+            }
+            // Page 2: debug info
+            Rectangle {
+                width: root.width;
+                background: Theme.bg;
+                VerticalLayout {
+                    padding-left: 40px * Theme.scale;
+                    padding-right: 40px * Theme.scale;
+                    alignment: center;
+                    Text {
+                        text: root.debug-info;
+                        color: Theme.text;
+                        font-size: Theme.font-14;
+                        horizontal-alignment: center;
                     }
                 }
             }

@@ -24,6 +24,7 @@
 #include "screens/input_calibration_screen.h"
 #include "screens/pairing_screen.h"
 #include "screens/about_screen.h"
+#include "screens/boards_screen.h"
 #include "screens/imu_calibration_screen.h"
 #include "screens/update_screen.h"
 #include "remote/led.h"
@@ -191,6 +192,11 @@ extern "C"
   void handle_settings_save();
   void handle_settings_changed();
   void handle_pairing_action();
+  void setup_boards_properties();
+  void handle_select_board(int index);
+  void handle_delete_board(int index);
+  void handle_boards_back();
+  void handle_boards_pair_new();
   void handle_input_calibration_primary();
   void handle_input_calibration_secondary();
   void handle_about_check_updates();
@@ -360,6 +366,9 @@ static void connect_callbacks() {
       else if (screen == Screen::Update) {
         setup_update_properties();
       }
+      else if (screen == Screen::Boards) {
+        setup_boards_properties();
+      }
     }
   });
 
@@ -380,6 +389,10 @@ static void connect_callbacks() {
   state.on_settings_save([]() { handle_settings_save(); });
   state.on_settings_changed([]() { handle_settings_changed(); });
   state.on_pairing_action([]() { handle_pairing_action(); });
+  state.on_select_board([](int index) { handle_select_board(index); });
+  state.on_delete_board([](int index) { handle_delete_board(index); });
+  state.on_boards_back([]() { handle_boards_back(); });
+  state.on_boards_pair_new([]() { handle_boards_pair_new(); });
   state.on_input_calibration_primary([]() { handle_input_calibration_primary(); });
   state.on_input_calibration_secondary([]() { handle_input_calibration_secondary(); });
   state.on_about_check_updates([]() { handle_about_check_updates(); });

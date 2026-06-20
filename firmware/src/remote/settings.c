@@ -66,11 +66,9 @@ ImuCalibrationSettings imu_calibration = {
 };
 
 PairingSettings pairing_settings = {
-    .remote_addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, // Use 0xFF for -1 as uint8_t is unsigned
     .secret_code = DEFAULT_PAIRING_SECRET_CODE,
+    .remote_addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, // Use 0xFF for -1 as uint8_t is unsigned
     .channel = 1,
-    .devices = {0},
-    .device_count = 0,
     .default_index = -1,
 };
 

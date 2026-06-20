@@ -25,6 +25,7 @@ import { ColorSliderGenerator } from "ui/color-slider.slint";
 export { ColorSliderGenerator }
 import { ArcGauge } from "ui/arc-gauge.slint";
 import { ConfirmDialog } from "ui/confirm-dialog.slint";
+import { BoardsScreen, PairedBoard } from "ui/boards.slint";
 
 export enum Screen {
     splash,
@@ -37,6 +38,7 @@ export enum Screen {
     update,
     charge,
     imu-calibration,
+    boards,
 }
 
 // Single binding surface for the firmware.
@@ -87,6 +89,13 @@ export global UiState {
     // --- Pairing (ui_PairingScreen) ---
     in property <string> pairing-code: "0000";
     in property <string> pairing-action-text: "Cancel";
+
+    // --- Boards (Paired Boards list) ---
+    in property <[PairedBoard]> paired-boards: [];
+    callback select-board(int);
+    callback delete-board(int);
+    callback boards-back();
+    callback boards-pair-new();
 
     // --- Input Calibration (ui_InputCalibrationScreen) ---
     in property <string> input-calibration-readout: "X: 0.0 | Y: 0.0";
@@ -214,17 +223,17 @@ export component AppWindow inherits Window {
             root.active-screen == Screen.splash ||
             root.active-screen == Screen.charge ||
             root.previous-screen == Screen.splash ||
-            root.previous-screen == Screen.charge
-        ) ? 0ms : 250ms;
+            root.previous-screen == Screen.charge) ? 0ms : 250ms;
         easing: ease-in-out;
     }
 
     pure function screen-x(s: Screen) -> int {
         if (s == Screen.settings) { return 1; }
         if (s == Screen.input-calibration) { return 1; }
-        if (s == Screen.pairing) { return 1; }
+        if (s == Screen.pairing) { return 2; }
         if (s == Screen.about) { return 1; }
         if (s == Screen.imu-calibration) { return 1; }
+        if (s == Screen.boards) { return 1; }
         if (s == Screen.update) { return 2; }
         return 0;
     }
@@ -272,14 +281,16 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.splash || root.previous-screen == Screen.splash: SplashScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.splash) - root.view-x) * self.width;
         y: (screen-y(Screen.splash) - root.view-y) * self.height;
         clicked => { UiState.splash-tapped(); }
     }
 
     if UiState.screen == Screen.stats || root.previous-screen == Screen.stats: StatsScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.stats) - root.view-x) * self.width;
         y: (screen-y(Screen.stats) - root.view-y) * self.height;
         speed: UiState.speed;
@@ -305,7 +316,8 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.menu || root.previous-screen == Screen.menu: MenuScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
@@ -330,7 +342,8 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.settings || root.previous-screen == Screen.settings: SettingsScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.settings) - root.view-x) * self.width;
         y: (screen-y(Screen.settings) - root.view-y) * self.height;
         brightness <=> UiState.brightness;
@@ -345,7 +358,7 @@ export component AppWindow inherits Window {
         theme-s <=> UiState.theme-s;
         theme-l <=> UiState.theme-l;
         save => { UiState.settings-save(); }
-        
+
         changed brightness => { UiState.settings-changed(); }
         changed theme-h => { UiState.settings-changed(); }
         changed theme-s => { UiState.settings-changed(); }
@@ -353,7 +366,8 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.pairing || root.previous-screen == Screen.pairing: PairingScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.pairing) - root.view-x) * self.width;
         y: (screen-y(Screen.pairing) - root.view-y) * self.height;
         pairing-code: UiState.pairing-code;
@@ -361,8 +375,21 @@ export component AppWindow inherits Window {
         action => { UiState.pairing-action(); }
     }
 
+    if UiState.screen == Screen.boards || root.previous-screen == Screen.boards: BoardsScreen {
+        width: 100%;
+        height: 100%;
+        x: (screen-x(Screen.boards) - root.view-x) * self.width;
+        y: (screen-y(Screen.boards) - root.view-y) * self.height;
+        boards: UiState.paired-boards;
+        select-board(i) => { UiState.select-board(i); }
+        delete-board(i) => { UiState.delete-board(i); }
+        back => { UiState.boards-back(); }
+        pair-new => { UiState.boards-pair-new(); }
+    }
+
     if UiState.screen == Screen.input-calibration || root.previous-screen == Screen.input-calibration: InputCalibrationScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.input-calibration) - root.view-x) * self.width;
         y: (screen-y(Screen.input-calibration) - root.view-y) * self.height;
         readout-text: UiState.input-calibration-readout;
@@ -379,7 +406,8 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.about || root.previous-screen == Screen.about: AboutScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.about) - root.view-x) * self.width;
         y: (screen-y(Screen.about) - root.view-y) * self.height;
         version-info: UiState.version-info;
@@ -389,7 +417,8 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.imu-calibration || root.previous-screen == Screen.imu-calibration: ImuCalibrationScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.imu-calibration) - root.view-x) * self.width;
         y: (screen-y(Screen.imu-calibration) - root.view-y) * self.height;
         accel-x: UiState.imu-calibration-accel-x;
@@ -417,7 +446,8 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.update || root.previous-screen == Screen.update: UpdateScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.update) - root.view-x) * self.width;
         y: (screen-y(Screen.update) - root.view-y) * self.height;
         body-text: UiState.update-body;
@@ -431,7 +461,8 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.charge || root.previous-screen == Screen.charge: ChargeScreen {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         x: (screen-x(Screen.charge) - root.view-x) * self.width;
         y: (screen-y(Screen.charge) - root.view-y) * self.height;
         battery-percent: UiState.charge-percent;
@@ -449,7 +480,7 @@ export component AppWindow inherits Window {
         confirm-text: UiState.confirm-dialog-confirm-text;
         cancel-text: UiState.confirm-dialog-cancel-text;
         confirm-variant: UiState.confirm-dialog-variant;
-        
+
         confirmed => { UiState.confirm-dialog-accepted(); }
         cancelled => { UiState.confirm-dialog-rejected(); }
     }
