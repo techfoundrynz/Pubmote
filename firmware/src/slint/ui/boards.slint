@@ -25,6 +25,7 @@ export component BoardsScreen inherits Rectangle {
                 text: "Paired Boards";
                 color: Theme.text;
                 font-size: Theme.font-14;
+                font-weight: Theme.w-semibold;
                 horizontal-alignment: center;
                 vertical-alignment: center;
             }
@@ -36,22 +37,21 @@ export component BoardsScreen inherits Rectangle {
             padding-left: Theme.page-padding-horizontal;
             padding-right: Theme.page-padding-horizontal;
 
-            Flickable {
+            if root.boards.length == 0: VerticalLayout {
+                alignment: center;
+                Text {
+                    text: "No boards paired";
+                    color: Theme.text-dim;
+                    font-size: Theme.font-12;
+                    horizontal-alignment: center;
+                }
+            }
+
+            if root.boards.length > 0: Flickable {
                 viewport-height: boards-layout.min-height;
                 boards-layout := VerticalLayout {
                     spacing: 8px * Theme.scale;
                     alignment: start;
-
-                    if root.boards.length == 0: Rectangle {
-                        height: 60px * Theme.scale;
-                        Text {
-                            text: "No boards paired";
-                            color: Theme.text-dim;
-                            font-size: Theme.font-12;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
-                        }
-                    }
 
                     for board in root.boards: HorizontalLayout {
                         spacing: 8px * Theme.scale;
