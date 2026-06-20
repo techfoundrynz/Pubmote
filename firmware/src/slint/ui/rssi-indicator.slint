@@ -5,7 +5,7 @@ export component RssiIndicator inherits Rectangle {
     in property <length> icon-size: 14px * Theme.scale;
 
     property <float> s: root.icon-size / 14px;
-    property <int> rssi-bars: root.rssi > -75 ? 3 : root.rssi > -85 ? 2 : root.rssi > -95 ? 1 : 0;
+    property <int> rssi-bars: (root.rssi >= 0 || root.rssi <= -100) ? 0 : root.rssi > -75 ? 3 : root.rssi > -85 ? 2 : 1;
 
     width: 14px * root.s;
     height: 14px * root.s;

@@ -33,10 +33,8 @@ export component MenuScreen inherits Rectangle {
 
     flick := Flickable {
         viewport-height: menu-layout.min-height;
-        // Re-sync on creation: the menu is destroyed/recreated when navigating
-        // away and back, which resets viewport-y without firing changed.
         init => {
-            root.scroll-offset-y = -self.viewport-y / 1px;
+            self.viewport-y = -root.scroll-offset-y * 1px;
         }
         changed viewport-y => {
             root.scroll-offset-y = -self.viewport-y / 1px;
