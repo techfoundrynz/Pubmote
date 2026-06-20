@@ -36,6 +36,7 @@ else()
     list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
     # Define where the compiler and prebuilt files should go for SCons
     set(download_directory "${CMAKE_BINARY_DIR}/slint-prebuilt")
+    set(cargo_target_dir "${CMAKE_SOURCE_DIR}/.pio/cargo_target")
     if (CMAKE_HOST_WIN32)
         set(compiler_name "slint-compiler.exe")
     else()
@@ -71,6 +72,7 @@ else()
             "CARGO_PROFILE_RELEASE_LTO=fat"
             "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1"
             "CARGO_PROFILE_RELEASE_OPT_LEVEL=3"
+            "CARGO_TARGET_DIR=${cargo_target_dir}"
             rustup run esp cargo build --release --package slint-cpp --target xtensa-esp32s3-none-elf "-Zbuild-std=core,alloc" --no-default-features --features ${cargo_features}
         WORKING_DIRECTORY "${slint_SOURCE_DIR}"
         RESULT_VARIABLE cargo_result
@@ -82,7 +84,9 @@ else()
     # Run Cargo build for the host compiler
     message(STATUS "Running Cargo build for Slint compiler...")
     execute_process(
-        COMMAND ${CMAKE_COMMAND} -E env --unset=CC --unset=CXX --unset=CFLAGS --unset=CXXFLAGS --unset=LDFLAGS --unset=CPPFLAGS --unset=AR --unset=RANLIB --unset=AS --unset=LD cargo build --release --bin slint-compiler
+        COMMAND ${CMAKE_COMMAND} -E env --unset=CC --unset=CXX --unset=CFLAGS --unset=CXXFLAGS --unset=LDFLAGS --unset=CPPFLAGS --unset=AR --unset=RANLIB --unset=AS --unset=LD
+            "CARGO_TARGET_DIR=${cargo_target_dir}"
+            cargo build --release --bin slint-compiler
         WORKING_DIRECTORY "${slint_SOURCE_DIR}"
         RESULT_VARIABLE compiler_cargo_result
     )
@@ -96,15 +100,15 @@ else()
     else()
         set(compiled_compiler_name "slint-compiler")
     endif()
-    file(COPY "${slint_SOURCE_DIR}/target/release/${compiled_compiler_name}"
+    file(COPY "${cargo_target_dir}/release/${compiled_compiler_name}"
          DESTINATION "${download_directory}")
          
     # Copy the compiled library to where CMake/ldgen expects it
-    file(COPY "${slint_SOURCE_DIR}/target/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
+    file(COPY "${cargo_target_dir}/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
          DESTINATION "${CMAKE_BINARY_DIR}/_deps/slint-build")
 
     # Copy the compiled library to where prebuild_hook.py / SCons links it
-    file(COPY "${slint_SOURCE_DIR}/target/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
+    file(COPY "${cargo_target_dir}/xtensa-esp32s3-none-elf/release/libslint_cpp.a"
          DESTINATION "${CMAKE_BINARY_DIR}/slint-prebuilt/Slint-cpp-1.16.1-xtensa-esp32s3-none-elf/lib")
 
     # Copy the main Slint headers to the prebuilt include directory
@@ -112,7 +116,7 @@ else()
          DESTINATION "${CMAKE_BINARY_DIR}/slint-prebuilt/Slint-cpp-1.16.1-xtensa-esp32s3-none-elf/include")
 
     # Copy the generated slint_internal.h header to the prebuilt include directory
-    file(GLOB_RECURSE generated_internal_h "${slint_SOURCE_DIR}/target/xtensa-esp32s3-none-elf/release/build/slint-cpp-*/out/generated_include/private/slint_internal.h")
+    file(GLOB_RECURSE generated_internal_h "${cargo_target_dir}/xtensa-esp32s3-none-elf/release/build/slint-cpp-*/out/generated_include/private/slint_internal.h")
     if (generated_internal_h)
         list(GET generated_internal_h 0 single_internal_h)
         get_filename_component(internal_h_dir "${single_internal_h}" DIRECTORY)

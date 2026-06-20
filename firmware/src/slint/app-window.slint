@@ -236,6 +236,9 @@ export component AppWindow inherits Window {
     }
 
     changed active-screen => {
+        if (self.active-screen == Screen.stats) {
+            UiState.scroll-offset-y = 0;
+        }
         root.screen-loaded = false;
         root.is-animating = false;
         root.is-animating = true;
