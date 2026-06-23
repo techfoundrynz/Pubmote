@@ -3,6 +3,7 @@
 #include "buzzer.h"
 #include "charge/charge_driver.h"
 #include "config.h"
+#include "connection.h"
 #include "display.h"
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
@@ -12,6 +13,8 @@
 #include "esp_timer.h"
 #include "gpio_detection.h"
 #include "haptic.h"
+#include "led.h"
+#include "imu.h"
 #include "remote/tones.h"
 #include "remoteinputs.h"
 #include "screens/charge_screen.h"
@@ -25,9 +28,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
-#include "connection.h"
-#include "led.h"
 #include <math.h>
+#include <sys/time.h>
 static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
 
 #define INT_SETTLE_TIME_MS 200
@@ -226,6 +228,8 @@ static void enter_sleep_internal() {
   }
   vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow effects to finish
 
+  imu_deinit();
+
   acc1_power_set_level(0);
   acc2_power_set_level(0);
 
@@ -293,7 +297,8 @@ void reset_sleep_timer() {
     if (esp_timer_is_active(sleep_timer)) {
       ESP_ERROR_CHECK(esp_timer_stop(sleep_timer));
     }
-  } else {
+  }
+  else {
     esp_timer_create_args_t sleep_timer_args = {
         .callback = sleep_timer_callback, .arg = NULL, .dispatch_method = ESP_TIMER_TASK, .name = "SleepTimer"};
     ESP_ERROR_CHECK(esp_timer_create(&sleep_timer_args, &sleep_timer));
@@ -385,6 +390,16 @@ static bool check_pmu_should_wake(bool last_powered) {
 #endif
 
 void power_management_init() {
+  // Workaround for ESP-IDF crash when entering deep sleep.
+  // The timekeeping synchronization function (esp_sync_timekeeping_timers) called
+  // by esp_deep_sleep_start() accesses gettimeofday(), which requires s_time_lock
+  // and s_boot_time_lock. If these locks are not yet initialized, they will be
+  // lazily initialized during deep sleep entry. However, because the RTOS scheduler
+  // is suspended during deep sleep entry, xQueueCreateMutex (called by lock_init_generic)
+  // aborts. Initializing the locks now (when scheduler is running) avoids the crash.
+  struct timeval tv_init;
+  gettimeofday(&tv_init, NULL);
+
   bool power_was_connected = is_power_connected;
   ESP_ERROR_CHECK(charge_driver_init());
   init_sleep_timer();
