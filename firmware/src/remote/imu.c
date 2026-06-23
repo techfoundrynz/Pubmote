@@ -158,10 +158,10 @@ void imu_init() {
 
 void imu_deinit() {
 #if IMU_ENABLED
-  imu_driver_deinit();
   if (imu_task_handle != NULL) {
     vTaskDelete(imu_task_handle);
     imu_task_handle = NULL;
   }
+  imu_driver_deinit();
 #endif
 }
