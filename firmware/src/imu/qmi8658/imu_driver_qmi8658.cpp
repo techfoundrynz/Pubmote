@@ -250,6 +250,10 @@ esp_err_t qmi8658_imu_driver_init() {
 }
 
 void qmi8658_imu_driver_deinit() {
+    if (!imu_initialized) {
+        ESP_LOGI(TAG, "QMI8658 IMU driver not initialized, skipping deinit");
+        return;
+    }
     ESP_LOGI(TAG, "Deinitializing QMI8658 IMU driver");
     
     imu.reset(false);

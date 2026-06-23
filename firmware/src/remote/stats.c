@@ -2,10 +2,7 @@
 #include "receiver.h"
 #include <screens/stats_screen.h>
 
-RemoteStats remoteStats = {
-  .signalStrength = -255,
-  .state = BOARD_STATE_BOOT
-};
+RemoteStats remoteStats = {.signalStrength = -255, .state = BOARD_STATE_BOOT};
 
 static callback_registry_t stats_update_registry = {0};
 
@@ -27,6 +24,8 @@ static void reset_stats() {
   remoteStats.signalStrength = -255;
   remoteStats.state = BOARD_STATE_STARTUP;
   remoteStats.switchState = SWITCH_STATE_OFF;
+  remoteStats.chargeState = CHARGE_STATE_UNKNOWN;
+  remoteStats.chargeCurrent = 0;
 
   stats_update();
 }

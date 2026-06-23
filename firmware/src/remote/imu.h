@@ -17,6 +17,7 @@ typedef enum {
 typedef void (*imu_gesture_cb_t)(imu_gesture_t gesture);
 
 void imu_init();
+void imu_deinit();
 esp_err_t imu_register_gesture_callback(imu_gesture_cb_t cb);
 esp_err_t imu_unregister_gesture_callback(imu_gesture_cb_t cb);
 
