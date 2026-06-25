@@ -57,8 +57,8 @@ void app_main(void) {
   // Fire startup callbacks once boot is confirmed
   startup_cb();
 // Enable accessories after callbacks
-#ifdef ACC2_POWER_DEFAULT
-  acc2_power_set_level(ACC2_POWER_DEFAULT);
+#ifdef ACC2_POWER_DEFAULT_LEVEL
+  acc2_power_set_level(ACC2_POWER_DEFAULT_LEVEL);
 #endif
 
   // Peripherals
