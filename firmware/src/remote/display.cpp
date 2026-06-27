@@ -191,11 +191,6 @@ extern "C"
   void handle_settings_save();
   void handle_settings_changed();
   void handle_pairing_action();
-  void setup_boards_properties();
-  void handle_select_board(int index);
-  void handle_delete_board(int index);
-  void handle_boards_back();
-  void handle_boards_pair_new();
   void handle_input_calibration_primary();
   void handle_input_calibration_secondary();
   void handle_about_check_updates();
