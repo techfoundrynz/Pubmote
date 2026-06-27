@@ -244,6 +244,10 @@ static void button_long_press_hold_cb(void *button_handle, void *usr_data) {
   if (registered_long_press_hold_cb) {
     handled = registered_long_press_hold_cb();
   }
+
+  if (!handled) {
+    reset_sleep_timer();
+  }
 }
 
 void buttons_init() {

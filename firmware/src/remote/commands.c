@@ -21,12 +21,16 @@ bool process_board_data(uint8_t *data, int len) {
     int32_t super_secret_code = (int32_t)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]);
 
     if (super_secret_code == pairing_settings.secret_code) {
+#if PUBMOTE_COMMANDS_DEBUG
       uint8_t fault_code = data[4];
       float pitch_angle = (int16_t)((data[5] << 8) | data[6]) / 10.0;
       float roll_angle = (int16_t)((data[7] << 8) | data[8]) / 10.0;
+#endif
       float input_voltage_filtered = (int16_t)((data[11] << 8) | data[12]) / 10.0;
+#if PUBMOTE_COMMANDS_DEBUG
       int16_t rpm = (int16_t)((data[13] << 8) | data[14]);
       float tot_current = (int16_t)((data[17] << 8) | data[18]) / 10.0;
+#endif
 
       // Get RemoteStats
       float speed = (int16_t)((data[15] << 8) | data[16]) / 10.0;
@@ -53,7 +57,9 @@ bool process_board_data(uint8_t *data, int len) {
       float distance_abs;
       memcpy(&distance_abs, &data[20], sizeof(float));
       remoteStats.tripDistance = distance_abs;
+#if PUBMOTE_COMMANDS_DEBUG
       uint32_t odometer = (uint32_t)((data[26] << 24) | (data[27] << 16) | (data[28] << 8) | data[29]);
+#endif
 
 #if PUBMOTE_COMMANDS_DEBUG
       // Print the extracted values

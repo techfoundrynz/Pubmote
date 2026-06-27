@@ -534,7 +534,6 @@ static void slint_event_loop(void *pvParameters) {
 static void slint_input_task(void *pvParameters) {
   static bool was_pressed = false;
   static int last_dir = 0; // -1: up, 1: down, 0: center
-  static uint32_t last_move_time = 0;
 
 #if SHOW_FPS
   static uint32_t last_fps_time = 0;
@@ -585,8 +584,6 @@ static void slint_input_task(void *pvParameters) {
         last_dir = current_dir;
       }
 
-      uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-
 #if SHOW_FPS
       // Keep event loop saturated with a single counting payload
       if (loop_ready.exchange(false)) {
@@ -597,7 +594,7 @@ static void slint_input_task(void *pvParameters) {
       }
 
       // Calculate and send true FPS to Slint every second
-      now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+      uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
       if (now - last_fps_time >= 1000) {
         int current_count = g_loop_count.load();
         int fps = current_count - last_frame_count;
@@ -674,6 +671,8 @@ static esp_err_t app_lcd_init(void) {
   ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
   ESP_LOGI(TAG, "Install panel IO");
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #if DISP_GC9A01
   esp_lcd_panel_io_spi_config_t io_config = GC9A01_PANEL_IO_SPI_CONFIG(DISP_CS, DISP_DC, on_lcd_color_trans_done, NULL);
   io_config.trans_queue_depth = 20;
@@ -682,6 +681,7 @@ static esp_err_t app_lcd_init(void) {
   io_config.pclk_hz = LCD_PIXEL_CLOCK_HZ;
   io_config.trans_queue_depth = 20;
 #endif
+#pragma GCC diagnostic pop
 
   ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &lcd_io));
 
@@ -703,12 +703,15 @@ static esp_err_t app_lcd_init(void) {
   };
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
   const esp_lcd_panel_dev_config_t panel_config = {
       .reset_gpio_num = DISP_RST,
       .rgb_ele_order = RGB_ELE_ORDER,
       .bits_per_pixel = 16,
       .vendor_config = &vendor_config,
   };
+#pragma GCC diagnostic pop
 
 #if DISP_GC9A01
   ESP_LOGI(TAG, "Install GC9A01 panel driver");
@@ -769,6 +772,8 @@ static esp_err_t app_lcd_init(void) {
 static esp_err_t app_touch_init(void) {
   esp_lcd_panel_io_handle_t tp_io_handle = NULL;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
   #if TP_CST816S
   esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CST816S_CONFIG();
   #elif TP_FT3168
@@ -799,6 +804,7 @@ static esp_err_t app_touch_init(void) {
               .mirror_y = 0,
           },
   };
+#pragma GCC diagnostic pop
 
   #if TP_CST816S
   ESP_LOGI(TAG, "Initialize touch controller CST816S");
