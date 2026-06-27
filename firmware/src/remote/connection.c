@@ -1,7 +1,7 @@
 #include "connection.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "esp_now.h"
+#include "comms.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "peers.h"
@@ -12,6 +12,8 @@
 
 #include <esp_timer.h>
 #include <remote/settings.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -87,25 +89,13 @@ static void connection_task(void *pvParameters) {
 }
 
 void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel) {
-  esp_now_peer_info_t peerInfo = {};
-  peerInfo.channel = channel; // Set the channel number (0-14)
-  peerInfo.encrypt = false;
-  memcpy(peerInfo.peer_addr, mac_addr, ESP_NOW_ETH_ALEN);
-
-  if (esp_now_is_peer_exist(mac_addr)) {
-    esp_err_t res = esp_now_del_peer(mac_addr);
-    if (res != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to delete peer");
-    }
-  }
-
-  esp_err_t result = esp_now_add_peer(&peerInfo);
+  esp_err_t result = comms_connect_peer(mac_addr, channel);
 
   if (result == ESP_OK) {
     connection_update_state(CONNECTION_STATE_CONNECTING);
   }
   else {
-    ESP_LOGE(TAG, "Failed to add peer");
+    ESP_LOGE(TAG, "Failed to connect to peer");
   }
 }
 

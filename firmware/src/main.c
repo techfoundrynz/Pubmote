@@ -12,7 +12,7 @@
 #include "remote/connection.h"
 #include "remote/console.h"
 #include "remote/display.h"
-#include "remote/espnow.h"
+#include "remote/comms.h"
 #include "remote/haptic.h"
 #include "remote/i2c.h"
 #include "remote/imu.h"
@@ -84,7 +84,10 @@ void app_main(void) {
   vehicle_monitor_init();
 
   // Comms
-  espnow_init();
+  CommsType boot_comms_mode = settings_get_active_comms_mode();
+  device_settings.comms_mode = boot_comms_mode;
+  comms_select_driver(boot_comms_mode);
+  comms_init();
   connection_init();
   receiver_init();
   transmitter_init();

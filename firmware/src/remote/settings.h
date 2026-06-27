@@ -4,8 +4,10 @@
 #include "esp_system.h"
 #include "nvs_flash.h"
 
+#include <esp_wifi.h>
 #include <esp_now.h>
 #include <remote/receiver.h>
+#include "comms.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -160,6 +162,7 @@ extern "C"
     PocketModeOptions pocket_mode;
     StatsDoublePressAction double_press_action;
     HbmModeOptions hbm_mode;
+    CommsType comms_mode;
   } DeviceSettings;
 
   uint64_t get_auto_off_ms();
@@ -191,6 +194,9 @@ extern "C"
 
   // Update the secret code on the current default device
   bool set_current_default_device_secret(uint32_t secret_code);
+
+  CommsType settings_get_board_comms_mode(int8_t index);
+  CommsType settings_get_active_comms_mode(void);
 
 #ifdef __cplusplus
 }

@@ -67,6 +67,12 @@ extern "C" void setup_boards_properties() {
 extern "C" void handle_select_board(int idx) {
   ESP_LOGI(TAG, "Selected board at index %d", idx);
   if (set_active_paired_device(idx)) {
+    // Switch active driver depending on selected board connection mode
+    CommsType mode = settings_get_active_comms_mode();
+    ESP_LOGI(TAG, "Selected board, switching active comms mode to %d", (int)mode);
+    device_settings.comms_mode = mode;
+    comms_select_driver(mode);
+
     // Reconnect to the selected peer
     connection_connect_to_default_peer();
 
@@ -97,6 +103,9 @@ extern "C" void handle_delete_board(int idx) {
     state.set_confirm_dialog_confirm_text("Delete");
     state.set_confirm_dialog_cancel_text("Cancel");
     state.set_confirm_dialog_variant("danger");
+    state.set_confirm_dialog_confirm_button_variant("primary");
+    state.set_confirm_dialog_cancel_variant("secondary");
+    state.set_confirm_dialog_cancel_button_color("standard");
     state.set_show_confirm_dialog(true);
   });
 }
@@ -107,8 +116,47 @@ extern "C" void handle_boards_back() {
 }
 
 extern "C" void handle_boards_pair_new() {
-  ESP_LOGI(TAG, "Boards screen pair new action");
-  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Pairing); });
+  ESP_LOGI(TAG, "Boards screen pair new action - showing selection dialog");
+  slint::invoke_from_event_loop([]() {
+    const auto &state = get_slint_window()->global<UiState>();
+    
+    // Configure confirm dialog for pairing selection
+    state.on_confirm_dialog_accepted([]() {
+      slint::invoke_from_event_loop([]() {
+        const auto &state = get_slint_window()->global<UiState>();
+        state.set_show_confirm_dialog(false);
+        
+        ESP_LOGI(TAG, "User selected ESP-NOW pairing");
+        device_settings.comms_mode = COMMS_TYPE_ESPNOW;
+        comms_select_driver(COMMS_TYPE_ESPNOW);
+        
+        state.set_screen(Screen::Pairing);
+      });
+    });
+    
+    state.on_confirm_dialog_rejected([]() {
+      slint::invoke_from_event_loop([]() {
+        const auto &state = get_slint_window()->global<UiState>();
+        state.set_show_confirm_dialog(false);
+        
+        ESP_LOGI(TAG, "User selected BLE pairing");
+        device_settings.comms_mode = COMMS_TYPE_BLE;
+        comms_select_driver(COMMS_TYPE_BLE);
+        
+        state.set_screen(Screen::Pairing);
+      });
+    });
+    
+    state.set_confirm_dialog_title("Pair New Board");
+    state.set_confirm_dialog_message("Select the wireless protocol to pair a new board:");
+    state.set_confirm_dialog_confirm_text("ESP-NOW");
+    state.set_confirm_dialog_cancel_text("BLE");
+    state.set_confirm_dialog_variant("standard");
+    state.set_confirm_dialog_confirm_button_variant("primary");
+    state.set_confirm_dialog_cancel_variant("primary");
+    state.set_confirm_dialog_cancel_button_color("standard");
+    state.set_show_confirm_dialog(true);
+  });
 }
 
 extern "C" void teardown_boards_properties() {

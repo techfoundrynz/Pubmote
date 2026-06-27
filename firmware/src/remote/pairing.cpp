@@ -2,9 +2,8 @@
 #include "commands.h"
 #include "connection.h"
 #include "esp_log.h"
-#include "espnow.h"
+#include "comms.h"
 #include "settings.h"
-#include <esp_now.h>
 #include "remote/display.h"
 #include "generated/app-window.h"
 #include <stdio.h>
@@ -12,39 +11,32 @@
 
 static const char *TAG = "PUBREMOTE-PAIRING";
 
-extern "C" bool pairing_process_init_event(uint8_t *data, int len, esp_now_event_t evt) {
+extern "C" bool pairing_process_init_event(uint8_t *data, int len, comms_event_t evt) {
   if (len == 6) {
-    uint8_t rec_mac[ESP_NOW_ETH_ALEN];
-    memcpy(rec_mac, data, ESP_NOW_ETH_ALEN);
-    if (!is_same_mac(evt.mac_addr, rec_mac)) {
+    uint8_t rec_mac[COMMS_MAC_LEN];
+    memcpy(rec_mac, data, COMMS_MAC_LEN);
+    if (!comms_is_same_mac(evt.mac_addr, rec_mac)) {
       ESP_LOGE(TAG, "MAC Address mismatch on pairing request");
       return false;
     }
-    memcpy(pairing_settings.remote_addr, rec_mac, ESP_NOW_ETH_ALEN);
+    memcpy(pairing_settings.remote_addr, rec_mac, COMMS_MAC_LEN);
     ESP_LOGI(TAG, "Got Pairing request from VESC Express");
     ESP_LOGI(TAG, "packet Length: %d", len);
     ESP_LOGI(TAG, "MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", data[0], data[1], data[2], data[3], data[4], data[5]);
     
     uint8_t PAIR_BOND_RES[2] = {REM_PAIR_BOND};
-    esp_now_peer_info_t peerInfo = {};
-    peerInfo.channel = evt.chan;
-    peerInfo.encrypt = false;
-    memcpy(peerInfo.peer_addr, pairing_settings.remote_addr, sizeof(pairing_settings.remote_addr));
-    pairing_settings.channel = evt.chan;
+    if (comms_get_active_type() == COMMS_TYPE_BLE) {
+      pairing_settings.channel = evt.chan | 0x80;
+    } else {
+      pairing_settings.channel = evt.chan;
+    }
     
     uint8_t *mac_addr = pairing_settings.remote_addr;
     esp_err_t result = ESP_FAIL;
 
     if (receiver_lock_channel()) {
-      if (esp_now_is_peer_exist(mac_addr)) {
-        esp_err_t res = esp_now_del_peer(mac_addr);
-        if (res != ESP_OK) {
-          ESP_LOGE(TAG, "Failed to delete peer");
-        }
-      }
-
-      esp_now_add_peer(&peerInfo);
-      result = esp_now_send(mac_addr, (uint8_t *)&PAIR_BOND_RES, sizeof(PAIR_BOND_RES));
+      comms_connect_peer(mac_addr, pairing_settings.channel);
+      result = comms_send(mac_addr, (uint8_t *)&PAIR_BOND_RES, sizeof(PAIR_BOND_RES));
       receiver_unlock_channel();
     }
 

@@ -7,6 +7,9 @@ export component ConfirmDialog inherits Rectangle {
     in property <string> confirm-text: "Confirm";
     in property <string> cancel-text: "Cancel";
     in property <string> confirm-variant: "standard";
+    in property <string> cancel-variant: "secondary";
+    in property <string> cancel-button-color: "standard";
+    in property <string> confirm-button-variant: "primary";
     
     callback confirmed;
     callback cancelled;
@@ -52,13 +55,14 @@ export component ConfirmDialog inherits Rectangle {
                 
                 AppButton {
                     text: root.cancel-text;
-                    variant: "secondary";
+                    variant: root.cancel-variant;
+                    button-color: root.cancel-button-color;
                     size: "small";
                     clicked => { root.cancelled(); }
                 }
                 AppButton {
                     text: root.confirm-text;
-                    variant: "primary";
+                    variant: root.confirm-button-variant;
                     button-color: root.confirm-variant;
                     size: "small";
                     clicked => { root.confirmed(); }

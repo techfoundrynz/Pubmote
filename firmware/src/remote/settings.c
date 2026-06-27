@@ -41,6 +41,7 @@ DeviceSettings device_settings = {
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
     .hbm_mode = HBM_MODE_OFF,
+    .comms_mode = COMMS_TYPE_ESPNOW,
 };
 
 CalibrationSettings calibration_settings = {
@@ -764,4 +765,17 @@ esp_err_t settings_init() {
   }
 
   return ESP_OK;
+}
+
+CommsType settings_get_board_comms_mode(int8_t index) {
+  if (index >= 0 && index < pairing_settings.device_count) {
+    if (pairing_settings.devices[index].channel & 0x80) {
+      return COMMS_TYPE_BLE;
+    }
+  }
+  return COMMS_TYPE_ESPNOW;
+}
+
+CommsType settings_get_active_comms_mode(void) {
+  return settings_get_board_comms_mode(pairing_settings.default_index);
 }

@@ -14,7 +14,7 @@ import { SplashScreen } from "ui/splash.slint";
 import { StatsScreen } from "ui/stats.slint";
 import { MenuScreen } from "ui/menu.slint";
 import { SettingsScreen } from "ui/settings.slint";
-import { PairingScreen } from "ui/pairing.slint";
+import { PairingScreen, DiscoveredDevice } from "ui/pairing.slint";
 import { InputCalibrationScreen } from "ui/input-calibration.slint";
 import { AboutScreen } from "ui/about.slint";
 import { ImuCalibrationScreen } from "ui/imu-calibration.slint";
@@ -81,6 +81,7 @@ export global UiState {
     in-out property <int> temp-units-index: 0;
     in-out property <int> distance-units-index: 0;
     in-out property <int> startup-sound-index: 0;
+    in-out property <int> comms-mode-index: 0;
 
     in-out property <float> theme-h: 0;
     in-out property <float> theme-s: 100;
@@ -89,6 +90,9 @@ export global UiState {
     // --- Pairing (ui_PairingScreen) ---
     in property <string> pairing-code: "0000";
     in property <string> pairing-action-text: "Cancel";
+    in-out property <bool> is-ble-scan: false;
+    in-out property <[DiscoveredDevice]> discovered-devices: [];
+    callback select-device(int);
 
     // --- Boards (Paired Boards list) ---
     in property <[PairedBoard]> paired-boards: [];
@@ -154,6 +158,9 @@ export global UiState {
     in property <string> confirm-dialog-confirm-text: "Confirm";
     in property <string> confirm-dialog-cancel-text: "Cancel";
     in property <string> confirm-dialog-variant: "standard";
+    in property <string> confirm-dialog-cancel-variant: "secondary";
+    in property <string> confirm-dialog-cancel-button-color: "standard";
+    in property <string> confirm-dialog-confirm-button-variant: "primary";
 
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
@@ -353,6 +360,7 @@ export component AppWindow inherits Window {
         temp-units-index <=> UiState.temp-units-index;
         distance-units-index <=> UiState.distance-units-index;
         startup-sound-index <=> UiState.startup-sound-index;
+        comms-mode-index <=> UiState.comms-mode-index;
 
         theme-h <=> UiState.theme-h;
         theme-s <=> UiState.theme-s;
@@ -373,6 +381,9 @@ export component AppWindow inherits Window {
         pairing-code: UiState.pairing-code;
         action-text: UiState.pairing-action-text;
         action => { UiState.pairing-action(); }
+        is-ble-scan: UiState.is-ble-scan;
+        discovered-devices: UiState.discovered-devices;
+        select-device(idx) => { UiState.select-device(idx); }
     }
 
     if UiState.screen == Screen.boards || root.previous-screen == Screen.boards: BoardsScreen {
@@ -480,6 +491,9 @@ export component AppWindow inherits Window {
         confirm-text: UiState.confirm-dialog-confirm-text;
         cancel-text: UiState.confirm-dialog-cancel-text;
         confirm-variant: UiState.confirm-dialog-variant;
+        cancel-variant: UiState.confirm-dialog-cancel-variant;
+        cancel-button-color: UiState.confirm-dialog-cancel-button-color;
+        confirm-button-variant: UiState.confirm-dialog-confirm-button-variant;
 
         confirmed => { UiState.confirm-dialog-accepted(); }
         cancelled => { UiState.confirm-dialog-rejected(); }
