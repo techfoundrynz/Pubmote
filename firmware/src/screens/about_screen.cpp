@@ -24,8 +24,6 @@ void update_about_version_info() {
   });
 }
 
-static char last_battery_info[256] = {0};
-
 void update_about_battery_info() {
   if (!get_slint_window()) return;
 
@@ -39,21 +37,15 @@ void update_about_battery_info() {
     snprintf(formattedString + len, sizeof(formattedString) - len, "\nCurrent: %umA", remoteStats.chargeCurrent);
   }
 
-  // Only invoke the Slint event loop if the battery status text has changed
-  if (strcmp(formattedString, last_battery_info) != 0) {
-    snprintf(last_battery_info, sizeof(last_battery_info), "%s", formattedString);
-    slint::invoke_from_event_loop([=]() {
-      if (get_slint_window()) {
-        get_slint_window()->global<UiState>().set_debug_info(formattedString);
-      }
-    });
-  }
+  slint::invoke_from_event_loop([=]() {
+    get_slint_window()->global<UiState>().set_debug_info(formattedString);
+  });
 }
 
 static void about_task(void *pvParameters) {
   while (is_about_screen_active()) {
     update_about_battery_info();
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Reduced battery polling frequency to 1Hz
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
   ESP_LOGI(TAG, "About task ended");
   about_task_handle = NULL;
@@ -61,7 +53,6 @@ static void about_task(void *pvParameters) {
 }
 
 extern "C" void setup_about_properties() {
-  last_battery_info[0] = '\0'; // Force update on screen entry
   update_about_version_info();
   update_about_battery_info();
   
