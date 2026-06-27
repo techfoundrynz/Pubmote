@@ -1,5 +1,6 @@
 #include "config.h"
 #include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
 #include "esp_system.h"
@@ -34,12 +35,27 @@ static const char *TAG = "PUBREMOTE-MAIN";
 
 #define DEBUG_MEMORY 0
 
-void app_main(void) {
-  // Suppress noisy I2C/Touch driver error logs (e.g. on unpowered/sleep NACKs)
+// ─── Log level config ────────────────────────────────────────────────────────
+// Edit here to silence or verbose any module. Call this before any init so the
+// levels are applied from the first log line of each module.
+// Levels: ESP_LOG_NONE / ERROR / WARN / INFO / DEBUG / VERBOSE
+static void configure_log_levels(void) {
+  // Third-party drivers — always silenced (noisy on I2C NACKs during sleep)
   esp_log_level_set("FT5x06", ESP_LOG_NONE);
   esp_log_level_set("CST816S", ESP_LOG_NONE);
   esp_log_level_set("i2c.master", ESP_LOG_NONE);
   esp_log_level_set("lcd_panel.io.i2c", ESP_LOG_NONE);
+
+  // Module overrides — comment a line out to restore the global default
+  esp_log_level_set("PUBREMOTE-IMU", ESP_LOG_ERROR);
+  esp_log_level_set("PUBREMOTE-IMU_DRIVER_QMI8658", ESP_LOG_ERROR);
+  esp_log_level_set("PUBREMOTE-DISPLAY", ESP_LOG_ERROR);
+  esp_log_level_set("PUBREMOTE-DISPLAY-DRIVER", ESP_LOG_ERROR);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+void app_main(void) {
+  configure_log_levels();
 
   // Enable power for core peripherals
   acc1_power_set_level(1);
@@ -57,8 +73,8 @@ void app_main(void) {
   // Fire startup callbacks once boot is confirmed
   startup_cb();
 // Enable accessories after callbacks
-#ifdef ACC2_POWER_DEFAULT
-  acc2_power_set_level(ACC2_POWER_DEFAULT);
+#ifdef ACC2_POWER_DEFAULT_LEVEL
+  acc2_power_set_level(ACC2_POWER_DEFAULT_LEVEL);
 #endif
 
   // Peripherals

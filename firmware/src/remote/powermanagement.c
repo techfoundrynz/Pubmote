@@ -60,6 +60,7 @@ static void power_state_update() {
   remoteStats.chargeCurrent = powerState.current;
   ESP_LOGD(TAG, "Battery volts: %u %d", remoteStats.remoteBatteryVoltage, remoteStats.remoteBatteryPercentage);
   is_power_connected = powerState.isPowered;
+  stats_update();
 }
 
 static bool get_button_pressed() {
