@@ -19,8 +19,9 @@ void update_about_version_info() {
   snprintf(formattedString, sizeof(formattedString), "Version: %d.%d.%d.%s\nHW: %s\nHash: %s", 
            VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, RELEASE_VARIANT, HW_TYPE, BUILD_ID);
 
+  slint::SharedString version_info(formattedString);
   slint::invoke_from_event_loop([=]() {
-    get_slint_window()->global<UiState>().set_version_info(formattedString);
+    get_slint_window()->global<UiState>().set_version_info(version_info);
   });
 }
 
@@ -42,9 +43,10 @@ void update_about_battery_info() {
   // Only invoke the Slint event loop if the battery status text has changed
   if (strcmp(formattedString, last_battery_info) != 0) {
     snprintf(last_battery_info, sizeof(last_battery_info), "%s", formattedString);
+    slint::SharedString battery_info(formattedString);
     slint::invoke_from_event_loop([=]() {
       if (get_slint_window()) {
-        get_slint_window()->global<UiState>().set_debug_info(formattedString);
+        get_slint_window()->global<UiState>().set_debug_info(battery_info);
       }
     });
   }

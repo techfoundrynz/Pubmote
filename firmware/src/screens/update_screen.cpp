@@ -52,7 +52,7 @@ static volatile UpdateStep current_update_step = UPDATE_STEP_START;
 static volatile TaskHandle_t update_task_handle = NULL;
 static ReleaseInfo available_updates[3]; // Stable, Prerelease, Nightly
 static int available_update_count = 0;
-static UpdateType selected_update_type = UPDATE_TYPE_STABLE;
+static int selected_update_index = 0;
 
 static void update_status_ui() {
   if (!get_slint_window()) return;
@@ -116,11 +116,13 @@ static void update_status_ui() {
       break;
   }
 
+  slint::SharedString body(body_text);
+  slint::SharedString primary_text(primary_btn_text);
   slint::invoke_from_event_loop([=]() {
     const auto &state = get_slint_window()->global<UiState>();
-    state.set_update_body(body_text);
+    state.set_update_body(body);
     state.set_update_show_dropdown(show_dropdown);
-    state.set_update_primary_text(primary_btn_text);
+    state.set_update_primary_text(primary_text);
     state.set_update_primary_enabled(primary_btn_enabled);
 
     if (show_dropdown) {
@@ -134,8 +136,9 @@ static void update_status_ui() {
 }
 
 static void simple_progress_callback(const char *status) {
+  slint::SharedString body(status);
   slint::invoke_from_event_loop([=]() {
-    get_slint_window()->global<UiState>().set_update_body(status);
+    get_slint_window()->global<UiState>().set_update_body(body);
   });
 }
 
@@ -241,8 +244,8 @@ static void update_task(void *pvParameters) {
         break;
       }
       case UPDATE_STEP_IN_PROGRESS: {
-        ESP_LOGI(TAG, "Starting OTA update: %s", available_updates[selected_update_type].download_url);
-        esp_err_t ret = apply_ota(available_updates[selected_update_type].download_url, simple_progress_callback);
+        ESP_LOGI(TAG, "Starting OTA update: %s", available_updates[selected_update_index].download_url);
+        esp_err_t ret = apply_ota(available_updates[selected_update_index].download_url, simple_progress_callback);
         if (ret == ESP_OK) {
           current_update_step = UPDATE_STEP_COMPLETE;
           ESP_LOGI(TAG, "OTA successful");
@@ -303,8 +306,8 @@ extern "C" void setup_update_properties() {
   update_status_ui();
 
   if (update_task_handle == NULL) {
-    ESP_LOGI(TAG, "Creating update_task with 7KB stack in internal RAM...");
-    BaseType_t ret = xTaskCreate(update_task, "update_task", 7168, NULL, 5, (TaskHandle_t *)&update_task_handle);
+    ESP_LOGI(TAG, "Creating update_task with 10KB stack in internal RAM...");
+    BaseType_t ret = xTaskCreate(update_task, "update_task", 10240, NULL, 5, (TaskHandle_t *)&update_task_handle);
     if (ret != pdPASS) {
       ESP_LOGE(TAG, "Failed to create update_task! Error: %d", (int)ret);
       // Restart them if we failed to start the update task
@@ -360,7 +363,7 @@ extern "C" void handle_update_secondary() {
 
 extern "C" void handle_update_selected(int index) {
   if (index >= 0 && index < available_update_count) {
-    selected_update_type = available_updates[index].type;
+    selected_update_index = index;
   }
 }
 
