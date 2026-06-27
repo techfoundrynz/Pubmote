@@ -5,10 +5,7 @@
 extern const CommsDriver espnow_driver;
 extern const CommsDriver ble_driver;
 
-static const CommsDriver *drivers[] = {
-  &espnow_driver,
-  &ble_driver
-};
+static const CommsDriver *drivers[] = {&espnow_driver, &ble_driver};
 
 #define NUM_DRIVERS (sizeof(drivers) / sizeof(drivers[0]))
 
@@ -128,18 +125,18 @@ esp_err_t comms_select_driver(CommsType type) {
   if (!target) {
     return ESP_ERR_NOT_FOUND;
   }
-  
+
   if (active_driver == target) {
     return ESP_OK;
   }
-  
+
   bool was_init = comms_is_initialized();
   if (was_init) {
     comms_deinit();
   }
-  
+
   active_driver = target;
-  
+
   if (was_init) {
     return comms_init();
   }
@@ -155,4 +152,53 @@ CommsType comms_get_active_type(void) {
 
 bool comms_is_same_mac(const uint8_t *mac1, const uint8_t *mac2) {
   return memcmp(mac1, mac2, COMMS_MAC_LEN) == 0;
+}
+
+uint8_t *comms_prepend_headers(const uint8_t *data, size_t len, CommsType type, size_t *out_len) {
+  size_t header_len = (type == COMMS_TYPE_BLE) ? 2 : 1;
+  *out_len = len + header_len;
+
+  uint8_t *wrapped = (uint8_t *)malloc(*out_len);
+  if (!wrapped) {
+    return NULL;
+  }
+
+  if (type == COMMS_TYPE_BLE) {
+    wrapped[0] = VESC_COMM_CUSTOM_APP_DATA;
+    wrapped[1] = PUBMOTE_MAGIC;
+    memcpy(wrapped + 2, data, len);
+  }
+  else {
+    wrapped[0] = PUBMOTE_MAGIC;
+    memcpy(wrapped + 1, data, len);
+  }
+
+  return wrapped;
+}
+
+bool comms_strip_headers(const uint8_t **data_ptr, int *len_ptr, CommsType type) {
+  const uint8_t *data = *data_ptr;
+  int len = *len_ptr;
+
+  if (type == COMMS_TYPE_BLE) {
+    if (len > 0 && data[0] == VESC_COMM_CUSTOM_APP_DATA) {
+      data++;
+      len--;
+    }
+    else {
+      return false;
+    }
+  }
+
+  if (len > 0 && data[0] == PUBMOTE_MAGIC) {
+    data++;
+    len--;
+  }
+  else {
+    return false;
+  }
+
+  *data_ptr = data;
+  *len_ptr = len;
+  return true;
 }

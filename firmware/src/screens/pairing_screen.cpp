@@ -60,7 +60,7 @@ extern "C" void setup_pairing_properties() {
 
   slint::invoke_from_event_loop([]() {
     const auto &state = get_slint_window()->global<UiState>();
-    state.set_pairing_code("0000");
+    state.set_pairing_code("----");
     state.set_pairing_action_text("Cancel");
 
     if (comms_get_active_type() == COMMS_TYPE_BLE) {

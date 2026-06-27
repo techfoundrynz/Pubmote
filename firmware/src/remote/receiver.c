@@ -1,14 +1,15 @@
 #include "receiver.h"
 #include "commands.h"
+#include "comms.h"
 #include "connection.h"
 #include "display.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "comms.h"
 #include "pairing.h"
 #include "peers.h"
 #include "powermanagement.h"
 #include "screens/pairing_screen.h"
+#include "settings.h"
 #include "stats.h"
 #include "time.h"
 #include "utilities/conversion_utils.h"
@@ -16,7 +17,6 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <math.h>
-#include "settings.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -64,6 +64,17 @@ static void process_data(comms_event_t evt) {
     return;
   }
 
+  const uint8_t *payload_data = data;
+  int payload_len = len;
+  if (!comms_strip_headers(&payload_data, &payload_len, comms_get_active_type())) {
+    ESP_LOGD(TAG, "Ignoring data: missing required magic headers");
+    return;
+  }
+
+  // Update variables for subsequent use in the function
+  data = (uint8_t *)payload_data;
+  len = payload_len;
+
   RemoteCommands command = (RemoteCommands)data[0];
   len -= 1; // Remove command byte from length
   if (len < 0) {
@@ -106,7 +117,9 @@ static void process_data(comms_event_t evt) {
     process_board_data(data, len);
     break;
   default:
-    ESP_LOGE(TAG, "Unknown command: %d", command);
+    if (command != 135) { // Ignore VESC Lisp print command (COMM_LISP_PRINT = 135)
+      ESP_LOGE(TAG, "Unknown command: %d", command);
+    }
     break;
   }
 }

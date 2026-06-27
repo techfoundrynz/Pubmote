@@ -15,14 +15,18 @@ extern "C" bool pairing_process_init_event(uint8_t *data, int len, comms_event_t
   if (len == 6) {
     uint8_t rec_mac[COMMS_MAC_LEN];
     memcpy(rec_mac, data, COMMS_MAC_LEN);
-    if (!comms_is_same_mac(evt.mac_addr, rec_mac)) {
-      ESP_LOGE(TAG, "MAC Address mismatch on pairing request");
-      return false;
+    if (comms_get_active_type() == COMMS_TYPE_ESPNOW) {
+      if (!comms_is_same_mac(evt.mac_addr, rec_mac)) {
+        ESP_LOGE(TAG, "MAC Address mismatch on pairing request");
+        return false;
+      }
     }
-    memcpy(pairing_settings.remote_addr, rec_mac, COMMS_MAC_LEN);
+    memcpy(pairing_settings.remote_addr, evt.mac_addr, COMMS_MAC_LEN);
     ESP_LOGI(TAG, "Got Pairing request from VESC Express");
     ESP_LOGI(TAG, "packet Length: %d", len);
-    ESP_LOGI(TAG, "MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", data[0], data[1], data[2], data[3], data[4], data[5]);
+    ESP_LOGI(TAG, "Sender MAC: %02X:%02X:%02X:%02X:%02X:%02X, Payload MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+             evt.mac_addr[0], evt.mac_addr[1], evt.mac_addr[2], evt.mac_addr[3], evt.mac_addr[4], evt.mac_addr[5],
+             data[0], data[1], data[2], data[3], data[4], data[5]);
     
     uint8_t PAIR_BOND_RES[2] = {REM_PAIR_BOND};
     if (comms_get_active_type() == COMMS_TYPE_BLE) {

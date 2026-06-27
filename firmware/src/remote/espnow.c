@@ -104,7 +104,7 @@ static esp_err_t espnow_driver_init(void) {
 
   // Initialize ESP-NOW
   ESP_ERROR_CHECK(esp_now_init());
-  
+
   // Register callbacks
   ESP_ERROR_CHECK(esp_now_register_recv_cb(on_espnow_recv));
   ESP_ERROR_CHECK(esp_now_register_send_cb(on_espnow_sent));
@@ -120,7 +120,7 @@ static esp_err_t espnow_driver_deinit(void) {
   }
   esp_now_unregister_recv_cb();
   esp_now_unregister_send_cb();
-  
+
   esp_err_t err = esp_now_deinit();
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "esp_now_deinit failed: %s", esp_err_to_name(err));
@@ -162,7 +162,15 @@ static esp_err_t espnow_driver_register_discovery_cb(comms_discovery_cb_t cb) {
 }
 
 static esp_err_t espnow_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len) {
-  return esp_now_send(peer_mac, data, len);
+  size_t wrapped_len = 0;
+  uint8_t *wrapped_payload = comms_prepend_headers(data, len, COMMS_TYPE_ESPNOW, &wrapped_len);
+  if (!wrapped_payload) {
+    return ESP_ERR_NO_MEM;
+  }
+
+  esp_err_t res = esp_now_send(peer_mac, wrapped_payload, wrapped_len);
+  free(wrapped_payload);
+  return res;
 }
 
 static esp_err_t espnow_driver_connect_peer(const uint8_t *peer_mac, uint8_t channel) {
@@ -206,19 +214,17 @@ static esp_err_t espnow_driver_set_channel(uint8_t channel) {
   return esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 }
 
-const CommsDriver espnow_driver = {
-  .type = COMMS_TYPE_ESPNOW,
-  .name = "ESP-NOW",
-  .init = espnow_driver_init,
-  .deinit = espnow_driver_deinit,
-  .is_initialized = espnow_driver_is_initialized,
-  .register_recv_cb = espnow_driver_register_recv_cb,
-  .register_send_cb = espnow_driver_register_send_cb,
-  .register_discovery_cb = espnow_driver_register_discovery_cb,
-  .send = espnow_driver_send,
-  .connect_peer = espnow_driver_connect_peer,
-  .disconnect_peer = espnow_driver_disconnect_peer,
-  .peer_exists = espnow_driver_peer_exists,
-  .get_peer_channel = espnow_driver_get_peer_channel,
-  .set_channel = espnow_driver_set_channel
-};
+const CommsDriver espnow_driver = {.type = COMMS_TYPE_ESPNOW,
+                                   .name = "ESP-NOW",
+                                   .init = espnow_driver_init,
+                                   .deinit = espnow_driver_deinit,
+                                   .is_initialized = espnow_driver_is_initialized,
+                                   .register_recv_cb = espnow_driver_register_recv_cb,
+                                   .register_send_cb = espnow_driver_register_send_cb,
+                                   .register_discovery_cb = espnow_driver_register_discovery_cb,
+                                   .send = espnow_driver_send,
+                                   .connect_peer = espnow_driver_connect_peer,
+                                   .disconnect_peer = espnow_driver_disconnect_peer,
+                                   .peer_exists = espnow_driver_peer_exists,
+                                   .get_peer_channel = espnow_driver_get_peer_channel,
+                                   .set_channel = espnow_driver_set_channel};
