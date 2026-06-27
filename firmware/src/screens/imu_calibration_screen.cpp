@@ -94,6 +94,9 @@ static void imu_calibration_task(void *pvParameters) {
                event_to_string(data.event));
     }
 
+    slint::SharedString slint_accel_str(accel_str);
+    slint::SharedString slint_gyro_str(gyro_str);
+    slint::SharedString slint_gesture_str(gesture_str);
     slint::invoke_from_event_loop([=]() {
       if (get_slint_window()) {
         const auto &state = get_slint_window()->global<UiState>();
@@ -103,9 +106,9 @@ static void imu_calibration_task(void *pvParameters) {
         state.set_imu_calibration_gyro_x(data.gyro_x);
         state.set_imu_calibration_gyro_y(data.gyro_y);
         state.set_imu_calibration_gyro_z(data.gyro_z);
-        state.set_imu_calibration_accel_text(accel_str);
-        state.set_imu_calibration_gyro_text(gyro_str);
-        state.set_imu_calibration_event_text(gesture_str);
+        state.set_imu_calibration_accel_text(slint_accel_str);
+        state.set_imu_calibration_gyro_text(slint_gyro_str);
+        state.set_imu_calibration_event_text(slint_gesture_str);
       }
     });
 #endif
