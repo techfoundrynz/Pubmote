@@ -120,7 +120,24 @@ static esp_err_t espnow_driver_deinit(void) {
   }
   esp_now_unregister_recv_cb();
   esp_now_unregister_send_cb();
-  ESP_ERROR_CHECK(esp_now_deinit());
+  
+  esp_err_t err = esp_now_deinit();
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "esp_now_deinit failed: %s", esp_err_to_name(err));
+  }
+
+  // Stop WiFi to release controller memory
+  err = esp_wifi_stop();
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
+    ESP_LOGE(TAG, "esp_wifi_stop failed: %s", esp_err_to_name(err));
+  }
+
+  // Deinitialize WiFi to release driver structures
+  err = esp_wifi_deinit();
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
+    ESP_LOGE(TAG, "esp_wifi_deinit failed: %s", esp_err_to_name(err));
+  }
+
   ESP_LOGI(TAG, "ESP-NOW deinitialized");
   is_initialized = false;
   return ESP_OK;
