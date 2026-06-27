@@ -76,9 +76,9 @@ static RGB adjustBrightness(RGB originalColor, float brightnessScaling) {
   float correctedScaling = pow(brightnessScaling, gamma);
   RGB return_val;
 
-  return_val.r = round(pow((originalColor.r / 255.0), gamma) * correctedScaling * 255.0);
-  return_val.g = round(pow((originalColor.g / 255.0), gamma) * correctedScaling * 255.0);
-  return_val.b = round(pow((originalColor.b / 255.0), gamma) * correctedScaling * 255.0);
+  return_val.r = round(originalColor.r * correctedScaling);
+  return_val.g = round(originalColor.g * correctedScaling);
+  return_val.b = round(originalColor.b * correctedScaling);
 
   return return_val;
 }
@@ -192,31 +192,31 @@ static void rainbow_effect() {
 
   switch (i % 6) {
   case 0:
-    r = 1, g = f, b = 0;
+    r = 1.0f, g = f, b = 0.0f;
     break;
   case 1:
-    r = f, g = 1, b = 0;
+    r = 1.0f - f, g = 1.0f, b = 0.0f;
     break;
   case 2:
-    r = 0, g = 1, b = f;
+    r = 0.0f, g = 1.0f, b = f;
     break;
   case 3:
-    r = 0, g = f, b = 1;
+    r = 0.0f, g = 1.0f - f, b = 1.0f;
     break;
   case 4:
-    r = f, g = 0, b = 1;
+    r = f, g = 0.0f, b = 1.0f;
     break;
   case 5:
-    r = 1, g = 0, b = f;
+    r = 1.0f, g = 0.0f, b = 1.0f - f;
     break;
   default:
-    r = g = b = 0;
+    r = g = b = 0.0f;
     break;
   }
 
-  rgb.r = (uint8_t)(r * brightness_level);
-  rgb.g = (uint8_t)(g * brightness_level);
-  rgb.b = (uint8_t)(b * brightness_level);
+  rgb.r = (uint8_t)(r * 255.0f);
+  rgb.g = (uint8_t)(g * 255.0f);
+  rgb.b = (uint8_t)(b * 255.0f);
   apply_led_effect();
   vTaskDelay(pdMS_TO_TICKS(ANIMATION_DELAY_MS));
 }
