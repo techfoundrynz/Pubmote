@@ -5,6 +5,7 @@
 #include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
@@ -13,26 +14,23 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "generated/app-window.h"
 #include "hal/ledc_types.h"
 #include "powermanagement.h"
 #include "remote/i2c.h"
+#include "remote/imu.h"
+#include "remote/led.h"
 #include "remoteinputs.h"
-#include "settings.h"
-#include "screens/stats_screen.h"
-#include "screens/menu_screen.h"
-#include "screens/settings_screen.h"
-#include "screens/input_calibration_screen.h"
-#include "screens/pairing_screen.h"
 #include "screens/about_screen.h"
 #include "screens/boards_screen.h"
 #include "screens/imu_calibration_screen.h"
+#include "screens/input_calibration_screen.h"
+#include "screens/menu_screen.h"
+#include "screens/pairing_screen.h"
+#include "screens/settings_screen.h"
+#include "screens/stats_screen.h"
 #include "screens/update_screen.h"
-#include "remote/led.h"
-#include "remote/imu.h"
-
-// Slint inclusion
-#include "esp_heap_caps.h"
-#include "generated/app-window.h"
+#include "settings.h"
 #include "slint-esp.h"
 
 #if TP_CST816S
@@ -60,9 +58,10 @@
 
 static const char *TAG = "PUBREMOTE-DISPLAY";
 
-extern "C" {
-    extern void (*slint_esp_on_before_render_cb)();
-    void slint_esp_set_scroll_offset(int offset_y, int screen_index);
+extern "C"
+{
+  extern void (*slint_esp_on_before_render_cb)();
+  void slint_esp_set_scroll_offset(int offset_y, int screen_index);
 }
 
 #define LCD_HOST SPI2_HOST
@@ -78,7 +77,7 @@ static uint8_t bl_level = 0;
 static bool hbm_mode_active = false;
 
 uint16_t *slint_chunk_buffer[2] = {NULL, NULL};
-extern const int slint_chunk_lines = 20;
+extern const int slint_chunk_lines = 10;
 
 // PSRAM frame buffers removed for pure chunked mode
 
@@ -150,7 +149,8 @@ extern "C" void display_set_hbm(bool active) {
 #endif
     if (hbm_mode_active) {
       set_display_brightness(lcd_io, 0);
-    } else {
+    }
+    else {
       set_display_brightness(lcd_io, bl_level);
     }
   }
@@ -517,7 +517,8 @@ static void slint_event_loop(void *pvParameters) {
   display_set_bl_level(device_settings.bl_level);
   if (device_settings.hbm_mode == HBM_MODE_ON) {
     display_set_hbm(true);
-  } else {
+  }
+  else {
     display_set_hbm(false);
   }
 
@@ -528,7 +529,6 @@ static void slint_event_loop(void *pvParameters) {
   ESP_LOGI(TAG, "Slint event loop exited");
   vTaskDelete(NULL);
 }
-
 
 // Input polling task to map remote control buttons/joystick to Slint navigation
 static void slint_input_task(void *pvParameters) {
@@ -829,12 +829,14 @@ static void handle_imu_gesture(imu_gesture_t gesture) {
         display_set_hbm(true);
       }
       reset_sleep_timer();
-    } else if (gesture == IMU_GESTURE_TABLE_FLAT) {
+    }
+    else if (gesture == IMU_GESTURE_TABLE_FLAT) {
       if (display_get_hbm()) {
         ESP_LOGI("PUBREMOTE-DISPLAY", "Table detection: flat & motionless. Disabling HBM.");
         display_set_hbm(false);
       }
-    } else if (gesture == IMU_GESTURE_LOWERED) {
+    }
+    else if (gesture == IMU_GESTURE_LOWERED) {
       if (display_get_hbm()) {
         ESP_LOGI("PUBREMOTE-DISPLAY", "Wrist/remote lowered. Disabling HBM.");
         display_set_hbm(false);
@@ -866,8 +868,10 @@ extern "C" void display_init() {
 
   is_initialized = true;
 
-  // Start Slint Event Loop Task
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 64 * 1024, NULL, 20, &slint_task_handle, 1);
+  // Start Slint Event Loop Task in internal SRAM
+  // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
+  // Stack size optimized to 48KB to conserve internal SRAM.
+  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 48 * 1024, NULL, 20, &slint_task_handle, 1);
 
   // Provide global settings
   if (slint_window) {
@@ -918,4 +922,3 @@ extern "C" void display_off() {
     esp_lcd_touch_enter_sleep(touch_handle);
   }
 }
-
