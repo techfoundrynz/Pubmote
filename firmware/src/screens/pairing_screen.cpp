@@ -1,9 +1,9 @@
 #include "screens/pairing_screen.h"
 #include "esp_log.h"
+#include "generated/app-window.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/led.h"
-#include "generated/app-window.h"
 
 static const char *TAG = "PUBREMOTE-PAIRING_SCREEN";
 
@@ -23,8 +23,6 @@ extern "C" void setup_pairing_properties() {
 extern "C" void handle_pairing_action() {
   ESP_LOGI(TAG, "Pairing cancel action");
   pairing_state = PAIRING_STATE_UNPAIRED;
-  
-  slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Menu);
-  });
+
+  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Boards); });
 }
