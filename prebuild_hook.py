@@ -19,7 +19,7 @@ def generate_build_id():
     content_to_hash = f"{env_name}_{version}_{timestamp}"
 
     # Create a hash of timestamp for shorter unique ID
-    hash_object = hashlib.md5(content_to_hash.encode())
+    hash_object = hashlib.sha256(content_to_hash.encode())
     build_hash = hash_object.hexdigest()[:8]
     
     # Combine timestamp and hash
@@ -145,7 +145,7 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
                 "-o", "firmware/src/generated/app-window.h",
                 "--cpp-file", "firmware/src/generated/app-window.cpp"
             ]
-            result = subprocess.run(args, capture_output=True, text=True)
+            result = subprocess.run(args, capture_output=True, text=True, shell=False)
             if result.returncode == 0:
                 print("[Slint Compiler] Compilation successful!")
             else:
