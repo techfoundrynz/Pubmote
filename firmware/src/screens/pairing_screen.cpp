@@ -1,14 +1,14 @@
 #include "screens/pairing_screen.h"
 #include "esp_log.h"
 #include "generated/app-window.h"
+#include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/led.h"
-#include "remote/comms.h"
 #include "remote/settings.h"
-#include <vector>
-#include <string>
 #include <cstring>
+#include <string>
+#include <vector>
 
 static const char *TAG = "PUBREMOTE-PAIRING_SCREEN";
 
@@ -32,14 +32,15 @@ static void on_device_discovered(const uint8_t *mac, const char *name, int rssi)
   new_dev.name = name ? name : "Unknown VESC";
   discovered_ble_devices.push_back(new_dev);
 
-  ESP_LOGI(TAG, "Discovered BLE device: %s (%02X:%02X:%02X:%02X:%02X:%02X)", new_dev.name.c_str(),
-           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  ESP_LOGI(TAG, "Discovered BLE device: %s (%02X:%02X:%02X:%02X:%02X:%02X)", new_dev.name.c_str(), mac[0], mac[1],
+           mac[2], mac[3], mac[4], mac[5]);
 
   // Update Slint UI
   slint::invoke_from_event_loop([]() {
-    if (!get_slint_window()) return;
+    if (!get_slint_window()) {
+      return;
+    }
     const auto &state = get_slint_window()->global<UiState>();
-    
     auto model = std::make_shared<slint::VectorModel<DiscoveredDevice>>();
     for (size_t i = 0; i < discovered_ble_devices.size(); ++i) {
       DiscoveredDevice d;
@@ -97,7 +98,8 @@ extern "C" void setup_pairing_properties() {
           }
         });
       });
-    } else {
+    }
+    else {
       state.set_is_ble_scan(false);
     }
   });
