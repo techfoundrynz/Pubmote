@@ -73,8 +73,9 @@ extern "C" bool pairing_process_bond_event(uint8_t *data, int len) {
     char formattedString[32];
     snprintf(formattedString, sizeof(formattedString), "%ld", pairing_settings.secret_code);
     
+    slint::SharedString pairing_code(formattedString);
     slint::invoke_from_event_loop([=]() {
-      get_slint_window()->global<UiState>().set_pairing_code(formattedString);
+      get_slint_window()->global<UiState>().set_pairing_code(pairing_code);
     });
     
     pairing_state = PAIRING_STATE_PENDING;
