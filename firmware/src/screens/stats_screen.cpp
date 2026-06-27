@@ -4,6 +4,8 @@
 #include "generated/app-window.h"
 #include "remote/connection.h"
 #include "remote/display.h"
+#include "remote/imu.h"
+#include "remote/powermanagement.h"
 #include "remote/receiver.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
@@ -212,11 +214,42 @@ static bool double_press_handler() {
   return true;
 }
 
+extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
+  if (gesture == IMU_GESTURE_DOUBLE_TAP) {
+    ESP_LOGI(TAG, "Double tap gesture callback triggered. Resetting sleep timer.");
+    reset_sleep_timer();
+    return;
+  }
+
+  if (device_settings.hbm_mode == HBM_MODE_RAISED && display_supports_hbm() && !is_pocket_mode_enabled()) {
+    if (gesture == IMU_GESTURE_RAISED) {
+      if (!display_get_hbm()) {
+        ESP_LOGI(TAG, "Raise-to-HBM: viewing position detected. Enabling HBM.");
+        display_set_hbm(true);
+      }
+      reset_sleep_timer();
+    }
+    else if (gesture == IMU_GESTURE_TABLE_FLAT) {
+      if (display_get_hbm()) {
+        ESP_LOGI(TAG, "Table detection: flat & motionless. Disabling HBM.");
+        display_set_hbm(false);
+      }
+    }
+    else if (gesture == IMU_GESTURE_LOWERED) {
+      if (display_get_hbm()) {
+        ESP_LOGI(TAG, "Wrist/remote lowered. Disabling HBM.");
+        display_set_hbm(false);
+      }
+    }
+  }
+}
+
 // Registration functions called from main flow (replaces LVGL loaded events)
 extern "C" void setup_stats_properties() {
   ui_update_pending.store(false);
   stats_register_update_cb(stats_update_screen_display);
   register_primary_button_cb(BUTTON_EVENT_DOUBLE_PRESS, double_press_handler);
+  imu_register_gesture_callback(handle_imu_gesture);
 
   if (get_slint_window()) {
     const auto &state = get_slint_window()->global<UiState>();
@@ -247,6 +280,10 @@ extern "C" void setup_stats_properties() {
 extern "C" void teardown_stats_properties() {
   stats_unregister_update_cb(stats_update_screen_display);
   unregister_primary_button_cb(BUTTON_EVENT_DOUBLE_PRESS);
+  imu_unregister_gesture_callback(handle_imu_gesture);
+  if (device_settings.hbm_mode == HBM_MODE_RAISED) {
+    display_set_hbm(false);
+  }
 }
 
 extern "C" void handle_splash_tapped() {

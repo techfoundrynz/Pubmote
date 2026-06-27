@@ -12,6 +12,7 @@ extern "C"
   void handle_delete_board(int idx);
   void handle_boards_back();
   void handle_boards_pair_new();
+  void teardown_boards_properties();
 
 #ifdef __cplusplus
 }

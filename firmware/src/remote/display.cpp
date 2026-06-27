@@ -17,6 +17,7 @@
 #include "generated/app-window.h"
 #include "hal/ledc_types.h"
 #include "powermanagement.h"
+#include "remote/color_utils.h"
 #include "remote/i2c.h"
 #include "remote/imu.h"
 #include "remote/led.h"
@@ -193,6 +194,11 @@ extern "C"
   void handle_settings_changed();
   void handle_pairing_action();
   void setup_boards_properties();
+  void teardown_boards_properties();
+  void setup_pairing_properties();
+  void teardown_pairing_properties();
+  void setup_menu_properties();
+  void teardown_menu_properties();
   void handle_select_board(int index);
   void handle_delete_board(int index);
   void handle_boards_back();
@@ -211,113 +217,7 @@ extern "C"
 #include <algorithm>
 #include <cmath>
 
-// Removed C++ arc generators in favor of pure Slint overlapping circles
-
-static slint::Image generate_color_slider_track(float w_len, float h_len, int mode, float hue, float sat, float lit) {
-  int w = std::max(1, (int)std::ceil(w_len));
-  int h = std::max(1, (int)std::ceil(h_len));
-
-  slint::SharedPixelBuffer<slint::Rgba8Pixel> buffer(w, h);
-  auto *data = buffer.begin();
-
-  auto hsv2rgb = [](float h_val, float s_val, float v_val) -> slint::Rgba8Pixel {
-    float c = v_val * s_val;
-    float h_prime = h_val / 60.0f;
-    float x = c * (1.0f - std::abs(std::fmod(h_prime, 2.0f) - 1.0f));
-    float m = v_val - c;
-
-    float r = 0, g = 0, b = 0;
-    if (0 <= h_prime && h_prime < 1) {
-      r = c;
-      g = x;
-      b = 0;
-    }
-    else if (1 <= h_prime && h_prime < 2) {
-      r = x;
-      g = c;
-      b = 0;
-    }
-    else if (2 <= h_prime && h_prime < 3) {
-      r = 0;
-      g = c;
-      b = x;
-    }
-    else if (3 <= h_prime && h_prime < 4) {
-      r = 0;
-      g = x;
-      b = c;
-    }
-    else if (4 <= h_prime && h_prime < 5) {
-      r = x;
-      g = 0;
-      b = c;
-    }
-    else if (5 <= h_prime && h_prime <= 6) {
-      r = c;
-      g = 0;
-      b = x;
-    }
-
-    return {(uint8_t)std::clamp((r + m) * 255.0f, 0.0f, 255.0f), (uint8_t)std::clamp((g + m) * 255.0f, 0.0f, 255.0f),
-            (uint8_t)std::clamp((b + m) * 255.0f, 0.0f, 255.0f), 255};
-  };
-
-  float rad = h / 2.0f;
-  float cx1 = rad;
-  float cx2 = w - rad;
-  float cy = rad;
-
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      // Rounded corners calculation
-      bool outside = false;
-      if (x < cx1) {
-        float dx = x - cx1;
-        float dy = y - cy;
-        if (dx * dx + dy * dy > rad * rad)
-          outside = true;
-      }
-      else if (x > cx2) {
-        float dx = x - cx2;
-        float dy = y - cy;
-        if (dx * dx + dy * dy > rad * rad)
-          outside = true;
-      }
-
-      if (outside) {
-        data[y * w + x] = {0, 0, 0, 0}; // Transparent
-      }
-      else {
-        float t = (float)x / (w > 1 ? (w - 1) : 1);
-        slint::Rgba8Pixel color;
-        if (mode == 0) {
-          color = hsv2rgb(t * 360.0f, 1.0f, 1.0f);
-        }
-        else if (mode == 1) {
-          color = hsv2rgb(hue, t, lit / 100.0f);
-        }
-        else {
-          if (t <= 0.5f) {
-            float local_t = t * 2.0f;
-            slint::Rgba8Pixel mid = hsv2rgb(hue, sat / 100.0f, 0.5f);
-            color = {(uint8_t)(mid.r * local_t), (uint8_t)(mid.g * local_t), (uint8_t)(mid.b * local_t), 255};
-          }
-          else {
-            float local_t = (t - 0.5f) * 2.0f;
-            slint::Rgba8Pixel mid = hsv2rgb(hue, sat / 100.0f, 0.5f);
-            color = {(uint8_t)(mid.r + (255 - mid.r) * local_t), (uint8_t)(mid.g + (255 - mid.g) * local_t),
-                     (uint8_t)(mid.b + (255 - mid.b) * local_t), 255};
-          }
-        }
-        data[y * w + x] = color;
-      }
-    }
-  }
-
-  return slint::Image(buffer);
-}
-
-static void handle_imu_gesture(imu_gesture_t gesture);
+extern "C" void handle_imu_gesture(imu_gesture_t gesture);
 
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
@@ -331,19 +231,20 @@ static void connect_callbacks() {
       // Exit hooks
       if (prev == Screen::Stats) {
         teardown_stats_properties();
-        imu_unregister_gesture_callback(handle_imu_gesture);
-        if (device_settings.hbm_mode == HBM_MODE_RAISED) {
-          display_set_hbm(false);
-        }
       }
       else if (prev == Screen::Pairing) {
-        led_set_effect_default();
+        teardown_pairing_properties();
+      }
+      else if (prev == Screen::Boards) {
+        teardown_boards_properties();
+      }
+      else if (prev == Screen::Menu) {
+        teardown_menu_properties();
       }
 
       // Enter hooks
       if (screen == Screen::Stats) {
         setup_stats_properties();
-        imu_register_gesture_callback(handle_imu_gesture);
       }
       else if (screen == Screen::Menu) {
         setup_menu_properties();
@@ -772,8 +673,8 @@ static esp_err_t app_lcd_init(void) {
 static esp_err_t app_touch_init(void) {
   esp_lcd_panel_io_handle_t tp_io_handle = NULL;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
   #if TP_CST816S
   esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CST816S_CONFIG();
   #elif TP_FT3168
@@ -804,7 +705,7 @@ static esp_err_t app_touch_init(void) {
               .mirror_y = 0,
           },
   };
-#pragma GCC diagnostic pop
+  #pragma GCC diagnostic pop
 
   #if TP_CST816S
   ESP_LOGI(TAG, "Initialize touch controller CST816S");
@@ -820,36 +721,6 @@ static esp_err_t app_touch_init(void) {
   return ESP_OK;
 }
 #endif
-
-static void handle_imu_gesture(imu_gesture_t gesture) {
-  if (gesture == IMU_GESTURE_DOUBLE_TAP) {
-    ESP_LOGI("PUBREMOTE-DISPLAY", "Double tap gesture callback triggered. Resetting sleep timer.");
-    reset_sleep_timer();
-    return;
-  }
-
-  if (device_settings.hbm_mode == HBM_MODE_RAISED && display_supports_hbm() && !is_pocket_mode_enabled()) {
-    if (gesture == IMU_GESTURE_RAISED) {
-      if (!display_get_hbm()) {
-        ESP_LOGI("PUBREMOTE-DISPLAY", "Raise-to-HBM: viewing position detected. Enabling HBM.");
-        display_set_hbm(true);
-      }
-      reset_sleep_timer();
-    }
-    else if (gesture == IMU_GESTURE_TABLE_FLAT) {
-      if (display_get_hbm()) {
-        ESP_LOGI("PUBREMOTE-DISPLAY", "Table detection: flat & motionless. Disabling HBM.");
-        display_set_hbm(false);
-      }
-    }
-    else if (gesture == IMU_GESTURE_LOWERED) {
-      if (display_get_hbm()) {
-        ESP_LOGI("PUBREMOTE-DISPLAY", "Wrist/remote lowered. Disabling HBM.");
-        display_set_hbm(false);
-      }
-    }
-  }
-}
 
 extern "C" void display_init() {
   ESP_LOGI(TAG, "Initializing Slint display wrapper");

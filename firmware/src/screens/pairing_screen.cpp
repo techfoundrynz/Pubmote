@@ -26,3 +26,8 @@ extern "C" void handle_pairing_action() {
 
   slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Boards); });
 }
+
+extern "C" void teardown_pairing_properties() {
+  ESP_LOGI(TAG, "Tearing down pairing screen properties");
+  led_set_effect_default();
+}
