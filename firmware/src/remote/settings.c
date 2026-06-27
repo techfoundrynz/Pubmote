@@ -6,6 +6,7 @@
 #include "espnow.h"
 #include "nvs_flash.h"
 #include "remote/adc.h"
+#include "connection.h"
 #include "string.h"
 #include <colors.h>
 #include <stdio.h>
@@ -90,6 +91,7 @@ void set_default_device_index(int8_t idx) {
     pairing_settings.default_index = idx;
     memcpy(pairing_settings.remote_addr, pairing_settings.devices[idx].mac, ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[idx].channel;
+    pairing_settings.secret_code = pairing_settings.devices[idx].secret_code;
   }
 }
 
@@ -108,8 +110,8 @@ static void ensure_current_in_device_list_and_set_default() {
       idx = 0;
     }
     memcpy(pairing_settings.devices[idx].mac, pairing_settings.remote_addr, ESP_NOW_ETH_ALEN);
-    pairing_settings.devices[idx].secret_code = pairing_settings.secret_code;
   }
+  pairing_settings.devices[idx].secret_code = pairing_settings.secret_code;
   pairing_settings.devices[idx].channel = pairing_settings.channel;
   set_default_device_index(idx);
 }
@@ -118,6 +120,9 @@ bool delete_paired_device_index(uint8_t idx) {
   if (idx >= pairing_settings.device_count) {
     return false;
   }
+
+  // Delete from ESP-NOW peer list if it exists
+  esp_now_del_peer(pairing_settings.devices[idx].mac);
 
   // Shift elements left to remove idx
   if (idx < pairing_settings.device_count - 1) {
@@ -129,14 +134,15 @@ bool delete_paired_device_index(uint8_t idx) {
   // Adjust default index
   if (pairing_settings.default_index == (int8_t)idx) {
     if (pairing_settings.device_count > 0) {
-      pairing_settings.default_index = 0;
-      memcpy(pairing_settings.remote_addr, pairing_settings.devices[0].mac, ESP_NOW_ETH_ALEN);
-      pairing_settings.channel = pairing_settings.devices[0].channel;
+      set_default_device_index(0);
     }
     else {
       pairing_settings.default_index = -1;
       memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
       pairing_settings.channel = 1;
+      pairing_settings.secret_code = DEFAULT_PAIRING_SECRET_CODE;
+      pairing_state = PAIRING_STATE_UNPAIRED;
+      connection_update_state(CONNECTION_STATE_DISCONNECTED);
     }
   }
   else if (pairing_settings.default_index > (int8_t)idx) {
@@ -754,6 +760,7 @@ esp_err_t settings_init() {
   else {
     memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
     pairing_settings.channel = 1;
+    pairing_settings.secret_code = DEFAULT_PAIRING_SECRET_CODE;
   }
 
   return ESP_OK;

@@ -60,7 +60,7 @@ export component BoardsScreen inherits Rectangle {
                         AppButton {
                             horizontal-stretch: 1;
                             text: board.mac;
-                            right-text: board.is-active ? "ACTIVE" : "";
+                            right-text: board.is-active ? "✓" : "";
                             variant: board.is-active ? "primary" : "secondary";
                             clicked => { root.select-board(board.index); }
                         }
