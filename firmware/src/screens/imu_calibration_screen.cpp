@@ -64,7 +64,7 @@ static const char* event_to_string(imu_event_t event) {
 
 static void imu_calibration_task(void *pvParameters) {
   ESP_LOGI(TAG, "IMU screen task started");
-  imu_data_t data = {0};
+  imu_data_t data = {};
   int log_counter = 0;
 
   while (is_imu_calibration_screen_active()) {
@@ -89,8 +89,9 @@ static void imu_calibration_task(void *pvParameters) {
 
     if (++log_counter >= 20) { // Log at 1Hz (20 * 50ms)
       log_counter = 0;
-      ESP_LOGI(TAG, "Live IMU - Accel: [%.2f, %.2f, %.2f], Gyro: [%.1f, %.1f, %.1f], Orient: %s",
-               data.accel_x, data.accel_y, data.accel_z, data.gyro_x, data.gyro_y, data.gyro_z, face_status);
+      ESP_LOGI(TAG, "Live IMU - Accel: [%.2f, %.2f, %.2f], Gyro: [%.1f, %.1f, %.1f], Orient: %s, Event: %s",
+               data.accel_x, data.accel_y, data.accel_z, data.gyro_x, data.gyro_y, data.gyro_z, face_status,
+               event_to_string(data.event));
     }
 
     slint::invoke_from_event_loop([=]() {
@@ -154,7 +155,7 @@ extern "C" void setup_imu_calibration_properties() {
         imu_calibration.invert_y = false;
         imu_calibration.invert_z = false;
         imu_calibration.swap_xy = false;
-        imu_data_t raw_data = {0};
+        imu_data_t raw_data = {};
         imu_driver_get_data(&raw_data);
         imu_calibration = temp;
         imu_calibration.accel_x_offset = raw_data.accel_x;
@@ -247,7 +248,7 @@ extern "C" void handle_imu_calibration_primary() {
     imu_calibration.invert_z = false;
     imu_calibration.swap_xy = false;
     
-    imu_data_t raw_data = {0};
+    imu_data_t raw_data = {};
     imu_driver_get_data(&raw_data);
     
     imu_calibration = temp;
