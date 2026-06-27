@@ -146,9 +146,10 @@ static void calibration_task(void *pvParameters) {
     }
 
     // 4. Update Slint properties
+    slint::SharedString slint_header_str(header_str);
     slint::invoke_from_event_loop([=]() {
       const auto &state = get_slint_window()->global<UiState>();
-      state.set_input_calibration_readout(header_str);
+      state.set_input_calibration_readout(slint_header_str);
       state.set_joystick_x(curr_x);
       state.set_joystick_y(curr_y); // Slint dial moves down on positive Y, matching joystick inversion
     });
