@@ -60,6 +60,7 @@ export global UiState {
     in property <string> secondary-stat-left-label: "";
     in property <string> connection-state-label: "Disconnected";
     in property <bool> is-connected: false;
+    in property <int> connection-state: 0;
     in property <string> board-battery: "0%";
     in property <int> rssi: -100;
     in property <bool> pocket-mode-active: false;
@@ -343,7 +344,7 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
-        is-connected: UiState.is-connected;
+        connection-state: UiState.connection-state;
         pocket-mode-active: UiState.pocket-mode-active;
         hbm-mode: UiState.hbm-mode;
         hbm-mode-supported: UiState.hbm-mode-supported;

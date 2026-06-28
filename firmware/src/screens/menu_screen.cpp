@@ -9,6 +9,7 @@
 #include "remote/display.h"
 #include "remote/powermanagement.h"
 #include "remote/settings.h"
+#include "remote/stats.h"
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";
 
@@ -25,6 +26,14 @@ extern "C" void handle_menu_shutdown_long_press() {
   confirm_reset = !confirm_reset;
   slint::invoke_from_event_loop(
       []() { get_slint_window()->global<UiState>().set_shutdown_text(confirm_reset ? "Factory reset?" : "Shutdown"); });
+}
+
+static void menu_update_display() {
+  if (!get_slint_window())
+    return;
+  slint::invoke_from_event_loop([]() {
+    get_slint_window()->global<UiState>().set_connection_state((int)connection_state);
+  });
 }
 
 extern "C" void setup_menu_properties() {
@@ -72,6 +81,9 @@ extern "C" void setup_menu_properties() {
   state.set_pocket_mode_active(is_pocket_mode_enabled());
   state.set_hbm_mode((int)device_settings.hbm_mode);
   state.set_hbm_mode_supported(display_supports_hbm());
+
+  stats_register_update_cb(menu_update_display);
+  menu_update_display();
 }
 
 extern "C" void handle_menu_connect() {
@@ -170,6 +182,7 @@ extern "C" void handle_menu_shutdown() {
 
 extern "C" void teardown_menu_properties() {
   ESP_LOGI(TAG, "Tearing down menu screen properties");
+  stats_unregister_update_cb(menu_update_display);
   if (!get_slint_window())
     return;
   slint::invoke_from_event_loop([]() {
