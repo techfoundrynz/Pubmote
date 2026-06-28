@@ -1,4 +1,5 @@
 #include "receiver.h"
+#include "config.h"
 #include "commands.h"
 #include "comms.h"
 #include "connection.h"
@@ -91,9 +92,18 @@ static void process_data(comms_event_t evt) {
     ESP_LOGI(TAG, "Rec: Version: %d", data[1]);
     // TODO - send back receiver version
     break;
-  case REM_RECEIVER_VERSION:
-    ESP_LOGI(TAG, "Rec: Receiver version: %d", data[1]);
+  case REM_RECEIVER_VERSION: {
+    if (len >= 5) {
+      uint8_t api_version = data[4];
+      ESP_LOGI(TAG, "Rec: Receiver API version: %d", api_version);
+
+      // Check if the receiver API version is below the minimum required version
+      if (api_version < MIN_RCV_API_VERSION) {
+        handle_receiver_api_version_too_low(api_version);
+      }
+    }
     break;
+  }
   case REM_PAIR_INIT:
     if (is_pairing_start) {
       ESP_LOGI(TAG, "Process: Pairing init");

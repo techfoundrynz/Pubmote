@@ -10,6 +10,9 @@
 // Uncomment to emulate connection state and incoming stats for UI testing
 #define TEST_MODE 0
 
+// Minimum required VESC receiver API version
+#define MIN_RCV_API_VERSION 1
+
 #ifndef TARGET_FPS
   #define TARGET_FPS 60
 #endif

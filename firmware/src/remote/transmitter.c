@@ -121,6 +121,7 @@ static void transmitter_task(void *pvParameters) {
         }
 
         if (should_emit_version) {
+          // Send remote version to receiver
           ind = 0;
           data[ind++] = REM_VERSION;
           memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
@@ -129,6 +130,14 @@ static void transmitter_task(void *pvParameters) {
           memcpy(data + ind, &version, sizeof(version));
           ind += sizeof(version);
           comms_send(mac_addr, data, ind);
+
+          // Request receiver version
+          ind = 0;
+          data[ind++] = REM_RECEIVER_VERSION;
+          memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
+          ind += sizeof(int32_t);
+          comms_send(mac_addr, data, ind);
+
           should_emit_version = false;
         }
 
