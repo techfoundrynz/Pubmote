@@ -61,7 +61,6 @@ static void transmitter_task(void *pvParameters) {
     int64_t new_time = get_current_time_ms();
 
     bool should_transmit =
-        is_stats_screen_active() && !is_pocket_mode_enabled() &&
         (connection_state == CONNECTION_STATE_CONNECTED || connection_state == CONNECTION_STATE_RECONNECTING ||
          connection_state == CONNECTION_STATE_CONNECTING);
 
@@ -69,9 +68,18 @@ static void transmitter_task(void *pvParameters) {
     should_transmit = false;
 #endif
 
+    RemoteData tx_msg = remote_data;
+    if (!is_stats_screen_active() || is_pocket_mode_enabled()) {
+      tx_msg.js_y = 0.0f;
+      tx_msg.js_x = 0.0f;
+      tx_msg.bt_c = false;
+      tx_msg.bt_z = false;
+      tx_msg.is_rev = false;
+    }
+
     if (should_transmit) {
       // Check if data is the same as last time
-      if (memcmp(&remote_data, &last_message, sizeof(remote_data)) == 0 &&
+      if (memcmp(&tx_msg, &last_message, sizeof(tx_msg)) == 0 &&
           new_time - last_send_time < MAX_UPDATE_DELAY_MS) {
         // No change in data, skip transmission
         should_transmit = false;
@@ -89,9 +97,9 @@ static void transmitter_task(void *pvParameters) {
       memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
       ind += sizeof(int32_t);
 
-      // Copy remote_data.bytes after secret_Code
-      memcpy(data + ind, &remote_data, sizeof(remote_data));
-      ind += sizeof(remote_data);
+      // Copy tx_msg after secret_Code
+      memcpy(data + ind, &tx_msg, sizeof(tx_msg));
+      ind += sizeof(tx_msg);
 
       uint8_t *mac_addr = pairing_settings.remote_addr;
       if (receiver_lock_channel()) {
@@ -107,7 +115,7 @@ static void transmitter_task(void *pvParameters) {
           }
         }
         else {
-          memcpy(&last_message, &remote_data, sizeof(remote_data));
+          memcpy(&last_message, &tx_msg, sizeof(tx_msg));
           last_send_time = new_time;
           ESP_LOGD(TAG, "Sent command");
         }

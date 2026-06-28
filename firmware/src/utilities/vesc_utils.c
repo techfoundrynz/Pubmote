@@ -93,6 +93,11 @@ int vesc_parse_packet(const uint8_t *stream_buf, size_t stream_len,
                   stream_buf[3];
   }
 
+  if (payload_len > max_payload_len) {
+    *bytes_consumed = 1;
+    return -2;
+  }
+
   size_t total_len = header_len + payload_len + 3;
   if (stream_len < total_len) {
     return 0;
@@ -114,10 +119,6 @@ int vesc_parse_packet(const uint8_t *stream_buf, size_t stream_len,
   }
 
   *bytes_consumed = total_len;
-  if (payload_len > max_payload_len) {
-    return -2;
-  }
-
   memcpy(out_payload, &stream_buf[header_len], payload_len);
   *out_payload_len = payload_len;
   return 1;
