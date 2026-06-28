@@ -34,7 +34,6 @@ static void on_data_sent(const uint8_t *mac_addr, bool success) {
     if (connection_state == CONNECTION_STATE_CONNECTED) {
       ESP_LOGE(TAG, "Failed to send data to %02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2],
                mac_addr[3], mac_addr[4], mac_addr[5]);
-      last_send_time = 0; // Reset last send time on failure to ensure we send in the next cycle
     }
   }
 }
@@ -54,6 +53,7 @@ static void transmitter_task(void *pvParameters) {
   ConnectionState last_connection_state = connection_state;
   bool should_emit_version = false;
   while (1) {
+    bool tx_failed = false;
     if (connection_state == CONNECTION_STATE_CONNECTED && last_connection_state != CONNECTION_STATE_CONNECTED) {
       should_emit_version = true;
     }
@@ -99,9 +99,12 @@ static void transmitter_task(void *pvParameters) {
 
         if (result != ESP_OK) {
           // Handle error if needed
-          uint8_t chann = pairing_settings.channel;
-          uint8_t peer_chann = comms_get_peer_channel(mac_addr);
-          ESP_LOGE(TAG, "Error sending remote data: %d  - Channel: %d, Peer Channel: %d", result, chann, peer_chann);
+          tx_failed = true;
+          if (connection_state == CONNECTION_STATE_CONNECTED) {
+            uint8_t chann = pairing_settings.channel;
+            uint8_t peer_chann = comms_get_peer_channel(mac_addr);
+            ESP_LOGE(TAG, "Error sending remote data: %d  - Channel: %d, Peer Channel: %d", result, chann, peer_chann);
+          }
         }
         else {
           memcpy(&last_message, &remote_data, sizeof(remote_data));
@@ -129,9 +132,12 @@ static void transmitter_task(void *pvParameters) {
     memset(data, 0, sizeof(data));
 
     last_connection_state = connection_state;
-    int64_t elapsed = get_current_time_ms() - last_send_time;
-    if (elapsed >= 0 && elapsed < TX_RATE_MS) {
-      vTaskDelay(pdMS_TO_TICKS(TX_RATE_MS - elapsed));
+    int64_t target_rate = tx_failed ? (TX_RATE_MS / 4) : TX_RATE_MS;
+    int64_t elapsed = get_current_time_ms() - new_time;
+    if (elapsed >= 0 && elapsed < target_rate) {
+      vTaskDelay(pdMS_TO_TICKS(target_rate - elapsed));
+    } else {
+      vTaskDelay(1);
     }
   }
 

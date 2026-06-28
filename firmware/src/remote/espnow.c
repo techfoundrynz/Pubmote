@@ -99,7 +99,10 @@ static esp_err_t espnow_driver_init(void) {
   esp_wifi_set_max_tx_power(52); // ~14 dBm for balanced power and range
   ESP_LOGI(TAG, "ESP-NOW power settings configured");
 
-  // Set WiFi channel for ESP-NOW
+  // Set WiFi channel for ESP-NOW (default to channel 1 if current channel is invalid for WiFi)
+  if (pairing_settings.channel < 1 || pairing_settings.channel > 14) {
+    pairing_settings.channel = 1;
+  }
   ESP_ERROR_CHECK(esp_wifi_set_channel(pairing_settings.channel, WIFI_SECOND_CHAN_NONE));
 
   // Initialize ESP-NOW

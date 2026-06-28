@@ -541,7 +541,7 @@ static esp_err_t ble_driver_register_discovery_cb(comms_discovery_cb_t cb) {
 
 static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len) {
   if (ble_conn_handle == BLE_HS_CONN_HANDLE_NONE || nus_tx_handle == 0) {
-    ESP_LOGE(TAG, "ble_driver_send failed: ble_conn_handle=%d, nus_tx_handle=%d", ble_conn_handle, nus_tx_handle);
+    ESP_LOGD(TAG, "ble_driver_send failed: ble_conn_handle=%d, nus_tx_handle=%d", ble_conn_handle, nus_tx_handle);
     if (registered_send_cb) {
       registered_send_cb(peer_mac, false);
     }
@@ -592,7 +592,12 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
 
     int rc = ble_gattc_write_no_rsp_flat(ble_conn_handle, nus_tx_handle, tx_buf + sent_bytes, chunk_len);
     if (rc != 0) {
-      ESP_LOGE(TAG, "ble_gattc_write_no_rsp_flat chunk failed; rc=%d", rc);
+      ESP_LOGD(TAG, "ble_gattc_write_no_rsp_flat chunk failed; rc=%d", rc);
+      if (rc == BLE_HS_ENOTCONN) {
+        ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+        nus_tx_handle = 0;
+        nus_rx_handle = 0;
+      }
       result_err = ESP_FAIL;
       break;
     }
@@ -602,7 +607,7 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
   free(tx_buf);
 
   if (result_err != ESP_OK) {
-    ESP_LOGE(TAG, "ble_gattc_write_no_rsp_flat failed; rc=%d", result_err);
+    ESP_LOGD(TAG, "ble_gattc_write_no_rsp_flat failed; rc=%d", result_err);
     if (registered_send_cb) {
       registered_send_cb(peer_mac, false);
     }
