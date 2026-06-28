@@ -9,10 +9,10 @@
 #include "freertos/task.h"
 #include "remote/adc.h"
 #include "remote/buzzer.h"
+#include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/console.h"
 #include "remote/display.h"
-#include "remote/comms.h"
 #include "remote/haptic.h"
 #include "remote/i2c.h"
 #include "remote/imu.h"
@@ -51,6 +51,7 @@ static void configure_log_levels(void) {
   esp_log_level_set("PUBREMOTE-IMU_DRIVER_QMI8658", ESP_LOG_ERROR);
   esp_log_level_set("PUBREMOTE-DISPLAY", ESP_LOG_ERROR);
   esp_log_level_set("PUBREMOTE-DISPLAY-DRIVER", ESP_LOG_ERROR);
+  esp_log_level_set("NimBLE", ESP_LOG_WARN);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 

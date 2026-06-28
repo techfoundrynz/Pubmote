@@ -84,6 +84,7 @@ extern "C"
 
   uint8_t *comms_prepend_headers(const uint8_t *data, size_t len, CommsType type, size_t *out_len);
   bool comms_strip_headers(const uint8_t **data_ptr, int *len_ptr, CommsType type);
+  bool ble_is_connected(void);
 
 #ifdef __cplusplus
 }

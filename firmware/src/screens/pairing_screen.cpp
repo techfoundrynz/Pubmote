@@ -62,6 +62,7 @@ extern "C" void setup_pairing_properties() {
     const auto &state = get_slint_window()->global<UiState>();
     state.set_pairing_code("----");
     state.set_pairing_action_text("Cancel");
+    state.set_pairing_status("Searching for board...");
 
     if (comms_get_active_type() == COMMS_TYPE_BLE) {
       state.set_is_ble_scan(true);
@@ -95,6 +96,7 @@ extern "C" void setup_pairing_properties() {
             const auto &state = get_slint_window()->global<UiState>();
             state.set_is_ble_scan(false);
             state.set_pairing_code("----"); // Show dashed while waiting for PIN handshake
+            state.set_pairing_status("Connecting to board...");
           }
         });
       });

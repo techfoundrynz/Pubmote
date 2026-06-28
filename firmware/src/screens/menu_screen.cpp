@@ -163,9 +163,7 @@ extern "C" void handle_menu_shutdown() {
       state.set_confirm_dialog_title("Power Off");
       state.set_confirm_dialog_message("Are you sure you want to turn off the remote?");
       state.set_confirm_dialog_confirm_text("Shutdown");
-      state.set_confirm_dialog_variant("standard");
     }
-    state.set_confirm_dialog_cancel_text("Cancel");
     state.set_show_confirm_dialog(true);
   });
 }

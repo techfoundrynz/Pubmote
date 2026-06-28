@@ -1,11 +1,11 @@
 #include "pairing.h"
 #include "commands.h"
+#include "comms.h"
 #include "connection.h"
 #include "esp_log.h"
-#include "comms.h"
-#include "settings.h"
-#include "remote/display.h"
 #include "generated/app-window.h"
+#include "remote/display.h"
+#include "settings.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -27,32 +27,37 @@ extern "C" bool pairing_process_init_event(uint8_t *data, int len, comms_event_t
     ESP_LOGI(TAG, "Sender MAC: %02X:%02X:%02X:%02X:%02X:%02X, Payload MAC: %02X:%02X:%02X:%02X:%02X:%02X",
              evt.mac_addr[0], evt.mac_addr[1], evt.mac_addr[2], evt.mac_addr[3], evt.mac_addr[4], evt.mac_addr[5],
              data[0], data[1], data[2], data[3], data[4], data[5]);
-    
+
     uint8_t PAIR_BOND_RES[2] = {REM_PAIR_BOND};
     if (comms_get_active_type() == COMMS_TYPE_BLE) {
       pairing_settings.channel = evt.chan | 0x80;
-    } else {
+    }
+    else {
       pairing_settings.channel = evt.chan;
     }
-    
+
     uint8_t *mac_addr = pairing_settings.remote_addr;
     esp_err_t result = ESP_FAIL;
 
     if (receiver_lock_channel()) {
+      ESP_LOGI(TAG, "Sending PAIR_BOND request over BLE channel %d", pairing_settings.channel);
       comms_connect_peer(mac_addr, pairing_settings.channel);
       result = comms_send(mac_addr, (uint8_t *)&PAIR_BOND_RES, sizeof(PAIR_BOND_RES));
+      ESP_LOGI(TAG, "comms_send result: %d", result);
       receiver_unlock_channel();
     }
 
     if (result != ESP_OK) {
       ESP_LOGE(TAG, "Error sending pairing data: %d", result);
       return false;
-    } else {
+    }
+    else {
       ESP_LOGI(TAG, "Sent response back to VESC Express");
       pairing_state = PAIRING_STATE_PAIRING;
       return true;
     }
-  } else {
+  }
+  else {
     ESP_LOGE(TAG, "Invalid pairing init packet length: %d", len);
   }
   return false;
@@ -65,18 +70,20 @@ extern "C" bool pairing_process_bond_event(uint8_t *data, int len) {
     ESP_LOGI(TAG, "packet Length: %d", len);
     pairing_settings.secret_code = (int32_t)(data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
     ESP_LOGI(TAG, "Secret Code: %li", pairing_settings.secret_code);
-    
+
     char formattedString[32];
     snprintf(formattedString, sizeof(formattedString), "%ld", pairing_settings.secret_code);
-    
+
     slint::SharedString pairing_code(formattedString);
     slint::invoke_from_event_loop([=]() {
       get_slint_window()->global<UiState>().set_pairing_code(pairing_code);
+      get_slint_window()->global<UiState>().set_pairing_status("Code received! Waiting for confirmation...");
     });
-    
+
     pairing_state = PAIRING_STATE_PENDING;
     return true;
-  } else {
+  }
+  else {
     ESP_LOGE(TAG, "Invalid pairing bond packet length: %d", len);
   }
   return false;
@@ -93,17 +100,17 @@ extern "C" bool pairing_process_completion_event(uint8_t *data, int len) {
       pairing_state = PAIRING_STATE_PAIRED;
       save_pairing_data();
       connection_connect_to_default_peer();
-      
-      slint::invoke_from_event_loop([]() {
-        get_slint_window()->global<UiState>().set_screen(Screen::Stats);
-      });
+
+      slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Stats); });
       return true;
-    } else {
+    }
+    else {
       ESP_LOGI(TAG, "Pairing failed");
       pairing_state = PAIRING_STATE_UNPAIRED;
       return false;
     }
-  } else {
+  }
+  else {
     ESP_LOGE(TAG, "Invalid pairing complete packet length: %d", len);
   }
   return false;

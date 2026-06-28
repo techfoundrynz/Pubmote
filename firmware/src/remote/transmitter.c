@@ -1,19 +1,19 @@
 #include "transmitter.h"
-#include "config.h"
 #include "commands.h"
+#include "comms.h"
+#include "config.h"
 #include "connection.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "comms.h"
 #include "esp_system.h"
 #include "peers.h"
 #include "receiver.h"
 #include "remoteinputs.h"
 #include "screens/stats_screen.h"
 #include "time.h"
-#include <remote/settings.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <remote/settings.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -101,8 +101,7 @@ static void transmitter_task(void *pvParameters) {
           // Handle error if needed
           uint8_t chann = pairing_settings.channel;
           uint8_t peer_chann = comms_get_peer_channel(mac_addr);
-          ESP_LOGE(TAG, "Error sending remote data: %d  - Channel: %d, Peer Channel: %d", result,
-                   chann, peer_chann);
+          ESP_LOGE(TAG, "Error sending remote data: %d  - Channel: %d, Peer Channel: %d", result, chann, peer_chann);
         }
         else {
           memcpy(&last_message, &remote_data, sizeof(remote_data));

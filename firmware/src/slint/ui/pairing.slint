@@ -11,8 +11,9 @@ export struct DiscoveredDevice {
 }
 
 export component PairingScreen inherits Rectangle {
-    in property <string> pairing-code: "0000";
+    in property <string> pairing-code: "----";
     in property <string> action-text: "Cancel";
+    in property <string> pairing-status: "Searching for board...";
     in property <bool> is-ble-scan: false;
     in property <[DiscoveredDevice]> discovered-devices: [];
     callback action;
@@ -20,19 +21,13 @@ export component PairingScreen inherits Rectangle {
     background: Theme.bg;
 
     VerticalLayout {
-        // ui_PairingHeader (20%)
+        // ui_PairingBody (75%)
         Rectangle {
-            vertical-stretch: 20;
-            VerticalLayout {
-                alignment: center;
-            }
-        }
-
-        // ui_PairingBody (55%)
-        Rectangle {
-            vertical-stretch: 55;
+            vertical-stretch: 75;
             padding-left: Theme.page-padding-horizontal;
             padding-right: Theme.page-padding-horizontal;
+            padding-top: Theme.page-padding-vertical;
+            padding-bottom: Theme.page-padding-vertical;
 
             if !root.is-ble-scan: VerticalLayout {
                 alignment: center;
@@ -50,9 +45,19 @@ export component PairingScreen inherits Rectangle {
                     font-size: Theme.font-14;
                     horizontal-alignment: center;
                 }
+
+                Text {
+                    text: root.pairing-status;
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
             }
 
             if root.is-ble-scan: VerticalLayout {
+                alignment: start;
+                padding-top: Theme.page-padding-vertical;
                 spacing: 8px * Theme.scale;
 
                 Text {

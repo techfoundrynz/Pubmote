@@ -90,6 +90,7 @@ export global UiState {
     // --- Pairing (ui_PairingScreen) ---
     in property <string> pairing-code: "0000";
     in property <string> pairing-action-text: "Cancel";
+    in property <string> pairing-status: "Searching for board...";
     in-out property <bool> is-ble-scan: false;
     in-out property <[DiscoveredDevice]> discovered-devices: [];
     callback select-device(int);
@@ -153,14 +154,14 @@ export global UiState {
 
     // --- Confirm Dialog ---
     in-out property <bool> show-confirm-dialog: false;
-    in property <string> confirm-dialog-title: "";
-    in property <string> confirm-dialog-message: "";
-    in property <string> confirm-dialog-confirm-text: "Confirm";
-    in property <string> confirm-dialog-cancel-text: "Cancel";
-    in property <string> confirm-dialog-variant: "standard";
-    in property <string> confirm-dialog-cancel-variant: "secondary";
-    in property <string> confirm-dialog-cancel-button-color: "standard";
-    in property <string> confirm-dialog-confirm-button-variant: "primary";
+    in-out property <string> confirm-dialog-title: "";
+    in-out property <string> confirm-dialog-message: "";
+    in-out property <string> confirm-dialog-confirm-text: "Confirm";
+    in-out property <string> confirm-dialog-cancel-text: "Cancel";
+    in-out property <string> confirm-dialog-variant: "standard";
+    in-out property <string> confirm-dialog-cancel-variant: "secondary";
+    in-out property <string> confirm-dialog-cancel-button-color: "standard";
+    in-out property <string> confirm-dialog-confirm-button-variant: "primary";
 
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
@@ -262,6 +263,20 @@ export component AppWindow inherits Window {
         UiState.screen-changed(self.active-screen);
     }
 
+    property <bool> watch-confirm-dialog: UiState.show-confirm-dialog;
+    changed watch-confirm-dialog => {
+        if (!self.watch-confirm-dialog) {
+            UiState.confirm-dialog-title = "";
+            UiState.confirm-dialog-message = "";
+            UiState.confirm-dialog-confirm-text = "Confirm";
+            UiState.confirm-dialog-cancel-text = "Cancel";
+            UiState.confirm-dialog-variant = "standard";
+            UiState.confirm-dialog-cancel-variant = "secondary";
+            UiState.confirm-dialog-cancel-button-color = "standard";
+            UiState.confirm-dialog-confirm-button-variant = "primary";
+        }
+    }
+
     Timer {
         interval: 20ms;
         running: !root.screen-loaded;
@@ -328,6 +343,7 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
+        is-connected: UiState.is-connected;
         pocket-mode-active: UiState.pocket-mode-active;
         hbm-mode: UiState.hbm-mode;
         hbm-mode-supported: UiState.hbm-mode-supported;
@@ -380,6 +396,7 @@ export component AppWindow inherits Window {
         y: (screen-y(Screen.pairing) - root.view-y) * self.height;
         pairing-code: UiState.pairing-code;
         action-text: UiState.pairing-action-text;
+        pairing-status: UiState.pairing-status;
         action => { UiState.pairing-action(); }
         is-ble-scan: UiState.is-ble-scan;
         discovered-devices: UiState.discovered-devices;

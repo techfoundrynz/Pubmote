@@ -97,6 +97,10 @@ void set_default_device_index(int8_t idx) {
 }
 
 static void ensure_current_in_device_list_and_set_default() {
+  if (is_same_mac(pairing_settings.remote_addr, (uint8_t *)DEFAULT_PEER_ADDR)) {
+    return;
+  }
+
   // Ensure current remote_addr/channel are in the devices list and set as default
   if (pairing_settings.device_count > MAX_PAIRED_DEVICES) {
     pairing_settings.device_count = MAX_PAIRED_DEVICES;

@@ -22,6 +22,8 @@ static comms_discovery_cb_t registered_discovery_cb = NULL;
 static uint16_t ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 static uint16_t nus_tx_handle = 0; // Remote writes to this (VESC RX)
 static uint16_t nus_rx_handle = 0; // Remote receives notifies from this (VESC TX)
+static bool cccd_subscribed = false;
+static bool discovery_complete = false;
 
 // Reconnection tracking
 static uint8_t target_peer_mac[6] = {0};
@@ -54,6 +56,7 @@ static ble_uuid128_t nus_rx_chr_uuid = BLE_UUID128_INIT( // Notify
 static int ble_gap_event(struct ble_gap_event *event, void *arg);
 static void start_scan(void);
 static void stop_scan(void);
+static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len);
 
 // Forward declarations of GATT callbacks
 static int ble_on_disc_chrs(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_chr *chr,
@@ -70,10 +73,28 @@ static void subscribe_to_notifications(uint16_t conn_handle, uint16_t val_handle
   }
 }
 
+static void send_connection_init_dummy(void) {
+  // Perform a dummy write to VESC RX (nus_tx_handle) to initialize connection on stock VESC Express firmware.
+  // Stock VESC Express firmware only sets the active BLE connection handle/interface ID upon receiving a write,
+  // so sending this packet immediately on connect breaks the deadlock when pairing/communicating.
+  if (nus_tx_handle != 0) {
+    ESP_LOGI(TAG, "Sending connection-init dummy packet to VESC Express...");
+    uint8_t dummy_packet[5] = {10, 0, 0, 0, 0}; // 10 is REM_PAIR_INIT, safely ignored by VESC Lisp
+    ble_driver_send(target_peer_mac, dummy_packet, sizeof(dummy_packet));
+  }
+  else {
+    ESP_LOGW(TAG, "Cannot send dummy packet: nus_tx_handle is still 0");
+  }
+}
+
 static int ble_on_write_cccd(uint16_t conn_handle, const struct ble_gatt_error *error, struct ble_gatt_attr *attr,
                              void *arg) {
   if (error->status == 0) {
     ESP_LOGI(TAG, "Successfully subscribed to notifications");
+    cccd_subscribed = true;
+    if (discovery_complete) {
+      send_connection_init_dummy();
+    }
   }
   else {
     ESP_LOGE(TAG, "CCCD write failed; status=%d", error->status);
@@ -96,6 +117,10 @@ static int ble_on_disc_chrs(uint16_t conn_handle, const struct ble_gatt_error *e
   }
   else if (error->status == BLE_HS_EDONE) {
     ESP_LOGI(TAG, "Characteristic discovery complete");
+    discovery_complete = true;
+    if (cccd_subscribed) {
+      send_connection_init_dummy();
+    }
   }
   else {
     ESP_LOGE(TAG, "Characteristic discovery failed; status=%d", error->status);
@@ -219,6 +244,8 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
     if (event->connect.status == 0) {
       ESP_LOGI(TAG, "BLE Connected successfully! handle=%d", event->connect.conn_handle);
       ble_conn_handle = event->connect.conn_handle;
+      cccd_subscribed = false;
+      discovery_complete = false;
       start_service_discovery(ble_conn_handle);
     }
     else {
@@ -514,6 +541,7 @@ static esp_err_t ble_driver_register_discovery_cb(comms_discovery_cb_t cb) {
 
 static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len) {
   if (ble_conn_handle == BLE_HS_CONN_HANDLE_NONE || nus_tx_handle == 0) {
+    ESP_LOGE(TAG, "ble_driver_send failed: ble_conn_handle=%d, nus_tx_handle=%d", ble_conn_handle, nus_tx_handle);
     if (registered_send_cb) {
       registered_send_cb(peer_mac, false);
     }
@@ -549,15 +577,36 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
     return ESP_FAIL;
   }
 
-  int rc = ble_gattc_write_no_rsp_flat(ble_conn_handle, nus_tx_handle, tx_buf, tx_len);
+  // Retrieve current ATT MTU of connection (subtract 3 bytes for ATT header)
+  uint16_t mtu = ble_att_mtu(ble_conn_handle);
+  size_t max_payload = (mtu > 3) ? (mtu - 3) : 20;
+
+  size_t sent_bytes = 0;
+  esp_err_t result_err = ESP_OK;
+
+  while (sent_bytes < tx_len) {
+    size_t chunk_len = tx_len - sent_bytes;
+    if (chunk_len > max_payload) {
+      chunk_len = max_payload;
+    }
+
+    int rc = ble_gattc_write_no_rsp_flat(ble_conn_handle, nus_tx_handle, tx_buf + sent_bytes, chunk_len);
+    if (rc != 0) {
+      ESP_LOGE(TAG, "ble_gattc_write_no_rsp_flat chunk failed; rc=%d", rc);
+      result_err = ESP_FAIL;
+      break;
+    }
+    sent_bytes += chunk_len;
+  }
+
   free(tx_buf);
 
-  if (rc != 0) {
-    ESP_LOGE(TAG, "ble_gattc_write_no_rsp_flat failed; rc=%d", rc);
+  if (result_err != ESP_OK) {
+    ESP_LOGE(TAG, "ble_gattc_write_no_rsp_flat failed; rc=%d", result_err);
     if (registered_send_cb) {
       registered_send_cb(peer_mac, false);
     }
-    return ESP_FAIL;
+    return result_err;
   }
 
   if (registered_send_cb) {
@@ -682,3 +731,7 @@ const CommsDriver ble_driver = {.type = COMMS_TYPE_BLE,
                                 .peer_exists = ble_driver_peer_exists,
                                 .get_peer_channel = ble_driver_get_peer_channel,
                                 .set_channel = ble_driver_set_channel};
+
+bool ble_is_connected(void) {
+  return ble_conn_handle != BLE_HS_CONN_HANDLE_NONE && nus_tx_handle != 0;
+}
