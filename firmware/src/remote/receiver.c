@@ -94,13 +94,34 @@ static void process_data(comms_event_t evt) {
     break;
   case REM_RECEIVER_VERSION: {
     if (len >= 5) {
-      uint8_t api_version = data[4];
+      uint16_t api_version = data[4];
+      if (len >= 6) {
+        api_version |= (data[5] << 8);
+      }
       ESP_LOGI(TAG, "Rec: Receiver API version: %d", api_version);
 
       // Check if the receiver API version is below the minimum required version
       if (api_version < MIN_RCV_API_VERSION) {
         handle_receiver_api_version_too_low(api_version);
       }
+
+      if (len >= 7) {
+        uint8_t vehicle_type = data[6];
+        ESP_LOGI(TAG, "Rec: Vehicle type: %d", vehicle_type);
+        remoteStats.vehicleType = vehicle_type;
+
+        // Persist if it changed for the current default device
+        int default_idx = get_default_device_index();
+        if (default_idx >= 0 && default_idx < pairing_settings.device_count) {
+          if (pairing_settings.devices[default_idx].vehicle_type != vehicle_type) {
+            pairing_settings.devices[default_idx].vehicle_type = vehicle_type;
+            save_pairing_data();
+          }
+        }
+      } else {
+        remoteStats.vehicleType = VEHICLE_TYPE_UNSPECIFIED;
+      }
+      stats_update();
     }
     break;
   }

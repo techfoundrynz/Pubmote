@@ -112,6 +112,7 @@ extern "C"
     uint8_t mac[ESP_NOW_ETH_ALEN];
     uint8_t channel;
     uint32_t secret_code;
+    uint8_t vehicle_type;
   } PairedDevice;
 
   typedef struct {

@@ -23,6 +23,7 @@ export component SquareStats inherits Rectangle {
     in property <string> board-state-message: "";
     in property <string> secondary-stat-left-value: "";
     in property <string> secondary-stat-left-label: "";
+    in property <int> vehicle-type: 0;
 
     callback secondary-stat-left-clicked();
     callback board-battery-clicked();
@@ -106,6 +107,7 @@ export component SquareStats inherits Rectangle {
                             pocket-mode-active: root.pocket-mode-active;
                             lights-on: root.lights-on;
                             alignment: LayoutAlignment.start;
+                            is-onewheel: root.vehicle-type == 1;
                         }
 
                         Text {

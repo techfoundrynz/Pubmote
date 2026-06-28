@@ -1,4 +1,5 @@
 #include "stats.h"
+#include "settings.h"
 #include "receiver.h"
 #include <screens/stats_screen.h>
 
@@ -26,6 +27,14 @@ static void reset_stats() {
   remoteStats.switchState = SWITCH_STATE_OFF;
   remoteStats.chargeState = CHARGE_STATE_UNKNOWN;
   remoteStats.chargeCurrent = 0;
+
+  int default_idx = get_default_device_index();
+  if (default_idx >= 0 && default_idx < pairing_settings.device_count) {
+    remoteStats.vehicleType = pairing_settings.devices[default_idx].vehicle_type;
+  }
+  else {
+    remoteStats.vehicleType = VEHICLE_TYPE_UNSPECIFIED;
+  }
 
   stats_update();
 }

@@ -66,6 +66,7 @@ export global UiState {
     in property <bool> pocket-mode-active: false;
     in property <bool> lights-on: false;
     in property <string> board-state-message: "";
+    in property <int> vehicle-type: 0;
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
@@ -333,6 +334,7 @@ export component AppWindow inherits Window {
         pocket-mode-active: UiState.pocket-mode-active;
         lights-on: UiState.lights-on;
         board-state-message: UiState.board-state-message;
+        vehicle-type: UiState.vehicle-type;
         swiped-down => { UiState.stats-swiped-down(); }
         secondary-stat-left-clicked => { UiState.secondary-stat-left-clicked(); }
         board-battery-clicked => { UiState.board-battery-clicked(); }

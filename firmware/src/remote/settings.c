@@ -7,6 +7,7 @@
 #include "nvs_flash.h"
 #include "remote/adc.h"
 #include "connection.h"
+#include "stats.h"
 #include "string.h"
 #include <colors.h>
 #include <stdio.h>
@@ -93,6 +94,8 @@ void set_default_device_index(int8_t idx) {
     memcpy(pairing_settings.remote_addr, pairing_settings.devices[idx].mac, ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[idx].channel;
     pairing_settings.secret_code = pairing_settings.devices[idx].secret_code;
+    remoteStats.vehicleType = pairing_settings.devices[idx].vehicle_type;
+    stats_update();
   }
 }
 
@@ -115,6 +118,7 @@ static void ensure_current_in_device_list_and_set_default() {
       idx = 0;
     }
     memcpy(pairing_settings.devices[idx].mac, pairing_settings.remote_addr, ESP_NOW_ETH_ALEN);
+    pairing_settings.devices[idx].vehicle_type = 0;
   }
   pairing_settings.devices[idx].secret_code = pairing_settings.secret_code;
   pairing_settings.devices[idx].channel = pairing_settings.channel;
@@ -572,7 +576,7 @@ esp_err_t save_pairing_data() {
   }
 
   // Version the blob format to support future migrations
-  err = nvs_write_int("paired_blob_ver", 2);
+  err = nvs_write_int("paired_blob_ver", 3);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Error saving paired devices blob version!");
     return err;
@@ -740,7 +744,7 @@ esp_err_t settings_init() {
   }
 
   uint32_t blob_ver = 0;
-  if (nvs_read_int("paired_blob_ver", &blob_ver) != ESP_OK || blob_ver != 2) {
+  if (nvs_read_int("paired_blob_ver", &blob_ver) != ESP_OK || blob_ver != 3) {
     pairing_settings.device_count = 0;
     pairing_settings.default_index = -1;
   }
@@ -761,6 +765,7 @@ esp_err_t settings_init() {
            ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[pairing_settings.default_index].channel;
     pairing_settings.secret_code = pairing_settings.devices[pairing_settings.default_index].secret_code;
+    remoteStats.vehicleType = pairing_settings.devices[pairing_settings.default_index].vehicle_type;
   }
   else {
     memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));

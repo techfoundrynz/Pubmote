@@ -211,6 +211,7 @@ extern "C" void stats_update_screen_display() {
     state.set_pocket_mode_active(pocket_mode_active);
     state.set_lights_on(false);
     state.set_board_state_message(slint_board_state_message);
+    state.set_vehicle_type(remoteStats.vehicleType);
   });
 }
 
