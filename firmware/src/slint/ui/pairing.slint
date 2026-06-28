@@ -1,41 +1,37 @@
 // PairingScreen — faithful reproduction of ui_PairingScreen.
-//
-// LVGL: ui_PairingContent (column SPACE_BETWEEN)
-//   ui_PairingHeader (20%) -> ui_PairingHeaderLabel "Pairing" Inter_Bold_14
-//   ui_PairingBody   (55%) -> ui_PairingCode "0000" Inter_Bold_48
-//                             ui_PairingCodeLabel "Your pairing code" Inter_14
-//   ui_PairingFooter (25%, 65% wide) -> ui_PairingMainActionButton "Cancel"
+// Restored to support BLE scan list when is-ble-scan is true.
 
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { PageFooter } from "page-footer.slint";
 
+export struct DiscoveredDevice {
+    name: string,
+    index: int,
+}
+
 export component PairingScreen inherits Rectangle {
-    in property <string> pairing-code: "0000";
+    in property <string> pairing-code: "----";
     in property <string> action-text: "Cancel";
+    in property <string> pairing-status: "Searching for board...";
+    in property <bool> is-ble-scan: false;
+    in property <[DiscoveredDevice]> discovered-devices: [];
     callback action;
+    callback select-device(int);
     background: Theme.bg;
 
     VerticalLayout {
-        // ui_PairingHeader (20%)
+        // ui_PairingBody (75%)
         Rectangle {
-            vertical-stretch: 20;
-            VerticalLayout {
+            vertical-stretch: 75;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-top: Theme.page-padding-vertical;
+            padding-bottom: Theme.page-padding-vertical;
+
+            if !root.is-ble-scan: VerticalLayout {
                 alignment: center;
-                // Text {
-                //     text: "Pairing";
-                //     color: Theme.text;
-                //     font-size: Theme.font-14;
-                //     font-weight: Theme.w-semibold;
-                //     horizontal-alignment: center;
-                // }
-            }
-        }
-        // ui_PairingBody (55%)
-        Rectangle {
-            vertical-stretch: 55;
-            VerticalLayout {
-                alignment: center;
+                spacing: 10px * Theme.scale;
                 Text {
                     text: root.pairing-code;
                     color: Theme.text;
@@ -50,8 +46,55 @@ export component PairingScreen inherits Rectangle {
                     font-size: Theme.font-14;
                     horizontal-alignment: center;
                 }
+
+                Text {
+                    text: root.pairing-status;
+                    color: Theme.text-dim;
+                    font-size: Theme.font-11;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+
+            if root.is-ble-scan: VerticalLayout {
+                alignment: start;
+                padding-top: Theme.page-padding-vertical;
+                spacing: 8px * Theme.scale;
+
+                Text {
+                    text: "Select BLE Device";
+                    color: Theme.text;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-semibold;
+                    horizontal-alignment: center;
+                }
+
+                if root.discovered-devices.length == 0: VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: "Scanning for boards...";
+                        color: Theme.text-dim;
+                        font-size: Theme.font-12;
+                        horizontal-alignment: center;
+                    }
+                }
+
+                if root.discovered-devices.length > 0: Flickable {
+                    viewport-height: devices-layout.min-height;
+                    devices-layout := VerticalLayout {
+                        spacing: 6px * Theme.scale;
+                        alignment: start;
+                        for device in root.discovered-devices: AppButton {
+                            height: 32px * Theme.scale;
+                            text: device.name;
+                            variant: "secondary";
+                            clicked => { root.select-device(device.index); }
+                        }
+                    }
+                }
             }
         }
+
         // ui_PairingFooter (25%)
         PageFooter {
             AppButton {

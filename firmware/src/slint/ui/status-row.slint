@@ -14,6 +14,7 @@ export component StatusRow inherits Rectangle {
     in property <bool> lights-on: false;
     in property <LayoutAlignment> alignment: LayoutAlignment.center;
     in property <length> icon-size: 14px * Theme.scale;
+    in property <bool> is-onewheel: false;
 
     HorizontalLayout {
         alignment: root.alignment;
@@ -27,7 +28,7 @@ export component StatusRow inherits Rectangle {
             }
         }
 
-        VerticalLayout {
+        if root.is-onewheel : VerticalLayout {
             alignment: center;
             FootpadSensor {
                 left-active: root.left-pad;

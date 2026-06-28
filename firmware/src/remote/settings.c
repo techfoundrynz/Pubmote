@@ -7,6 +7,7 @@
 #include "nvs_flash.h"
 #include "remote/adc.h"
 #include "connection.h"
+#include "stats.h"
 #include "string.h"
 #include <colors.h>
 #include <stdio.h>
@@ -41,6 +42,7 @@ DeviceSettings device_settings = {
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
     .hbm_mode = HBM_MODE_OFF,
+    .comms_mode = COMMS_TYPE_ESPNOW,
 };
 
 CalibrationSettings calibration_settings = {
@@ -92,10 +94,16 @@ void set_default_device_index(int8_t idx) {
     memcpy(pairing_settings.remote_addr, pairing_settings.devices[idx].mac, ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[idx].channel;
     pairing_settings.secret_code = pairing_settings.devices[idx].secret_code;
+    remoteStats.vehicleType = pairing_settings.devices[idx].vehicle_type;
+    stats_update();
   }
 }
 
 static void ensure_current_in_device_list_and_set_default() {
+  if (is_same_mac(pairing_settings.remote_addr, (uint8_t *)DEFAULT_PEER_ADDR)) {
+    return;
+  }
+
   // Ensure current remote_addr/channel are in the devices list and set as default
   if (pairing_settings.device_count > MAX_PAIRED_DEVICES) {
     pairing_settings.device_count = MAX_PAIRED_DEVICES;
@@ -110,6 +118,7 @@ static void ensure_current_in_device_list_and_set_default() {
       idx = 0;
     }
     memcpy(pairing_settings.devices[idx].mac, pairing_settings.remote_addr, ESP_NOW_ETH_ALEN);
+    pairing_settings.devices[idx].vehicle_type = 0;
   }
   pairing_settings.devices[idx].secret_code = pairing_settings.secret_code;
   pairing_settings.devices[idx].channel = pairing_settings.channel;
@@ -567,7 +576,7 @@ esp_err_t save_pairing_data() {
   }
 
   // Version the blob format to support future migrations
-  err = nvs_write_int("paired_blob_ver", 2);
+  err = nvs_write_int("paired_blob_ver", 3);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Error saving paired devices blob version!");
     return err;
@@ -735,7 +744,7 @@ esp_err_t settings_init() {
   }
 
   uint32_t blob_ver = 0;
-  if (nvs_read_int("paired_blob_ver", &blob_ver) != ESP_OK || blob_ver != 2) {
+  if (nvs_read_int("paired_blob_ver", &blob_ver) != ESP_OK || blob_ver != 3) {
     pairing_settings.device_count = 0;
     pairing_settings.default_index = -1;
   }
@@ -756,6 +765,7 @@ esp_err_t settings_init() {
            ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[pairing_settings.default_index].channel;
     pairing_settings.secret_code = pairing_settings.devices[pairing_settings.default_index].secret_code;
+    remoteStats.vehicleType = pairing_settings.devices[pairing_settings.default_index].vehicle_type;
   }
   else {
     memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
@@ -764,4 +774,17 @@ esp_err_t settings_init() {
   }
 
   return ESP_OK;
+}
+
+CommsType settings_get_board_comms_mode(int8_t index) {
+  if (index >= 0 && index < pairing_settings.device_count) {
+    if (pairing_settings.devices[index].channel & 0x80) {
+      return COMMS_TYPE_BLE;
+    }
+  }
+  return COMMS_TYPE_ESPNOW;
+}
+
+CommsType settings_get_active_comms_mode(void) {
+  return settings_get_board_comms_mode(pairing_settings.default_index);
 }

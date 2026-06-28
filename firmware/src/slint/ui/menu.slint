@@ -10,6 +10,7 @@ import { AppButton } from "app-button.slint";
 
 export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
+    in property <int> connection-state: 0;
     in property <bool> pocket-mode-active: false;
     in property <int> hbm-mode: 0;
     in property <bool> hbm-mode-supported: false;
@@ -61,7 +62,7 @@ export component MenuScreen inherits Rectangle {
             if root.show-connect: VerticalLayout {
                 spacing: 6px * Theme.scale;
                 AppButton {
-                    text: "Connect";
+                    text: root.connection-state == 0 ? "Connect" : "Disconnect";
                     variant: "ghost";
                     right-text: "";
                     clicked => { root.connect(); }

@@ -1,62 +1,64 @@
 #include "pairing.h"
 #include "commands.h"
+#include "comms.h"
+#include "config.h"
 #include "connection.h"
 #include "esp_log.h"
-#include "espnow.h"
-#include "settings.h"
-#include <esp_now.h>
-#include "remote/display.h"
 #include "generated/app-window.h"
+#include "remote/display.h"
+#include "settings.h"
 #include <stdio.h>
 #include <string.h>
 
 static const char *TAG = "PUBREMOTE-PAIRING";
 
-extern "C" bool pairing_process_init_event(uint8_t *data, int len, esp_now_event_t evt) {
+extern "C" bool pairing_process_init_event(uint8_t *data, int len, comms_event_t evt) {
   if (len == 6) {
-    uint8_t rec_mac[ESP_NOW_ETH_ALEN];
-    memcpy(rec_mac, data, ESP_NOW_ETH_ALEN);
-    if (!is_same_mac(evt.mac_addr, rec_mac)) {
-      ESP_LOGE(TAG, "MAC Address mismatch on pairing request");
-      return false;
+    uint8_t rec_mac[COMMS_MAC_LEN];
+    memcpy(rec_mac, data, COMMS_MAC_LEN);
+    if (comms_get_active_type() == COMMS_TYPE_ESPNOW) {
+      if (!comms_is_same_mac(evt.mac_addr, rec_mac)) {
+        ESP_LOGE(TAG, "MAC Address mismatch on pairing request");
+        return false;
+      }
     }
-    memcpy(pairing_settings.remote_addr, rec_mac, ESP_NOW_ETH_ALEN);
+    memcpy(pairing_settings.remote_addr, evt.mac_addr, COMMS_MAC_LEN);
     ESP_LOGI(TAG, "Got Pairing request from VESC Express");
     ESP_LOGI(TAG, "packet Length: %d", len);
-    ESP_LOGI(TAG, "MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", data[0], data[1], data[2], data[3], data[4], data[5]);
-    
+    ESP_LOGI(TAG, "Sender MAC: %02X:%02X:%02X:%02X:%02X:%02X, Payload MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+             evt.mac_addr[0], evt.mac_addr[1], evt.mac_addr[2], evt.mac_addr[3], evt.mac_addr[4], evt.mac_addr[5],
+             data[0], data[1], data[2], data[3], data[4], data[5]);
+
     uint8_t PAIR_BOND_RES[2] = {REM_PAIR_BOND};
-    esp_now_peer_info_t peerInfo = {};
-    peerInfo.channel = evt.chan;
-    peerInfo.encrypt = false;
-    memcpy(peerInfo.peer_addr, pairing_settings.remote_addr, sizeof(pairing_settings.remote_addr));
-    pairing_settings.channel = evt.chan;
-    
+    if (comms_get_active_type() == COMMS_TYPE_BLE) {
+      pairing_settings.channel = evt.chan | 0x80;
+    }
+    else {
+      pairing_settings.channel = evt.chan;
+    }
+
     uint8_t *mac_addr = pairing_settings.remote_addr;
     esp_err_t result = ESP_FAIL;
 
     if (receiver_lock_channel()) {
-      if (esp_now_is_peer_exist(mac_addr)) {
-        esp_err_t res = esp_now_del_peer(mac_addr);
-        if (res != ESP_OK) {
-          ESP_LOGE(TAG, "Failed to delete peer");
-        }
-      }
-
-      esp_now_add_peer(&peerInfo);
-      result = esp_now_send(mac_addr, (uint8_t *)&PAIR_BOND_RES, sizeof(PAIR_BOND_RES));
+      ESP_LOGI(TAG, "Sending PAIR_BOND request over BLE channel %d", pairing_settings.channel);
+      comms_connect_peer(mac_addr, pairing_settings.channel);
+      result = comms_send(mac_addr, (uint8_t *)&PAIR_BOND_RES, sizeof(PAIR_BOND_RES));
+      ESP_LOGI(TAG, "comms_send result: %d", result);
       receiver_unlock_channel();
     }
 
     if (result != ESP_OK) {
       ESP_LOGE(TAG, "Error sending pairing data: %d", result);
       return false;
-    } else {
+    }
+    else {
       ESP_LOGI(TAG, "Sent response back to VESC Express");
       pairing_state = PAIRING_STATE_PAIRING;
       return true;
     }
-  } else {
+  }
+  else {
     ESP_LOGE(TAG, "Invalid pairing init packet length: %d", len);
   }
   return false;
@@ -69,18 +71,20 @@ extern "C" bool pairing_process_bond_event(uint8_t *data, int len) {
     ESP_LOGI(TAG, "packet Length: %d", len);
     pairing_settings.secret_code = (int32_t)(data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
     ESP_LOGI(TAG, "Secret Code: %li", pairing_settings.secret_code);
-    
+
     char formattedString[32];
     snprintf(formattedString, sizeof(formattedString), "%ld", pairing_settings.secret_code);
-    
+
     slint::SharedString pairing_code(formattedString);
     slint::invoke_from_event_loop([=]() {
       get_slint_window()->global<UiState>().set_pairing_code(pairing_code);
+      get_slint_window()->global<UiState>().set_pairing_status("Code received! Waiting for confirmation...");
     });
-    
+
     pairing_state = PAIRING_STATE_PENDING;
     return true;
-  } else {
+  }
+  else {
     ESP_LOGE(TAG, "Invalid pairing bond packet length: %d", len);
   }
   return false;
@@ -97,18 +101,62 @@ extern "C" bool pairing_process_completion_event(uint8_t *data, int len) {
       pairing_state = PAIRING_STATE_PAIRED;
       save_pairing_data();
       connection_connect_to_default_peer();
-      
-      slint::invoke_from_event_loop([]() {
-        get_slint_window()->global<UiState>().set_screen(Screen::Stats);
-      });
+
+      slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Stats); });
       return true;
-    } else {
+    }
+    else {
       ESP_LOGI(TAG, "Pairing failed");
       pairing_state = PAIRING_STATE_UNPAIRED;
       return false;
     }
-  } else {
+  }
+  else {
     ESP_LOGE(TAG, "Invalid pairing complete packet length: %d", len);
   }
   return false;
+}
+
+extern "C" void handle_receiver_api_version_too_low(uint8_t api_version) {
+  ESP_LOGW(TAG, "Receiver API version too low: %d. Disconnecting.", api_version);
+
+  // Terminate connection
+  connection_update_state(CONNECTION_STATE_DISCONNECTED);
+  comms_disconnect_peer(pairing_settings.remote_addr);
+
+  // Format error message for confirmation dialog
+  char message_str[256];
+  snprintf(message_str, sizeof(message_str),
+           "The pubmote API version (%d) on the receiver is below the minimum required version (%d).\n\nPlease update "
+           "your receiver.",
+           api_version, MIN_RCV_API_VERSION);
+
+  slint::invoke_from_event_loop([message = std::string(message_str)]() {
+    if (!get_slint_window())
+      return;
+    const auto &state = get_slint_window()->global<UiState>();
+
+    // Register simple callbacks to close confirm dialog
+    state.on_confirm_dialog_accepted([]() {
+      slint::invoke_from_event_loop([]() {
+        if (get_slint_window()) {
+          get_slint_window()->global<UiState>().set_show_confirm_dialog(false);
+        }
+      });
+    });
+
+    state.on_confirm_dialog_rejected([]() {
+      slint::invoke_from_event_loop([]() {
+        if (get_slint_window()) {
+          get_slint_window()->global<UiState>().set_show_confirm_dialog(false);
+        }
+      });
+    });
+
+    state.set_confirm_dialog_title("Update Required");
+    state.set_confirm_dialog_message(message.c_str());
+    state.set_confirm_dialog_confirm_text("OK");
+    state.set_confirm_dialog_variant("danger");
+    state.set_show_confirm_dialog(true);
+  });
 }

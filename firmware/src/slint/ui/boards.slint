@@ -15,6 +15,8 @@ export component BoardsScreen inherits Rectangle {
     callback pair-new;
     callback back;
 
+    property <int> delete-mode-index: -1;
+
     background: Theme.bg;
 
     VerticalLayout {
@@ -60,17 +62,21 @@ export component BoardsScreen inherits Rectangle {
                         AppButton {
                             horizontal-stretch: 1;
                             text: board.mac;
-                            right-text: board.is-active ? "✓" : "";
-                            variant: board.is-active ? "primary" : "secondary";
-                            clicked => { root.select-board(board.index); }
-                        }
-
-                        AppButton {
-                            width: 54px * Theme.scale;
-                            text: "Delete";
-                            variant: "outline";
-                            button-color: "danger";
-                            clicked => { root.delete-board(board.index); }
+                            right-text: root.delete-mode-index == board.index ? "Delete" : (board.is-active ? "✓" : "");
+                            variant: root.delete-mode-index == board.index ? "outline" : (board.is-active ? "primary" : "secondary");
+                            button-color: root.delete-mode-index == board.index ? "danger" : "standard";
+                            clicked => {
+                                if (root.delete-mode-index == board.index) {
+                                    root.delete-board(board.index);
+                                    root.delete-mode-index = -1;
+                                } else {
+                                    root.delete-mode-index = -1;
+                                    root.select-board(board.index);
+                                }
+                            }
+                            long-clicked => {
+                                root.delete-mode-index = board.index;
+                            }
                         }
                     }
                 }

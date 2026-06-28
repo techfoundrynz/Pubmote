@@ -13,8 +13,8 @@
 #include "esp_timer.h"
 #include "gpio_detection.h"
 #include "haptic.h"
-#include "led.h"
 #include "imu.h"
+#include "led.h"
 #include "remote/tones.h"
 #include "remoteinputs.h"
 #include "screens/charge_screen.h"
@@ -486,6 +486,7 @@ void power_management_init() {
   gpio_isr_handler_add(PMU_INT, pmu_isr_handler, (void *)PMU_INT);
 #endif
 
-  ESP_ERROR_CHECK(
-      xTaskCreate(power_management_task, "power_management_task", 2560, NULL, 2, NULL) == pdPASS ? ESP_OK : ESP_FAIL);
+  ESP_ERROR_CHECK(xTaskCreate(power_management_task, "power_management_task", 3 * 1024, NULL, 2, NULL) == pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
 }

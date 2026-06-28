@@ -9,7 +9,7 @@
 #include "ota/update_client.h"
 #include "remote/connection.h"
 #include "remote/display.h"
-#include "remote/espnow.h"
+#include "remote/comms.h"
 #include "remote/settings.h"
 #include "remote/wifi.h"
 #include "remote/receiver.h"
@@ -146,10 +146,10 @@ static void update_task(void *pvParameters) {
   ESP_LOGI(TAG, "update_task started");
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   ESP_LOGI(TAG, "Connection state set to disconnected");
-  if (espnow_is_initialized()) {
-    ESP_LOGI(TAG, "Deinitializing ESP-NOW...");
-    espnow_deinit();
-    ESP_LOGI(TAG, "ESP-NOW deinitialized successfully");
+  if (comms_is_initialized()) {
+    ESP_LOGI(TAG, "Deinitializing comms...");
+    comms_deinit();
+    ESP_LOGI(TAG, "Comms deinitialized successfully");
   }
   if (!wifi_is_initialized()) {
     ESP_LOGI(TAG, "Initializing Wi-Fi...");
@@ -274,8 +274,8 @@ static void update_task(void *pvParameters) {
   if (wifi_is_initialized()) {
     wifi_uninit();
   }
-  if (!espnow_is_initialized()) {
-    espnow_init();
+  if (!comms_is_initialized()) {
+    comms_init();
   }
 
   // Restart receiver and transmitter

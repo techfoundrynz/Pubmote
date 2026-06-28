@@ -14,7 +14,7 @@ import { SplashScreen } from "ui/splash.slint";
 import { StatsScreen } from "ui/stats.slint";
 import { MenuScreen } from "ui/menu.slint";
 import { SettingsScreen } from "ui/settings.slint";
-import { PairingScreen } from "ui/pairing.slint";
+import { PairingScreen, DiscoveredDevice } from "ui/pairing.slint";
 import { InputCalibrationScreen } from "ui/input-calibration.slint";
 import { AboutScreen } from "ui/about.slint";
 import { ImuCalibrationScreen } from "ui/imu-calibration.slint";
@@ -60,11 +60,13 @@ export global UiState {
     in property <string> secondary-stat-left-label: "";
     in property <string> connection-state-label: "Disconnected";
     in property <bool> is-connected: false;
+    in property <int> connection-state: 0;
     in property <string> board-battery: "0%";
     in property <int> rssi: -100;
     in property <bool> pocket-mode-active: false;
     in property <bool> lights-on: false;
     in property <string> board-state-message: "";
+    in property <int> vehicle-type: 0;
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
@@ -81,6 +83,7 @@ export global UiState {
     in-out property <int> temp-units-index: 0;
     in-out property <int> distance-units-index: 0;
     in-out property <int> startup-sound-index: 0;
+    in-out property <int> comms-mode-index: 0;
 
     in-out property <float> theme-h: 0;
     in-out property <float> theme-s: 100;
@@ -89,6 +92,10 @@ export global UiState {
     // --- Pairing (ui_PairingScreen) ---
     in property <string> pairing-code: "0000";
     in property <string> pairing-action-text: "Cancel";
+    in property <string> pairing-status: "Searching for board...";
+    in-out property <bool> is-ble-scan: false;
+    in-out property <[DiscoveredDevice]> discovered-devices: [];
+    callback select-device(int);
 
     // --- Boards (Paired Boards list) ---
     in property <[PairedBoard]> paired-boards: [];
@@ -149,11 +156,14 @@ export global UiState {
 
     // --- Confirm Dialog ---
     in-out property <bool> show-confirm-dialog: false;
-    in property <string> confirm-dialog-title: "";
-    in property <string> confirm-dialog-message: "";
-    in property <string> confirm-dialog-confirm-text: "Confirm";
-    in property <string> confirm-dialog-cancel-text: "Cancel";
-    in property <string> confirm-dialog-variant: "standard";
+    in-out property <string> confirm-dialog-title: "";
+    in-out property <string> confirm-dialog-message: "";
+    in-out property <string> confirm-dialog-confirm-text: "Confirm";
+    in-out property <string> confirm-dialog-cancel-text: "Cancel";
+    in-out property <string> confirm-dialog-variant: "standard";
+    in-out property <string> confirm-dialog-cancel-variant: "secondary";
+    in-out property <string> confirm-dialog-cancel-button-color: "standard";
+    in-out property <string> confirm-dialog-confirm-button-variant: "primary";
 
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
@@ -255,6 +265,20 @@ export component AppWindow inherits Window {
         UiState.screen-changed(self.active-screen);
     }
 
+    property <bool> watch-confirm-dialog: UiState.show-confirm-dialog;
+    changed watch-confirm-dialog => {
+        if (!self.watch-confirm-dialog) {
+            UiState.confirm-dialog-title = "";
+            UiState.confirm-dialog-message = "";
+            UiState.confirm-dialog-confirm-text = "Confirm";
+            UiState.confirm-dialog-cancel-text = "Cancel";
+            UiState.confirm-dialog-variant = "standard";
+            UiState.confirm-dialog-cancel-variant = "secondary";
+            UiState.confirm-dialog-cancel-button-color = "standard";
+            UiState.confirm-dialog-confirm-button-variant = "primary";
+        }
+    }
+
     Timer {
         interval: 20ms;
         running: !root.screen-loaded;
@@ -310,6 +334,7 @@ export component AppWindow inherits Window {
         pocket-mode-active: UiState.pocket-mode-active;
         lights-on: UiState.lights-on;
         board-state-message: UiState.board-state-message;
+        vehicle-type: UiState.vehicle-type;
         swiped-down => { UiState.stats-swiped-down(); }
         secondary-stat-left-clicked => { UiState.secondary-stat-left-clicked(); }
         board-battery-clicked => { UiState.board-battery-clicked(); }
@@ -321,6 +346,7 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
+        connection-state: UiState.connection-state;
         pocket-mode-active: UiState.pocket-mode-active;
         hbm-mode: UiState.hbm-mode;
         hbm-mode-supported: UiState.hbm-mode-supported;
@@ -353,6 +379,7 @@ export component AppWindow inherits Window {
         temp-units-index <=> UiState.temp-units-index;
         distance-units-index <=> UiState.distance-units-index;
         startup-sound-index <=> UiState.startup-sound-index;
+        comms-mode-index <=> UiState.comms-mode-index;
 
         theme-h <=> UiState.theme-h;
         theme-s <=> UiState.theme-s;
@@ -372,7 +399,11 @@ export component AppWindow inherits Window {
         y: (screen-y(Screen.pairing) - root.view-y) * self.height;
         pairing-code: UiState.pairing-code;
         action-text: UiState.pairing-action-text;
+        pairing-status: UiState.pairing-status;
         action => { UiState.pairing-action(); }
+        is-ble-scan: UiState.is-ble-scan;
+        discovered-devices: UiState.discovered-devices;
+        select-device(idx) => { UiState.select-device(idx); }
     }
 
     if UiState.screen == Screen.boards || root.previous-screen == Screen.boards: BoardsScreen {
@@ -480,6 +511,9 @@ export component AppWindow inherits Window {
         confirm-text: UiState.confirm-dialog-confirm-text;
         cancel-text: UiState.confirm-dialog-cancel-text;
         confirm-variant: UiState.confirm-dialog-variant;
+        cancel-variant: UiState.confirm-dialog-cancel-variant;
+        cancel-button-color: UiState.confirm-dialog-cancel-button-color;
+        confirm-button-variant: UiState.confirm-dialog-confirm-button-variant;
 
         confirmed => { UiState.confirm-dialog-accepted(); }
         cancelled => { UiState.confirm-dialog-rejected(); }

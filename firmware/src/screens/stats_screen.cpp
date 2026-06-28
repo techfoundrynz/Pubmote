@@ -185,6 +185,14 @@ extern "C" void stats_update_screen_display() {
     ui_update_pending.store(false);
 
     const auto &state = get_slint_window()->global<UiState>();
+
+    // Centrally force HBM off if a confirm dialog is open and HBM was triggered by raise
+    if (device_settings.hbm_mode == HBM_MODE_RAISED && display_get_hbm()) {
+      if (state.get_show_confirm_dialog()) {
+        display_set_hbm(false);
+      }
+    }
+
     state.set_speed(slint_speed_str);
     state.set_speed_unit(slint_speed_unit);
     state.set_speed_fraction(speed_fraction);
@@ -203,6 +211,7 @@ extern "C" void stats_update_screen_display() {
     state.set_pocket_mode_active(pocket_mode_active);
     state.set_lights_on(false);
     state.set_board_state_message(slint_board_state_message);
+    state.set_vehicle_type(remoteStats.vehicleType);
   });
 }
 
@@ -223,6 +232,11 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
 
   if (device_settings.hbm_mode == HBM_MODE_RAISED && display_supports_hbm() && !is_pocket_mode_enabled()) {
     if (gesture == IMU_GESTURE_RAISED) {
+      // Do not trigger HBM raise logic if a confirmation dialog/alert is currently open
+      if (get_slint_window() && get_slint_window()->global<UiState>().get_show_confirm_dialog()) {
+        return;
+      }
+
       if (!display_get_hbm()) {
         ESP_LOGI(TAG, "Raise-to-HBM: viewing position detected. Enabling HBM.");
         display_set_hbm(true);

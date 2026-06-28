@@ -1,17 +1,18 @@
 #include "transmitter.h"
-#include "config.h"
 #include "commands.h"
+#include "comms.h"
+#include "config.h"
 #include "connection.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "esp_now.h"
 #include "esp_system.h"
-#include "esp_wifi.h"
 #include "peers.h"
 #include "receiver.h"
 #include "remoteinputs.h"
 #include "screens/stats_screen.h"
 #include "time.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <remote/settings.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -23,10 +24,9 @@ static const char *TAG = "PUBREMOTE-TRANSMITTER";
 static int64_t last_send_time = 0;
 static TaskHandle_t transmitter_task_handle = NULL;
 
-static void on_data_sent(const esp_now_send_info_t *tx_info, esp_now_send_status_t status) {
-  const uint8_t *mac_addr = tx_info->des_addr;
+static void on_data_sent(const uint8_t *mac_addr, bool success) {
   // This callback runs in WiFi task context!
-  if (status == ESP_NOW_SEND_SUCCESS) {
+  if (success) {
     ESP_LOGD(TAG, "Data sent successfully to %02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2],
              mac_addr[3], mac_addr[4], mac_addr[5]);
   }
@@ -34,29 +34,16 @@ static void on_data_sent(const esp_now_send_info_t *tx_info, esp_now_send_status
     if (connection_state == CONNECTION_STATE_CONNECTED) {
       ESP_LOGE(TAG, "Failed to send data to %02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2],
                mac_addr[3], mac_addr[4], mac_addr[5]);
-      last_send_time = 0; // Reset last send time on failure to ensure we send in the next cycle
     }
   }
-}
-
-static uint8_t get_peer_channel(const uint8_t *peer_mac) {
-  esp_now_peer_info_t peer_info = {0};
-
-  esp_err_t result = esp_now_get_peer(peer_mac, &peer_info);
-  if (result != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to get peer info: %s", esp_err_to_name(result));
-    return 0; // Return 0 to indicate error
-  }
-
-  return peer_info.channel;
 }
 
 #define MAX_UPDATE_DELAY_MS 500
 
 // Function to send ESP-NOW data
 static void transmitter_task(void *pvParameters) {
-  ESP_ERROR_CHECK(esp_now_register_send_cb(on_data_sent));
-  ESP_LOGI(TAG, "Registered RX callback");
+  ESP_ERROR_CHECK(comms_register_send_cb(on_data_sent));
+  ESP_LOGI(TAG, "Registered TX callback");
 
   ESP_LOGI(TAG, "TX task started");
   uint8_t ind = 0;
@@ -66,6 +53,7 @@ static void transmitter_task(void *pvParameters) {
   ConnectionState last_connection_state = connection_state;
   bool should_emit_version = false;
   while (1) {
+    bool tx_failed = false;
     if (connection_state == CONNECTION_STATE_CONNECTED && last_connection_state != CONNECTION_STATE_CONNECTED) {
       should_emit_version = true;
     }
@@ -73,7 +61,6 @@ static void transmitter_task(void *pvParameters) {
     int64_t new_time = get_current_time_ms();
 
     bool should_transmit =
-        is_stats_screen_active() && !is_pocket_mode_enabled() &&
         (connection_state == CONNECTION_STATE_CONNECTED || connection_state == CONNECTION_STATE_RECONNECTING ||
          connection_state == CONNECTION_STATE_CONNECTING);
 
@@ -81,9 +68,18 @@ static void transmitter_task(void *pvParameters) {
     should_transmit = false;
 #endif
 
+    RemoteData tx_msg = remote_data;
+    if (!is_stats_screen_active() || is_pocket_mode_enabled()) {
+      tx_msg.js_y = 0.0f;
+      tx_msg.js_x = 0.0f;
+      tx_msg.bt_c = false;
+      tx_msg.bt_z = false;
+      tx_msg.is_rev = false;
+    }
+
     if (should_transmit) {
       // Check if data is the same as last time
-      if (memcmp(&remote_data, &last_message, sizeof(remote_data)) == 0 &&
+      if (memcmp(&tx_msg, &last_message, sizeof(tx_msg)) == 0 &&
           new_time - last_send_time < MAX_UPDATE_DELAY_MS) {
         // No change in data, skip transmission
         should_transmit = false;
@@ -101,31 +97,31 @@ static void transmitter_task(void *pvParameters) {
       memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
       ind += sizeof(int32_t);
 
-      // Copy remote_data.bytes after secret_Code
-      memcpy(data + ind, &remote_data, sizeof(remote_data));
-      ind += sizeof(remote_data);
+      // Copy tx_msg after secret_Code
+      memcpy(data + ind, &tx_msg, sizeof(tx_msg));
+      ind += sizeof(tx_msg);
 
       uint8_t *mac_addr = pairing_settings.remote_addr;
       if (receiver_lock_channel()) {
-        esp_err_t result = esp_now_send(mac_addr, data, ind);
+        esp_err_t result = comms_send(mac_addr, data, ind);
 
         if (result != ESP_OK) {
           // Handle error if needed
-          uint8_t chann = pairing_settings.channel;
-          uint8_t wifi_chann;
-          wifi_second_chan_t secondary_channel;
-          uint8_t peer_chann = get_peer_channel(mac_addr);
-          esp_wifi_get_channel(&wifi_chann, &secondary_channel);
-          ESP_LOGE(TAG, "Error sending remote data: %d  - Channel: %d, WiFi Channel: %d, Peer Channel: %d", result,
-                   chann, wifi_chann, peer_chann);
+          tx_failed = true;
+          if (connection_state == CONNECTION_STATE_CONNECTED) {
+            uint8_t chann = pairing_settings.channel;
+            uint8_t peer_chann = comms_get_peer_channel(mac_addr);
+            ESP_LOGE(TAG, "Error sending remote data: %d  - Channel: %d, Peer Channel: %d", result, chann, peer_chann);
+          }
         }
         else {
-          memcpy(&last_message, &remote_data, sizeof(remote_data));
+          memcpy(&last_message, &tx_msg, sizeof(tx_msg));
           last_send_time = new_time;
           ESP_LOGD(TAG, "Sent command");
         }
 
         if (should_emit_version) {
+          // Send remote version to receiver
           ind = 0;
           data[ind++] = REM_VERSION;
           memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
@@ -133,7 +129,15 @@ static void transmitter_task(void *pvParameters) {
           uint8_t version[3] = {VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH};
           memcpy(data + ind, &version, sizeof(version));
           ind += sizeof(version);
-          esp_now_send(mac_addr, data, ind);
+          comms_send(mac_addr, data, ind);
+
+          // Request receiver version
+          ind = 0;
+          data[ind++] = REM_RECEIVER_VERSION;
+          memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
+          ind += sizeof(int32_t);
+          comms_send(mac_addr, data, ind);
+
           should_emit_version = false;
         }
 
@@ -145,9 +149,12 @@ static void transmitter_task(void *pvParameters) {
     memset(data, 0, sizeof(data));
 
     last_connection_state = connection_state;
-    int64_t elapsed = get_current_time_ms() - last_send_time;
-    if (elapsed >= 0 && elapsed < TX_RATE_MS) {
-      vTaskDelay(pdMS_TO_TICKS(TX_RATE_MS - elapsed));
+    int64_t target_rate = tx_failed ? (TX_RATE_MS / 4) : TX_RATE_MS;
+    int64_t elapsed = get_current_time_ms() - new_time;
+    if (elapsed >= 0 && elapsed < target_rate) {
+      vTaskDelay(pdMS_TO_TICKS(target_rate - elapsed));
+    } else {
+      vTaskDelay(1);
     }
   }
 

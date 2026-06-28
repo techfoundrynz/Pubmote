@@ -747,8 +747,8 @@ extern "C" void display_init() {
 
   // Start Slint Event Loop Task in internal SRAM
   // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
-  // Stack size optimized to 48KB to conserve internal SRAM.
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 48 * 1024, NULL, 20, &slint_task_handle, 1);
+  // Stack size optimized to 24KB to conserve internal SRAM.
+  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 24 * 1024, NULL, 20, &slint_task_handle, 1);
 
   // Provide global settings
   if (slint_window) {
@@ -758,7 +758,7 @@ extern "C" void display_init() {
   }
 
   // Start Input Polling Task (pinned to core 0, leaving core 1 fully dedicated to the Slint event loop)
-  xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 4096, NULL, 20, &slint_input_task_handle, 0);
+  xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 2048, NULL, 20, &slint_input_task_handle, 0);
 }
 
 extern "C" void display_deinit() {
