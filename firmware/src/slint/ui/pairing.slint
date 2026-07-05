@@ -15,9 +15,11 @@ export component PairingScreen inherits Rectangle {
     in property <string> action-text: "Cancel";
     in property <string> pairing-status: "Searching for board...";
     in property <bool> is-ble-scan: false;
+    in property <string> scan-error: "";
     in property <[DiscoveredDevice]> discovered-devices: [];
     callback action;
     callback select-device(int);
+    callback retry-scan;
     background: Theme.bg;
 
     VerticalLayout {
@@ -59,6 +61,8 @@ export component PairingScreen inherits Rectangle {
             if root.is-ble-scan: VerticalLayout {
                 alignment: start;
                 padding-top: Theme.page-padding-vertical;
+                padding-left: Theme.page-padding-horizontal;
+                padding-right: Theme.page-padding-horizontal;
                 spacing: 8px * Theme.scale;
 
                 Text {
@@ -69,7 +73,24 @@ export component PairingScreen inherits Rectangle {
                     horizontal-alignment: center;
                 }
 
-                if root.discovered-devices.length == 0: VerticalLayout {
+                if root.scan-error != "": VerticalLayout {
+                    alignment: center;
+                    spacing: 12px * Theme.scale;
+                    Text {
+                        text: root.scan-error;
+                        color: Theme.text-dim;
+                        font-size: Theme.font-12;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                    }
+                    AppButton {
+                        height: 32px * Theme.scale;
+                        text: "Retry";
+                        clicked => { root.retry-scan(); }
+                    }
+                }
+
+                if root.scan-error == "" && root.discovered-devices.length == 0: VerticalLayout {
                     alignment: center;
                     Text {
                         text: "Scanning for boards...";
@@ -79,7 +100,7 @@ export component PairingScreen inherits Rectangle {
                     }
                 }
 
-                if root.discovered-devices.length > 0: Flickable {
+                if root.scan-error == "" && root.discovered-devices.length > 0: Flickable {
                     viewport-height: devices-layout.min-height;
                     devices-layout := VerticalLayout {
                         spacing: 6px * Theme.scale;

@@ -6,6 +6,7 @@ export struct PairedBoard {
     mac: string,
     index: int,
     is-active: bool,
+    is-ble: bool,
 }
 
 export component BoardsScreen inherits Rectangle {
@@ -36,8 +37,6 @@ export component BoardsScreen inherits Rectangle {
         // List body (60% of screen height)
         Rectangle {
             vertical-stretch: 60;
-            padding-left: Theme.page-padding-horizontal;
-            padding-right: Theme.page-padding-horizontal;
 
             if root.boards.length == 0: VerticalLayout {
                 alignment: center;
@@ -52,31 +51,31 @@ export component BoardsScreen inherits Rectangle {
             if root.boards.length > 0: Flickable {
                 viewport-height: boards-layout.min-height;
                 boards-layout := VerticalLayout {
+                    // Padding must live on the layout (not the parent
+                    // Rectangle) to actually constrain the rows on screen
+                    padding-left: Theme.page-padding-horizontal;
+                    padding-right: Theme.page-padding-horizontal;
                     spacing: 8px * Theme.scale;
                     alignment: start;
 
-                    for board in root.boards: HorizontalLayout {
-                        spacing: 8px * Theme.scale;
+                    for board in root.boards: AppButton {
                         height: 38px * Theme.scale;
-
-                        AppButton {
-                            horizontal-stretch: 1;
-                            text: board.mac;
-                            right-text: root.delete-mode-index == board.index ? "Delete" : (board.is-active ? "✓" : "");
-                            variant: root.delete-mode-index == board.index ? "outline" : (board.is-active ? "primary" : "secondary");
-                            button-color: root.delete-mode-index == board.index ? "danger" : "standard";
-                            clicked => {
-                                if (root.delete-mode-index == board.index) {
-                                    root.delete-board(board.index);
-                                    root.delete-mode-index = -1;
-                                } else {
-                                    root.delete-mode-index = -1;
-                                    root.select-board(board.index);
-                                }
+                        text: board.mac;
+                        right-text: root.delete-mode-index == board.index ? "Delete"
+                            : (board.is-ble ? "BLE" : "ESP-NOW") + (board.is-active ? " ✓" : "");
+                        variant: root.delete-mode-index == board.index ? "outline" : (board.is-active ? "primary" : "secondary");
+                        button-color: root.delete-mode-index == board.index ? "danger" : "standard";
+                        clicked => {
+                            if (root.delete-mode-index == board.index) {
+                                root.delete-board(board.index);
+                                root.delete-mode-index = -1;
+                            } else {
+                                root.delete-mode-index = -1;
+                                root.select-board(board.index);
                             }
-                            long-clicked => {
-                                root.delete-mode-index = board.index;
-                            }
+                        }
+                        long-clicked => {
+                            root.delete-mode-index = board.index;
                         }
                     }
                 }

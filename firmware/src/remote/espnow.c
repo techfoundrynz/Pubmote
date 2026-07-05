@@ -45,15 +45,11 @@ static esp_err_t espnow_driver_init(void) {
   }
   ESP_ERROR_CHECK(ret);
 
-  // Initialize network interface (handle case where already initialized)
-  esp_err_t netif_ret = esp_netif_init();
-  if (netif_ret != ESP_OK && netif_ret != ESP_ERR_INVALID_STATE) {
-    ESP_LOGE(TAG, "Failed to initialize network interface: %s", esp_err_to_name(netif_ret));
-    return netif_ret;
-  }
-  if (netif_ret == ESP_ERR_INVALID_STATE) {
-    ESP_LOGI(TAG, "Network interface already initialized");
-  }
+  // NOTE: no esp_netif here. ESP-NOW is a raw-frame protocol and needs no IP
+  // stack - and creating the default STA netif would spawn the lwip TCP/IP
+  // thread, whose internal RAM can never be reclaimed (esp_netif_deinit is
+  // unsupported), permanently shrinking the pool the BLE controller needs
+  // when switching drivers. The OTA flow (wifi.c) creates its own netif.
 
   // Create default event loop (handle case where already exists)
   esp_err_t event_loop_ret = esp_event_loop_create_default();
@@ -63,12 +59,6 @@ static esp_err_t espnow_driver_init(void) {
   }
   if (event_loop_ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGI(TAG, "Event loop already exists, reusing it");
-  }
-
-  // Create default WiFi station network interface before esp_wifi_init
-  extern esp_netif_t *wifi_netif_sta;
-  if (wifi_netif_sta == NULL) {
-    wifi_netif_sta = esp_netif_create_default_wifi_sta();
   }
 
   // Initialize WiFi (should be fresh after wifi_uninit())
@@ -139,6 +129,13 @@ static esp_err_t espnow_driver_deinit(void) {
   err = esp_wifi_deinit();
   if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
     ESP_LOGE(TAG, "esp_wifi_deinit failed: %s", esp_err_to_name(err));
+  }
+
+  // Release the event loop too (its task stack is internal RAM the BLE
+  // controller needs when switching drivers); recreated on re-init
+  err = esp_event_loop_delete_default();
+  if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+    ESP_LOGW(TAG, "esp_event_loop_delete_default failed: %s", esp_err_to_name(err));
   }
 
   ESP_LOGI(TAG, "ESP-NOW deinitialized");

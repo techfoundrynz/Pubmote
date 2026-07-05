@@ -11,6 +11,7 @@
 #include "remote/powermanagement.h"
 #include "remote/settings.h"
 #include "remote/stats.h"
+#include <atomic>
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";
 
@@ -29,10 +30,29 @@ extern "C" void handle_menu_shutdown_long_press() {
       []() { get_slint_window()->global<UiState>().set_shutdown_text(confirm_reset ? "Factory reset?" : "Shutdown"); });
 }
 
+// stats_update() fires at telemetry rate (20Hz+) while connected. Posting to
+// the Slint event loop on every tick invalidates and re-renders the menu (and
+// any dialog overlaying it) continuously, starving touch input - the
+// shutdown/reset dialog buttons stop responding. Only post on actual
+// connection-state changes, with a pending guard as backstop.
+static std::atomic<bool> menu_update_pending{false};
+static int menu_last_connection_state = -1;
+
 static void menu_update_display() {
   if (!get_slint_window())
     return;
+
+  int state = (int)connection_state;
+  if (state == menu_last_connection_state) {
+    return;
+  }
+  menu_last_connection_state = state;
+
+  if (menu_update_pending.exchange(true)) {
+    return;
+  }
   slint::invoke_from_event_loop([]() {
+    menu_update_pending.store(false);
     get_slint_window()->global<UiState>().set_connection_state((int)connection_state);
   });
 }
@@ -45,6 +65,8 @@ extern "C" void setup_menu_properties() {
 
   confirm_reset = false;
   pending_action = PENDING_NONE;
+  menu_last_connection_state = -1; // Force a repaint on (re)entry
+  menu_update_pending.store(false);
   state.set_shutdown_text("Shutdown");
   state.on_menu_shutdown_long_press([]() { handle_menu_shutdown_long_press(); });
 

@@ -47,14 +47,16 @@ extern "C" void setup_boards_properties() {
     for (int i = 0; i < count; i++) {
       PairedDevice device;
       if (get_paired_device(i, &device)) {
-        char mac_str[24];
-        snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X", device.mac[0], device.mac[1], device.mac[2],
-                 device.mac[3], device.mac[4], device.mac[5]);
+        // Show only the last three octets - the full MAC doesn't fit a row at
+        // display scale (the delete confirmation still shows it in full)
+        char mac_str[16];
+        snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X", device.mac[3], device.mac[4], device.mac[5]);
 
         PairedBoard board;
         board.mac = slint::SharedString(mac_str);
         board.index = i;
         board.is_active = (i == default_idx);
+        board.is_ble = (settings_get_board_comms_mode(i) == COMMS_TYPE_BLE);
 
         model->push_back(board);
       }

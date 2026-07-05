@@ -533,6 +533,17 @@ static esp_err_t ble_driver_init(void) {
   last_rssi_poll_us = 0;
 
   int rc = nimble_port_init();
+  // The controller needs large contiguous internal allocations. Right after a
+  // WiFi/ESP-NOW deinit the freed memory may not be reclaimed yet (idle task
+  // lazily frees task stacks), so a first failure is often transient - wait
+  // and retry before giving up.
+  for (int attempt = 1; rc != 0 && attempt <= 3; attempt++) {
+    ESP_LOGW(TAG, "nimble_port_init failed (rc=%d); retrying after cleanup delay (%d/3). Internal: %lu, Max Block: %lu",
+             rc, attempt, (unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned long)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    vTaskDelay(pdMS_TO_TICKS(400));
+    rc = nimble_port_init();
+  }
   if (rc != 0) {
     ESP_LOGE(TAG, "Failed to initialize nimble port; rc=%d. Free heap: %lu (Internal: %lu, Max Block: %lu)", rc,
              (unsigned long)esp_get_free_heap_size(), (unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),

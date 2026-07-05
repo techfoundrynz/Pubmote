@@ -413,6 +413,18 @@ esp_err_t wifi_uninit(void) {
     ESP_LOGE(TAG, "WiFi deinit failed: %s", esp_err_to_name(err));
   }
 
+  // Destroy the netif and event loop so a following BLE (re)init gets its
+  // internal RAM back (the lwip TCP/IP thread itself cannot be reclaimed -
+  // esp_netif_deinit is unsupported - but everything else can)
+  if (wifi_netif_sta != NULL) {
+    esp_netif_destroy_default_wifi(wifi_netif_sta);
+    wifi_netif_sta = NULL;
+  }
+  err = esp_event_loop_delete_default();
+  if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+    ESP_LOGW(TAG, "esp_event_loop_delete_default failed: %s", esp_err_to_name(err));
+  }
+
   // Clean up event group
   if (s_wifi_event_group) {
     vEventGroupDelete(s_wifi_event_group);

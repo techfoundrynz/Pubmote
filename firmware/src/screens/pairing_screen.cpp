@@ -52,6 +52,34 @@ static void on_device_discovered(const uint8_t *mac, const char *name, int rssi)
   });
 }
 
+// (Re)initialize the radio if needed and start BLE discovery, reflecting the
+// outcome in the scan view: an init failure shows an error + Retry button
+// instead of a silently-empty device list. The driver switch for a pairing
+// attempt can fail under memory pressure (the BLE controller needs large
+// contiguous internal RAM right after a WiFi deinit).
+static void start_ble_scan() {
+  bool ok = comms_is_initialized();
+  if (!ok) {
+    ESP_LOGW(TAG, "Comms driver not initialized - attempting init");
+    ok = comms_init() == ESP_OK;
+  }
+
+  discovered_ble_devices.clear();
+  if (ok) {
+    comms_register_discovery_cb(on_device_discovered);
+  }
+
+  slint::invoke_from_event_loop([ok]() {
+    if (!get_slint_window()) {
+      return;
+    }
+    const auto &state = get_slint_window()->global<UiState>();
+    auto model = std::make_shared<slint::VectorModel<DiscoveredDevice>>();
+    state.set_discovered_devices(model);
+    state.set_ble_scan_error(ok ? "" : "Radio failed to start (low memory). Retry, or reboot the remote.");
+  });
+}
+
 extern "C" void setup_pairing_properties() {
   ESP_LOGI(TAG, "Setting up pairing screen properties");
   led_set_effect_rainbow();
@@ -62,22 +90,26 @@ extern "C" void setup_pairing_properties() {
   // board mid-scan). teardown_pairing_properties restores it if we cancel.
   comms_disconnect_peer(pairing_settings.remote_addr);
 
-  slint::invoke_from_event_loop([]() {
+  bool is_ble = comms_get_active_type() == COMMS_TYPE_BLE;
+
+  // ESP-NOW pairing has no scan view; still surface an init failure there
+  bool espnow_ok = true;
+  if (!is_ble && !comms_is_initialized()) {
+    ESP_LOGW(TAG, "Comms driver not initialized on pairing entry - retrying init");
+    espnow_ok = comms_init() == ESP_OK;
+  }
+
+  slint::invoke_from_event_loop([is_ble, espnow_ok]() {
     const auto &state = get_slint_window()->global<UiState>();
     state.set_pairing_code("----");
     state.set_pairing_action_text("Cancel");
-    state.set_pairing_status("Searching for board...");
+    state.set_pairing_status(espnow_ok ? "Searching for board..." : "Radio init failed - go back and retry");
+    state.set_ble_scan_error("");
+    state.set_is_ble_scan(is_ble);
 
-    if (comms_get_active_type() == COMMS_TYPE_BLE) {
-      state.set_is_ble_scan(true);
-
-      // Clear discovered list
-      discovered_ble_devices.clear();
-      auto model = std::make_shared<slint::VectorModel<DiscoveredDevice>>();
-      state.set_discovered_devices(model);
-
-      // Register discovery callback & start scan
-      comms_register_discovery_cb(on_device_discovered);
+    if (is_ble) {
+      // Bind retry (shown when the radio failed to start)
+      state.on_retry_ble_scan([]() { start_ble_scan(); });
 
       // Bind device selection
       state.on_select_device([](int idx) {
@@ -105,10 +137,11 @@ extern "C" void setup_pairing_properties() {
         });
       });
     }
-    else {
-      state.set_is_ble_scan(false);
-    }
   });
+
+  if (is_ble) {
+    start_ble_scan();
+  }
 }
 
 extern "C" void handle_pairing_action() {

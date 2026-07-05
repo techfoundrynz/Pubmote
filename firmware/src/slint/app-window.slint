@@ -94,8 +94,10 @@ export global UiState {
     in property <string> pairing-action-text: "Cancel";
     in property <string> pairing-status: "Searching for board...";
     in-out property <bool> is-ble-scan: false;
+    in-out property <string> ble-scan-error: "";
     in-out property <[DiscoveredDevice]> discovered-devices: [];
     callback select-device(int);
+    callback retry-ble-scan();
 
     // --- Boards (Paired Boards list) ---
     in property <[PairedBoard]> paired-boards: [];
@@ -402,8 +404,10 @@ export component AppWindow inherits Window {
         pairing-status: UiState.pairing-status;
         action => { UiState.pairing-action(); }
         is-ble-scan: UiState.is-ble-scan;
+        scan-error: UiState.ble-scan-error;
         discovered-devices: UiState.discovered-devices;
         select-device(idx) => { UiState.select-device(idx); }
+        retry-scan => { UiState.retry-ble-scan(); }
     }
 
     if UiState.screen == Screen.boards || root.previous-screen == Screen.boards: BoardsScreen {
