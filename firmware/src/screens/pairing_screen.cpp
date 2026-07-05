@@ -57,6 +57,10 @@ extern "C" void setup_pairing_properties() {
   led_set_effect_rainbow();
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   pairing_state = PAIRING_STATE_UNPAIRED;
+  // Drop any existing link so it can't fight the pairing scan/handshake (for
+  // BLE this also stops the driver's reconnect timer from re-dialing the old
+  // board mid-scan). teardown_pairing_properties restores it if we cancel.
+  comms_disconnect_peer(pairing_settings.remote_addr);
 
   slint::invoke_from_event_loop([]() {
     const auto &state = get_slint_window()->global<UiState>();
@@ -125,5 +129,32 @@ extern "C" void teardown_pairing_properties() {
 
   if (comms_get_active_type() == COMMS_TYPE_BLE) {
     comms_register_discovery_cb(NULL);
+  }
+
+  // Entering this screen force-reset pairing_state and may have switched the
+  // active comms driver for a pairing attempt that never completed. Restore
+  // both from the saved paired devices so a cancelled pairing doesn't leave
+  // the remote unable to reconnect to its existing board.
+  //
+  // Order matters: switch the driver while pairing_state is still UNPAIRED -
+  // it gates connection_task's auto-reconnect, which must not dial a driver
+  // that comms_select_driver is concurrently tearing down.
+  if (get_default_device_index() >= 0) {
+    CommsType saved_mode = settings_get_active_comms_mode();
+    if (comms_get_active_type() != saved_mode) {
+      ESP_LOGI(TAG, "Restoring comms driver to saved board mode %d", (int)saved_mode);
+      device_settings.comms_mode = saved_mode;
+      comms_select_driver(saved_mode);
+    }
+  }
+
+  connection_refresh_pairing_state();
+
+  if (pairing_state == PAIRING_STATE_PAIRED) {
+    // Resume the connection to the default board if nothing else already did.
+    // Respect an explicit user disconnect made before entering this screen.
+    if (connection_state == CONNECTION_STATE_DISCONNECTED && connection_get_auto_reconnect()) {
+      connection_connect_to_default_peer();
+    }
   }
 }

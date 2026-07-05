@@ -1,6 +1,8 @@
 #ifndef __CONNECTION_H
 #define __CONNECTION_H
 #include <esp_timer.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 
 #ifdef __cplusplus
@@ -30,6 +32,15 @@ void connection_init();
 void connection_deinit();
 void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel);
 void connection_connect_to_default_peer();
+
+// Enable/disable automatic reconnection attempts while disconnected.
+// Disabled by an explicit user disconnect; re-enabled by any connect.
+void connection_set_auto_reconnect(bool enabled);
+bool connection_get_auto_reconnect();
+
+// Re-derive pairing_state (and the active peer fields) from the saved paired
+// devices. Used when leaving the pairing screen, which force-resets the state.
+void connection_refresh_pairing_state();
 
 
 

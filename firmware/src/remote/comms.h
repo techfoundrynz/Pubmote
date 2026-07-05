@@ -23,6 +23,7 @@ extern "C"
     uint8_t *data;
     int len;
     uint8_t chan;
+    int rssi;
   } comms_event_t;
 
   // Callback type for when data is received
@@ -82,7 +83,9 @@ extern "C"
 #define VESC_COMM_CUSTOM_APP_DATA 36
 #define PUBMOTE_MAGIC 169
 
-  uint8_t *comms_prepend_headers(const uint8_t *data, size_t len, CommsType type, size_t *out_len);
+  // Writes the transport headers + payload into out_buf. Returns the total
+  // length written, or 0 if out_buf is too small.
+  size_t comms_write_headers(uint8_t *out_buf, size_t out_size, const uint8_t *data, size_t len, CommsType type);
   bool comms_strip_headers(const uint8_t **data_ptr, int *len_ptr, CommsType type);
   bool ble_is_connected(void);
 

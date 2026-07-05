@@ -31,6 +31,27 @@ static uint8_t target_peer_addr_type = BLE_ADDR_RANDOM;
 static bool has_target_peer = false;
 static esp_timer_handle_t reconnect_timer = NULL;
 
+#define BLE_RECONNECT_FAST_DELAY_US 500000  // First retry after a link drop
+#define BLE_RECONNECT_SLOW_DELAY_US 2000000 // Subsequent retries
+
+// Cached connection RSSI (refreshed at most once per second)
+#define BLE_RSSI_POLL_INTERVAL_US 1000000
+static int8_t cached_rssi = -50;
+static int64_t last_rssi_poll_us = 0;
+
+// (Re)arm the reconnect timer. esp_timer_start_once fails silently on an
+// already-armed timer, so always stop it first.
+static void schedule_reconnect(uint64_t delay_us) {
+  if (!reconnect_timer || !has_target_peer) {
+    return;
+  }
+  esp_timer_stop(reconnect_timer);
+  esp_err_t err = esp_timer_start_once(reconnect_timer, delay_us);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to arm BLE reconnect timer: %s", esp_err_to_name(err));
+  }
+}
+
 // Cache scanned devices to get their address type when connecting
 struct ScanCacheEntry {
   uint8_t mac[6];
@@ -97,7 +118,11 @@ static int ble_on_write_cccd(uint16_t conn_handle, const struct ble_gatt_error *
     }
   }
   else {
-    ESP_LOGE(TAG, "CCCD write failed; status=%d", error->status);
+    // A connection without notifications is useless - drop it so the
+    // reconnect logic can retry with a fresh setup instead of sitting on a
+    // zombie link forever
+    ESP_LOGE(TAG, "CCCD write failed; status=%d - dropping connection to retry", error->status);
+    ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
   }
   return 0;
 }
@@ -121,52 +146,81 @@ static int ble_on_disc_chrs(uint16_t conn_handle, const struct ble_gatt_error *e
     if (cccd_subscribed) {
       send_connection_init_dummy();
     }
+    else if (nus_rx_handle == 0 || nus_tx_handle == 0) {
+      // NUS characteristics missing - this link can never carry data
+      ESP_LOGE(TAG, "NUS characteristics not found - dropping connection to retry");
+      ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    }
   }
   else {
-    ESP_LOGE(TAG, "Characteristic discovery failed; status=%d", error->status);
+    ESP_LOGE(TAG, "Characteristic discovery failed; status=%d - dropping connection to retry", error->status);
+    ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
   }
   return 0;
 }
+
+static bool nus_svc_found = false;
 
 static int ble_on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_svc *service,
                            void *arg) {
   if (error->status == 0) {
     ESP_LOGI(TAG, "Discovered NUS Service: start_handle=%d, end_handle=%d", service->start_handle, service->end_handle);
+    nus_svc_found = true;
     ble_gattc_disc_all_chrs(conn_handle, service->start_handle, service->end_handle, ble_on_disc_chrs, NULL);
   }
   else if (error->status == BLE_HS_EDONE) {
     ESP_LOGD(TAG, "Service discovery complete");
+    if (!nus_svc_found) {
+      // Peer has no NUS service - the link can never carry data, drop it so
+      // the reconnect logic retries cleanly instead of holding a zombie link
+      ESP_LOGE(TAG, "NUS service not found - dropping connection to retry");
+      ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    }
   }
   else {
-    ESP_LOGE(TAG, "Service discovery failed; status=%d", error->status);
+    ESP_LOGE(TAG, "Service discovery failed; status=%d - dropping connection to retry", error->status);
+    ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
   }
   return 0;
 }
 
 static void start_service_discovery(uint16_t conn_handle) {
   ESP_LOGI(TAG, "Starting service discovery...");
+  nus_svc_found = false;
   ble_gattc_disc_svc_by_uuid(conn_handle, &nus_svc_uuid.u, ble_on_disc_svc, NULL);
 }
 
 static void on_reconnect_timer(void *arg) {
-  if (has_target_peer && ble_conn_handle == BLE_HS_CONN_HANDLE_NONE && is_initialized && is_synced) {
-    ESP_LOGI(TAG, "Reconnection timer fired, retrying BLE connection...");
+  if (!has_target_peer || ble_conn_handle != BLE_HS_CONN_HANDLE_NONE || !is_initialized) {
+    return;
+  }
 
-    uint8_t own_addr_type;
-    int rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0) {
-      ESP_LOGE(TAG, "Error determining address type; rc=%d", rc);
-      return;
-    }
+  if (!is_synced) {
+    // Host not ready (e.g. controller reset) - try again later. ble_on_sync
+    // also kicks off a deferred connect, this is just a safety net.
+    schedule_reconnect(BLE_RECONNECT_SLOW_DELAY_US);
+    return;
+  }
 
-    ble_addr_t peer_addr;
-    peer_addr.type = target_peer_addr_type;
-    memcpy(peer_addr.val, target_peer_mac, 6);
+  ESP_LOGI(TAG, "Reconnection timer fired, retrying BLE connection...");
 
-    rc = ble_gap_connect(own_addr_type, &peer_addr, 30000, NULL, ble_gap_event, NULL);
-    if (rc != 0 && rc != BLE_HS_EALREADY) {
-      ESP_LOGE(TAG, "Reconnect connect call failed; rc=%d", rc);
-    }
+  uint8_t own_addr_type;
+  int rc = ble_hs_id_infer_auto(0, &own_addr_type);
+  if (rc != 0) {
+    ESP_LOGE(TAG, "Error determining address type; rc=%d", rc);
+    schedule_reconnect(BLE_RECONNECT_SLOW_DELAY_US);
+    return;
+  }
+
+  ble_addr_t peer_addr;
+  peer_addr.type = target_peer_addr_type;
+  memcpy(peer_addr.val, target_peer_mac, 6);
+
+  rc = ble_gap_connect(own_addr_type, &peer_addr, 30000, NULL, ble_gap_event, NULL);
+  if (rc != 0 && rc != BLE_HS_EALREADY) {
+    // Busy (e.g. scan in progress) or out of resources - retry, never stall
+    ESP_LOGE(TAG, "Reconnect connect call failed; rc=%d", rc);
+    schedule_reconnect(BLE_RECONNECT_SLOW_DELAY_US);
   }
 }
 
@@ -246,14 +300,29 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
       ble_conn_handle = event->connect.conn_handle;
       cccd_subscribed = false;
       discovery_complete = false;
+
+      // Request a fast connection interval: the remote streams control input
+      // at 20Hz and a slow negotiated interval can't drain that rate, causing
+      // chronic TX buffer pressure (failed writes) and added input latency
+      struct ble_gap_upd_params upd_params = {
+          .itvl_min = 12,              // 15ms (1.25ms units)
+          .itvl_max = 24,              // 30ms
+          .latency = 0,
+          .supervision_timeout = 400,  // 4s (10ms units)
+          .min_ce_len = 0,
+          .max_ce_len = 0,
+      };
+      int upd_rc = ble_gap_update_params(event->connect.conn_handle, &upd_params);
+      if (upd_rc != 0) {
+        ESP_LOGW(TAG, "Conn param update request failed; rc=%d", upd_rc);
+      }
+
       start_service_discovery(ble_conn_handle);
     }
     else {
       ESP_LOGE(TAG, "BLE Connection failed; status=%d", event->connect.status);
       ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
-      if (has_target_peer && reconnect_timer) {
-        esp_timer_start_once(reconnect_timer, 2000000);
-      }
+      schedule_reconnect(BLE_RECONNECT_SLOW_DELAY_US);
     }
     return 0;
   }
@@ -267,9 +336,9 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
     ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
     nus_tx_handle = 0;
     nus_rx_handle = 0;
-    if (has_target_peer && reconnect_timer) {
-      esp_timer_start_once(reconnect_timer, 2000000);
-    }
+    rx_stream_len = 0;
+    // Retry quickly on the first attempt after a drop for a seamless recovery
+    schedule_reconnect(BLE_RECONNECT_FAST_DELAY_US);
     return 0;
   }
 
@@ -309,7 +378,11 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
                   memcpy(peer_mac, desc.peer_id_addr.val, 6);
                   peer_addr_type = desc.peer_id_addr.type;
                 }
-                registered_recv_cb(peer_mac, payload, payload_len, peer_addr_type, -50);
+
+                // cached_rssi is refreshed from ble_driver_send (caller task
+                // context) - never issue a blocking HCI command like
+                // ble_gap_conn_rssi from this host-task callback
+                registered_recv_cb(peer_mac, payload, payload_len, peer_addr_type, cached_rssi);
               }
               parse_idx += bytes_consumed;
             }
@@ -343,6 +416,15 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
   case BLE_GAP_EVENT_MTU:
     ESP_LOGI(TAG, "MTU size updated to %d; conn_handle=%d", event->mtu.value, event->mtu.conn_handle);
     return 0;
+
+  case BLE_GAP_EVENT_CONN_UPDATE: {
+    struct ble_gap_conn_desc desc;
+    if (ble_gap_conn_find(event->conn_update.conn_handle, &desc) == 0) {
+      ESP_LOGI(TAG, "Conn params updated: interval=%.2fms latency=%d timeout=%dms (status=%d)",
+               desc.conn_itvl * 1.25, desc.conn_latency, desc.supervision_timeout * 10, event->conn_update.status);
+    }
+    return 0;
+  }
 
   default:
     break;
@@ -447,6 +529,8 @@ static esp_err_t ble_driver_init(void) {
   nus_tx_handle = 0;
   nus_rx_handle = 0;
   rx_stream_len = 0;
+  cached_rssi = -50;
+  last_rssi_poll_us = 0;
 
   int rc = nimble_port_init();
   if (rc != 0) {
@@ -486,8 +570,6 @@ static esp_err_t ble_driver_deinit(void) {
   rx_stream_len = 0;
   if (reconnect_timer) {
     esp_timer_stop(reconnect_timer);
-    esp_timer_delete(reconnect_timer);
-    reconnect_timer = NULL;
   }
 
   if (ble_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
@@ -508,6 +590,14 @@ static esp_err_t ble_driver_deinit(void) {
   }
 
   nimble_port_deinit();
+
+  // Delete the timer only after the host task is stopped, so no GAP event
+  // can race schedule_reconnect() against a freed timer handle
+  if (reconnect_timer) {
+    esp_timer_stop(reconnect_timer);
+    esp_timer_delete(reconnect_timer);
+    reconnect_timer = NULL;
+  }
 
   is_initialized = false;
   is_synced = false;
@@ -548,29 +638,19 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
     return ESP_ERR_INVALID_STATE;
   }
 
-  size_t wrapped_len = 0;
-  uint8_t *wrapped_payload = comms_prepend_headers(data, len, COMMS_TYPE_BLE, &wrapped_len);
-  if (!wrapped_payload) {
+  uint8_t wrapped_payload[128];
+  size_t wrapped_len = comms_write_headers(wrapped_payload, sizeof(wrapped_payload), data, len, COMMS_TYPE_BLE);
+  if (wrapped_len == 0) {
     if (registered_send_cb) {
       registered_send_cb(peer_mac, false);
     }
-    return ESP_ERR_NO_MEM;
+    return ESP_ERR_INVALID_SIZE;
   }
 
   // Wrap payload in VESC packet frame using VESC utility wrapper
-  uint8_t *tx_buf = (uint8_t *)malloc(wrapped_len + 6);
-  if (!tx_buf) {
-    free(wrapped_payload);
-    if (registered_send_cb) {
-      registered_send_cb(peer_mac, false);
-    }
-    return ESP_ERR_NO_MEM;
-  }
-
-  size_t tx_len = vesc_wrap_packet(wrapped_payload, wrapped_len, tx_buf, wrapped_len + 6);
-  free(wrapped_payload);
+  uint8_t tx_buf[sizeof(wrapped_payload) + 6];
+  size_t tx_len = vesc_wrap_packet(wrapped_payload, wrapped_len, tx_buf, sizeof(tx_buf));
   if (tx_len == 0) {
-    free(tx_buf);
     if (registered_send_cb) {
       registered_send_cb(peer_mac, false);
     }
@@ -604,14 +684,23 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
     sent_bytes += chunk_len;
   }
 
-  free(tx_buf);
-
   if (result_err != ESP_OK) {
     ESP_LOGD(TAG, "ble_gattc_write_no_rsp_flat failed; rc=%d", result_err);
     if (registered_send_cb) {
       registered_send_cb(peer_mac, false);
     }
     return result_err;
+  }
+
+  // Refresh cached link RSSI at most once per second. Safe here: this runs in
+  // the sender's task context, not the NimBLE host task.
+  int64_t now_us = esp_timer_get_time();
+  if (now_us - last_rssi_poll_us > BLE_RSSI_POLL_INTERVAL_US) {
+    last_rssi_poll_us = now_us;
+    int8_t rssi = 0;
+    if (ble_conn_handle != BLE_HS_CONN_HANDLE_NONE && ble_gap_conn_rssi(ble_conn_handle, &rssi) == 0 && rssi != 0) {
+      cached_rssi = rssi;
+    }
   }
 
   if (registered_send_cb) {
@@ -656,7 +745,16 @@ static esp_err_t ble_driver_connect_peer(const uint8_t *peer_mac, uint8_t channe
     struct ble_gap_conn_desc desc;
     if (ble_gap_conn_find(ble_conn_handle, &desc) == 0) {
       if (memcmp(desc.peer_id_addr.val, peer_mac, 6) == 0) {
-        ESP_LOGI(TAG, "Already connected to peer");
+        if (ble_is_connected()) {
+          ESP_LOGI(TAG, "Already connected to peer");
+        }
+        else {
+          // Connected but NUS was never set up (zombie link, e.g. discovery
+          // failed earlier) - drop it; the disconnect event triggers a fresh
+          // connect + discovery pass
+          ESP_LOGW(TAG, "Connected to peer but NUS not ready - restarting link");
+          ble_gap_terminate(ble_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+        }
         return ESP_OK;
       }
     }

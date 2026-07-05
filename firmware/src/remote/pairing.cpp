@@ -120,7 +120,9 @@ extern "C" bool pairing_process_completion_event(uint8_t *data, int len) {
 extern "C" void handle_receiver_api_version_too_low(uint8_t api_version) {
   ESP_LOGW(TAG, "Receiver API version too low: %d. Disconnecting.", api_version);
 
-  // Terminate connection
+  // Terminate connection. Disable auto-reconnect so we don't repeatedly
+  // reconnect to (and re-alert about) an incompatible receiver.
+  connection_set_auto_reconnect(false);
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   comms_disconnect_peer(pairing_settings.remote_addr);
 

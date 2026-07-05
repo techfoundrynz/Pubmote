@@ -165,15 +165,13 @@ static esp_err_t espnow_driver_register_discovery_cb(comms_discovery_cb_t cb) {
 }
 
 static esp_err_t espnow_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len) {
-  size_t wrapped_len = 0;
-  uint8_t *wrapped_payload = comms_prepend_headers(data, len, COMMS_TYPE_ESPNOW, &wrapped_len);
-  if (!wrapped_payload) {
-    return ESP_ERR_NO_MEM;
+  uint8_t wrapped_payload[ESP_NOW_MAX_DATA_LEN];
+  size_t wrapped_len = comms_write_headers(wrapped_payload, sizeof(wrapped_payload), data, len, COMMS_TYPE_ESPNOW);
+  if (wrapped_len == 0) {
+    return ESP_ERR_INVALID_SIZE;
   }
 
-  esp_err_t res = esp_now_send(peer_mac, wrapped_payload, wrapped_len);
-  free(wrapped_payload);
-  return res;
+  return esp_now_send(peer_mac, wrapped_payload, wrapped_len);
 }
 
 static esp_err_t espnow_driver_connect_peer(const uint8_t *peer_mac, uint8_t channel) {

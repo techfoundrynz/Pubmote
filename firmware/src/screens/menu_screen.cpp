@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "generated/app-window.h"
+#include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/powermanagement.h"
@@ -89,10 +90,15 @@ extern "C" void setup_menu_properties() {
 extern "C" void handle_menu_connect() {
   ESP_LOGI(TAG, "Connect button pressed");
   if (connection_state == CONNECTION_STATE_DISCONNECTED) {
+    connection_set_auto_reconnect(true);
     connection_connect_to_default_peer();
   }
   else {
+    // Explicit user disconnect: stop auto-reconnect and tear the link down
+    // (for BLE this terminates the connection and stops retry timers)
+    connection_set_auto_reconnect(false);
     connection_update_state(CONNECTION_STATE_DISCONNECTED);
+    comms_disconnect_peer(pairing_settings.remote_addr);
   }
 
   slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Stats); });

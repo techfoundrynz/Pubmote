@@ -154,26 +154,25 @@ bool comms_is_same_mac(const uint8_t *mac1, const uint8_t *mac2) {
   return memcmp(mac1, mac2, COMMS_MAC_LEN) == 0;
 }
 
-uint8_t *comms_prepend_headers(const uint8_t *data, size_t len, CommsType type, size_t *out_len) {
+size_t comms_write_headers(uint8_t *out_buf, size_t out_size, const uint8_t *data, size_t len, CommsType type) {
   size_t header_len = (type == COMMS_TYPE_BLE) ? 2 : 1;
-  *out_len = len + header_len;
+  size_t total_len = len + header_len;
 
-  uint8_t *wrapped = (uint8_t *)malloc(*out_len);
-  if (!wrapped) {
-    return NULL;
+  if (!out_buf || total_len > out_size) {
+    return 0;
   }
 
   if (type == COMMS_TYPE_BLE) {
-    wrapped[0] = VESC_COMM_CUSTOM_APP_DATA;
-    wrapped[1] = PUBMOTE_MAGIC;
-    memcpy(wrapped + 2, data, len);
+    out_buf[0] = VESC_COMM_CUSTOM_APP_DATA;
+    out_buf[1] = PUBMOTE_MAGIC;
+    memcpy(out_buf + 2, data, len);
   }
   else {
-    wrapped[0] = PUBMOTE_MAGIC;
-    memcpy(wrapped + 1, data, len);
+    out_buf[0] = PUBMOTE_MAGIC;
+    memcpy(out_buf + 1, data, len);
   }
 
-  return wrapped;
+  return total_len;
 }
 
 bool comms_strip_headers(const uint8_t **data_ptr, int *len_ptr, CommsType type) {

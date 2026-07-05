@@ -67,6 +67,9 @@ extern "C" void setup_boards_properties() {
 extern "C" void handle_select_board(int idx) {
   ESP_LOGI(TAG, "Selected board at index %d", idx);
   if (set_active_paired_device(idx)) {
+    // Stop transmitting before the driver switch tears the current stack down
+    connection_update_state(CONNECTION_STATE_DISCONNECTED);
+
     // Switch active driver depending on selected board connection mode
     CommsType mode = settings_get_active_comms_mode();
     ESP_LOGI(TAG, "Selected board, switching active comms mode to %d", (int)mode);
@@ -123,6 +126,8 @@ extern "C" void handle_boards_pair_new() {
         state.set_show_confirm_dialog(false);
 
         ESP_LOGI(TAG, "User selected ESP-NOW pairing");
+        // Stop transmitting before the driver switch tears the current stack down
+        connection_update_state(CONNECTION_STATE_DISCONNECTED);
         device_settings.comms_mode = COMMS_TYPE_ESPNOW;
         comms_select_driver(COMMS_TYPE_ESPNOW);
 
@@ -136,6 +141,8 @@ extern "C" void handle_boards_pair_new() {
         state.set_show_confirm_dialog(false);
 
         ESP_LOGI(TAG, "User selected BLE pairing");
+        // Stop transmitting before the driver switch tears the current stack down
+        connection_update_state(CONNECTION_STATE_DISCONNECTED);
         device_settings.comms_mode = COMMS_TYPE_BLE;
         comms_select_driver(COMMS_TYPE_BLE);
 
