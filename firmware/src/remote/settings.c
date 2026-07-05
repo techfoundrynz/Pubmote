@@ -319,18 +319,20 @@ static esp_err_t nvs_read(const char *key, void *value, nvs_type_t type, size_t 
     // Get the size of the string first
     err = nvs_get_str(nvs_handle, key, NULL, &required_size);
     if (err == ESP_OK) {
-      char *str_value = (char *)malloc(required_size);
-      if (str_value == NULL) {
-        ESP_LOGE(TAG, "Memory allocation failed!");
-        err = ESP_ERR_NO_MEM;
+      // Guard the caller's buffer: the stored string length is independent of
+      // whatever the caller sized its buffer from (e.g. a separate length key),
+      // so a mismatch/corruption must not overflow it. length==0 means unknown
+      // (legacy callers) - fall back to trusting NVS.
+      if (length != 0 && required_size > length) {
+        ESP_LOGE(TAG, "NVS string '%s' (%u bytes) exceeds caller buffer (%u) - refusing", key,
+                 (unsigned)required_size, (unsigned)length);
+        err = ESP_ERR_INVALID_SIZE;
+        break;
       }
-      else {
-        err = nvs_get_str(nvs_handle, key, str_value, &required_size);
-        if (err == ESP_OK) {
-          strcpy((char *)value, str_value);
-          ESP_LOGI(TAG, "Read done, value = %s", str_value);
-        }
-        free(str_value);
+      // Read directly into the caller buffer - no intermediate alloc/copy
+      err = nvs_get_str(nvs_handle, key, (char *)value, &required_size);
+      if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Read done, value = %s", (char *)value);
       }
     }
     break;
