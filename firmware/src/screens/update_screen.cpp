@@ -144,13 +144,9 @@ static void simple_progress_callback(const char *status) {
 
 static void update_task(void *pvParameters) {
   ESP_LOGI(TAG, "update_task started");
-  connection_update_state(CONNECTION_STATE_DISCONNECTED);
-  ESP_LOGI(TAG, "Connection state set to disconnected");
-  if (comms_is_initialized()) {
-    ESP_LOGI(TAG, "Deinitializing comms...");
-    comms_deinit();
-    ESP_LOGI(TAG, "Comms deinitialized successfully");
-  }
+  // Comms are already torn down by setup_update_properties (it must happen
+  // BEFORE this task is created - the 10KB internal stack doesn't fit while
+  // the BLE controller still holds its memory)
   if (!wifi_is_initialized()) {
     ESP_LOGI(TAG, "Initializing Wi-Fi...");
     wifi_init();
@@ -282,6 +278,9 @@ static void update_task(void *pvParameters) {
   ESP_LOGI(TAG, "Restarting receiver and transmitter tasks...");
   receiver_init();
   transmitter_init();
+  // Resume the board connection right away rather than waiting for the
+  // auto-reconnect interval
+  connection_connect_to_default_peer();
 
   ESP_LOGI(TAG, "Update task ended");
   update_task_handle = NULL;
@@ -297,6 +296,15 @@ extern "C" void setup_update_properties() {
   receiver_deinit();
   transmitter_deinit();
 
+  // Tear the comms driver down BEFORE creating the update task: with the BLE
+  // controller resident there is too little internal RAM left for the task's
+  // 10KB stack (observed on-air: task creation failed at ~24KB free)
+  connection_update_state(CONNECTION_STATE_DISCONNECTED);
+  if (comms_is_initialized()) {
+    ESP_LOGI(TAG, "Deinitializing comms before update task...");
+    comms_deinit();
+  }
+
   // Wait a short moment to allow the previous screen's task (e.g., about_task) to finish and free its stack
   vTaskDelay(pdMS_TO_TICKS(200));
   ESP_LOGI(TAG, "Free internal heap after yield: %u, total: %u bytes", 
@@ -310,9 +318,11 @@ extern "C" void setup_update_properties() {
     BaseType_t ret = xTaskCreate(update_task, "update_task", 10240, NULL, 5, (TaskHandle_t *)&update_task_handle);
     if (ret != pdPASS) {
       ESP_LOGE(TAG, "Failed to create update_task! Error: %d", (int)ret);
-      // Restart them if we failed to start the update task
+      // Restore comms if we failed to start the update task
+      comms_init();
       receiver_init();
       transmitter_init();
+      connection_connect_to_default_peer();
     } else {
       ESP_LOGI(TAG, "update_task created successfully");
     }
