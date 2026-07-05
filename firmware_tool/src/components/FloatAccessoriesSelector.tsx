@@ -59,7 +59,7 @@ export function FloatAccessoriesSelector() {
       variants: [
         {
           zipUrl: "/float_accessories/float_accessories-3.4.0.vescpkg",
-          date: "7/5/2025",
+          date: "7/5/2026",
           variant: "float_accessories-3.4.0.vescpkg"
         }
       ],
