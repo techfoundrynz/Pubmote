@@ -269,7 +269,18 @@ static void update_task(void *pvParameters) {
   // Cleanup Wi-Fi / ESP-NOW
   if (wifi_is_initialized()) {
     wifi_uninit();
+    // A WiFi session leaves internal RAM too fragmented for a reliable live
+    // BLE/task re-init (observed on-air: 66KB free but 9.7KB max contiguous
+    // block -> HCI init failure, then task-create abort). A clean reboot
+    // restores the saved board connection deterministically in ~3s - the
+    // same thing a successful OTA does anyway.
+    ESP_LOGI(TAG, "Rebooting to restore comms after WiFi session");
+    vTaskDelay(pdMS_TO_TICKS(250)); // let the log flush
+    esp_restart();
   }
+
+  // WiFi never started this session (user backed straight out): the memory
+  // state is intact, so restore comms in place
   if (!comms_is_initialized()) {
     comms_init();
   }
