@@ -83,7 +83,9 @@ export component PairingScreen inherits Rectangle {
                         horizontal-alignment: center;
                         wrap: word-wrap;
                     }
+
                     AppButton {
+                        variant: "outline";
                         height: 32px * Theme.scale;
                         text: "Retry";
                         clicked => { root.retry-scan(); }
