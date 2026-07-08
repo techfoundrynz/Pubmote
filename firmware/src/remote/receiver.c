@@ -5,6 +5,7 @@
 #include "connection.h"
 #include "display.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "pairing.h"
 #include "peers.h"
@@ -236,7 +237,12 @@ static void receiver_task(void *pvParameters) {
   // channels rejected by the radio (regulatory limits) don't wedge the sweep
   uint8_t hop_cursor = 0;
 
+  // Subscribe to the task watchdog: a hung RX task means silent loss of
+  // telemetry and channel management - panic and reboot instead
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+
   while (!receiver_task_should_exit) {
+    esp_task_wdt_reset();
     if (xQueueReceive(comms_queue, &evt, 0) == pdTRUE) {
       process_data(evt);
       free(evt.data);
@@ -275,6 +281,7 @@ static void receiver_task(void *pvParameters) {
   }
 
   ESP_LOGI(TAG, "RX task ended");
+  esp_task_wdt_delete(NULL);
   receiver_task_handle = NULL;
   vTaskDelete(NULL);
 }

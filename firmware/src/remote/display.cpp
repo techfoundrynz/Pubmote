@@ -10,6 +10,8 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -401,6 +403,26 @@ static void slint_event_loop(void *pvParameters) {
 
   ESP_LOGI(TAG, "Creating AppWindow...");
   slint_window = AppWindow::create();
+
+  // Surface unexpected reboots (panic / watchdog / brownout) as a dismissable
+  // dialog so crashes don't go unnoticed as a silent restart
+  switch (esp_reset_reason()) {
+  case ESP_RST_PANIC:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted after a firmware crash");
+    break;
+  case ESP_RST_TASK_WDT:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted because a task stopped responding");
+    break;
+  case ESP_RST_INT_WDT:
+  case ESP_RST_WDT:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted after a watchdog timeout");
+    break;
+  case ESP_RST_BROWNOUT:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted due to a power brownout");
+    break;
+  default:
+    break;
+  }
   slint_esp_on_before_render_cb = []() {
     if (slint_window) {
       int scroll_y = slint_window->global<UiState>().get_scroll_offset_y();
@@ -423,11 +445,20 @@ static void slint_event_loop(void *pvParameters) {
     display_set_hbm(false);
   }
 
+  // Subscribe this task to the task watchdog and feed it from a Slint timer:
+  // timers are dispatched by the event loop itself, so a wedged event loop
+  // (frozen UI) stops the feed and the watchdog panics + reboots
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+  slint::Timer wdt_feed_timer;
+  wdt_feed_timer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(1000), []() { esp_task_wdt_reset(); });
+
   // Blocks until event loop ends
   ESP_LOGI(TAG, "Running Slint window event loop...");
   slint_window->run();
 
   ESP_LOGI(TAG, "Slint event loop exited");
+  wdt_feed_timer.stop();
+  esp_task_wdt_delete(NULL);
   vTaskDelete(NULL);
 }
 

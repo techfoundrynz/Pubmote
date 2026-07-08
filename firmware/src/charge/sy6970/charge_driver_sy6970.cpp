@@ -248,3 +248,12 @@ void sy6970_enable_watchdog() {
   PPM.enableWatchdog(PowersSY6970::TIMER_OUT_40SEC);
   ESP_LOGI(TAG, "SY6970 watchdog enabled");
 }
+
+void sy6970_charge_driver_deinit() {
+  // Continuous ADC conversion (enabled in init) keeps converting off the
+  // battery through deep sleep, costing tens to hundreds of uA. It gets
+  // re-enabled by charge_driver_init on the next boot.
+  PPM.disableADCMeasure();
+  PPM.disableWatchdog();
+  ESP_LOGI(TAG, "SY6970 deinitialized (ADC + watchdog disabled)");
+}

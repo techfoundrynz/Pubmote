@@ -2,6 +2,7 @@
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "esp_sleep.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -58,6 +59,14 @@ static void configure_log_levels(void) {
 void app_main(void) {
   configure_log_levels();
 
+  // Cover the boot window with the task watchdog: until power_management_task
+  // exists nothing else could recover from an init step hanging forever
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+
+  // Release deep sleep pin holds before any peripheral init - held pads
+  // ignore reconfiguration until the hold is lifted
+  power_management_preinit();
+
   // Enable power for core peripherals
   acc1_power_set_level(1);
   gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
@@ -70,6 +79,7 @@ void app_main(void) {
   haptic_init();
   led_init();
   power_management_init();
+  esp_task_wdt_reset();
 
   // Fire startup callbacks once boot is confirmed
   startup_cb();
@@ -83,6 +93,7 @@ void app_main(void) {
   display_init();
   imu_init();
   vehicle_monitor_init();
+  esp_task_wdt_reset();
 
   // Comms
   CommsType boot_comms_mode = settings_get_active_comms_mode();
@@ -95,6 +106,10 @@ void app_main(void) {
   console_init();
 
   ESP_LOGI(TAG, "Boot complete");
+
+  // Boot finished - the main task is about to exit, so it must leave the
+  // watchdog. The subscribed long-running tasks take over from here.
+  ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
 
 #if TEST_MODE
   test_mode_init();

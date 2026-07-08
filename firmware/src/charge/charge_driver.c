@@ -122,3 +122,12 @@ void enter_protection_mode() {
   sy6970_enter_protection_mode();
 #endif
 }
+
+// Put the PMU into its lowest-power state ahead of deep sleep
+void charge_driver_deinit() {
+#if PMU_SY6970
+  sy6970_charge_driver_deinit();
+#elif PMU_AXP2101
+  axp2101_charge_driver_deinit();
+#endif
+}

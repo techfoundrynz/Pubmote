@@ -119,3 +119,10 @@ void axp2101_enable_watchdog() {
   PMU.enableWatchdog();
   ESP_LOGI(TAG, "AXP2101 watchdog enabled");
 }
+
+void axp2101_charge_driver_deinit() {
+  // The watchdog enabled in init must not keep running (and firing) while
+  // nothing is awake to feed it
+  PMU.disableWatchdog();
+  ESP_LOGI(TAG, "AXP2101 deinitialized (watchdog disabled)");
+}

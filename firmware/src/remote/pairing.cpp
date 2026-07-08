@@ -13,7 +13,7 @@
 static const char *TAG = "PUBREMOTE-PAIRING";
 
 extern "C" bool pairing_process_init_event(uint8_t *data, int len, comms_event_t evt) {
-  if (len == 6) {
+  if (len == 7) {
     uint8_t rec_mac[COMMS_MAC_LEN];
     memcpy(rec_mac, data, COMMS_MAC_LEN);
     if (comms_get_active_type() == COMMS_TYPE_ESPNOW) {
@@ -34,14 +34,25 @@ extern "C" bool pairing_process_init_event(uint8_t *data, int len, comms_event_t
       pairing_settings.channel = evt.chan | 0x80;
     }
     else {
-      pairing_settings.channel = evt.chan;
+      // The board reports its actual WiFi channel and it is authoritative:
+      // rx_ctrl->channel can be one channel off at pairing distance, where
+      // adjacent-channel bleed is strong enough to carry the whole handshake
+      // but not a link at range. Sanity-fall back to the heard channel only
+      // if the byte is out of range (e.g. board with WiFi mode off)
+      pairing_settings.channel = (data[6] >= 1 && data[6] <= 14) ? data[6] : evt.chan;
+      ESP_LOGI(TAG, "Board reports channel %d (heard on %d)", data[6], evt.chan);
     }
 
     uint8_t *mac_addr = pairing_settings.remote_addr;
     esp_err_t result = ESP_FAIL;
 
     if (receiver_lock_channel()) {
-      ESP_LOGI(TAG, "Sending PAIR_BOND request over BLE channel %d", pairing_settings.channel);
+      if (comms_get_active_type() == COMMS_TYPE_ESPNOW) {
+        // Move the radio to the (possibly corrected) channel so the bond
+        // response and the rest of the handshake run on-channel
+        comms_set_channel(pairing_settings.channel);
+      }
+      ESP_LOGI(TAG, "Sending PAIR_BOND response on channel %d", pairing_settings.channel);
       comms_connect_peer(mac_addr, pairing_settings.channel);
       result = comms_send(mac_addr, (uint8_t *)&PAIR_BOND_RES, sizeof(PAIR_BOND_RES));
       ESP_LOGI(TAG, "comms_send result: %d", result);

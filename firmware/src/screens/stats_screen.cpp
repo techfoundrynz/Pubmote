@@ -203,6 +203,7 @@ extern "C" void stats_update_screen_display() {
     state.set_remote_charging(remoteStats.chargeState == CHARGE_STATE_CHARGING ||
                               remoteStats.chargeState == CHARGE_STATE_DONE);
     state.set_is_connected(connected);
+    state.set_connection_state((int)connection_state);
     state.set_connection_state_label(slint_state_label);
     state.set_secondary_stat_left_value(slint_left_val);
     state.set_secondary_stat_left_label(slint_left_lbl);

@@ -1,6 +1,7 @@
 #include "connection.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "comms.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -22,28 +23,19 @@ static const char *TAG = "PUBREMOTE-CONNECTION";
 #define CONNECTION_TIMER_DELAY_MS 20
 #define RECONNECTING_DURATION_MS 1000
 #define TIMEOUT_DURATION_MS 30000
-// How long to sit in DISCONNECTED before automatically retrying while paired.
-// Doubles after each failed attempt (up to the max) so a remote left on while
-// the board is away doesn't burn its battery hunting at full duty forever.
-#define AUTO_RECONNECT_INTERVAL_MS 10000
-#define AUTO_RECONNECT_INTERVAL_MAX_MS 60000
-
 static uint8_t last_saved_channel = 0;
 
 static TaskHandle_t connection_task_handle = NULL;
 ConnectionState connection_state = CONNECTION_STATE_DISCONNECTED;
 PairingState pairing_state = PAIRING_STATE_UNPAIRED;
 static int64_t last_connection_state_change = 0;
+// Tracks user link intent (menu connect/disconnect, incompatible receiver).
+// There is no periodic self-reconnect: this only gates whether user-initiated
+// flows (e.g. pairing-screen teardown) may restore the link.
 static bool auto_reconnect_enabled = true;
-static int64_t auto_reconnect_interval_ms = AUTO_RECONNECT_INTERVAL_MS;
 
 void connection_set_auto_reconnect(bool enabled) {
   auto_reconnect_enabled = enabled;
-  if (enabled) {
-    // Explicit user intent (e.g. menu Connect) restarts the retry cadence
-    // from the fast end of the backoff
-    auto_reconnect_interval_ms = AUTO_RECONNECT_INTERVAL_MS;
-  }
 }
 
 bool connection_get_auto_reconnect() {
@@ -68,39 +60,23 @@ void connection_update_state(ConnectionState state) {
   else if (connection_state == CONNECTION_STATE_RECONNECTING) {
     remoteStats.signalStrength = -255;
   }
-  else if (connection_state == CONNECTION_STATE_CONNECTED) {
-    // Successful connection resets the auto-reconnect backoff
-    auto_reconnect_interval_ms = AUTO_RECONNECT_INTERVAL_MS;
-  }
 
   stats_update();
 }
 
 // Use task rather than a timer so we can do heavy lifting in here
 static void connection_task(void *pvParameters) {
+  // Subscribe to the task watchdog: a hung connection task means reconnect
+  // logic silently stops - panic and reboot instead. Safe here because
+  // connect attempts are async (NimBLE completes them via callback).
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+
   while (1) {
-    if (connection_state == CONNECTION_STATE_DISCONNECTED) {
-      // Automatically retry while paired so the remote reconnects on its own
-      // when the board comes back in range / powers back on. Skipped while the
-      // pairing screen owns the radio (pairing_state != PAIRED there) or after
-      // an explicit user disconnect.
-      if (auto_reconnect_enabled && pairing_state == PAIRING_STATE_PAIRED && comms_is_initialized() &&
-          get_current_time_ms() - last_connection_state_change > auto_reconnect_interval_ms) {
-        ESP_LOGI(TAG, "Auto-reconnect: retrying connection to paired board");
-        // Back off while the board stays away; any successful connection
-        // resets the interval (see connection_update_state)
-        if (auto_reconnect_interval_ms < AUTO_RECONNECT_INTERVAL_MAX_MS) {
-          auto_reconnect_interval_ms *= 2;
-        }
-        connection_connect_to_default_peer();
-        if (connection_state == CONNECTION_STATE_DISCONNECTED) {
-          // Connect attempt failed - restart the retry window instead of
-          // retrying every loop iteration
-          last_connection_state_change = get_current_time_ms();
-        }
-      }
-    }
-    else if (connection_state == CONNECTION_STATE_CONNECTED) {
+    esp_task_wdt_reset();
+    // DISCONNECTED is terminal by design: the remote connects once on boot
+    // (connection_init) and after that only on explicit user action (menu
+    // connect, pairing-screen teardown restore) - it never retries on its own
+    if (connection_state == CONNECTION_STATE_CONNECTED) {
       if (get_current_time_ms() - remoteStats.lastUpdated > RECONNECTING_DURATION_MS) {
         // No data received for a while - update connection state
         connection_update_state(CONNECTION_STATE_RECONNECTING);
@@ -108,8 +84,11 @@ static void connection_task(void *pvParameters) {
     }
     else if (connection_state == CONNECTION_STATE_CONNECTING) {
       if (get_current_time_ms() - last_connection_state_change > TIMEOUT_DURATION_MS) {
-        // Never connected - reset the connection state
+        // Never connected - reset the connection state. Also stop the driver's
+        // own pursuit (the BLE reconnect timer keeps re-dialing otherwise),
+        // so a DISCONNECTED remote is genuinely radio-idle
         connection_update_state(CONNECTION_STATE_DISCONNECTED);
+        comms_disconnect_peer(pairing_settings.remote_addr);
       }
       else if (remoteStats.lastUpdated > 0 &&
                get_current_time_ms() - remoteStats.lastUpdated < RECONNECTING_DURATION_MS) {
@@ -124,8 +103,10 @@ static void connection_task(void *pvParameters) {
     }
     else if (connection_state == CONNECTION_STATE_RECONNECTING) {
       if (get_current_time_ms() - last_connection_state_change > TIMEOUT_DURATION_MS) {
-        // Reconnect failed - reset the connection state
+        // Reconnect failed - reset the connection state and stop the driver's
+        // own pursuit (see CONNECTING timeout above)
         connection_update_state(CONNECTION_STATE_DISCONNECTED);
+        comms_disconnect_peer(pairing_settings.remote_addr);
       }
       else if (get_current_time_ms() - remoteStats.lastUpdated < RECONNECTING_DURATION_MS) {
         // Reconnected - update connection state
@@ -145,6 +126,7 @@ static void connection_task(void *pvParameters) {
 
   // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "Connection management task ended");
+  esp_task_wdt_delete(NULL);
   vTaskDelete(NULL);
   connection_task_handle = NULL;
 }
@@ -221,6 +203,9 @@ void connection_init() {
 
 void connection_deinit() {
   if (connection_task_handle != NULL) {
+    // Unsubscribe from the watchdog first: a deleted-but-subscribed task
+    // leaves a dangling entry that can never be fed and would trip the WDT
+    esp_task_wdt_delete(connection_task_handle);
     vTaskDelete(connection_task_handle);
     connection_task_handle = NULL;
   }

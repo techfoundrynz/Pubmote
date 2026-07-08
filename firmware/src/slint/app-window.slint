@@ -156,6 +156,9 @@ export global UiState {
     // --- Charge (ui_ChargeScreen) ---
     in property <int> charge-percent: 0;
 
+    // --- Boot notice (set by firmware when recovering from a crash) ---
+    in-out property <string> boot-notice: "";
+
     // --- Confirm Dialog ---
     in-out property <bool> show-confirm-dialog: false;
     in-out property <string> confirm-dialog-title: "";
@@ -166,6 +169,7 @@ export global UiState {
     in-out property <string> confirm-dialog-cancel-variant: "secondary";
     in-out property <string> confirm-dialog-cancel-button-color: "standard";
     in-out property <string> confirm-dialog-confirm-button-variant: "primary";
+    in-out property <bool> confirm-dialog-show-cancel: true;
 
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
@@ -278,6 +282,7 @@ export component AppWindow inherits Window {
             UiState.confirm-dialog-cancel-variant = "secondary";
             UiState.confirm-dialog-cancel-button-color = "standard";
             UiState.confirm-dialog-confirm-button-variant = "primary";
+            UiState.confirm-dialog-show-cancel = true;
         }
     }
 
@@ -333,6 +338,8 @@ export component AppWindow inherits Window {
         is-connected: UiState.is-connected;
         board-battery: UiState.board-battery;
         rssi: UiState.rssi;
+        // 1 = CONNECTING, 3 = RECONNECTING (ConnectionState enum)
+        searching: UiState.connection-state == 1 || UiState.connection-state == 3;
         pocket-mode-active: UiState.pocket-mode-active;
         lights-on: UiState.lights-on;
         board-state-message: UiState.board-state-message;
@@ -518,8 +525,18 @@ export component AppWindow inherits Window {
         cancel-variant: UiState.confirm-dialog-cancel-variant;
         cancel-button-color: UiState.confirm-dialog-cancel-button-color;
         confirm-button-variant: UiState.confirm-dialog-confirm-button-variant;
+        show-cancel: UiState.confirm-dialog-show-cancel;
 
         confirmed => { UiState.confirm-dialog-accepted(); }
         cancelled => { UiState.confirm-dialog-rejected(); }
+    }
+
+    // Crash-recovery notice: purely UI-driven, dismiss clears the property
+    if UiState.boot-notice != "": ConfirmDialog {
+        title: "Recovered from crash";
+        message: UiState.boot-notice;
+        confirm-text: "OK";
+        show-cancel: false;
+        confirmed => { UiState.boot-notice = ""; }
     }
 }

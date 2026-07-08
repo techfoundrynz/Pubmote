@@ -158,14 +158,18 @@
                             (lock-channel "Begin pairing")
                         })
 
-                        (var pairing-data (bufcreate 7))
+                        (var pairing-data (bufcreate 8))
 
                         (bufset-u8 pairing-data 0 REM_PAIR_INIT)
                         (var local-mac (get-mac-addr))
 
-                        (looprange i 0 (- (buflen pairing-data) 1) {
+                        (looprange i 0 6 {
                             (bufset-u8 pairing-data (+ i 1) (ix local-mac i))
                         })
+
+                        ; Append our actual WiFi channel to prevent race condition with channel switching or channel bleed
+                        ; send 0 there - BLE pairing ignores the byte
+                        (bufset-u8 pairing-data 7 (if wifi-enabled-on-boot (wifi-get-chan) 0))
 
                         (pubmote-send-packet uni-mac pairing-data nil)
                         (if (connected-ble) {

@@ -5,6 +5,7 @@
 #include "connection.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "esp_system.h"
 #include "peers.h"
 #include "receiver.h"
@@ -72,7 +73,12 @@ static void transmitter_task(void *pvParameters) {
   int64_t ble_backoff_until = 0;
   int64_t last_error_log_time = 0;
 
+  // Subscribe to the task watchdog: a hung TX task means silent loss of
+  // control transmission - panic and reboot instead
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+
   while (1) {
+    esp_task_wdt_reset();
     bool tx_failed = false;
     int64_t new_time = get_current_time_ms();
 
@@ -241,6 +247,7 @@ static void transmitter_task(void *pvParameters) {
 
   // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "TX task ended");
+  esp_task_wdt_delete(NULL);
   vTaskDelete(NULL);
   transmitter_task_handle = NULL;
 }
@@ -256,6 +263,9 @@ void transmitter_init() {
 
 void transmitter_deinit() {
   if (transmitter_task_handle != NULL) {
+    // Unsubscribe from the watchdog first: a deleted-but-subscribed task
+    // leaves a dangling entry that can never be fed and would trip the WDT
+    esp_task_wdt_delete(transmitter_task_handle);
     vTaskDelete(transmitter_task_handle);
     transmitter_task_handle = NULL;
   }

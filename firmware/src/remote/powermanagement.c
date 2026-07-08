@@ -10,6 +10,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "gpio_detection.h"
 #include "haptic.h"
@@ -70,6 +71,7 @@ static bool get_button_pressed() {
 static bool check_button_press() {
   uint64_t pressStartTime = esp_timer_get_time();
   while (get_button_pressed()) { // Check if button is still pressed
+    esp_task_wdt_reset(); // Boot-window watchdog (no-op if caller unsubscribed)
     if ((esp_timer_get_time() - pressStartTime) >= (CONFIG_BUTTON_LONG_PRESS_TIME_MS * 1000)) {
       ESP_LOGI(TAG, "Button has been pressed for 2 seconds.");
       return true;
@@ -86,6 +88,20 @@ static esp_err_t enable_wake() {
 
   ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(io_mask, JOYSTICK_BUTTON_LEVEL ? ESP_EXT1_WAKEUP_ANY_HIGH
                                                                               : ESP_EXT1_WAKEUP_ANY_LOW));
+
+  // The button driver relies on the internal pull to hold the line at its
+  // inactive level. Configure the pull at RTC level so it persists through
+  // deep sleep (with the RTC peripherals domain kept on - see enter_sleep_internal)
+  if (rtc_gpio_is_valid_gpio(PRIMARY_BUTTON)) {
+    if (JOYSTICK_BUTTON_LEVEL) {
+      rtc_gpio_pulldown_en(PRIMARY_BUTTON);
+      rtc_gpio_pullup_dis(PRIMARY_BUTTON);
+    }
+    else {
+      rtc_gpio_pullup_en(PRIMARY_BUTTON);
+      rtc_gpio_pulldown_dis(PRIMARY_BUTTON);
+    }
+  }
 
   // Use PMU as secondary wake source if available
 #ifdef PMU_INT
@@ -212,7 +228,86 @@ void enter_sleep() {
   shutdown_initiated = true;
 }
 
+// Drive a pin to a defined level and latch it so it can't float once the
+// digital power domain shuts down in deep sleep. gpio_config reclaims pins
+// still routed to a peripheral (LEDC/RMT) and disables pulls so no resistor
+// fights the driven level through sleep.
+static void hold_pin_during_sleep(gpio_num_t pin, uint32_t level) {
+  gpio_set_level(pin, level);
+  gpio_config_t cfg = {
+      .pin_bit_mask = BIT64(pin),
+      .mode = GPIO_MODE_OUTPUT,
+      .pull_up_en = GPIO_PULLUP_DISABLE,
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,
+      .intr_type = GPIO_INTR_DISABLE,
+  };
+  gpio_config(&cfg);
+  gpio_set_level(pin, level);
+  gpio_hold_en(pin);
+}
+
+// Latch every external-facing control pin at its off level for deep sleep.
+// Without this the pads go high-impedance and enable/data lines float, which
+// can leave downstream parts (panel rail, haptic driver, LED strip, buzzer
+// transistor) partially energized.
+static void configure_sleep_pins() {
+#ifdef DISP_BL
+  // Panel enable / backlight (LCD_EN on AMOLED boards): only ever driven high
+  // by the display driver, so force it off for sleep
+  #if defined(DISP_BL_HIGH_LEVEL) && !DISP_BL_HIGH_LEVEL
+  hold_pin_during_sleep(DISP_BL, 1);
+  #else
+  hold_pin_during_sleep(DISP_BL, 0);
+  #endif
+#endif
+#ifdef HAPTIC_EN
+  hold_pin_during_sleep(HAPTIC_EN, 0);
+#endif
+#ifdef LED_DATA
+  hold_pin_during_sleep(LED_DATA, 0);
+#endif
+#ifdef BUZZER_PWM
+  hold_pin_during_sleep(BUZZER_PWM, BUZZER_LEVEL ? 0 : 1);
+#endif
+#ifdef ACC1_POWER
+  hold_pin_during_sleep(ACC1_POWER, ACC1_POWER_ON_LEVEL ? 0 : 1);
+#endif
+#ifdef ACC2_POWER
+  hold_pin_during_sleep(ACC2_POWER, ACC2_POWER_ON_LEVEL ? 0 : 1);
+#endif
+  // Required for holds on non-RTC pads to survive deep sleep
+  gpio_deep_sleep_hold_en();
+}
+
+// Release the pin holds from the previous deep sleep so drivers can
+// reconfigure their pins. Must run before any peripheral init.
+void power_management_preinit() {
+  gpio_deep_sleep_hold_dis();
+#ifdef DISP_BL
+  gpio_hold_dis(DISP_BL);
+#endif
+#ifdef HAPTIC_EN
+  gpio_hold_dis(HAPTIC_EN);
+#endif
+#ifdef LED_DATA
+  gpio_hold_dis(LED_DATA);
+#endif
+#ifdef BUZZER_PWM
+  gpio_hold_dis(BUZZER_PWM);
+#endif
+#ifdef ACC1_POWER
+  gpio_hold_dis(ACC1_POWER);
+#endif
+#ifdef ACC2_POWER
+  gpio_hold_dis(ACC2_POWER);
+#endif
+}
+
 static void enter_sleep_internal() {
+  // The whole sleep-entry sequence takes a few seconds - restart the watchdog
+  // window so it can't fire mid-shutdown (no-op if caller unsubscribed)
+  esp_task_wdt_reset();
+
   // Disable some things so they don't run during wake check
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   unbind_power_button();
@@ -222,21 +317,23 @@ static void enter_sleep_internal() {
   display_off();
   led_set_effect_none();
 
-  // wait for button release
+  // wait for button release. Feed the watchdog while waiting - the user can
+  // legitimately hold the button longer than the WDT timeout
   while (get_button_pressed()) {
+    esp_task_wdt_reset();
     vTaskDelay(pdMS_TO_TICKS(10));
     ESP_LOGI(TAG, "Waiting for button release before sleep...");
   }
   vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow effects to finish
+  esp_task_wdt_reset();
 
   imu_deinit();
+  haptic_deinit();  // Stops the DRV2605 and drives HAPTIC_EN low
+  led_deinit();     // Releases the RMT channel so LED_DATA can be latched low
+  buzzer_deinit();
 
   acc1_power_set_level(0);
   acc2_power_set_level(0);
-
-#if PMU_SY6970
-  disable_watchdog();
-#endif
 
   enable_wake();
 
@@ -245,7 +342,13 @@ static void enter_sleep_internal() {
   power_state_update();
 #endif
 
+  // Must come after the last power_state_update - it turns off the PMU ADC
+  charge_driver_deinit();
+
+  configure_sleep_pins();
+
   ESP_LOGI(TAG, "Entering deep sleep mode");
+  // RTC peripherals stay on so the wake button's internal pull survives sleep
   esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
   esp_deep_sleep_start(); // No code executes after esp_deep_sleep_start()
 }
@@ -313,12 +416,38 @@ void reset_sleep_timer() {
 
 void power_management_task(void *pvParameters) {
 #define POWER_MANAGEMENT_MAX_DELAY 1000 * 1000 // 1 second in microseconds
+// Force-shutdown escape hatch: raw GPIO poll, independent of the button
+// driver / esp_timer / UI, so a wedged firmware can always be powered off
+#define FORCE_SLEEP_HOLD_US (10 * 1000 * 1000)
   static int64_t last_time = 0;
+  int64_t force_sleep_hold_start = 0;
+
+  // Subscribe to the task watchdog: if this task ever hangs, nothing could
+  // act on the shutdown flag and the remote could not be turned off - panic
+  // and reboot instead
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
 
   while (1) {
+    esp_task_wdt_reset();
+
     if (shutdown_initiated) {
       ESP_LOGI(TAG, "Shutdown initiated. Entering sleep.");
       enter_sleep_internal();
+    }
+
+    // If the button driver or UI is wedged, the normal long-press path never
+    // sets the shutdown flag - a sustained raw hold forces shutdown anyway
+    if (get_button_pressed()) {
+      if (force_sleep_hold_start == 0) {
+        force_sleep_hold_start = esp_timer_get_time();
+      }
+      else if (esp_timer_get_time() - force_sleep_hold_start > FORCE_SLEEP_HOLD_US) {
+        ESP_LOGW(TAG, "Button held for %d s. Forcing shutdown.", (int)(FORCE_SLEEP_HOLD_US / 1000000));
+        enter_sleep_internal();
+      }
+    }
+    else {
+      force_sleep_hold_start = 0;
     }
 
 #ifdef PMU_INT

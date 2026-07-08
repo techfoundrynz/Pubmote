@@ -29,6 +29,7 @@ export component StatsScreen inherits Rectangle {
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;       // 0..100, small battery pill
     in property <int> rssi: -100;
+    in property <bool> searching: false;
     in property <bool> remote-charging: false;   // is remote charging
     in property <bool> is-connected: false;
     in property <string> connection-state-label: "Disconnected";
@@ -87,6 +88,7 @@ export component StatsScreen inherits Rectangle {
         connection-state-label: root.connection-state-label;
         board-battery: root.board-battery;
         rssi: root.rssi;
+        searching: root.searching;
         pocket-mode-active: root.pocket-mode-active;
         lights-on: root.lights-on;
         board-state-message: root.board-state-message;
@@ -112,6 +114,7 @@ export component StatsScreen inherits Rectangle {
         connection-state-label: root.connection-state-label;
         board-battery: root.board-battery;
         rssi: root.rssi;
+        searching: root.searching;
         pocket-mode-active: root.pocket-mode-active;
         lights-on: root.lights-on;
         board-state-message: root.board-state-message;

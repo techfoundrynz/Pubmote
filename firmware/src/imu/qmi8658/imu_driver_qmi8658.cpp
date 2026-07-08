@@ -256,7 +256,7 @@ void qmi8658_imu_driver_deinit() {
     }
     ESP_LOGI(TAG, "Deinitializing QMI8658 IMU driver");
     
-    imu.reset(false);
+    imu.powerDown();
     imu_initialized = false;
     
     #ifdef IMU_EN

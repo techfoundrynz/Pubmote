@@ -13,6 +13,7 @@ extern "C" {
 void acc1_power_set_level(bool enable);
 void acc2_power_set_level(uint8_t level);
 void reset_sleep_timer();
+void power_management_preinit();
 void power_management_init();
 void enter_sleep();
 

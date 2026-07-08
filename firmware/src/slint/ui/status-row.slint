@@ -7,6 +7,7 @@ import { BrightnessIcon } from "brightness-icon.slint";
 export component StatusRow inherits Rectangle {
     in property <bool> is-connected: false;
     in property <int> rssi: -100;
+    in property <bool> searching: false;
     in property <bool> left-pad: false;
     in property <bool> right-pad: false;
     in property <string> connection-state-label: "";
@@ -24,6 +25,7 @@ export component StatusRow inherits Rectangle {
             alignment: center;
             RssiIndicator {
                 rssi: root.rssi;
+                searching: root.searching;
                 icon-size: root.icon-size;
             }
         }

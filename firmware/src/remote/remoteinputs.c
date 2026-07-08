@@ -4,6 +4,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -99,7 +100,12 @@ static void thumbstick_task(void *pvParameters) {
 
 #endif
 
+  // Subscribe to the task watchdog: a hung input task then panics and reboots
+  // the remote (recoverable) instead of silently dropping control input
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+
   while (1) {
+    esp_task_wdt_reset();
     uint64_t newTime = get_current_time_ms();
     bool trigger_sleep_disrupt = false;
     int16_t deadband = calibration_settings.deadband;
@@ -168,6 +174,7 @@ static void thumbstick_task(void *pvParameters) {
   }
 
   ESP_LOGI(TAG, "Thumbstick task ended");
+  esp_task_wdt_delete(NULL);
   vTaskDelete(NULL);
 }
 

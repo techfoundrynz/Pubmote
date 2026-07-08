@@ -16,6 +16,7 @@ export component RoundStats inherits Rectangle {
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;
     in property <int> rssi: -100;
+    in property <bool> searching: false;
     in property <bool> remote-charging: false;
     in property <bool> is-connected: false;
     in property <string> connection-state-label: "Disconnected";
@@ -135,6 +136,7 @@ export component RoundStats inherits Rectangle {
             StatusRow {
                 is-connected: root.is-connected;
                 rssi: root.rssi;
+                searching: root.searching;
                 left-pad: root.left-pad;
                 right-pad: root.right-pad;
                 connection-state-label: root.connection-state-label;
