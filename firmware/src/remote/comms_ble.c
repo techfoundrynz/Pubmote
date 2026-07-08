@@ -709,7 +709,11 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
   if (now_us - last_rssi_poll_us > BLE_RSSI_POLL_INTERVAL_US) {
     last_rssi_poll_us = now_us;
     int8_t rssi = 0;
-    if (ble_conn_handle != BLE_HS_CONN_HANDLE_NONE && ble_gap_conn_rssi(ble_conn_handle, &rssi) == 0 && rssi != 0) {
+    // A real BLE link RSSI is always negative dBm. The controller returns the
+    // HCI sentinel +127 when no fresh reading is available for the link -
+    // caching that pins the UI indicator at 0 bars. Keep the previous reading
+    // instead and pick up the next real value.
+    if (ble_conn_handle != BLE_HS_CONN_HANDLE_NONE && ble_gap_conn_rssi(ble_conn_handle, &rssi) == 0 && rssi < 0) {
       cached_rssi = rssi;
     }
   }
