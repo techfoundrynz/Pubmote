@@ -117,7 +117,7 @@ static void thumbstick_task(void *pvParameters) {
 #if JOYSTICK_X_ENABLED
     int16_t x_center = calibration_settings.x_center;
     int16_t x_max = calibration_settings.x_max;
-    int16_t x_min = calibration_settings.y_min;
+    int16_t x_min = calibration_settings.x_min;
 #endif
     float expo = calibration_settings.expo;
     bool invert_y = calibration_settings.invert_y;
@@ -168,8 +168,13 @@ static void thumbstick_task(void *pvParameters) {
     }
 
     int64_t elapsed = get_current_time_ms() - newTime;
-    if (elapsed > 0 && elapsed < INPUT_RATE_MS) {
+    if (elapsed >= 0 && elapsed < INPUT_RATE_MS) {
       vTaskDelay(pdMS_TO_TICKS(INPUT_RATE_MS - elapsed));
+    }
+    else {
+      // Never skip the delay entirely - a sub-tick loop body would otherwise
+      // busy-spin at priority 20 and starve lower-priority tasks on core 0
+      vTaskDelay(1);
     }
   }
 

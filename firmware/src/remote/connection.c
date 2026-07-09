@@ -77,8 +77,13 @@ static void connection_task(void *pvParameters) {
     // (connection_init) and after that only on explicit user action (menu
     // connect, pairing-screen teardown restore) - it never retries on its own
     if (connection_state == CONNECTION_STATE_CONNECTED) {
-      if (get_current_time_ms() - remoteStats.lastUpdated > RECONNECTING_DURATION_MS) {
-        // No data received for a while - update connection state
+      int64_t data_gap_ms = get_current_time_ms() - remoteStats.lastUpdated;
+      if (data_gap_ms > RECONNECTING_DURATION_MS) {
+        // No data received for a while - update connection state. Log the
+        // link diagnostics before RECONNECTING resets signalStrength
+        ESP_LOGW(TAG, "Link stale: no data for %lldms (comms=%s, channel=%d, last RSSI=%d)", data_gap_ms,
+                 comms_get_active_type() == COMMS_TYPE_BLE ? "BLE" : "ESPNOW", pairing_settings.channel,
+                 remoteStats.signalStrength);
         connection_update_state(CONNECTION_STATE_RECONNECTING);
       }
     }

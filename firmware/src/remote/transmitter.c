@@ -124,10 +124,13 @@ static void transmitter_task(void *pvParameters) {
       // BLE is connection-oriented: there is no channel-sweep dwell to feed
       // and the NimBLE stack has a small TX buffer pool, so pushing harder
       // than the link can drain wedges every subsequent write in ENOMEM
-      // (observed on-air). Cap unchanged-data cadence (10Hz poke while
-      // hunting/stale, 500ms keepalive when settled) and back off after a
-      // failed write to let the pool drain.
-      int64_t min_interval = link_settled ? MAX_UPDATE_DELAY_MS : BLE_POKE_INTERVAL_MS;
+      // (observed on-air). Cap unchanged-data cadence at a 10Hz poke and back
+      // off after a failed write to let the pool drain. The poke doubles as
+      // the keepalive: the board cuts telemetry 1s after it last heard us, so
+      // a sparser settled-link keepalive (500ms) left only two packets of
+      // margin - one short TX stall silenced the board and flapped the
+      // connection (observed on-air with strong RSSI).
+      int64_t min_interval = BLE_POKE_INTERVAL_MS;
       if (new_time < ble_backoff_until) {
         should_transmit = false;
       }

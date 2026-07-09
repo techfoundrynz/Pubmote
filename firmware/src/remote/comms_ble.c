@@ -35,9 +35,38 @@ static esp_timer_handle_t reconnect_timer = NULL;
 #define BLE_RECONNECT_SLOW_DELAY_US 2000000 // Subsequent retries
 
 // Cached connection RSSI (refreshed at most once per second)
-#define BLE_RSSI_POLL_INTERVAL_US 1000000
+#define BLE_RSSI_POLL_INTERVAL_MS 1000
 static int8_t cached_rssi = -50;
-static int64_t last_rssi_poll_us = 0;
+static TaskHandle_t rssi_poll_task_handle = NULL;
+// Cooperative shutdown: the task may be blocked inside an HCI command, and a
+// force-deleted owner would leak NimBLE's host locks
+static volatile bool rssi_poll_should_exit = false;
+
+// Poll the link RSSI from a dedicated low-priority task. ble_gap_conn_rssi is
+// a blocking HCI command round-trip - under load the response can stall for
+// hundreds of ms, so it must never run on the TX hot path: a stalled sender
+// stops input packets long enough for the board's 1s cutoff to silence
+// telemetry and flap the connection.
+static void rssi_poll_task(void *param) {
+  while (!rssi_poll_should_exit) {
+    if (is_synced && ble_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+      int8_t rssi = 0;
+      // A real BLE link RSSI is always negative dBm. The controller returns
+      // the HCI sentinel +127 when no fresh reading is available for the link
+      // - caching that pins the UI indicator at 0 bars. Keep the previous
+      // reading instead and pick up the next real value.
+      if (ble_gap_conn_rssi(ble_conn_handle, &rssi) == 0 && rssi < 0) {
+        cached_rssi = rssi;
+      }
+    }
+    // Sleep in short chunks so deinit isn't held up to a full poll interval
+    for (int i = 0; i < BLE_RSSI_POLL_INTERVAL_MS / 100 && !rssi_poll_should_exit; i++) {
+      vTaskDelay(pdMS_TO_TICKS(100));
+    }
+  }
+  rssi_poll_task_handle = NULL;
+  vTaskDelete(NULL);
+}
 
 // (Re)arm the reconnect timer. esp_timer_start_once fails silently on an
 // already-armed timer, so always stop it first.
@@ -379,9 +408,9 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
                   peer_addr_type = desc.peer_id_addr.type;
                 }
 
-                // cached_rssi is refreshed from ble_driver_send (caller task
-                // context) - never issue a blocking HCI command like
-                // ble_gap_conn_rssi from this host-task callback
+                // cached_rssi is refreshed by rssi_poll_task - never issue a
+                // blocking HCI command like ble_gap_conn_rssi from this
+                // host-task callback
                 registered_recv_cb(peer_mac, payload, payload_len, peer_addr_type, cached_rssi);
               }
               parse_idx += bytes_consumed;
@@ -530,7 +559,6 @@ static esp_err_t ble_driver_init(void) {
   nus_rx_handle = 0;
   rx_stream_len = 0;
   cached_rssi = -50;
-  last_rssi_poll_us = 0;
 
   int rc = nimble_port_init();
   // The controller needs large contiguous internal allocations. Right after a
@@ -567,6 +595,11 @@ static esp_err_t ble_driver_init(void) {
 
   nimble_port_freertos_init(ble_host_task);
 
+  rssi_poll_should_exit = false;
+  ESP_ERROR_CHECK(xTaskCreate(rssi_poll_task, "ble_rssi_poll", 3072, NULL, 2, &rssi_poll_task_handle) == pdPASS
+                      ? ESP_OK
+                      : ESP_FAIL);
+
   is_initialized = true;
   return ESP_OK;
 }
@@ -581,6 +614,19 @@ static esp_err_t ble_driver_deinit(void) {
   rx_stream_len = 0;
   if (reconnect_timer) {
     esp_timer_stop(reconnect_timer);
+  }
+
+  // Stop the RSSI poll task while the host is still running, so an in-flight
+  // HCI command can complete - never force-delete it (a task killed inside
+  // ble_gap_conn_rssi leaks NimBLE's host locks and wedges nimble_port_stop)
+  if (rssi_poll_task_handle != NULL) {
+    rssi_poll_should_exit = true;
+    for (int i = 0; i < 100 && rssi_poll_task_handle != NULL; i++) {
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    if (rssi_poll_task_handle != NULL) {
+      ESP_LOGE(TAG, "RSSI poll task did not exit in time");
+    }
   }
 
   if (ble_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
@@ -701,21 +747,6 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
       registered_send_cb(peer_mac, false);
     }
     return result_err;
-  }
-
-  // Refresh cached link RSSI at most once per second. Safe here: this runs in
-  // the sender's task context, not the NimBLE host task.
-  int64_t now_us = esp_timer_get_time();
-  if (now_us - last_rssi_poll_us > BLE_RSSI_POLL_INTERVAL_US) {
-    last_rssi_poll_us = now_us;
-    int8_t rssi = 0;
-    // A real BLE link RSSI is always negative dBm. The controller returns the
-    // HCI sentinel +127 when no fresh reading is available for the link -
-    // caching that pins the UI indicator at 0 bars. Keep the previous reading
-    // instead and pick up the next real value.
-    if (ble_conn_handle != BLE_HS_CONN_HANDLE_NONE && ble_gap_conn_rssi(ble_conn_handle, &rssi) == 0 && rssi < 0) {
-      cached_rssi = rssi;
-    }
   }
 
   if (registered_send_cb) {
