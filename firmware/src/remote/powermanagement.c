@@ -71,7 +71,7 @@ static bool get_button_pressed() {
 static bool check_button_press() {
   uint64_t pressStartTime = esp_timer_get_time();
   while (get_button_pressed()) { // Check if button is still pressed
-    esp_task_wdt_reset(); // Boot-window watchdog (no-op if caller unsubscribed)
+    esp_task_wdt_reset();        // Boot-window watchdog (no-op if caller unsubscribed)
     if ((esp_timer_get_time() - pressStartTime) >= (CONFIG_BUTTON_LONG_PRESS_TIME_MS * 1000)) {
       ESP_LOGI(TAG, "Button has been pressed for 2 seconds.");
       return true;
@@ -328,8 +328,8 @@ static void enter_sleep_internal() {
   esp_task_wdt_reset();
 
   imu_deinit();
-  haptic_deinit();  // Stops the DRV2605 and drives HAPTIC_EN low
-  led_deinit();     // Releases the RMT channel so LED_DATA can be latched low
+  haptic_deinit(); // Stops the DRV2605 and drives HAPTIC_EN low
+  led_deinit();    // Releases the RMT channel so LED_DATA can be latched low
   buzzer_deinit();
 
   acc1_power_set_level(0);

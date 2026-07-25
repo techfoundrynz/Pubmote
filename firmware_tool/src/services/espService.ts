@@ -281,6 +281,7 @@ export class ESPService {
     variant: string;
     hardware: string;
     hasCoredump: boolean;
+    hasFirmware: boolean;
   }> => {
     if (this.isConnecting) {
       throw new Error("Connection already in progress");
@@ -341,39 +342,59 @@ export class ESPService {
       const crystalFreq = await loader.chip.getCrystalFreq(loader);
       this.log(`Crystal Frequency: ${crystalFreq}`, "success");
 
-      this.log("Rebooting into normal mode...");
-      await loader.hardReset();
-      await loader.transport.disconnect();
-      await delay(1000); // Give device time to boot
+      // Determine whether the chip already holds valid firmware. We're still in
+      // bootloader (stub) mode here, so we can read flash directly. A fresh chip
+      // has no application, so rebooting into "normal" mode would only boot-loop
+      // and the version query below would hang. When the chip is blank we stay
+      // in bootloader mode so the user can perform a first-time install.
+      this.log("Checking for existing firmware...");
+      const hasFirmware = await this.hasValidFirmware(loader);
 
-      // Reconnect in normal mode to get firmware info
-      await transport.connect(115200);
-      this.espLoader = loader;
-      this.addSerialMonitor();
-      // Wait for device to stabilize
-      await delay(2000);
       let version: string = "";
       let variant: string = "";
       let hardware: string = "";
       let hasCoredump: boolean = false;
 
-      try {
-        const res = await this.getVersionInfo();
-        version = res.version;
-        variant = res.variant;
-        hardware = res.hardware;
-
-        // Check for core dump
-        hasCoredump = await this.checkCoredump().catch(e => {
-          console.error(e);
-          return false;
-        });
-      } catch (e) {
+      if (!hasFirmware) {
+        // Fresh chip: keep the loader ready in bootloader mode. Do NOT reboot
+        // into normal mode. flash() re-enters the bootloader on its own, so the
+        // device is ready for a first-time install right away.
+        this.espLoader = loader;
         this.log(
-          `Connection failed: ${e instanceof Error ? e.message : "Unknown error"
-          }`,
-          "error"
+          "No firmware detected. Device is in bootloader mode and ready for a first-time install.",
+          "success"
         );
+      } else {
+        this.log("Rebooting into normal mode...");
+        await loader.hardReset();
+        await loader.transport.disconnect();
+        await delay(1000); // Give device time to boot
+
+        // Reconnect in normal mode to get firmware info
+        await transport.connect(115200);
+        this.espLoader = loader;
+        this.addSerialMonitor();
+        // Wait for device to stabilize
+        await delay(2000);
+
+        try {
+          const res = await this.getVersionInfo();
+          version = res.version;
+          variant = res.variant;
+          hardware = res.hardware;
+
+          // Check for core dump
+          hasCoredump = await this.checkCoredump().catch(e => {
+            console.error(e);
+            return false;
+          });
+        } catch (e) {
+          this.log(
+            `Connection failed: ${e instanceof Error ? e.message : "Unknown error"
+            }`,
+            "error"
+          );
+        }
       }
 
       const info = {
@@ -384,10 +405,13 @@ export class ESPService {
         variant,
         hardware,
         hasCoredump,
+        hasFirmware,
       };
 
       this.log(
-        `Device ready: ${info.chipId} running ${variant} v${version}`,
+        hasFirmware
+          ? `Device ready: ${info.chipId} running ${variant} v${version}`
+          : `Device ready: ${info.chipId} (no firmware — ready to flash)`,
         "success"
       );
       return info;
@@ -401,6 +425,27 @@ export class ESPService {
       throw error;
     } finally {
       this.isConnecting = false;
+    }
+  }
+
+  // Detect whether the chip already contains valid firmware. Must be called
+  // while the loader is in bootloader/stub mode (i.e. right after main()/sync()).
+  // A programmed ESP has the ESP image magic byte (0xE9) at the start of the
+  // bootloader region (0x0); an erased/fresh chip reads 0xFF everywhere.
+  private async hasValidFirmware(loader: ESPLoader): Promise<boolean> {
+    try {
+      const data = await loader.readFlash(0x0, 16);
+      const allErased = data.every((b) => b === 0xff);
+      const hasMagic = data[0] === 0xe9;
+      return hasMagic && !allErased;
+    } catch (e) {
+      // If we can't read the flash for any reason, assume firmware may be
+      // present so we don't skip version detection on a healthy device.
+      this.log(
+        `Could not read flash to detect firmware (${e instanceof Error ? e.message : "unknown error"}); assuming firmware present.`,
+        "info"
+      );
+      return true;
     }
   }
 
