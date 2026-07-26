@@ -1,6 +1,10 @@
 ;@const-symbol-strings
-
 @const-start
+
+; Pubmote internal helpers.
+; Depends on pubmote-consts.lisp and pubmote-vars.lisp.
+
+; ---- Internal helpers ----------------------------------------------------
 
 (defun pubmote-send-msg (text) {
     (if (not-eq pubmote-send-msg-cb nil) {
@@ -26,6 +30,19 @@
     (if (not-eq pubmote-save-config nil) {
         (pubmote-save-config)
     })
+})
+
+(defunret pubmote-pack-u32 (byte-list) {
+  (return (to-u32 (+ (shl (to-u32 (ix byte-list 0)) 24)
+                     (shl (to-u32 (ix byte-list 1)) 16)
+                     (shl (to-u32 (ix byte-list 2)) 8)
+                     (to-u32 (ix byte-list 3)))))
+})
+(defunret pubmote-unpack-u32 (packed-value) {
+  (return (list (to-byte (bitwise-and (shr packed-value 24) 0xFF))
+                (to-byte (shr (bitwise-and packed-value 0xFF0000) 16))
+                (to-byte (shr (bitwise-and packed-value 0xFF00) 8))
+                (to-byte (bitwise-and packed-value 0xFF))))
 })
 
 (defun serialize-telemetry (buf telemetry) {
