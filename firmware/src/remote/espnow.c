@@ -89,6 +89,18 @@ static esp_err_t espnow_driver_init(void) {
   esp_wifi_set_max_tx_power(52); // ~14 dBm for balanced power and range
   ESP_LOGI(TAG, "ESP-NOW power settings configured");
 
+  // Open full range of channels
+  wifi_country_t country = {
+      .cc = "JP",
+      .schan = 1,
+      .nchan = 14,
+      .policy = WIFI_COUNTRY_POLICY_MANUAL,
+  };
+  esp_err_t country_ret = esp_wifi_set_country(&country);
+  if (country_ret != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to widen channel range: %s", esp_err_to_name(country_ret));
+  }
+
   // Set WiFi channel for ESP-NOW (default to channel 1 if current channel is invalid for WiFi)
   if (pairing_settings.channel < 1 || pairing_settings.channel > 14) {
     pairing_settings.channel = 1;

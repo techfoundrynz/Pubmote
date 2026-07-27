@@ -1,12 +1,12 @@
 #include "settings.h"
 #include "config.h"
+#include "connection.h"
 #include "display.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "espnow.h"
 #include "nvs_flash.h"
 #include "remote/adc.h"
-#include "connection.h"
 #include "stats.h"
 #include "string.h"
 #include <colors.h>
@@ -237,6 +237,7 @@ static esp_err_t nvs_write(const char *key, void *value, nvs_type_t type, size_t
 
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Failed to write!");
+    nvs_close(nvs_handle);
     return err;
   }
   else {
@@ -246,6 +247,7 @@ static esp_err_t nvs_write(const char *key, void *value, nvs_type_t type, size_t
   err = nvs_commit(nvs_handle);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Failed to commit!");
+    nvs_close(nvs_handle);
     return err;
   }
   else {
@@ -324,8 +326,8 @@ static esp_err_t nvs_read(const char *key, void *value, nvs_type_t type, size_t 
       // so a mismatch/corruption must not overflow it. length==0 means unknown
       // (legacy callers) - fall back to trusting NVS.
       if (length != 0 && required_size > length) {
-        ESP_LOGE(TAG, "NVS string '%s' (%u bytes) exceeds caller buffer (%u) - refusing", key,
-                 (unsigned)required_size, (unsigned)length);
+        ESP_LOGE(TAG, "NVS string '%s' (%u bytes) exceeds caller buffer (%u) - refusing", key, (unsigned)required_size,
+                 (unsigned)length);
         err = ESP_ERR_INVALID_SIZE;
         break;
       }
