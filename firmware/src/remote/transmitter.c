@@ -34,6 +34,7 @@ static const char *TAG = "PUBREMOTE-TRANSMITTER";
 
 static int64_t last_send_time = 0;
 static TaskHandle_t transmitter_task_handle = NULL;
+static volatile bool transmitter_task_should_exit = false;
 
 static void on_data_sent(const uint8_t *mac_addr, bool success) {
   // This callback runs in WiFi task context!
@@ -246,16 +247,25 @@ static void transmitter_task(void *pvParameters) {
     else {
       vTaskDelay(1);
     }
+
+    if (transmitter_task_should_exit) {
+      break;
+    }
   }
 
-  // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "TX task ended");
   esp_task_wdt_delete(NULL);
-  vTaskDelete(NULL);
   transmitter_task_handle = NULL;
+  vTaskDelete(NULL);
 }
 
 void transmitter_init() {
+  if (transmitter_task_handle != NULL) {
+    ESP_LOGE(TAG, "Transmitter task still running, not starting a second one");
+    return;
+  }
+
+  transmitter_task_should_exit = false;
   // 4096: the send path carries the wrapped-payload stack buffers of the
   // comms drivers (up to ~400 bytes) on this task's stack
   ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20,
@@ -266,10 +276,12 @@ void transmitter_init() {
 
 void transmitter_deinit() {
   if (transmitter_task_handle != NULL) {
-    // Unsubscribe from the watchdog first: a deleted-but-subscribed task
-    // leaves a dangling entry that can never be fed and would trip the WDT
-    esp_task_wdt_delete(transmitter_task_handle);
-    vTaskDelete(transmitter_task_handle);
-    transmitter_task_handle = NULL;
+    transmitter_task_should_exit = true;
+    for (int i = 0; i < 200 && transmitter_task_handle != NULL; i++) {
+      vTaskDelay(pdMS_TO_TICKS(5));
+    }
+    if (transmitter_task_handle != NULL) {
+      ESP_LOGE(TAG, "Transmitter task did not exit in time");
+    }
   }
 }

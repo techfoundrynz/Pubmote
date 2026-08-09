@@ -96,12 +96,13 @@ static void process_data(comms_event_t evt) {
   data = (uint8_t *)payload_data;
   len = payload_len;
 
-  RemoteCommands command = (RemoteCommands)data[0];
-  len -= 1; // Remove command byte from length
-  if (len < 0) {
+  if (len < 1) {
     ESP_LOGE(TAG, "Invalid data length: %d", len);
     return;
   }
+
+  RemoteCommands command = (RemoteCommands)data[0];
+  len -= 1; // Remove command byte from length
 
   data += 1; // Move data pointer to the actual data
 
@@ -206,7 +207,10 @@ void receiver_unlock_channel() {
 
 static void change_channel(uint8_t chan, bool is_pairing) {
   ESP_LOGI(TAG, "Switching to channel %d", chan);
-  receiver_lock_channel();
+  if (!receiver_lock_channel()) {
+    ESP_LOGW(TAG, "Channel lock busy, skipping switch to %d", chan);
+    return;
+  }
 
   // Only commit the channel if the radio accepted it - some channels (12-14)
   // are rejected under certain regulatory configs
@@ -287,6 +291,11 @@ static void receiver_task(void *pvParameters) {
 }
 
 void receiver_init() {
+  if (receiver_task_handle != NULL) {
+    ESP_LOGE(TAG, "Receiver task still running, not starting a second one");
+    return;
+  }
+
   ESP_LOGI(TAG, "Starting receiver task");
   receiver_task_should_exit = false;
   ESP_ERROR_CHECK(xTaskCreatePinnedToCore(receiver_task, "receiver_task", 4096, NULL, 20, &receiver_task_handle, 0) ==

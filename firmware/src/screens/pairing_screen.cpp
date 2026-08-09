@@ -176,8 +176,7 @@ extern "C" void teardown_pairing_properties() {
     CommsType saved_mode = settings_get_active_comms_mode();
     if (comms_get_active_type() != saved_mode) {
       ESP_LOGI(TAG, "Restoring comms driver to saved board mode %d", (int)saved_mode);
-      device_settings.comms_mode = saved_mode;
-      comms_select_driver(saved_mode);
+      connection_switch_comms_mode(saved_mode);
     }
   }
 

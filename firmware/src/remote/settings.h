@@ -163,7 +163,6 @@ extern "C"
     PocketModeOptions pocket_mode;
     StatsDoublePressAction double_press_action;
     HbmModeOptions hbm_mode;
-    CommsType comms_mode;
   } DeviceSettings;
 
   uint64_t get_auto_off_ms();

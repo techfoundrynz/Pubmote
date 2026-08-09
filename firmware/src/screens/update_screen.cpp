@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "esp_heap_caps.h"
 #include "ota/update_client.h"
 #include "remote/connection.h"
@@ -301,11 +302,15 @@ static void update_task(void *pvParameters) {
 extern "C" void setup_update_properties() {
   ESP_LOGI(TAG, "setup_update_properties called. Free internal heap: %u, total: %u bytes", 
            heap_caps_get_free_size(MALLOC_CAP_INTERNAL), esp_get_free_heap_size());
-  
+
+  esp_task_wdt_reset();
+
   // Deinit receiver and transmitter to free up internal SRAM stack space (approx 7.5KB)
   ESP_LOGI(TAG, "Stopping receiver and transmitter to free internal RAM...");
   receiver_deinit();
+  esp_task_wdt_reset();
   transmitter_deinit();
+  esp_task_wdt_reset();
 
   // Tear the comms driver down BEFORE creating the update task: with the BLE
   // controller resident there is too little internal RAM left for the task's
@@ -314,10 +319,12 @@ extern "C" void setup_update_properties() {
   if (comms_is_initialized()) {
     ESP_LOGI(TAG, "Deinitializing comms before update task...");
     comms_deinit();
+    esp_task_wdt_reset();
   }
 
   // Wait a short moment to allow the previous screen's task (e.g., about_task) to finish and free its stack
   vTaskDelay(pdMS_TO_TICKS(200));
+  esp_task_wdt_reset();
   ESP_LOGI(TAG, "Free internal heap after yield: %u, total: %u bytes", 
            heap_caps_get_free_size(MALLOC_CAP_INTERNAL), esp_get_free_heap_size());
 

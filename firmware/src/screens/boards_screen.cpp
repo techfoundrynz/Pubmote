@@ -69,14 +69,10 @@ extern "C" void setup_boards_properties() {
 extern "C" void handle_select_board(int idx) {
   ESP_LOGI(TAG, "Selected board at index %d", idx);
   if (set_active_paired_device(idx)) {
-    // Stop transmitting before the driver switch tears the current stack down
-    connection_update_state(CONNECTION_STATE_DISCONNECTED);
-
-    // Switch active driver depending on selected board connection mode
+    // Switch active driver depending on selected board connection mode.
     CommsType mode = settings_get_active_comms_mode();
     ESP_LOGI(TAG, "Selected board, switching active comms mode to %d", (int)mode);
-    device_settings.comms_mode = mode;
-    comms_select_driver(mode);
+    connection_switch_comms_mode(mode);
 
     // Reconnect to the selected peer
     connection_connect_to_default_peer();
@@ -128,10 +124,7 @@ extern "C" void handle_boards_pair_new() {
         state.set_show_confirm_dialog(false);
 
         ESP_LOGI(TAG, "User selected ESP-NOW pairing");
-        // Stop transmitting before the driver switch tears the current stack down
-        connection_update_state(CONNECTION_STATE_DISCONNECTED);
-        device_settings.comms_mode = COMMS_TYPE_ESPNOW;
-        comms_select_driver(COMMS_TYPE_ESPNOW);
+        connection_switch_comms_mode(COMMS_TYPE_ESPNOW);
 
         state.set_screen(Screen::Pairing);
       });
@@ -143,10 +136,7 @@ extern "C" void handle_boards_pair_new() {
         state.set_show_confirm_dialog(false);
 
         ESP_LOGI(TAG, "User selected BLE pairing");
-        // Stop transmitting before the driver switch tears the current stack down
-        connection_update_state(CONNECTION_STATE_DISCONNECTED);
-        device_settings.comms_mode = COMMS_TYPE_BLE;
-        comms_select_driver(COMMS_TYPE_BLE);
+        connection_switch_comms_mode(COMMS_TYPE_BLE);
 
         state.set_screen(Screen::Pairing);
       });

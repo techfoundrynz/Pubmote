@@ -42,7 +42,6 @@ DeviceSettings device_settings = {
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
     .hbm_mode = HBM_MODE_OFF,
-    .comms_mode = COMMS_TYPE_ESPNOW,
 };
 
 CalibrationSettings calibration_settings = {

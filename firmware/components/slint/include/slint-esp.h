@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "slint-platform.h"
 #include "esp_lcd_touch.h"
 #include "esp_lcd_types.h"
+#include "slint-platform.h"
 
 /**
  * This data structure configures the Slint platform for use with ESP-IDF, in particular
@@ -34,43 +34,41 @@
  *  The default depends on the sdkconfig, but you can use either `slint::Rgb8Pixel` or
  *  `slint::platform::Rgb565Pixel`, depending on how the display is configured.
  */
-template<typename PixelType =
+template <typename PixelType =
 #if CONFIG_BSP_LCD_COLOR_FORMAT_RGB888
-                 slint::Rgb8Pixel
+              slint::Rgb8Pixel
 #else
-                 slint::platform::Rgb565Pixel
+              slint::platform::Rgb565Pixel
 #endif
-         >
+          >
 
-struct SlintPlatformConfiguration
-{
-    /// The size of the screen in pixels.
-    slint::PhysicalSize size;
-    /// The handle to the display as previously initialized by `bsp_display_new` or
-    /// `esp_lcd_panel_init`. Must be set to a valid, non-null esp_lcd_panel_handle_t.
-    esp_lcd_panel_handle_t panel_handle = nullptr;
-    /// The touch screen handle, if the device is equipped with a touch screen. Set to nullptr
-    /// otherwise;
-    esp_lcd_touch_handle_t touch_handle = nullptr;
-    /// The buffer Slint will render into. It must have have the size of at least one frame. Slint
-    /// calls esp_lcd_panel_draw_bitmap to flush the buffer to the screen.
-    std::optional<std::span<PixelType>> buffer1 = {};
-    /// If specified, this is a second buffer that will be used for double-buffering. Use this if
-    /// your LCD panel supports double buffering: Call `esp_lcd_rgb_panel_get_frame_buffer` to
-    /// obtain two buffers and set `buffer` and `buffer2` in this data structure.
-    std::optional<std::span<PixelType>> buffer2 = {};
-    slint::platform::SoftwareRenderer::RenderingRotation rotation =
-            slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
-    /// Swap the 2 bytes of RGB 565 pixels before sending to the display, or turn 24-bit RGB into
-    /// BGR. Use this if your CPU is little endian but the display expects big-endian.
-    union {
-        [[deprecated("Renamed to byte_swap")]] bool color_swap_16;
-        bool byte_swap = false;
-    };
+struct SlintPlatformConfiguration {
+  /// The size of the screen in pixels.
+  slint::PhysicalSize size;
+  /// The handle to the display as previously initialized by `bsp_display_new` or
+  /// `esp_lcd_panel_init`. Must be set to a valid, non-null esp_lcd_panel_handle_t.
+  esp_lcd_panel_handle_t panel_handle = nullptr;
+  /// The touch screen handle, if the device is equipped with a touch screen. Set to nullptr
+  /// otherwise;
+  esp_lcd_touch_handle_t touch_handle = nullptr;
+  /// The buffer Slint will render into. It must have have the size of at least one frame. Slint
+  /// calls esp_lcd_panel_draw_bitmap to flush the buffer to the screen.
+  std::optional<std::span<PixelType>> buffer1 = {};
+  /// If specified, this is a second buffer that will be used for double-buffering. Use this if
+  /// your LCD panel supports double buffering: Call `esp_lcd_rgb_panel_get_frame_buffer` to
+  /// obtain two buffers and set `buffer` and `buffer2` in this data structure.
+  std::optional<std::span<PixelType>> buffer2 = {};
+  slint::platform::SoftwareRenderer::RenderingRotation rotation =
+      slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
+  /// Swap the 2 bytes of RGB 565 pixels before sending to the display, or turn 24-bit RGB into
+  /// BGR. Use this if your CPU is little endian but the display expects big-endian.
+  union {
+    [[deprecated("Renamed to byte_swap")]] bool color_swap_16;
+    bool byte_swap = false;
+  };
 };
 
-template<typename... Args>
-SlintPlatformConfiguration(Args...) -> SlintPlatformConfiguration<>;
+template <typename... Args> SlintPlatformConfiguration(Args...) -> SlintPlatformConfiguration<>;
 
 /**
  * Initialize the Slint platform for ESP-IDF
@@ -91,8 +89,7 @@ SlintPlatformConfiguration(Args...) -> SlintPlatformConfiguration<>;
  *  \deprecated Prefer the overload taking a SlintPlatformConfiguration
  */
 [[deprecated("Use the overload taking a SlintPlatformConfiguration")]]
-void slint_esp_init(slint::PhysicalSize size, esp_lcd_panel_handle_t panel,
-                    std::optional<esp_lcd_touch_handle_t> touch,
+void slint_esp_init(slint::PhysicalSize size, esp_lcd_panel_handle_t panel, std::optional<esp_lcd_touch_handle_t> touch,
                     std::span<slint::platform::Rgb565Pixel> buffer1,
                     std::optional<std::span<slint::platform::Rgb565Pixel>> buffer2 = {});
 
@@ -104,3 +101,6 @@ void slint_esp_init(slint::PhysicalSize size, esp_lcd_panel_handle_t panel,
 void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565Pixel> &config);
 void slint_esp_init(const SlintPlatformConfiguration<slint::Rgb8Pixel> &config);
 void slint_esp_set_rotation(slint::platform::SoftwareRenderer::RenderingRotation rotation);
+
+extern volatile uint32_t slint_esp_frame_counter;
+extern volatile uint32_t slint_esp_last_frame_us;

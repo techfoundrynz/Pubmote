@@ -97,7 +97,6 @@ void app_main(void) {
 
   // Comms
   CommsType boot_comms_mode = settings_get_active_comms_mode();
-  device_settings.comms_mode = boot_comms_mode;
   comms_select_driver(boot_comms_mode);
   comms_init();
   connection_init();

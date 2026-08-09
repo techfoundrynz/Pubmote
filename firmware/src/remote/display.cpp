@@ -94,10 +94,6 @@ SlintWindowPtr get_slint_window() {
 
 #include <atomic>
 
-#ifdef SHOW_FPS
-static std::atomic<int> g_loop_count(0);
-#endif
-
 static std::atomic<Screen> cached_active_screen(Screen::Splash);
 
 extern "C" bool is_stats_screen_active() {
@@ -469,8 +465,7 @@ static void slint_input_task(void *pvParameters) {
 
 #if SHOW_FPS
   static uint32_t last_fps_time = 0;
-  static int last_frame_count = 0;
-  static std::atomic<bool> loop_ready(true);
+  static uint32_t last_frame_count = 0;
 #endif
 
   while (true) {
@@ -517,19 +512,15 @@ static void slint_input_task(void *pvParameters) {
       }
 
 #if SHOW_FPS
-      // Keep event loop saturated with a single counting payload
-      if (loop_ready.exchange(false)) {
-        slint::invoke_from_event_loop([]() {
-          g_loop_count++;
-          loop_ready.store(true);
-        });
-      }
-
-      // Calculate and send true FPS to Slint every second
+      // Frames actually drawn per second, straight from the renderer. The
+      // previous version posted closures into the event loop and counted how
+      // fast they came back - that measured event-loop dispatch rate, not
+      // frame rate, and the closure traffic plus a 1 ms poll perturbed the
+      // very thing it was measuring.
       uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
       if (now - last_fps_time >= 1000) {
-        int current_count = g_loop_count.load();
-        int fps = current_count - last_frame_count;
+        uint32_t current_count = slint_esp_frame_counter;
+        int fps = (int)(current_count - last_frame_count);
         last_frame_count = current_count;
         last_fps_time = now;
         slint::invoke_from_event_loop([=]() {
@@ -540,11 +531,10 @@ static void slint_input_task(void *pvParameters) {
       }
 #endif
     }
-#if SHOW_FPS
-    vTaskDelay(pdMS_TO_TICKS(1)); // Poll frequently enough to capture high FPS
-#else
-    vTaskDelay(pdMS_TO_TICKS(30)); // Standard polling rate
-#endif
+    // One rate, always. Nothing needs sub-30 ms polling now that the frame
+    // count comes from the renderer rather than being inferred from how fast
+    // this task can round-trip a closure.
+    vTaskDelay(pdMS_TO_TICKS(30));
   }
 }
 

@@ -1,5 +1,6 @@
 #ifndef __CONNECTION_H
 #define __CONNECTION_H
+#include "comms.h"
 #include <esp_timer.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -32,6 +33,7 @@ void connection_init();
 void connection_deinit();
 void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel);
 void connection_connect_to_default_peer();
+esp_err_t connection_switch_comms_mode(CommsType type);
 
 // Enable/disable automatic reconnection attempts while disconnected.
 // Disabled by an explicit user disconnect; re-enabled by any connect.

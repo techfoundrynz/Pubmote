@@ -41,6 +41,9 @@ static void IRAM_ATTR touch_interrupt_callback(esp_lcd_touch_handle_t)
     }
 }
 
+volatile uint32_t slint_esp_frame_counter = 0;
+volatile uint32_t slint_esp_last_frame_us = 0;
+
 extern "C" {
     void (*slint_esp_on_before_render_cb)() = nullptr;
     void slint_esp_set_scroll_offset(int offset_y, int screen_index) {
@@ -688,7 +691,16 @@ void EspPlatform<PixelType>::run_event_loop()
                 }
 
                 uint64_t t_total = esp_timer_get_time() - t_start;
+
+                // The single source of truth for frame rate: one increment per
+                // frame actually drawn, plus how long that draw took. Anything
+                // that displays or logs FPS derives it from these rather than
+                // measuring something of its own.
+                slint_esp_last_frame_us = (uint32_t)t_total;
+                slint_esp_frame_counter++;
+
                 
+#if SLINT_PERF_LOG
                 static uint64_t accum_render = 0;
                 static uint64_t accum_copy = 0;
                 static uint64_t accum_wait_transmit = 0;
@@ -713,6 +725,11 @@ void EspPlatform<PixelType>::run_event_loop()
                     accum_total = 0;
                     frame_count = 0;
                 }
+#else
+                (void)t_render;
+                (void)t_copy;
+                (void)t_wait_transmit;
+#endif
             }
 
             if (m_window->window().has_active_animations()) {

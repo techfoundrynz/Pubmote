@@ -105,7 +105,13 @@ static esp_err_t espnow_driver_init(void) {
   if (pairing_settings.channel < 1 || pairing_settings.channel > 14) {
     pairing_settings.channel = 1;
   }
-  ESP_ERROR_CHECK(esp_wifi_set_channel(pairing_settings.channel, WIFI_SECOND_CHAN_NONE));
+  esp_err_t chan_ret = esp_wifi_set_channel(pairing_settings.channel, WIFI_SECOND_CHAN_NONE);
+  if (chan_ret != ESP_OK) {
+    ESP_LOGW(TAG, "Channel %d rejected (%s), falling back to 1", pairing_settings.channel,
+             esp_err_to_name(chan_ret));
+    pairing_settings.channel = 1;
+    ESP_ERROR_CHECK(esp_wifi_set_channel(pairing_settings.channel, WIFI_SECOND_CHAN_NONE));
+  }
 
   // Initialize ESP-NOW
   ESP_ERROR_CHECK(esp_now_init());

@@ -1,20 +1,21 @@
 #include "connection.h"
+#include "comms.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "esp_task_wdt.h"
-#include "comms.h"
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "esp_wifi.h"
 #include "peers.h"
 #include "receiver.h"
 #include "remoteinputs.h"
 #include "stats.h"
 #include "time.h"
+#include "transmitter.h"
 
 #include <esp_timer.h>
-#include <remote/settings.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <remote/settings.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -179,6 +180,22 @@ void connection_refresh_pairing_state() {
   else {
     pairing_state = PAIRING_STATE_UNPAIRED;
   }
+}
+
+esp_err_t connection_switch_comms_mode(CommsType type) {
+  if (comms_get_active_type() == type) {
+    return ESP_OK;
+  }
+
+  connection_update_state(CONNECTION_STATE_DISCONNECTED);
+  receiver_deinit();
+  transmitter_deinit();
+
+  esp_err_t err = comms_select_driver(type);
+
+  receiver_init();
+  transmitter_init();
+  return err;
 }
 
 void connection_connect_to_default_peer() {

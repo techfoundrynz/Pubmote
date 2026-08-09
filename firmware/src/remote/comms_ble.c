@@ -656,6 +656,11 @@ static esp_err_t ble_driver_deinit(void) {
     reconnect_timer = NULL;
   }
 
+  ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+  nus_tx_handle = 0;
+  nus_rx_handle = 0;
+  rx_stream_len = 0;
+  has_target_peer = false;
   is_initialized = false;
   is_synced = false;
   return ESP_OK;
@@ -729,7 +734,7 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
 
     int rc = ble_gattc_write_no_rsp_flat(ble_conn_handle, nus_tx_handle, tx_buf + sent_bytes, chunk_len);
     if (rc != 0) {
-      ESP_LOGD(TAG, "ble_gattc_write_no_rsp_flat chunk failed; rc=%d", rc);
+      ESP_LOGW(TAG, "ble_gattc_write_no_rsp_flat chunk failed; rc=%d", rc);
       if (rc == BLE_HS_ENOTCONN) {
         ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
         nus_tx_handle = 0;
