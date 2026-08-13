@@ -70,8 +70,11 @@ export global UiState {
 
     // --- Menu (ui_MenuScreen) ---
     in property <bool> menu-show-connect: false;
-    in property <int> hbm-mode: 0;
+    in property <string> menu-connect-label: "Connect";
+    in property <string> hbm-mode-label: "";
     in property <bool> hbm-mode-supported: false;
+    in property <string> led-mode-label: "";
+    in property <bool> led-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
 
@@ -83,7 +86,14 @@ export global UiState {
     in-out property <int> temp-units-index: 0;
     in-out property <int> distance-units-index: 0;
     in-out property <int> startup-sound-index: 0;
-    in-out property <int> comms-mode-index: 0;
+
+    // Dropdown option labels, populated from settings.c
+    in property <[string]> double-press-options: [];
+    in property <[string]> rotation-options: [];
+    in property <[string]> auto-off-options: [];
+    in property <[string]> temp-units-options: [];
+    in property <[string]> distance-units-options: [];
+    in property <[string]> startup-sound-options: [];
 
     in-out property <float> theme-h: 0;
     in-out property <float> theme-s: 100;
@@ -185,6 +195,7 @@ export global UiState {
     callback menu-connect();
     callback menu-pocket-mode();
     callback menu-toggle-hbm();
+    callback menu-toggle-led();
     callback menu-shutdown-long-press();
     callback open-settings();
     callback open-input-calibration();
@@ -358,10 +369,12 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
         y: (screen-y(Screen.menu) - root.view-y) * self.height;
         show-connect: UiState.menu-show-connect;
-        connection-state: UiState.connection-state;
+        connect-label: UiState.menu-connect-label;
         pocket-mode-active: UiState.pocket-mode-active;
-        hbm-mode: UiState.hbm-mode;
+        hbm-mode-label: UiState.hbm-mode-label;
         hbm-mode-supported: UiState.hbm-mode-supported;
+        led-mode-label: UiState.led-mode-label;
+        led-mode-supported: UiState.led-mode-supported;
         shutdown-text: UiState.shutdown-text;
         scroll-offset-y <=> UiState.scroll-offset-y;
         imu-supported: UiState.imu-supported;
@@ -370,6 +383,7 @@ export component AppWindow inherits Window {
         connect => { UiState.menu-connect(); }
         pocket-mode => { UiState.menu-pocket-mode(); }
         toggle-hbm => { UiState.menu-toggle-hbm(); }
+        toggle-led => { UiState.menu-toggle-led(); }
         settings => { UiState.open-settings(); }
         calibration => { UiState.open-input-calibration(); }
         pairing => { UiState.open-pairing(); }
@@ -391,7 +405,13 @@ export component AppWindow inherits Window {
         temp-units-index <=> UiState.temp-units-index;
         distance-units-index <=> UiState.distance-units-index;
         startup-sound-index <=> UiState.startup-sound-index;
-        comms-mode-index <=> UiState.comms-mode-index;
+
+        double-press-options: UiState.double-press-options;
+        rotation-options: UiState.rotation-options;
+        auto-off-options: UiState.auto-off-options;
+        temp-units-options: UiState.temp-units-options;
+        distance-units-options: UiState.distance-units-options;
+        startup-sound-options: UiState.startup-sound-options;
 
         theme-h <=> UiState.theme-h;
         theme-s <=> UiState.theme-s;

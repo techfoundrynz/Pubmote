@@ -2,12 +2,13 @@
 #define __SETTINGS_H
 #include "display.h"
 #include "esp_system.h"
+#include "led.h"
 #include "nvs_flash.h"
 
-#include <esp_wifi.h>
-#include <esp_now.h>
-#include <remote/receiver.h>
 #include "comms.h"
+#include <esp_now.h>
+#include <esp_wifi.h>
+#include <remote/receiver.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -65,22 +66,26 @@ extern "C"
     AUTO_OFF_10_MINUTES,
     AUTO_OFF_20_MINUTES,
     AUTO_OFF_30_MINUTES,
+    AUTO_OFF_COUNT // Sentinel - keep last
   } AutoOffOptions;
 
   typedef enum {
     TEMP_UNITS_CELSIUS,
     TEMP_UNITS_FAHRENHEIT,
+    TEMP_UNITS_COUNT // Sentinel - keep last
   } TempUnits;
 
   typedef enum {
     DISTANCE_UNITS_METRIC,
     DISTANCE_UNITS_IMPERIAL,
+    DISTANCE_UNITS_COUNT // Sentinel - keep last
   } DistanceUnits;
 
   typedef enum {
     STARTUP_SOUND_DISABLED,
     STARTUP_SOUND_BEEP,
     STARTUP_SOUND_MELODY,
+    STARTUP_SOUND_COUNT // Sentinel - keep last
   } StartupSoundOptions;
 
   typedef enum {
@@ -102,13 +107,11 @@ extern "C"
   typedef enum {
     DOUBLE_PRESS_ACTION_NONE,
     DOUBLE_PRESS_ACTION_OPEN_MENU,
+    DOUBLE_PRESS_ACTION_COUNT // Sentinel - keep last
   } StatsDoublePressAction;
 
-  typedef enum {
-    HBM_MODE_OFF,
-    HBM_MODE_ON,
-    HBM_MODE_RAISED,
-  } HbmModeOptions;
+  // HbmModeOptions lives in display.h (included above) alongside the HBM
+  // functions, and LedModeOptions in led.h - same reason.
 
 #define DEFAULT_PAIRING_SECRET_CODE -1
 #define MAX_PAIRED_DEVICES 5
@@ -148,8 +151,8 @@ extern "C"
 
   // Runtime input pins, defaulting to the board's build flags
   typedef struct InputPinSettings {
-    int8_t js_x_gpio;         // GPIO used for the X axis (must be ADC capable)
-    int8_t js_y_gpio;         // GPIO used for the Y axis (must be ADC capable)
+    int8_t js_x_gpio;          // GPIO used for the X axis (must be ADC capable)
+    int8_t js_y_gpio;          // GPIO used for the Y axis (must be ADC capable)
     int8_t btn1_gpio;          // GPIO used for the primary button
     uint8_t btn1_active_level; // 0: active low (switch), 1: active high (ps5)
   } InputPinSettings;
@@ -181,10 +184,25 @@ extern "C"
     PocketModeOptions pocket_mode;
     StatsDoublePressAction double_press_action;
     HbmModeOptions hbm_mode;
+    LedModeOptions led_mode;
   } DeviceSettings;
 
   uint64_t get_auto_off_ms();
   bool is_pocket_mode_enabled();
+
+  // The option list backing a settings dropdown. `labels` is indexed by the
+  // setting's enum value, so the UI never needs to know the enum ordering.
+  typedef struct {
+    const char *const *labels;
+    uint8_t count;
+  } SettingOptions;
+
+  SettingOptions settings_double_press_options();
+  SettingOptions settings_rotation_options();
+  SettingOptions settings_auto_off_options();
+  SettingOptions settings_temp_units_options();
+  SettingOptions settings_distance_units_options();
+  SettingOptions settings_startup_sound_options();
 
   extern CalibrationSettings calibration_settings;
   extern InputPinSettings input_pin_settings;

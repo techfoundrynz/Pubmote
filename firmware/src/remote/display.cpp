@@ -163,6 +163,19 @@ extern "C" bool display_supports_hbm() {
 #endif
 }
 
+extern "C" const char *hbm_mode_label(HbmModeOptions mode) {
+  switch (mode) {
+  case HBM_MODE_OFF:
+    return "OFF";
+  case HBM_MODE_ON:
+    return "ON";
+  case HBM_MODE_RAISED:
+    return "RAISED";
+  default:
+    return "OFF";
+  }
+}
+
 extern "C" void display_set_joystick_supported(bool supported) {
   if (!get_slint_window()) {
     // UI not up yet - connect_callbacks() picks the values up on init
@@ -199,6 +212,7 @@ extern "C"
   void handle_menu_connect();
   void handle_menu_pocket_mode();
   void handle_menu_toggle_hbm();
+  void handle_menu_toggle_led();
   void handle_open_settings();
   void handle_open_input_calibration();
   void handle_open_pairing();
@@ -296,6 +310,7 @@ static void connect_callbacks() {
   state.on_menu_connect([]() { handle_menu_connect(); });
   state.on_menu_pocket_mode([]() { handle_menu_pocket_mode(); });
   state.on_menu_toggle_hbm([]() { handle_menu_toggle_hbm(); });
+  state.on_menu_toggle_led([]() { handle_menu_toggle_led(); });
   state.on_open_settings([]() { handle_open_settings(); });
   state.on_open_input_calibration([]() { handle_open_input_calibration(); });
   state.on_open_pairing([]() { handle_open_pairing(); });
@@ -369,7 +384,7 @@ static void slint_event_loop(void *pvParameters) {
   config.panel_handle = lcd_panel;
 // Define this to 1 to use full-frame PSRAM double buffering (Artifact-free, 60fps)
 // Define this to 0 to use internal SRAM chunked rendering (Saves PSRAM, may cause tearing)
-#define USE_PSRAM_DOUBLE_BUFFERING 1
+#define USE_PSRAM_DOUBLE_BUFFERING 0
 
   config.touch_handle = touch_handle;
   config.byte_swap = true; // Swap bytes for standard SPI/QSPI big-endian display interfaces

@@ -10,10 +10,15 @@ import { AppButton } from "app-button.slint";
 
 export component MenuScreen inherits Rectangle {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
-    in property <int> connection-state: 0;
+    in property <string> connect-label: "Connect";
     in property <bool> pocket-mode-active: false;
-    in property <int> hbm-mode: 0;
+    // Labels rather than indices - hbm_mode_label() in display.cpp and
+    // led_mode_label() in led.c own the names, so the enum ordering is not
+    // duplicated here where it could silently drift.
+    in property <string> hbm-mode-label: "";
     in property <bool> hbm-mode-supported: false;
+    in property <string> led-mode-label: "";
+    in property <bool> led-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
     in property <bool> imu-supported: false;
@@ -22,6 +27,7 @@ export component MenuScreen inherits Rectangle {
     callback connect;
     callback pocket-mode;
     callback toggle-hbm;
+    callback toggle-led;
     callback settings;
     callback calibration;
     callback pairing;
@@ -62,7 +68,7 @@ export component MenuScreen inherits Rectangle {
             if root.show-connect: VerticalLayout {
                 spacing: 6px * Theme.scale;
                 AppButton {
-                    text: root.connection-state == 0 ? "Connect" : "Disconnect";
+                    text: root.connect-label;
                     variant: "ghost";
                     right-text: "";
                     clicked => { root.connect(); }
@@ -90,9 +96,24 @@ export component MenuScreen inherits Rectangle {
                 spacing: 6px * Theme.scale;
                 AppButton {
                     text: "HBM Mode";
-                    right-text: root.hbm-mode == 0 ? "OFF" : (root.hbm-mode == 1 ? "ON" : "RAISED");
+                    right-text: root.hbm-mode-label;
                     variant: "ghost";
                     clicked => { root.toggle-hbm(); }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Theme.track;
+                }
+            }
+
+            if root.led-mode-supported: VerticalLayout {
+                spacing: 6px * Theme.scale;
+                AppButton {
+                    text: "LED Mode";
+                    right-text: root.led-mode-label;
+                    variant: "ghost";
+                    clicked => { root.toggle-led(); }
                 }
 
                 Rectangle {

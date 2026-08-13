@@ -8,6 +8,7 @@
 #include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"
+#include "remote/led.h"
 #include "remote/powermanagement.h"
 #include "remote/settings.h"
 #include "remote/stats.h"
@@ -38,6 +39,12 @@ extern "C" void handle_menu_shutdown_long_press() {
 static std::atomic<bool> menu_update_pending{false};
 static int menu_last_connection_state = -1;
 
+// Only DISCONNECTED offers to connect; the other states (including CONNECTING)
+// offer to tear the attempt down.
+static const char *menu_connect_label() {
+  return connection_state == CONNECTION_STATE_DISCONNECTED ? "Connect" : "Disconnect";
+}
+
 static void menu_update_display() {
   if (!get_slint_window())
     return;
@@ -53,7 +60,9 @@ static void menu_update_display() {
   }
   slint::invoke_from_event_loop([]() {
     menu_update_pending.store(false);
-    get_slint_window()->global<UiState>().set_connection_state((int)connection_state);
+    const auto &state = get_slint_window()->global<UiState>();
+    state.set_connection_state((int)connection_state);
+    state.set_menu_connect_label(menu_connect_label());
   });
 }
 
@@ -102,8 +111,10 @@ extern "C" void setup_menu_properties() {
   }
 
   state.set_pocket_mode_active(is_pocket_mode_enabled());
-  state.set_hbm_mode((int)device_settings.hbm_mode);
+  state.set_hbm_mode_label(hbm_mode_label(device_settings.hbm_mode));
   state.set_hbm_mode_supported(display_supports_hbm());
+  state.set_led_mode_label(led_mode_label(device_settings.led_mode));
+  state.set_led_mode_supported(led_is_supported());
 
   stats_register_update_cb(menu_update_display);
   menu_update_display();
@@ -145,7 +156,7 @@ extern "C" void handle_menu_toggle_hbm() {
   }
   ESP_LOGI(TAG, "HBM mode button pressed");
 #if IMU_ENABLED
-  device_settings.hbm_mode = (HbmModeOptions)((device_settings.hbm_mode + 1) % 3);
+  device_settings.hbm_mode = (HbmModeOptions)((device_settings.hbm_mode + 1) % HBM_MODE_COUNT);
 #else
   if (device_settings.hbm_mode == HBM_MODE_OFF) {
     device_settings.hbm_mode = HBM_MODE_ON;
@@ -163,6 +174,20 @@ extern "C" void handle_menu_toggle_hbm() {
   else {
     display_set_hbm(false);
   }
+
+  setup_menu_properties(); // update the text
+}
+
+extern "C" void handle_menu_toggle_led() {
+  if (!led_is_supported()) {
+    return;
+  }
+  device_settings.led_mode = (LedModeOptions)((device_settings.led_mode + 1) % LED_MODE_COUNT);
+  ESP_LOGI(TAG, "LED mode button pressed - now %s", led_mode_label(device_settings.led_mode));
+  save_device_settings();
+
+  // Apply immediately so the new mode is visible while still on the menu
+  led_apply_mode();
 
   setup_menu_properties(); // update the text
 }

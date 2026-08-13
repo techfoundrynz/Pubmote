@@ -158,7 +158,7 @@ extern "C" void handle_pairing_action() {
 
 extern "C" void teardown_pairing_properties() {
   ESP_LOGI(TAG, "Tearing down pairing screen properties");
-  led_set_effect_default();
+  led_apply_mode();
 
   if (comms_get_active_type() == COMMS_TYPE_BLE) {
     comms_register_discovery_cb(NULL);

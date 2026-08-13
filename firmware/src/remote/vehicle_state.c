@@ -90,7 +90,7 @@ static void monitor_task(void *pvParameters) {
     if (current_duty_status != last_duty_status) {
       if (is_duty_alert) {
         ESP_LOGW(TAG, "Duty cycle alert: %d%%", remoteStats.dutyCycle);
-        led_set_effect_solid(get_duty_color(current_duty_status));
+        led_set_alert(get_duty_color(current_duty_status));
         if (current_duty_status > last_duty_status) {
           // Duty cycle increased, alert with haptic and buzzer
           haptic_vibrate(get_haptic_pattern(current_duty_status));
@@ -99,7 +99,7 @@ static void monitor_task(void *pvParameters) {
       }
       else {
         ESP_LOGD(TAG, "Duty cycle normal: %d%%", remoteStats.dutyCycle);
-        led_set_effect_default();
+        led_clear_alert();
         haptic_stop_vibration();
         buzzer_stop();
       }

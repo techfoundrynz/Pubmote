@@ -22,20 +22,20 @@ import { Pager } from "pager.slint";
 component SettingPage inherits Rectangle {
     in property <string> caption;
     background: Theme.bg;
-    
+
     VerticalLayout {
         alignment: center;
         spacing: round(20px / 1px * Theme.scale) * 1px;
         padding-left: round(20px / 1px * Theme.scale) * 1px;
         padding-right: round(20px / 1px * Theme.scale) * 1px;
-        
+
         Text {
             text: root.caption;
             color: Theme.text;
             font-size: Theme.font-14;
             horizontal-alignment: center;
         }
-        
+
         @children
     }
 }
@@ -48,16 +48,20 @@ export component SettingsScreen inherits Rectangle {
     in-out property <int> temp-units-index: 0;
     in-out property <int> distance-units-index: 0;
     in-out property <int> startup-sound-index: 0;
-    in-out property <int> comms-mode-index: 0;
+    in property <[string]> double-press-options: [];
+    in property <[string]> rotation-options: [];
+    in property <[string]> auto-off-options: [];
+    in property <[string]> temp-units-options: [];
+    in property <[string]> distance-units-options: [];
+    in property <[string]> startup-sound-options: [];
 
-    
     in-out property <float> theme-h: 0;
     in-out property <float> theme-s: 100;
     in-out property <float> theme-l: 50;
-    
+
     callback save;
     background: Theme.bg;
-    
+
     property <int> current-page: 0;
     property <int> total-pages: 8;
 
@@ -69,56 +73,67 @@ export component SettingsScreen inherits Rectangle {
             SettingPage {
                 width: root.width;
                 caption: "Screen brightness";
-                AppSlider { minimum: 10; maximum: 255; value <=> root.brightness; }
+                AppSlider {
+                    minimum: 10;
+                    maximum: 255;
+                    value <=> root.brightness;
+                }
             }
+
             SettingPage {
                 width: root.width;
                 caption: "Double-press action";
                 ComboBox {
-                    model: ["None", "Open menu"];
+                    model: root.double-press-options;
                     current-index <=> root.double-press-index;
                 }
             }
+
             SettingPage {
                 width: root.width;
                 caption: "Screen rotation";
                 ComboBox {
-                    model: ["None", "90 degrees", "180 degrees", "270 degrees"];
+                    model: root.rotation-options;
                     current-index <=> root.rotation-index;
                 }
             }
+
             SettingPage {
                 width: root.width;
                 caption: "Auto-off time";
                 ComboBox {
-                    model: ["Disabled", "2 minutes", "5 minutes", "10 minutes", "20 minutes", "30 minutes"];
+                    model: root.auto-off-options;
                     current-index <=> root.auto-off-index;
                 }
             }
+
             SettingPage {
                 width: root.width;
                 caption: "Temp units";
                 ComboBox {
-                    model: ["Celsius", "Fahrenheit"];
+                    model: root.temp-units-options;
                     current-index <=> root.temp-units-index;
                 }
             }
+
             SettingPage {
                 width: root.width;
                 caption: "Distance units";
                 ComboBox {
-                    model: ["Kilometers", "Miles"];
+                    model: root.distance-units-options;
                     current-index <=> root.distance-units-index;
                 }
             }
+
             SettingPage {
                 width: root.width;
                 caption: "Startup sound";
                 ComboBox {
-                    model: ["Disabled", "Beep", "Melody"];
+                    model: root.startup-sound-options;
                     current-index <=> root.startup-sound-index;
                 }
             }
+
             SettingPage {
                 width: root.width;
                 caption: "Theme color";

@@ -29,6 +29,8 @@ static const uint8_t DEFAULT_PEER_ADDR[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 static const BoardBatteryDisplayOption DEFAULT_BATTERY_DISPLAY = BATTERY_DISPLAY_PERCENT;
 static const PocketModeOptions DEFAULT_POCKET_MODE = POCKET_MODE_DISABLED;
 static const StatsDoublePressAction DEFAULT_DOUBLE_PRESS_ACTION = DOUBLE_PRESS_ACTION_NONE;
+// Solid theme colour - the behaviour before led_mode was configurable
+static const LedModeOptions DEFAULT_LED_MODE = LED_MODE_SOLID;
 
 DeviceSettings device_settings = {
     .bl_level = BL_LEVEL_DEFAULT,
@@ -43,6 +45,7 @@ DeviceSettings device_settings = {
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
     .hbm_mode = HBM_MODE_OFF,
+    .led_mode = DEFAULT_LED_MODE,
 };
 
 CalibrationSettings calibration_settings = {
@@ -442,6 +445,35 @@ bool is_pocket_mode_enabled() {
   return device_settings.pocket_mode == POCKET_MODE_ENABLED;
 }
 
+// Dropdown option labels. Each table is indexed by its enum value and asserted
+// against that enum's _COUNT, so extending an enum without adding a label fails
+// the build instead of silently shifting what the UI saves.
+#define DEFINE_SETTING_OPTIONS(fn_name, table, count_sentinel)                                                          \
+  _Static_assert(sizeof(table) / sizeof((table)[0]) == (count_sentinel), #table " out of sync with " #count_sentinel);  \
+  SettingOptions fn_name() {                                                                                           \
+    SettingOptions options = {.labels = table, .count = sizeof(table) / sizeof((table)[0])};                            \
+    return options;                                                                                                    \
+  }
+
+static const char *const DOUBLE_PRESS_LABELS[] = {"None", "Open menu"};
+DEFINE_SETTING_OPTIONS(settings_double_press_options, DOUBLE_PRESS_LABELS, DOUBLE_PRESS_ACTION_COUNT)
+
+static const char *const ROTATION_LABELS[] = {"None", "90 degrees", "180 degrees", "270 degrees"};
+DEFINE_SETTING_OPTIONS(settings_rotation_options, ROTATION_LABELS, SCREEN_ROTATION_COUNT)
+
+static const char *const AUTO_OFF_LABELS[] = {"Disabled",   "2 minutes",  "5 minutes",
+                                              "10 minutes", "20 minutes", "30 minutes"};
+DEFINE_SETTING_OPTIONS(settings_auto_off_options, AUTO_OFF_LABELS, AUTO_OFF_COUNT)
+
+static const char *const TEMP_UNITS_LABELS[] = {"Celsius", "Fahrenheit"};
+DEFINE_SETTING_OPTIONS(settings_temp_units_options, TEMP_UNITS_LABELS, TEMP_UNITS_COUNT)
+
+static const char *const DISTANCE_UNITS_LABELS[] = {"Kilometers", "Miles"};
+DEFINE_SETTING_OPTIONS(settings_distance_units_options, DISTANCE_UNITS_LABELS, DISTANCE_UNITS_COUNT)
+
+static const char *const STARTUP_SOUND_LABELS[] = {"Disabled", "Beep", "Melody"};
+DEFINE_SETTING_OPTIONS(settings_startup_sound_options, STARTUP_SOUND_LABELS, STARTUP_SOUND_COUNT)
+
 void save_device_settings() {
   nvs_write_int(BL_LEVEL_KEY, device_settings.bl_level);
   nvs_write_int(SCREEN_ROTATION_KEY, device_settings.screen_rotation);
@@ -456,6 +488,7 @@ void save_device_settings() {
   nvs_write_int("pocket_mode", device_settings.pocket_mode);
   nvs_write_int("stats_dp", device_settings.double_press_action);
   nvs_write_int("hbm_mode", device_settings.hbm_mode);
+  nvs_write_int("led_mode", device_settings.led_mode);
 }
 
 esp_err_t save_wifi_ssid(const char *ssid) {
@@ -752,6 +785,15 @@ esp_err_t settings_init() {
 
   device_settings.hbm_mode =
       nvs_read_int("hbm_mode", &temp_setting_value) == ESP_OK ? (HbmModeOptions)temp_setting_value : HBM_MODE_OFF;
+  if (device_settings.hbm_mode >= HBM_MODE_COUNT) {
+    device_settings.hbm_mode = HBM_MODE_OFF;
+  }
+
+  device_settings.led_mode =
+      nvs_read_int("led_mode", &temp_setting_value) == ESP_OK ? (LedModeOptions)temp_setting_value : DEFAULT_LED_MODE;
+  if (device_settings.led_mode >= LED_MODE_COUNT) {
+    device_settings.led_mode = DEFAULT_LED_MODE;
+  }
 
   // Reading calibration settings
   calibration_settings.x_min =
