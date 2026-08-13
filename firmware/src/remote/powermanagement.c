@@ -65,7 +65,10 @@ static void power_state_update() {
 }
 
 static bool get_button_pressed() {
-  return gpio_get_level(PRIMARY_BUTTON) == JOYSTICK_BUTTON_LEVEL;
+  if (!input_pins_button_enabled()) {
+    return false;
+  }
+  return gpio_get_level((gpio_num_t)input_pin_settings.btn1_gpio) == input_pin_settings.btn1_active_level;
 }
 
 static bool check_button_press() {
@@ -84,22 +87,29 @@ static bool check_button_press() {
 static esp_err_t enable_wake() {
   esp_err_t res = ESP_OK;
 
-  uint64_t io_mask = BIT64(PRIMARY_BUTTON);
+  if (!input_pins_button_enabled()) {
+    // Nothing to wake on - the remote will need a reset to come back
+    ESP_LOGW(TAG, "No button configured - no wake source armed");
+    return res;
+  }
 
-  ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(io_mask, JOYSTICK_BUTTON_LEVEL ? ESP_EXT1_WAKEUP_ANY_HIGH
-                                                                              : ESP_EXT1_WAKEUP_ANY_LOW));
+  const gpio_num_t btn_pin = (gpio_num_t)input_pin_settings.btn1_gpio;
+  uint64_t io_mask = BIT64(btn_pin);
+
+  ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(io_mask, input_pin_settings.btn1_active_level ? ESP_EXT1_WAKEUP_ANY_HIGH
+                                                                                           : ESP_EXT1_WAKEUP_ANY_LOW));
 
   // The button driver relies on the internal pull to hold the line at its
   // inactive level. Configure the pull at RTC level so it persists through
   // deep sleep (with the RTC peripherals domain kept on - see enter_sleep_internal)
-  if (rtc_gpio_is_valid_gpio(PRIMARY_BUTTON)) {
-    if (JOYSTICK_BUTTON_LEVEL) {
-      rtc_gpio_pulldown_en(PRIMARY_BUTTON);
-      rtc_gpio_pullup_dis(PRIMARY_BUTTON);
+  if (rtc_gpio_is_valid_gpio(btn_pin)) {
+    if (input_pin_settings.btn1_active_level) {
+      rtc_gpio_pulldown_en(btn_pin);
+      rtc_gpio_pullup_dis(btn_pin);
     }
     else {
-      rtc_gpio_pullup_en(PRIMARY_BUTTON);
-      rtc_gpio_pulldown_dis(PRIMARY_BUTTON);
+      rtc_gpio_pullup_en(btn_pin);
+      rtc_gpio_pulldown_dis(btn_pin);
     }
   }
 
@@ -557,7 +567,7 @@ void power_management_init() {
   case ESP_SLEEP_WAKEUP_EXT1:
     ESP_LOGI(TAG, "Woken up by external signal on EXT1.");
     // Proceed to check if the button is still pressed
-    if (wakeup_pin_mask & BIT64(PRIMARY_BUTTON)) {
+    if (input_pins_button_enabled() && (wakeup_pin_mask & BIT64(input_pin_settings.btn1_gpio))) {
       if (!check_button_press()) {
         enter_sleep_internal();
         return;

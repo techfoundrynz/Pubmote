@@ -4,8 +4,10 @@
 #include "esp_core_dump.h"
 #include "esp_log.h"
 #include "powermanagement.h"
+#include "remoteinputs.h"
 #include "settings.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "linenoise/linenoise.h"
 
@@ -87,6 +89,26 @@ static void register_erase_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
+// Comma separated, so the web tool needs no per-chip pin tables
+static void print_pin_list(const char *label, uint64_t mask) {
+  printf("%s: ", label);
+  bool first = true;
+  for (int io_num = 0; io_num < 64; io_num++) {
+    if (mask & (1ULL << io_num)) {
+      printf(first ? "%d" : ",%d", io_num);
+      first = false;
+    }
+  }
+  printf("\n");
+}
+
+static void print_pin_warnings(void) {
+  char warn[192];
+  if (input_pins_warnings(&input_pin_settings, warn, sizeof(warn)) > 0) {
+    printf("pins_warning: %s\n", warn);
+  }
+}
+
 static int get_settings(int argc, char **argv) {
   if (argc > 1) {
     ESP_LOGE(TAG, "Usage: settings");
@@ -106,6 +128,18 @@ static int get_settings(int argc, char **argv) {
     printf("WiFi Credentials:\n");
     printf("wifi_ssid: %s\n", current_ssid);
     printf("wifi_password: %s\n", current_password);
+
+    printf("Input Pins:\n");
+    printf("js_x_gpio: %d\n", input_pin_settings.js_x_gpio);
+    printf("js_y_gpio: %d\n", input_pin_settings.js_y_gpio);
+    printf("btn1_gpio: %d\n", input_pin_settings.btn1_gpio);
+    printf("btn1_level: %u\n", input_pin_settings.btn1_active_level);
+    uint64_t assignable = input_pins_assignable_mask();
+    print_pin_list("pins_available", assignable);
+    print_pin_list("pins_adc_capable", input_pins_adc_capable_mask() & assignable);
+    print_pin_list("pins_button_capable", input_pins_button_capable_mask());
+    print_pin_list("pins_reserved", input_pins_reserved_mask());
+    print_pin_warnings();
   }
 
   return 0;
@@ -121,6 +155,24 @@ static void register_get_settings_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
+// A GPIO number, or -1 to disable the input
+static bool parse_pin_value(const char *value, int8_t *out, const char **err) {
+  char *end = NULL;
+  long parsed = strtol(value, &end, 10);
+
+  if (end == value || *end != '\0') {
+    *err = "expected a GPIO number";
+    return false;
+  }
+  if (parsed < INPUT_PIN_DISABLED || parsed >= 64) {
+    *err = "out of range (-1 to disable)";
+    return false;
+  }
+
+  *out = (int8_t)parsed;
+  return true;
+}
+
 static int save_settings_command(int argc, char **argv) {
   if (argc < 3 || argc % 2 == 0) {
     ESP_LOGE(TAG, "Usage: save_settings <SETTING1> <VALUE2> <SETTING2> <VALUE2>...");
@@ -128,10 +180,45 @@ static int save_settings_command(int argc, char **argv) {
   }
   else {
     int setting_count = (argc - 1) / 2;
+    // Collected first and applied once, so a multi-pin remap is atomic
+    InputPinSettings pending_pins = input_pin_settings;
+    bool pins_dirty = false;
+
     for (int i = 0; i < setting_count; i++) {
       const char *setting = argv[1 + i * 2];
       const char *value = argv[2 + i * 2];
-      if (strcmp(setting, "wifi_ssid") == 0) {
+      const char *pin_err = NULL;
+
+      if (strcmp(setting, "js_x_gpio") == 0) {
+        if (!parse_pin_value(value, &pending_pins.js_x_gpio, &pin_err)) {
+          printf("pins_error: js_x_gpio %s\n", pin_err);
+          return -1;
+        }
+        pins_dirty = true;
+      }
+      else if (strcmp(setting, "js_y_gpio") == 0) {
+        if (!parse_pin_value(value, &pending_pins.js_y_gpio, &pin_err)) {
+          printf("pins_error: js_y_gpio %s\n", pin_err);
+          return -1;
+        }
+        pins_dirty = true;
+      }
+      else if (strcmp(setting, "btn1_gpio") == 0) {
+        if (!parse_pin_value(value, &pending_pins.btn1_gpio, &pin_err)) {
+          printf("pins_error: btn1_gpio %s\n", pin_err);
+          return -1;
+        }
+        pins_dirty = true;
+      }
+      else if (strcmp(setting, "btn1_level") == 0) {
+        if (strcmp(value, "0") != 0 && strcmp(value, "1") != 0) {
+          printf("pins_error: btn1_level must be 0 or 1\n");
+          return -1;
+        }
+        pending_pins.btn1_active_level = (value[0] == '1') ? 1 : 0;
+        pins_dirty = true;
+      }
+      else if (strcmp(setting, "wifi_ssid") == 0) {
         if (strlen(value) > 32) {
           ESP_LOGE(TAG, "SSID must be less than 33 characters.");
           return -1;
@@ -168,6 +255,17 @@ static int save_settings_command(int argc, char **argv) {
       }
     }
 
+    if (pins_dirty) {
+      char apply_err[128] = {0};
+      esp_err_t err = input_pins_apply(&pending_pins, apply_err, sizeof(apply_err));
+      if (err != ESP_OK) {
+        printf("pins_error: %s\n", apply_err[0] != '\0' ? apply_err : esp_err_to_name(err));
+        return -1;
+      }
+      printf("pins_applied: ok\n");
+      print_pin_warnings();
+    }
+
     return 0;
   }
 }
@@ -175,7 +273,9 @@ static int save_settings_command(int argc, char **argv) {
 static void register_save_settings_command() {
   esp_console_cmd_t cmd = {
       .command = "save_settings",
-      .help = "Save remote settings",
+      .help = "Save remote settings.\n"
+              "Supported: wifi_ssid, wifi_password, js_x_gpio, js_y_gpio, btn1_gpio, btn1_level.\n"
+              "Pin changes apply immediately (-1 disables an input).",
       .hint = "save_settings <SETTING1> <VALUE1> <SETTING2> <VALUE2>...",
       .func = &save_settings_command,
   };

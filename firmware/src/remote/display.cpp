@@ -163,6 +163,23 @@ extern "C" bool display_supports_hbm() {
 #endif
 }
 
+extern "C" void display_set_joystick_supported(bool supported) {
+  if (!get_slint_window()) {
+    // UI not up yet - connect_callbacks() picks the values up on init
+    return;
+  }
+
+  const bool x_supported = input_pins_x_enabled();
+  const bool y_supported = input_pins_y_enabled();
+
+  slint::invoke_from_event_loop([supported, x_supported, y_supported]() {
+    const auto &state = get_slint_window()->global<UiState>();
+    state.set_joystick_supported(supported);
+    state.set_joystick_x_supported(x_supported);
+    state.set_joystick_y_supported(y_supported);
+  });
+}
+
 extern "C" void display_set_bl_level(uint8_t level) {
   ESP_LOGI(TAG, "display_set_bl_level: %d (is_initialized: %d)", level, is_initialized);
   if (is_initialized) {
@@ -221,7 +238,9 @@ static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
   state.set_imu_supported(IMU_ENABLED);
-  state.set_joystick_supported(JOYSTICK_ENABLED);
+  state.set_joystick_supported(input_pins_joystick_enabled());
+  state.set_joystick_x_supported(input_pins_x_enabled());
+  state.set_joystick_y_supported(input_pins_y_enabled());
 
   state.on_screen_changed([](Screen screen) {
     Screen prev = cached_active_screen.exchange(screen);

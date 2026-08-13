@@ -7,6 +7,7 @@
 #include "espnow.h"
 #include "nvs_flash.h"
 #include "remote/adc.h"
+#include "remote/remoteinputs.h"
 #include "stats.h"
 #include "string.h"
 #include <colors.h>
@@ -55,6 +56,13 @@ CalibrationSettings calibration_settings = {
     .expo = STICK_EXPO,
     .invert_x = INVERT_X_AXIS,
     .invert_y = INVERT_Y_AXIS,
+};
+
+InputPinSettings input_pin_settings = {
+    .js_x_gpio = INPUT_PIN_DISABLED,
+    .js_y_gpio = INPUT_PIN_DISABLED,
+    .btn1_gpio = INPUT_PIN_DISABLED,
+    .btn1_active_level = JOYSTICK_BUTTON_LEVEL,
 };
 
 ImuCalibrationSettings imu_calibration = {
@@ -393,6 +401,20 @@ esp_err_t reset_all_settings() {
   return nvs_flash_erase();
 }
 
+// Falls back when the key is missing or the value can't be a GPIO at all
+static int8_t read_pin_setting(const char *key, int8_t fallback) {
+  uint32_t raw = 0;
+  if (nvs_read_int(key, &raw) != ESP_OK) {
+    return fallback;
+  }
+  int32_t value = (int32_t)raw;
+  if (value < INPUT_PIN_DISABLED || value >= GPIO_NUM_MAX) {
+    ESP_LOGE(TAG, "Stored pin '%s' out of range (%ld)", key, (long)value);
+    return fallback;
+  }
+  return (int8_t)value;
+}
+
 static uint8_t get_auto_off_time_minutes() {
   switch (device_settings.auto_off_time) {
   case AUTO_OFF_DISABLED:
@@ -605,7 +627,53 @@ void save_input_calibration() {
   nvs_write_int("y_center", calibration_settings.y_center);
   nvs_write_int("deadband", calibration_settings.deadband);
   nvs_write_int("expo", (int)(calibration_settings.expo * EXPO_ADJUST_FACTOR));
+  nvs_write_int("invert_x", calibration_settings.invert_x);
   nvs_write_int("invert_y", calibration_settings.invert_y);
+}
+
+void input_pins_load_defaults(InputPinSettings *out) {
+  if (out == NULL) {
+    return;
+  }
+
+  out->js_x_gpio = INPUT_PIN_DISABLED;
+  out->js_y_gpio = INPUT_PIN_DISABLED;
+  out->btn1_gpio = INPUT_PIN_DISABLED;
+  out->btn1_active_level = JOYSTICK_BUTTON_LEVEL;
+
+#if JOYSTICK_X_ENABLED
+  out->js_x_gpio = (int8_t)JOYSTICK_X;
+#endif
+#if JOYSTICK_Y_ENABLED
+  out->js_y_gpio = (int8_t)JOYSTICK_Y;
+#endif
+#if JOYSTICK_BUTTON_ENABLED
+  out->btn1_gpio = (int8_t)PRIMARY_BUTTON;
+#endif
+}
+
+void save_input_pins() {
+  nvs_write_int("js_x_gpio", (uint32_t)(int32_t)input_pin_settings.js_x_gpio);
+  nvs_write_int("js_y_gpio", (uint32_t)(int32_t)input_pin_settings.js_y_gpio);
+  nvs_write_int("btn1_gpio", (uint32_t)(int32_t)input_pin_settings.btn1_gpio);
+  nvs_write_int("btn1_level", input_pin_settings.btn1_active_level ? 1 : 0);
+}
+
+void reset_axis_calibration(bool reset_x, bool reset_y) {
+  if (reset_x) {
+    calibration_settings.x_min = STICK_MIN_VAL;
+    calibration_settings.x_max = STICK_MAX_VAL;
+    calibration_settings.x_center = STICK_MID_VAL;
+  }
+  if (reset_y) {
+    calibration_settings.y_min = STICK_MIN_VAL;
+    calibration_settings.y_max = STICK_MAX_VAL;
+    calibration_settings.y_center = STICK_MID_VAL;
+  }
+  if (reset_x || reset_y) {
+    calibration_settings.deadband = STICK_DEADBAND;
+    save_input_calibration();
+  }
 }
 
 void save_imu_calibration() {
@@ -707,11 +775,36 @@ esp_err_t settings_init() {
       nvs_read_int("deadband", &temp_setting_value) == ESP_OK ? (uint16_t)temp_setting_value : STICK_DEADBAND;
 
   calibration_settings.expo = nvs_read_int("expo", &temp_setting_value) == ESP_OK
-                                  ? (float)(temp_setting_value / EXPO_ADJUST_FACTOR)
+                                  ? (float)temp_setting_value / EXPO_ADJUST_FACTOR
                                   : STICK_EXPO;
+
+  calibration_settings.invert_x =
+      nvs_read_int("invert_x", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : INVERT_X_AXIS;
 
   calibration_settings.invert_y =
       nvs_read_int("invert_y", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : INVERT_Y_AXIS;
+
+  // Adopt a stored assignment only if it still validates, so a stale mapping
+  // can't leave the remote without inputs
+  InputPinSettings stored_pins;
+  input_pins_load_defaults(&stored_pins);
+  input_pin_settings = stored_pins;
+
+  stored_pins.js_x_gpio = read_pin_setting("js_x_gpio", stored_pins.js_x_gpio);
+  stored_pins.js_y_gpio = read_pin_setting("js_y_gpio", stored_pins.js_y_gpio);
+  stored_pins.btn1_gpio = read_pin_setting("btn1_gpio", stored_pins.btn1_gpio);
+  stored_pins.btn1_active_level =
+      nvs_read_int("btn1_level", &temp_setting_value) == ESP_OK ? (temp_setting_value ? 1 : 0) : stored_pins.btn1_active_level;
+
+  char pin_err[96];
+  if (input_pins_validate(&stored_pins, pin_err, sizeof(pin_err)) == ESP_OK) {
+    input_pin_settings = stored_pins;
+  }
+  else {
+    ESP_LOGE(TAG, "Stored input pins rejected (%s) - using board defaults", pin_err);
+  }
+  ESP_LOGI(TAG, "Input pins: js_x=%d js_y=%d btn=%d (level %u)", input_pin_settings.js_x_gpio,
+           input_pin_settings.js_y_gpio, input_pin_settings.btn1_gpio, input_pin_settings.btn1_active_level);
 
   uint32_t temp_val;
   imu_calibration.accel_x_offset =

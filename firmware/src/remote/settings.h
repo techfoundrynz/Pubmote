@@ -39,6 +39,11 @@ extern "C"
 
   void save_input_calibration();
 
+  void save_input_pins();
+
+  // Restore the default range for axes whose pin changed
+  void reset_axis_calibration(bool reset_x, bool reset_y);
+
   void save_imu_calibration();
 
   esp_err_t save_pairing_data();
@@ -139,6 +144,19 @@ extern "C"
     float expo;
   } CalibrationSettings;
 
+#define INPUT_PIN_DISABLED (-1)
+
+  // Runtime input pins, defaulting to the board's build flags
+  typedef struct InputPinSettings {
+    int8_t js_x_gpio;         // GPIO used for the X axis (must be ADC capable)
+    int8_t js_y_gpio;         // GPIO used for the Y axis (must be ADC capable)
+    int8_t btn1_gpio;          // GPIO used for the primary button
+    uint8_t btn1_active_level; // 0: active low (switch), 1: active high (ps5)
+  } InputPinSettings;
+
+  // The assignment baked in at build time
+  void input_pins_load_defaults(InputPinSettings *out);
+
   typedef struct {
     float accel_x_offset;
     float accel_y_offset;
@@ -169,6 +187,7 @@ extern "C"
   bool is_pocket_mode_enabled();
 
   extern CalibrationSettings calibration_settings;
+  extern InputPinSettings input_pin_settings;
   extern DeviceSettings device_settings;
   extern PairingSettings pairing_settings;
   extern ImuCalibrationSettings imu_calibration;

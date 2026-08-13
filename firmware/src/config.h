@@ -46,13 +46,13 @@
   #define JOYSTICK_BUTTON_ENABLED 0
 #endif
 
-#if defined(JOYSTICK_X_ADC) && defined(JOYSTICK_X_ADC_UNIT)
+#ifdef JOYSTICK_X
   #define JOYSTICK_X_ENABLED 1
 #else
   #define JOYSTICK_X_ENABLED 0
 #endif
 
-#if defined(JOYSTICK_Y_ADC) && defined(JOYSTICK_Y_ADC_UNIT)
+#ifdef JOYSTICK_Y
   #define JOYSTICK_Y_ENABLED 1
 #else
   #define JOYSTICK_Y_ENABLED 0

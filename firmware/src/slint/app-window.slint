@@ -115,6 +115,7 @@ export global UiState {
     in property <bool> show-expo-slider: false;
     in property <bool> show-invert-switch: false;
     in-out property <float> expo-value: 1.0;
+    in-out property <bool> invert-x: false;
     in-out property <bool> invert-y: false;
 
     // --- About (ui_AboutScreen) ---
@@ -134,6 +135,8 @@ export global UiState {
     in property <bool> imu-calibration-enabled: false;
     in property <bool> imu-supported: false;
     in property <bool> joystick-supported: false;
+    in property <bool> joystick-x-supported: false;
+    in property <bool> joystick-y-supported: false;
     in property <bool> imu-calibration-invert-x: false;
     in property <bool> imu-calibration-invert-y: false;
     in property <bool> imu-calibration-swap-xy: false;
@@ -441,7 +444,10 @@ export component AppWindow inherits Window {
         joystick-y: UiState.joystick-y;
         show-expo-slider: UiState.show-expo-slider;
         show-invert-switch: UiState.show-invert-switch;
+        x-axis-supported: UiState.joystick-x-supported;
+        y-axis-supported: UiState.joystick-y-supported;
         expo-value <=> UiState.expo-value;
+        invert-x <=> UiState.invert-x;
         invert-y <=> UiState.invert-y;
         primary => { UiState.input-calibration-primary(); }
         secondary => { UiState.input-calibration-secondary(); }

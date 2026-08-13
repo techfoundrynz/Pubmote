@@ -24,6 +24,7 @@ void display_off();
 bool display_get_hbm();
 void display_set_hbm(bool active);
 bool display_supports_hbm();
+void display_set_joystick_supported(bool supported);
 
 void apply_theme_settings();
 
