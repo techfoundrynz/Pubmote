@@ -47,6 +47,12 @@ static void IRAM_ATTR touch_interrupt_callback(esp_lcd_touch_handle_t)
 
 volatile uint32_t slint_esp_frame_counter = 0;
 volatile uint32_t slint_esp_last_frame_us = 0;
+// Per-frame breakdown for the on-screen overlay. prepare is scene building, render is the
+// per-line rasterisation, flush is the byte swap plus waiting on the panel transfer.
+volatile uint32_t slint_esp_prepare_us = 0;
+volatile uint32_t slint_esp_render_us = 0;
+volatile uint32_t slint_esp_flush_us = 0;
+volatile uint32_t slint_esp_dirty_px = 0;
 
 
 
@@ -521,6 +527,14 @@ void EspPlatform<PixelType>::run_event_loop()
                 (void)chunked_region;
 #endif
 
+                // How much of the panel Slint asked to be repainted this frame. Cheap to
+                // total up, and it is the number that says whether invalidation or pixel
+                // cost is the limit.
+                uint32_t last_dirty_px = 0;
+                for (auto [o, s] : chunked_region.rectangles()) {
+                    last_dirty_px += (uint32_t)s.width * (uint32_t)s.height;
+                }
+
                 uint64_t t_total = esp_timer_get_time() - t_start;
 
                 // The single source of truth for frame rate: one increment per
@@ -530,6 +544,14 @@ void EspPlatform<PixelType>::run_event_loop()
                 slint_esp_last_frame_us = (uint32_t)t_total;
                 // Not ++: compound ops on volatile are deprecated in C++20
                 slint_esp_frame_counter = slint_esp_frame_counter + 1;
+
+                // The same split the perf log prints, published for the on-screen overlay:
+                // reading it off the panel does not need a serial monitor attached, and the
+                // monitor holds firmware.elf open for the exception decoder anyway.
+                slint_esp_prepare_us = (uint32_t)t_prepare;
+                slint_esp_render_us = (uint32_t)t_render;
+                slint_esp_flush_us = (uint32_t)(t_copy + t_wait_transmit);
+                slint_esp_dirty_px = last_dirty_px;
 
                 
 #if SLINT_PERF_LOG

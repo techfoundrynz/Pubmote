@@ -46,6 +46,11 @@ export global UiState {
     in-out property <Screen> screen: Screen.splash;
     in-out property <int> fps: 0;
     in property <bool> show-fps: false;
+    // Where a frame goes, shown under the FPS counter when show-fps is set.
+    in property <int> perf-prepare-ms: 0;
+    in property <int> perf-render-ms: 0;
+    in property <int> perf-flush-ms: 0;
+    in property <int> perf-dirty-pct: 0;
 
     // --- Stats (ui_StatsScreen) ---
     in property <string> speed: "0.0";
@@ -540,6 +545,10 @@ export component AppWindow inherits Window {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
         fps: UiState.fps;
+        prepare-ms: UiState.perf-prepare-ms;
+        render-ms: UiState.perf-render-ms;
+        flush-ms: UiState.perf-flush-ms;
+        dirty-pct: UiState.perf-dirty-pct;
     }
 
     if UiState.show-confirm-dialog: ConfirmDialog {

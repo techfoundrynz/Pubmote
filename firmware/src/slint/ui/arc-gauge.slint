@@ -28,11 +28,8 @@ export component ArcGauge inherits Rectangle {
     property <length> arc-cx: root.width / 2;
     property <length> arc-cy: root.height / 2;
 
-    // A dial fills its element, and Path's bounding rect is the whole element, so any
-    // change to the sweep invalidates the entire panel - every label redraws with it.
-    // Quantising to whole degrees means that only happens when the arc actually moves by
-    // a pixel or so, instead of on every tick of a continuously varying value.
-    property <float> steps: root.span-angle / 1deg;
+    property <angle> step: 1deg;
+    property <float> steps: root.span-angle / root.step;
     property <float> q-value: root.steps > 0 ? Math.round(root.value * root.steps) / root.steps : 0;
 
     property <angle> ind-start: root.reverse
@@ -72,8 +69,7 @@ export component ArcGauge inherits Rectangle {
         }
     }
 
-    // A zero-length arc is degenerate, so the indicator only exists once it has a sweep
-    if (root.ind-end - root.ind-start) > 0.5deg: Path {
+    Path {
         width: 100%;
         height: 100%;
         fit: preserve;
@@ -82,7 +78,7 @@ export component ArcGauge inherits Rectangle {
         arc-radius: root.r;
         arc-start-angle: root.ind-start;
         arc-sweep-angle: root.ind-end - root.ind-start;
-        stroke: root.indicator-color;
+        stroke: (root.ind-end - root.ind-start) > 0.5deg ? root.indicator-color : transparent;
         stroke-width: root.thickness;
         stroke-line-cap: round;
         MoveTo {

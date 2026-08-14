@@ -242,6 +242,13 @@ extern "C"
 
 extern "C" void handle_imu_gesture(imu_gesture_t gesture);
 
+extern "C" {
+extern volatile uint32_t slint_esp_prepare_us;
+extern volatile uint32_t slint_esp_render_us;
+extern volatile uint32_t slint_esp_flush_us;
+extern volatile uint32_t slint_esp_dirty_px;
+}
+
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
@@ -529,8 +536,21 @@ static void slint_input_task(void *pvParameters) {
         int fps = (int)(((current_count - last_frame_count) * 1000 + elapsed / 2) / elapsed);
         last_frame_count = current_count;
         last_fps_time = now;
+        // Sampled alongside the frame rate so the overlay can show where a frame goes:
+        // prepare is scene building, render the per-line rasterisation, flush the byte
+        // swap plus waiting on the panel. Reading these off the panel avoids needing a
+        // serial monitor, which holds firmware.elf open for the exception decoder.
+        int prepare_ms = (int)((slint_esp_prepare_us + 500) / 1000);
+        int render_ms = (int)((slint_esp_render_us + 500) / 1000);
+        int flush_ms = (int)((slint_esp_flush_us + 500) / 1000);
+        int dirty_pct = (int)((slint_esp_dirty_px * 100ULL + (HOR_RES * VER_RES) / 2) / (HOR_RES * VER_RES));
         slint::invoke_from_event_loop([=]() {
           if (slint_window) {
+            const auto &st = slint_window->global<UiState>();
+            st.set_perf_prepare_ms(prepare_ms);
+            st.set_perf_render_ms(render_ms);
+            st.set_perf_flush_ms(flush_ms);
+            st.set_perf_dirty_pct(dirty_pct);
             slint_window->global<UiState>().set_fps(fps);
           }
         });
