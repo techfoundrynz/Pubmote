@@ -1,5 +1,47 @@
 import { Theme } from "theme.slint";
 
+// The 225deg..315deg cap of a signal arc, on stock Path/ArcTo.
+component SignalArc inherits Rectangle {
+    in property <brush> stroke-color;
+    in property <length> thickness;
+
+    property <length> r: (min(root.width, root.height) - root.thickness) / 2;
+    // Path offsets the whole shape by half the stroke width to keep it inside the
+    // element, so the centre has to be pulled back by the same amount
+    property <length> cx: (root.width - root.thickness) / 2;
+    property <length> cy: (root.height - root.thickness) / 2;
+
+    Path {
+        // A Path defaults to a zero size and is skipped entirely by the renderer.
+        // fit: preserve keeps the coordinates below as literal pixels - the default
+        // (contain) would rescale the arc's bounding box to fill the element.
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        arc-center-x: root.width / 2;
+        arc-center-y: root.height / 2;
+        arc-radius: root.r;
+        arc-start-angle: 225deg;
+        arc-sweep-angle: 90deg;
+        stroke: root.stroke-color;
+        stroke-width: root.thickness;
+        stroke-line-cap: round;
+        MoveTo {
+            x: (root.cx + root.r * Math.cos(225deg)) / 1px;
+            y: (root.cy + root.r * Math.sin(225deg)) / 1px;
+        }
+
+        ArcTo {
+            radius-x: root.r / 1px;
+            radius-y: root.r / 1px;
+            x: (root.cx + root.r * Math.cos(315deg)) / 1px;
+            y: (root.cy + root.r * Math.sin(315deg)) / 1px;
+            large-arc: false;
+            sweep: true;
+        }
+    }
+}
+
 // Custom RSSI indicator without image dependencies (dot + arc segments).
 export component RssiIndicator inherits Rectangle {
     in property <int> rssi: -100;
@@ -38,28 +80,22 @@ export component RssiIndicator inherits Rectangle {
     }
 
     // First arc (middle)
-    ArcSegment {
+    SignalArc {
         x: 1px * root.s;
         y: 6.5px * root.s;
         width: 12px * root.s;
         height: 12px * root.s;
-        stroke: root.shown-bars >= 2 ? Theme.text : Theme.track;
-        stroke-width: 2px * root.s;
-        start-angle: 225deg;
-        end-angle: 315deg;
-        stroke-line-cap: LineCap.round;
+        stroke-color: root.shown-bars >= 2 ? Theme.text : Theme.track;
+        thickness: 2px * root.s;
     }
 
     // Second arc (top)
-    ArcSegment {
+    SignalArc {
         x: -3px * root.s;
         y: 2.5px * root.s;
         width: 20px * root.s;
         height: 20px * root.s;
-        stroke: root.shown-bars >= 3 ? Theme.text : Theme.track;
-        stroke-width: 2px * root.s;
-        start-angle: 225deg;
-        end-angle: 315deg;
-        stroke-line-cap: LineCap.round;
+        stroke-color: root.shown-bars >= 3 ? Theme.text : Theme.track;
+        thickness: 2px * root.s;
     }
 }

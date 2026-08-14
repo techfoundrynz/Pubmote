@@ -170,7 +170,11 @@ if "bootloader" not in env.subst("$BUILD_DIR"):
         compile_slint_files
     )
 
-    slint_prebuilt_dir = os.path.abspath(os.path.join(".pio", "build", env["PIOENV"], "slint-prebuilt", "Slint-cpp-1.16.1-xtensa-esp32s3-none-elf"))
+    # This script is a `pre:` extra_script, so it runs before the espidf builder invokes
+    # CMake - nothing under slint-prebuilt/ exists yet on a clean tree and the path cannot
+    # be discovered, only agreed on. firmware/components/slint/CMakeLists.txt stages every
+    # mode (local source / git ref / prebuilt release) into this same fixed directory.
+    slint_prebuilt_dir = os.path.abspath(os.path.join(".pio", "build", env["PIOENV"], "slint-prebuilt", "current"))
     slint_lib_path = os.path.join(slint_prebuilt_dir, "lib", "libslint_cpp.a")
     slint_include_dir = os.path.join(slint_prebuilt_dir, "include")
     slint_include_slint_dir = os.path.join(slint_include_dir, "slint")

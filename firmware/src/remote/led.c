@@ -335,6 +335,10 @@ void led_set_effect_none() {
 
 void led_apply_mode() {
 #if LED_ENABLED
+  if (alert_active) {
+    return;
+  }
+
   switch (device_settings.led_mode) {
   case LED_MODE_SOLID:
     led_set_effect_solid(device_settings.theme_color);

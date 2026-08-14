@@ -18,7 +18,9 @@ export component FpsOverlay inherits Rectangle {
         Text {
             text: root.fps + " FPS";
             color: #FFFFFF;
-            font-size: 24px;
+            // Theme token, not a raw px: only the scaled Theme sizes are embedded as
+            // glyphs, so a hardcoded 24px renders from a scaled fallback.
+            font-size: Theme.font-14;
             font-weight: Theme.w-medium;
             font-family: "JetBrains Mono";
             horizontal-alignment: center;

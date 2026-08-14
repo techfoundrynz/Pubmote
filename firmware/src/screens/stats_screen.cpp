@@ -1,4 +1,5 @@
 #include "screens/stats_screen.h"
+#include "config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "generated/app-window.h"
@@ -20,6 +21,28 @@
 
 static const char *TAG = "PUBREMOTE-STATS_SCREEN";
 static float max_speed = 40.0f;
+
+// The dials are full-screen-sized items and Slint tracks dirty regions per item
+// bounding box, so any change to an arc's value repaints most of the panel. At 466px
+// across with a 260deg sweep, one degree of arc is only ~4px of travel, so telemetry
+// jitter far below that buys a full repaint while being invisible.
+//
+// Quantise to 1/256 - just over a degree - and only push when the arc would actually
+// move. Steady riding then costs zero arc invalidation instead of one repaint per
+// telemetry tick. The quantised value is what gets pushed, so the arc also lands on
+// stable positions rather than drifting sub-pixel.
+#define ARC_QUANT_STEPS 256.0f
+
+// Returns true (updating *last) only when the quantised fraction actually moved.
+static bool arc_fraction_moved(float value, float *last) {
+  float clamped = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
+  float quantised = roundf(clamped * ARC_QUANT_STEPS) / ARC_QUANT_STEPS;
+  if (quantised == *last) {
+    return false;
+  }
+  *last = quantised;
+  return true;
+}
 
 extern "C" void setup_menu_properties(); // from menu_screen.cpp
 extern "C" void teardown_stats_properties();
@@ -195,8 +218,14 @@ extern "C" void stats_update_screen_display() {
 
     state.set_speed(slint_speed_str);
     state.set_speed_unit(slint_speed_unit);
-    state.set_speed_fraction(speed_fraction);
-    state.set_duty_fraction(duty_fraction);
+    static float last_speed_fraction = -1.0f;
+    static float last_duty_fraction = -1.0f;
+    if (arc_fraction_moved(speed_fraction, &last_speed_fraction)) {
+      state.set_speed_fraction(last_speed_fraction);
+    }
+    if (arc_fraction_moved(duty_fraction, &last_duty_fraction)) {
+      state.set_duty_fraction(last_duty_fraction);
+    }
     state.set_left_pad(left_pad);
     state.set_right_pad(right_pad);
     state.set_remote_battery(remoteStats.remoteBatteryPercentage);

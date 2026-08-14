@@ -14,7 +14,7 @@
 #define MIN_RCV_API_VERSION 1
 
 #ifndef TARGET_FPS
-  #define TARGET_FPS 60
+  #define TARGET_FPS 50
 #endif
 
 #define MIN_BATTERY_VOLTAGE 3000
@@ -73,6 +73,11 @@
 
 #ifndef TP_RST
   #define TP_RST -1
+#endif
+
+// UI shape: 0 = circular, 1 = square/rectangular. Square panels default to the square UI.
+#ifndef UI_SHAPE
+  #define UI_SHAPE (HOR_RES == VER_RES ? 0 : 1)
 #endif
 
 // Led configuration

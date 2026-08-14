@@ -1,47 +1,102 @@
 import { Theme } from "theme.slint";
 
-export global ArcGenerator {
-    pure callback generate(length, length, angle, angle, angle, angle, brush, brush) -> image;
-}
-
-// Arc gauge, the equivalent of LVGL's lv_arc. Draws a background "track" arc and
-// an "indicator" arc on top, using SVG-style Path arcs.
+// Arc gauge built from Path/ArcTo, which is stock Slint - no custom element required.
 //
 // Angles follow the LVGL convention: 0deg = 3 o'clock, increasing clockwise
 // (90deg = 6 o'clock / bottom). `start-angle` is where the arc begins and
 // `span-angle` how far it sweeps clockwise. `value` (0..1) is the filled
 // fraction; `reverse` fills from the far end backwards (LVGL ARC_MODE_REVERSE).
 export component ArcGauge inherits Rectangle {
-    in property <angle> start-angle: 135deg;   // lv_arc default background start
-    in property <angle> span-angle: 270deg;    // lv_arc default 135->45 == 270deg
-    in property <float> value: 0;              // 0..1
+    in property <angle> start-angle: 135deg;
+    in property <angle> span-angle: 270deg;
+    in property <float> value: 0;
     in property <bool> reverse: false;
     in property <length> thickness: 16px;
     in property <brush> track-color: Theme.track;
     in property <brush> indicator-color: Theme.accent;
     in property <bool> show-track: true;
 
-    if show-track: ArcSegment {
-        cache-rendering-hint: true;
+    // Centre line of the stroke, inset by half the stroke so the outer edge sits on the box.
+    // Path offsets the whole shape by half the stroke width to keep it inside the element,
+    // so the centre has to be pulled back by the same amount.
+    property <length> r: (min(root.width, root.height) - root.thickness) / 2;
+    property <length> cx: (root.width - root.thickness) / 2;
+    property <length> cy: (root.height - root.thickness) / 2;
+    // The arc hint is not subject to that half-stroke offset - it is read straight from
+    // the element's coordinates - so it takes the true centre. Using cx/cy here would
+    // push the ring half a stroke off the left and top edges.
+    property <length> arc-cx: root.width / 2;
+    property <length> arc-cy: root.height / 2;
+
+    // A dial fills its element, and Path's bounding rect is the whole element, so any
+    // change to the sweep invalidates the entire panel - every label redraws with it.
+    // Quantising to whole degrees means that only happens when the arc actually moves by
+    // a pixel or so, instead of on every tick of a continuously varying value.
+    property <float> steps: root.span-angle / 1deg;
+    property <float> q-value: root.steps > 0 ? Math.round(root.value * root.steps) / root.steps : 0;
+
+    property <angle> ind-start: root.reverse
+        ? root.start-angle + root.span-angle * (1.0 - root.q-value)
+        : root.start-angle;
+    property <angle> ind-end: root.reverse
+        ? root.start-angle + root.span-angle
+        : root.start-angle + root.span-angle * root.q-value;
+
+    if root.show-track && root.span-angle > 0.5deg: Path {
+        // A Path defaults to a zero size and is skipped entirely by the renderer.
+        // fit: preserve keeps the coordinates below as literal pixels - the default
+        // (contain) would rescale the arc's bounding box to fill the element.
         width: 100%;
         height: 100%;
+        fit: preserve;
+        arc-center-x: root.arc-cx;
+        arc-center-y: root.arc-cy;
+        arc-radius: root.r;
+        arc-start-angle: root.start-angle;
+        arc-sweep-angle: root.span-angle;
         stroke: root.track-color;
         stroke-width: root.thickness;
-        start-angle: root.start-angle;
-        end-angle: root.start-angle + root.span-angle;
-        stroke-line-cap: LineCap.round;
+        stroke-line-cap: round;
+        MoveTo {
+            x: (root.cx + root.r * Math.cos(root.start-angle)) / 1px;
+            y: (root.cy + root.r * Math.sin(root.start-angle)) / 1px;
+        }
+
+        ArcTo {
+            radius-x: root.r / 1px;
+            radius-y: root.r / 1px;
+            x: (root.cx + root.r * Math.cos(root.start-angle + root.span-angle)) / 1px;
+            y: (root.cy + root.r * Math.sin(root.start-angle + root.span-angle)) / 1px;
+            large-arc: root.span-angle > 180deg;
+            sweep: true;
+        }
     }
 
-    property <angle> ind-start: root.reverse ? root.start-angle + root.span-angle * (1.0 - root.value) : root.start-angle;
-    property <angle> ind-span: root.reverse ? root.span-angle * root.value : root.span-angle * root.value;
-
-    ArcSegment {
+    // A zero-length arc is degenerate, so the indicator only exists once it has a sweep
+    if (root.ind-end - root.ind-start) > 0.5deg: Path {
         width: 100%;
         height: 100%;
+        fit: preserve;
+        arc-center-x: root.arc-cx;
+        arc-center-y: root.arc-cy;
+        arc-radius: root.r;
+        arc-start-angle: root.ind-start;
+        arc-sweep-angle: root.ind-end - root.ind-start;
         stroke: root.indicator-color;
         stroke-width: root.thickness;
-        start-angle: root.ind-start;
-        end-angle: root.ind-start + root.ind-span;
-        stroke-line-cap: LineCap.round;
+        stroke-line-cap: round;
+        MoveTo {
+            x: (root.cx + root.r * Math.cos(root.ind-start)) / 1px;
+            y: (root.cy + root.r * Math.sin(root.ind-start)) / 1px;
+        }
+
+        ArcTo {
+            radius-x: root.r / 1px;
+            radius-y: root.r / 1px;
+            x: (root.cx + root.r * Math.cos(root.ind-end)) / 1px;
+            y: (root.cy + root.r * Math.sin(root.ind-end)) / 1px;
+            large-arc: (root.ind-end - root.ind-start) > 180deg;
+            sweep: true;
+        }
     }
 }

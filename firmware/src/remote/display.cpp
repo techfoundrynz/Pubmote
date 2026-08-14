@@ -61,12 +61,6 @@
 
 static const char *TAG = "PUBREMOTE-DISPLAY";
 
-extern "C"
-{
-  extern void (*slint_esp_on_before_render_cb)();
-  void slint_esp_set_scroll_offset(int offset_y, int screen_index);
-}
-
 #define LCD_HOST SPI2_HOST
 #define LCD_CMD_BITS 8
 #define LCD_PARAM_BITS 8
@@ -80,7 +74,7 @@ static uint8_t bl_level = 0;
 static bool hbm_mode_active = false;
 
 uint16_t *slint_chunk_buffer[2] = {NULL, NULL};
-extern const int slint_chunk_lines = 10;
+int slint_chunk_lines = VER_RES / 20;
 
 // PSRAM frame buffers removed for pure chunked mode
 
@@ -251,6 +245,7 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture);
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
+  state.set_show_fps(SHOW_FPS);
   state.set_imu_supported(IMU_ENABLED);
   state.set_joystick_supported(input_pins_joystick_enabled());
   state.set_joystick_x_supported(input_pins_x_enabled());
@@ -347,10 +342,6 @@ extern "C" void apply_theme_settings() {
   theme.set_panel_width(HOR_RES);
   theme.set_panel_height(VER_RES);
 
-#ifndef UI_SHAPE
-  #define UI_SHAPE (HOR_RES == VER_RES ? 0 : 1)
-#endif
-
   // Set the screen shape mode (false = circular, true = square/rectangular)
   theme.set_is_square_mode(UI_SHAPE == 1);
 
@@ -382,35 +373,14 @@ static void slint_event_loop(void *pvParameters) {
   SlintPlatformConfiguration<slint::platform::Rgb565Pixel> config;
   config.size = slint::PhysicalSize(slint::Size<uint32_t>{(uint32_t)HOR_RES, (uint32_t)VER_RES});
   config.panel_handle = lcd_panel;
-// Define this to 1 to use full-frame PSRAM double buffering (Artifact-free, 60fps)
-// Define this to 0 to use internal SRAM chunked rendering (Saves PSRAM, may cause tearing)
-#define USE_PSRAM_DOUBLE_BUFFERING 0
-
   config.touch_handle = touch_handle;
   config.byte_swap = true; // Swap bytes for standard SPI/QSPI big-endian display interfaces
 
-#if USE_PSRAM_DOUBLE_BUFFERING
-  slint::platform::Rgb565Pixel *buffer1 = (slint::platform::Rgb565Pixel *)heap_caps_malloc(
-      HOR_RES * VER_RES * sizeof(slint::platform::Rgb565Pixel), MALLOC_CAP_SPIRAM);
-  slint::platform::Rgb565Pixel *buffer2 = (slint::platform::Rgb565Pixel *)heap_caps_malloc(
-      HOR_RES * VER_RES * sizeof(slint::platform::Rgb565Pixel), MALLOC_CAP_SPIRAM);
-
-  if (buffer1 && buffer2) {
-    config.buffer1 = std::span<slint::platform::Rgb565Pixel>(buffer1, HOR_RES * VER_RES);
-    config.buffer2 = std::span<slint::platform::Rgb565Pixel>(buffer2, HOR_RES * VER_RES);
-    ESP_LOGI(TAG, "PSRAM double-buffering enabled for 60fps artifact-free rendering");
-  }
-  else {
-    ESP_LOGW(TAG, "Failed to allocate PSRAM buffers, falling back to chunked rendering");
-    if (buffer1)
-      heap_caps_free(buffer1);
-    if (buffer2)
-      heap_caps_free(buffer2);
-  }
-#else
-  // buffer1 and buffer2 remain unassigned, forcing render_by_line chunked mode (uses slint_chunk_buffer)
+  // config.buffer1/buffer2 are deliberately left unset: that selects render_by_line
+  // chunked mode, which stages into slint_chunk_buffer in internal SRAM. Full-frame
+  // buffers would have to live in PSRAM, and reading them back per frame is slower than
+  // rendering into SRAM chunks on this panel.
   ESP_LOGI(TAG, "Using internal SRAM chunked rendering mode");
-#endif
 
   // Map rotation
   switch (device_settings.screen_rotation) {
@@ -453,13 +423,6 @@ static void slint_event_loop(void *pvParameters) {
   default:
     break;
   }
-  slint_esp_on_before_render_cb = []() {
-    if (slint_window) {
-      int scroll_y = slint_window->global<UiState>().get_scroll_offset_y();
-      int screen = (int)slint_window->global<UiState>().get_screen();
-      slint_esp_set_scroll_offset(scroll_y, screen);
-    }
-  };
   connect_callbacks();
   apply_theme_settings();
 
@@ -552,9 +515,18 @@ static void slint_input_task(void *pvParameters) {
       // frame rate, and the closure traffic plus a 1 ms poll perturbed the
       // very thing it was measuring.
       uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-      if (now - last_fps_time >= 1000) {
+      if (last_fps_time == 0) {
+        // Start the window here rather than at tick 0: otherwise the first sample
+        // reports every frame drawn since boot as if it happened in one second.
+        last_fps_time = now;
+        last_frame_count = slint_esp_frame_counter;
+      }
+      else if (now - last_fps_time >= 1000) {
         uint32_t current_count = slint_esp_frame_counter;
-        int fps = (int)(current_count - last_frame_count);
+        uint32_t elapsed = now - last_fps_time;
+        // Scale by the real window: this task polls every 30ms, so the window
+        // overshoots 1000ms and a raw frame count would read low.
+        int fps = (int)(((current_count - last_frame_count) * 1000 + elapsed / 2) / elapsed);
         last_frame_count = current_count;
         last_fps_time = now;
         slint::invoke_from_event_loop([=]() {
@@ -780,6 +752,17 @@ static esp_err_t app_touch_init(void) {
 extern "C" void display_init() {
   ESP_LOGI(TAG, "Initializing Slint display wrapper");
 
+  // Chunk height must be even. LVGL's rounder_cb aligned BOTH axes to even bounds and had
+  // no artifacts; our chunked path only aligns x, so an odd height puts every other chunk
+  // on an odd panel row (0, 23, 46, 69...) and shows as horizontal seams at the boundaries.
+  if (slint_chunk_lines % 2 != 0) {
+    ESP_LOGW(TAG, "slint_chunk_lines %d is odd; using %d so chunks start on even rows", slint_chunk_lines,
+             slint_chunk_lines - 1);
+    slint_chunk_lines--;
+  }
+  ESP_LOGI(TAG, "Chunk buffers: 2 x %d lines (%u bytes each)", slint_chunk_lines,
+           (unsigned)(HOR_RES * slint_chunk_lines * sizeof(uint16_t)));
+
   // Allocate chunk buffers early to avoid memory fragmentation from the 64KB Slint task stack
   slint_chunk_buffer[0] = (uint16_t *)heap_caps_malloc(HOR_RES * slint_chunk_lines * sizeof(uint16_t),
                                                        MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
@@ -802,15 +785,14 @@ extern "C" void display_init() {
 
   // Start Slint Event Loop Task in internal SRAM
   // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
-  // Stack size optimized to 24KB to conserve internal SRAM.
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 24 * 1024, NULL, 20, &slint_task_handle, 1);
+  // 48KB: zeno's rasterizer reserves an 18,944 byte frame in rasterize_mask (an inline
+  // [Cell; 1024] + [i32; 512] for the storage variant we don't even use - it is a local in
+  // an untaken branch, so the frame carries it regardless). 24KB left ~5.6KB for the rest
+  // of the render chain and overflowed the first time a Path was drawn.
+  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 48 * 1024, NULL, 20, &slint_task_handle, 1);
 
-  // Provide global settings
-  if (slint_window) {
-#ifdef SHOW_FPS
-    slint_window->global<UiState>().set_show_fps(true);
-#endif
-  }
+  // NOTE: slint_window is created inside slint_event_loop above, so it is not safe to
+  // touch UiState here - see connect_callbacks() for properties set once it exists.
 
   // Start Input Polling Task (pinned to core 0, leaving core 1 fully dedicated to the Slint event loop)
   xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 2048, NULL, 20, &slint_input_task_handle, 0);
