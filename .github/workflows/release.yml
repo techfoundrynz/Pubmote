@@ -139,6 +139,10 @@ jobs:
         default: false
         buildtargets: esp32s3
 
+    # The toolchain action curls these into the workspace root and leaves them behind
+    - name: Remove toolchain download artifacts
+      run: rm -f espup-*.zip ldproxy-*.zip
+
     - name: Build PlatformIO Project
       run: |
           sed -i 's/build_type = debug/build_type = release/g' platformio.ini
