@@ -405,3 +405,175 @@ pixels at 30 Hz.
    attempts. Use fractional centres near `.999`.
 5. **Measure A/B untouched.** A finger on the panel reversed the sign of the big-endian pixel
    comparison once already and produced a wrong conclusion.
+
+---
+
+## 10. Session update — corrections to everything above
+
+Several conclusions in §1-§6 were measured while **`test_mode_task` was silently failing to
+start**: the UI task's 48KB stack had starved internal RAM, so `xTaskCreate` for test mode
+returned failure and the screens being measured had no simulated telemetry. Those figures were
+idle screens. Reducing the stack fixed it as a side effect, and the numbers changed materially.
+
+### What is true now (measured, test mode running)
+
+| configuration | dirty | draw calls | frame |
+|---|---|---|---|
+| 3x3 cell grid | 36-45% | 56-69 | 45.7-49.8 ms |
+| 7x7 cell grid | 26-28% | 144-155 | 46-53 ms |
+| exact swept band | 10.6-25% | 51-99 | 33.3-45.8 ms |
+| + CASET caching | 12-22% | 51-98 | **33.7-43.4 ms** |
+
+Phase split at the worst case: `prepare 16.6-18.2 / render 12.9-17.2 / other 3.7-7.7`.
+
+### The cell grid is gone
+
+It was a workaround for the 1px-slack bug, not a design. With `ARC_BAND_SLACK` sized correctly
+the exact swept band - LVGL's `inv_arc_area` approach - stands on its own and wins on both axes
+at once: fewer dirty pixels *and* fewer DMA calls than a fine grid, because one contiguous band
+beats a scatter of cells.
+
+The 7x7 experiment is a cautionary tale worth keeping: it cut dirty area from 42% to 28% and was
+**net zero**, because tripling the rect count tripled the per-chunk address-window setups at
+~89us each. Dirty area is not the only currency; rect fragmentation is the other.
+
+### Draw-call cost
+
+`esp_lcd_sh8601.c` now caches the last CASET/RASET window and skips whichever axis has not moved.
+Consecutive chunks of one flush usually share an x range, so this removed one of the two blocking
+param transactions per call: **89us -> 73us**. RASET changes every chunk and cannot be skipped.
+
+### The stack was 5x oversized
+
+`uxTaskGetStackHighWaterMark` on the UI task: **~10KB peak unrotated, ~28KB rotated**. The 48KB
+was sized for the zeno path rasteriser's single ~19KB frame, which is only reached when rotation
+makes `draw_path_as_arc` bail. It is now chosen from the rotation setting - 24KB unrotated, 48KB
+rotated - read once at init immediately above the task creation, so the two cannot disagree.
+
+**Rotated screens run at ~107ms/frame (9fps)** for the same reason. Supporting rotation in the
+analytic arc is small and would remove both problems: a circle is rotation-invariant, so it needs
+only the centre transformed through `RotationInfo` and `orientation.angle()` added to the start
+angle. `Transform::transformed` and `RenderingRotation::angle()` already exist. That would also
+collapse the conditional stack to a flat 24KB.
+
+### The arc artifact: UNRESOLVED, and narrowing is currently disabled
+
+Symptom: an arc whose value climbs shows gaps - segments that were never painted - which
+repair themselves when the arc later sweeps back over them. Worse as the frame rate drops.
+Present on both dials.
+
+**Status: `ARC_NO_NARROWING = true` in `items/path.rs`.** Every arc change invalidates the whole
+element. That is always correct and costs a lot: **100% dirty every frame, ~62ms, 16fps**, against
+29.5-39.8ms (25-34fps) with narrowing. Turning it back on is a one-line change.
+
+**Eliminated by experiment.** Every one of these was implemented, measured on hardware, and
+found not to be the cause:
+
+| Hypothesis | How it was killed |
+|---|---|
+| Grid pitch too fine | Artifacts at 3x3, 7x7 *and* exact bands |
+| Band coverage too small | 30px slack - 6x the measured need - changed nothing |
+| Band in the wrong place | Emitted band and repainted region compared on device: identical for the speed dial |
+| Updates lost between frames | End-angle continuity traced across consecutive frames: unbroken, every `now` is the next `before` |
+| Debt cleared without painting | Gated discharge on the region actually being marked (`arc_debt_marked`); no change |
+| A dropped paint | Carried the previous band forward one frame; no change |
+| Cap clipped on degenerate rows | Real bug, fixed - cap pixels outside the ring run could not be painted; no change to the artifact |
+| Invented pixel at an odd x edge | Real issue, fixed - the firmware replicated a neighbour into the even-alignment slack, writing outside the dirty range. Panel turns out to accept odd x, so the widening is gone. "A little better", not fixed |
+| Item offset counted twice | **Real bug, fixed** - the band was translated by `geometry.origin` and then marked with a transform already carrying it. Only affected the inset dial, whose region sat 31px from its arc |
+| Analytic rasteriser mis-drawing when clipped | `clipped_drawing_matches_full_width` proves it paints identically clipped or not |
+| Occlusion culling / region overflow | `is_guaranteed_opaque` is false for arcs; `add_box` merges to a superset, never drops |
+
+**What is left.** Narrowing measures correct on every axis that can be measured, and the panel
+still disagrees. The untested gap is between "the region is correct" and "those pixels reach the
+panel": whether `render_by_line` issues a callback for every line of the region. A line inside the
+region that never gets one keeps whatever the panel already had, which is indistinguishable from a
+leftover fragment. A firmware check comparing distinct callback lines against the region's row span
+was written but never run - that is the next step.
+
+**Two bisections did all the real work** and are worth repeating in any similar hunt: *full
+invalidation is clean* (the fault is in narrowing) and *30px of slack changes nothing* (it is not
+coverage). Together they eliminated the entire space that seven fixes had been aimed at. When a
+narrowing change appears to cause an artifact, first ask whether it is a defect that narrowing
+merely **reveals**.
+
+### Superseded: earlier analysis of this artifact
+
+### The arc artifact: the odd pixel at a dirty region's edge
+
+**Root cause (2026-08-15).** Not invalidation, and not the arc rasteriser either. The panel wants
+an even x window, so `slint-esp.cpp` widens each span and invents the odd pixel by replicating its
+neighbour:
+
+```cpp
+row[span_offset - 1] = row[span_offset];   // outside the rendered span
+row[span_end]        = row[span_end - 1];
+```
+
+That pixel lies **outside the dirty range**, so nothing ever repaints it. Where a region boundary
+cuts through drawn content it erases one pixel or extends one, and the error persists until some
+later region happens to cover it - reported as gaps at the arc's sweep tip that eventually repair
+themselves.
+
+**Why it masqueraded as an invalidation bug for an entire session.** With the whole element dirty
+the boundary sits at the element edge, off the arc, so the invented pixel is invisible. Narrowing
+puts boundaries *through* the arc. Grid pitch, band shape and slack size were therefore all
+irrelevant - the fault is at the *edge*, wherever it falls.
+
+Fixed in the renderer by handing out dirty rects with even horizontal bounds, so it draws every
+pixel it hands over and the firmware has no slack to invent. Costs at most two pixels per rect.
+
+**Eliminated by experiment before finding it** - seven attempts, all aimed at the wrong half:
+3x3 grid, 7x7 grid, exact swept bands, repaint-debt gating (`arc_debt_marked`), previous-band
+carry-forward, band slack at 6px *and* 30px, and the `draw_arc_line` cap clip on the degenerate
+rows. Also cleared along the way: the narrow-span clipping and its caller's
+`extra_left_clip`/`range_buffer` derivation, occlusion culling (`is_guaranteed_opaque` is false for
+arcs), and `DirtyRegion` overflow (merges to a superset, never drops).
+
+**The lesson worth keeping.** Two bisections cornered it and both were worth more than any
+hypothesis: *full invalidation is clean* (so the fault is in narrowing) and *30px of slack changes
+nothing* (so it is not coverage). Together those eliminated the entire space I had been searching.
+When a narrowing change appears to cause an artifact, test whether it is a defect that narrowing
+merely **reveals** - and suspect anything that writes outside the range it was handed.
+
+### Superseded: earlier analysis of this artifact
+
+### The arc artifact: a drawing bug, not an invalidation bug
+
+**Root cause found.** On the two rows where the arc's boundary ray is horizontal, `draw_arc_line`
+abandons the half-plane clip and tests each pixel against the wedge directly. That loop iterated
+only the ring's radial runs and applied the run clip *before* the cap test:
+
+```rust
+if px < run.0 || px > run.1 { continue; }   // ring clip
+if inside(dx) || cap_covers(dx) { ... }     // cap tested after it
+```
+
+A cap pixel lying outside the ring's radial run on that row was therefore unpaintable. Those rows
+exist exactly where the sweep tip passes **3 and 9 o'clock**, which matches every report: a nick at
+the tip, clustering at 8-10 and 2-4 o'clock, repairing itself when the arc later sweeps back.
+
+Fixed by sweeping the ring runs *and* the cap discs, painting a pixel that is inside a run **and**
+the wedge, **or** inside a cap. The run clip now gates only the ring test.
+
+**Why it looked like an invalidation bug for a whole session, which is the lesson worth keeping:**
+the missing pixels are invisible while the dirty region is the whole element, because that area is
+repainted from the background every frame regardless. Narrowing is what exposes them. That
+misdirection consumed four fixes aimed at coverage - 3x3 grid, 7x7 grid, exact swept bands, repaint
+debt gating - plus band slack at both 6px and 30px, none of which could have worked.
+
+The bisection that cornered it: full invalidation clean, 30px slack still broken. Coverage size and
+shape were both eliminated by experiment before the drawing path was even suspected. **When a
+narrowing change appears to cause an artifact, test whether the artifact is a drawing defect that
+narrowing merely reveals.**
+
+Eliminated by experiment along the way, for the record: grid pitch (3x3 and 7x7), exact swept bands,
+repaint-debt gating (`arc_debt_marked`), band slack at 6px and 30px, `draw_arc_line`'s narrow-span
+clipping, the caller's `extra_left_clip`/`range_buffer` derivation, occlusion culling
+(`is_guaranteed_opaque` returns false for arcs), and `DirtyRegion` overflow (merges to a superset,
+never drops a rect).
+
+### Prior hypotheses (superseded)
+
+Diagnostic switches in the fork: `ARC_NO_NARROWING` in `items/path.rs`, and the phase marks behind
+`slint_esp_phase_mark`. `mcu-v1.18.11` remains the clean shipping point; the cap fix is
+`mcu-v1.18.28`.
