@@ -87,6 +87,9 @@ Two variants, smaller first.
 
 ### 4a. Subtree pruning (bounded, ~1.3–3.3 ms)
 
+> Shipped, then blanked the screen after pairing. See §14 for the coordinate-space bug and the
+> fix; the sketch below is left as written.
+
 `render_item_children` (`internal/core/item_rendering.rs:205-232`) always recurses into children;
 only *drawing* is filtered by `filter_item`. Items scrolled out of the Flickable viewport are still
 walked. Measured headroom: 33 of 71 visited items are not drawn.
@@ -731,3 +734,49 @@ against ~200 painted pixels, because each callback re-walks the items active on 
 re-runs the `first_cover` scan. Making that per-callback work cheaper - caching `first_cover` per
 line, or hoisting the active-item scan - is the next real lever, and unlike merging it does not
 trade away area.
+
+## 14. Subtree pruning blanked the screen, and the coordinate-space bug behind it (2026-08-16)
+
+§4a proposed subtree pruning and it shipped, but as written it **permanently blanked the screen
+after pairing completed**. Confirmed by bisecting on hardware: pruning on = black, pruning off =
+correct. Arc invalidation narrowing was exonerated in the same bisect.
+
+The defect is a coordinate-space mismatch. `set_subtree_bounds` stored the bounds in the
+**parent's** space, because they were unioned from `item_geometry`, which carries the item's own
+origin. `subtree_can_paint` then transformed those bounds by the **current** transform. While an
+item sits still the two agree, so it looks correct. The moment the item moves - a screen sliding
+between grid cells is exactly that - the cached bounds describe where it *was* while the
+transform describes where it *is*, and the test is performed at neither position.
+
+What turned a one-frame glitch into a permanent one: pruning returns early **without walking the
+subtree**, so the bounds are never recomputed. One bad frame latches the subtree off forever.
+
+Fixed by keeping the bounds in the item's **own** coordinate space and placing them at the
+item's current origin when they are tested, which is why `filter_item` is now read *before* the
+prune check rather than after. A wrong prune now requires the subtree to need repainting for a
+reason the dirty region does not reflect: when a child moves or grows, its old rect lies inside
+the cached bounds and inside the dirty region, so the parent is walked and the bounds refresh.
+
+**A host test is not enough here.** `api/rs/slint/tests/conditional_screen_swap.rs` models
+exactly this - conditional children destroyed and re-created, sliding, diffed against a full
+repaint - and it **passed with the bug present**, both through `render()` and through
+`render_by_line`, with and without nested subtrees. The device found it; the test did not. Treat
+the host suites as regression guards, not as proof.
+
+### Bisecting this without the CI loop
+
+The Slint library normally comes from a GitHub release, so trying one renderer change meant
+commit → tag → CI → bump the tag: about ten minutes a turn, which is why the wrong theory
+survived as long as it did. `firmware/tools/use_local_slint.py` builds `libslint_cpp.a` from the
+local checkout and drops it over the staged copy, which `firmware/components/slint/CMakeLists.txt`
+reuses because it only downloads when the file is missing. **About 77 seconds a turn** - 32s for
+Slint, 45s for the firmware.
+
+One trap, and it invalidated a result before it was noticed: **PlatformIO does not relink when
+only that archive changes.** It decides the firmware is up to date, skips the build in ~6s, and
+the next upload silently reflashes the *previous* binary. Touching a source file does not help.
+Deleting `firmware.elf` and `firmware.bin` does, and the script now does it. Verify every bisect
+flash by checking that `firmware.elf` is newer than the staged `.a`.
+
+The headers and `slint-compiler` still come from the release, so this is only valid while the C++
+API and the .slint language are unchanged - cut a real release for those.
