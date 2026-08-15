@@ -7,6 +7,13 @@
 #include "esp_lcd_types.h"
 #include "slint-platform.h"
 
+// One staging buffer per dirty rectangle. Matches the renderer's DirtyRegion::MAX_COUNT; a
+// smaller value still renders correctly but evicts chunks before they fill.
+#ifndef SLINT_CHUNK_ACCUMULATORS
+#  define SLINT_CHUNK_ACCUMULATORS 3
+#endif
+
+
 /**
  * This data structure configures the Slint platform for use with ESP-IDF, in particular
  * the esp_lcd component (
@@ -48,7 +55,12 @@ struct SlintPlatformConfiguration {
     [[deprecated("Renamed to byte_swap")]] bool color_swap_16;
     bool byte_swap = false;
   };
-  std::size_t x_align = 1;
+  /// Note there is deliberately no draw-window alignment knob here, the equivalent of LVGL's
+  /// rounder callback. These panels do need even window coordinates - the SH8601 README says
+  /// so and CO5300 shares that driver - but rounding in the driver means inventing pixels the
+  /// renderer never drew, and at the edge of a dirty band those are never repainted. The
+  /// renderer rounds the dirty region instead, so what arrives here is already even and every
+  /// pixel of it has genuinely been painted.
 };
 
 template <typename... Args> SlintPlatformConfiguration(Args...) -> SlintPlatformConfiguration<>;
