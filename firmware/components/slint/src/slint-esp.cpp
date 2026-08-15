@@ -22,11 +22,6 @@
 
 static const char *TAG = "slint_platform";
 
-// Per-frame dirty region summary. Set to 0 to remove entirely. //
-#ifndef SLINT_DIRTY_LOG
-  #define SLINT_DIRTY_LOG 1
-#endif
-
 // Interrupt-driven touch: the ISR wakes the event loop so a touch report is
 // processed immediately instead of on the next 20ms poll tick.
 static TaskHandle_t s_touch_notify_task = nullptr;
@@ -538,47 +533,14 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         }
         dma_active = false;
 
-#if SLINT_DIRTY_LOG
-        // How much area Slint actually asked us to repaint, which is the input
-        // to frame cost: rect count drives panel transactions, area drives both
-        // rasterisation and bytes on the wire.
-        {
-          static int dirty_frames = 0;
-          static uint32_t accum_rects = 0;
-          static uint32_t accum_area = 0;
-          static uint32_t max_area = 0;
-
-          uint32_t rects = 0, area = 0;
-          for (auto [o, s] : region.rectangles()) {
-            rects++;
-            area += (uint32_t)s.width * (uint32_t)s.height;
-          }
-          accum_rects += rects;
-          accum_area += area;
-          if (area > max_area) {
-            max_area = area;
-          }
-
-          if (++dirty_frames >= 60) {
-            uint32_t screen = (uint32_t)size.width * (uint32_t)size.height;
-            ESP_LOGI(TAG, "Dirty [60f]: rects=%.1f avg area=%lu px (%.1f%%), peak %lu px (%.1f%%)", accum_rects / 60.0f,
-                     (unsigned long)(accum_area / 60), 100.0f * (float)(accum_area / 60) / (float)screen,
-                     (unsigned long)max_area, 100.0f * (float)max_area / (float)screen);
-            dirty_frames = 0;
-            accum_rects = 0;
-            accum_area = 0;
-            max_area = 0;
-          }
-        }
-#else
-        (void)region;
-#endif
-
-        // How much of the panel Slint asked to be repainted this frame. Cheap to
-        // total up, and it is the number that says whether invalidation or pixel
-        // cost is the limit.
+        // How much of the panel Slint asked to be repainted this frame. Cheap to total up,
+        // and it is the number that says whether invalidation or pixel cost is the limit:
+        // rectangle count drives callbacks and panel transactions, area drives rasterisation
+        // and bytes on the wire.
+        uint32_t last_dirty_rects = 0;
         uint32_t last_dirty_px = 0;
         for (auto [o, s] : region.rectangles()) {
+          last_dirty_rects++;
           last_dirty_px += (uint32_t)s.width * (uint32_t)s.height;
         }
 
@@ -607,6 +569,9 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         static uint64_t accum_total = 0;
         static uint64_t accum_prepare = 0;
         static uint32_t accum_lines = 0;
+        static uint32_t accum_rects = 0;
+        static uint32_t accum_dirty = 0;
+        static uint32_t peak_dirty = 0;
         static int frame_count = 0;
 
         accum_render += t_render;
@@ -616,6 +581,11 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         accum_total += t_total;
         accum_prepare += t_prepare;
         accum_lines += frame_lines;
+        accum_rects += last_dirty_rects;
+        accum_dirty += last_dirty_px;
+        if (last_dirty_px > peak_dirty) {
+          peak_dirty = last_dirty_px;
+        }
         frame_count++;
 
         if (frame_count >= 60) {
@@ -625,13 +595,19 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
           long long avg_prepare = accum_prepare / 60;
           long long avg_other = avg_total - avg_prepare - (long long)(accum_render / 60) -
                                 (long long)(accum_copy / 60) - (long long)(accum_wait_transmit / 60);
+          uint32_t screen = (uint32_t)size.width * (uint32_t)size.height;
           ESP_LOGI(TAG,
-                   "Slint Timing [60f avg]: prepare=%lld us, render=%lld us, copy=%lld us, "
-                   "wait_transmit=%lld us, other=%lld us, total_draw=%lld us, lines=%lu, "
-                   "drawcall=%lld us over %lu calls",
-                   avg_prepare, accum_render / 60, accum_copy / 60, accum_wait_transmit / 60, avg_other, avg_total,
-                   (unsigned long)(accum_lines / 60), (long long)(g_drawcall_accum / 60),
-                   (unsigned long)(g_drawcall_count / 60), (unsigned long)(g_drawcall_count / 60));
+                   "Slint [60f avg]: %lld us/frame (%.1f fps) = prepare %lld + render %lld + copy %lld "
+                   "+ wait %lld + other %lld | dirty %.1f%% (peak %.1f%%) in %.1f rects, %lu lines, "
+                   "%lu drawcalls costing %lld us",
+                   avg_total, avg_total > 0 ? 1000000.0f / (float)avg_total : 0.0f, avg_prepare, accum_render / 60,
+                   accum_copy / 60, accum_wait_transmit / 60, avg_other,
+                   100.0f * (float)(accum_dirty / 60) / (float)screen, 100.0f * (float)peak_dirty / (float)screen,
+                   accum_rects / 60.0f, (unsigned long)(accum_lines / 60), (unsigned long)(g_drawcall_count / 60),
+                   (long long)(g_drawcall_accum / 60));
+          accum_rects = 0;
+          accum_dirty = 0;
+          peak_dirty = 0;
           accum_render = 0;
           accum_copy = 0;
           accum_wait_transmit = 0;
