@@ -16,7 +16,6 @@ import random
 CONN_TASK_MS = 20
 RECONNECTING_MS = 1000
 TIMEOUT_MS = 30000
-AUTO_RECONNECT_MS = 10000
 TX_RATE_MS = 20
 MAX_UPDATE_DELAY_MS = 500
 
@@ -47,7 +46,6 @@ class BleSim:
         self.state = DISCONNECTED
         self.last_state_change = 0
         self.last_updated = -10**9
-        self.auto_reconnect = True
         self.last_send = -10**9
         # BLE driver
         self.link = LINK_IDLE
@@ -152,23 +150,31 @@ class BleSim:
         self.connect_peer(t)
         self.set_state(CONNECTING, t)
 
+    def teardown_driver_pursuit(self):
+        # comms_disconnect_peer on CONNECTING/RECONNECTING timeout: stop the
+        # driver's own re-dial so a DISCONNECTED remote is radio-idle
+        self.has_target = False
+        self.timer_at = None
+        if self.link in (LINK_UP, LINK_ZOMBIE, LINK_DIALING, LINK_DISCOVERY):
+            self.link = LINK_IDLE
+
     def conn_task(self, t):
         if t % CONN_TASK_MS:
             return
-        if self.state == DISCONNECTED:
-            if self.auto_reconnect and t - self.last_state_change > AUTO_RECONNECT_MS:
-                self.connect_to_default(t)
-        elif self.state == CONNECTED:
+        # DISCONNECTED is terminal: connect only on boot or user action
+        if self.state == CONNECTED:
             if t - self.last_updated > RECONNECTING_MS:
                 self.set_state(RECONNECTING, t)
         elif self.state == CONNECTING:
             if t - self.last_state_change > TIMEOUT_MS:
                 self.set_state(DISCONNECTED, t)
+                self.teardown_driver_pursuit()
             elif self.last_updated > 0 and t - self.last_updated < RECONNECTING_MS:
                 self.set_state(CONNECTED, t)
         elif self.state == RECONNECTING:
             if t - self.last_state_change > TIMEOUT_MS:
                 self.set_state(DISCONNECTED, t)
+                self.teardown_driver_pursuit()
             elif t - self.last_updated < RECONNECTING_MS:
                 self.set_state(CONNECTED, t)
 
@@ -181,11 +187,11 @@ class BleSim:
             self.last_send = t
             return False
         if self.remote_cadence_fix:
-            # BLE flow control: unchanged data at 10Hz while hunting/stale,
-            # 500ms keepalive when settled (transmitter.c BLE_POKE_INTERVAL_MS)
-            stale = t - self.last_updated > MAX_UPDATE_DELAY_MS
-            settled = self.state == CONNECTED and not stale
-            min_interval = MAX_UPDATE_DELAY_MS if settled else 100
+            # BLE flow control: unchanged data capped at a 10Hz poke in ALL
+            # states (transmitter.c BLE_POKE_INTERVAL_MS). The poke doubles as
+            # the keepalive - a settled-link 500ms keepalive left only two
+            # packets of margin against the board's 1s cutoff
+            min_interval = 100
         else:
             min_interval = MAX_UPDATE_DELAY_MS  # old remote: 500ms keepalive always
         if t - self.last_send < min_interval:
@@ -270,13 +276,20 @@ h = s.run(120000)
 t = first_state(h, CONNECTED)
 check("B3-OLD zombie link never recovers (regression guard)", t is None, f"recovered at {t}")
 
-# B4: long absence (40s) -> DISCONNECTED, then auto-reconnect after return
+# B4: long absence -> DISCONNECTED is terminal (no self-reconnect); manual
+# (user) connect after the board returns recovers
+def manual_connect(sim, t):
+    sim.connect_to_default(t)
 s = BleSim()
-h = s.run(120000, events=[(5000, leave_range), (60000, enter_range)])
+h = s.run(120000, events=[(5000, leave_range), (60000, enter_range), (75000, manual_connect)])
 went_disc = first_state(h, DISCONNECTED, after=5000)
-t = first_state(h, CONNECTED, after=60000)
-check("B4 55s absence: recovers <=13s after return", went_disc is not None and t is not None
-      and t - 60000 <= 13000, f"disconnected at {went_disc}, recovered {t-60000 if t else 'never'}ms after return")
+self_reconnect = first_state(h, CONNECTED, after=60000)
+t = first_state(h, CONNECTED, after=75000)
+check("B4 absence lands DISCONNECTED and never self-reconnects",
+      went_disc is not None and (self_reconnect is None or self_reconnect >= 75000),
+      f"disconnected at {went_disc}, self-reconnected at {self_reconnect}")
+check("B4 manual connect after board returns recovers <=5s",
+      t is not None and t - 75000 <= 5000, f"recovered {t-75000 if t else 'never'}ms after connect")
 
 # B5: flaky link - drop every 6s, back after 2s, five times -> always recovers
 evs = []
@@ -292,7 +305,6 @@ check("B5 five successive drops always recover, never DISCONNECTED",
 
 # B6: manual disconnect -> BLE torn down, never re-dials
 def manual_disconnect(sim, t):
-    sim.auto_reconnect = False
     sim.set_state(DISCONNECTED, t)
     sim.has_target = False           # comms_disconnect_peer
     sim.timer_at = None
@@ -335,13 +347,12 @@ check("B7b busy-stack retry failure recovers <=8s after busy clears (re-arm fix)
 
 s = BleSim(rearm_fix=False)
 h = s.run(120000, events=[(5000, busy_5s), (5001, force_drop)])
-# Note: with auto-reconnect at the connection layer, even the old driver-stall
-# is eventually rescued (connect_peer re-dials). Assert the DRIVER stalled by
-# checking recovery only happens after the connection layer's 30s+10s cycle,
-# i.e. much later than the busy window clearing.
+# Note: with no self-reconnect at the connection layer, the old driver stall
+# is permanent - nothing rescues it (the historical auto-reconnect layer
+# would have re-dialed eventually).
 t = first_state(h, CONNECTED, after=10000)
-check("B7b-OLD driver stalls; only the new auto-reconnect layer rescues it late (regression guard)",
-      t is None or t > 40000, f"recovered at {t}")
+check("B7b-OLD driver stall is permanent without the re-arm fix (regression guard)",
+      t is None, f"recovered at {t}")
 
 # B8: 20% loss - board 20Hz push: no flicker
 s = BleSim(seed=42)

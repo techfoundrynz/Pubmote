@@ -1,7 +1,8 @@
 """
 Software-in-the-loop simulation of the PubRemote <-> float_accessories comms
 pipeline. Faithfully mirrors the state machines and timing constants of:
-  - firmware/src/remote/connection.c   (connection_task, auto-reconnect)
+  - firmware/src/remote/connection.c   (connection_task state machine;
+    DISCONNECTED is terminal - connect only on boot or user action)
   - firmware/src/remote/transmitter.c  (tx cadence, hunting vs connected dedupe)
   - firmware/src/remote/receiver.c     (channel hop sweep, grace, hop cursor)
   - float_accessories lib/pubmote.lisp (20Hz loop, 1s activity window)
@@ -16,7 +17,6 @@ MAX_UPDATE_DELAY_MS = 500        # transmitter.c
 CONN_TASK_MS = 20                # connection.c CONNECTION_TIMER_DELAY_MS
 RECONNECTING_MS = 1000           # connection.c RECONNECTING_DURATION_MS
 TIMEOUT_MS = 30000               # connection.c TIMEOUT_DURATION_MS
-AUTO_RECONNECT_MS = 10000        # connection.c AUTO_RECONNECT_INTERVAL_MS
 RX_TASK_MS = 5                   # receiver.c RECEIVER_TASK_DELAY_MS
 HOP_INTERVAL_MS = 200            # receiver.c CHANNEL_HOP_INTERVAL_MS
 HOP_GRACE_MS = 3000              # receiver.c RECONNECT_HOP_GRACE_MS
@@ -31,8 +31,7 @@ STEP = 5
 
 
 class Remote:
-    def __init__(self, saved_channel, hunting_tx_fix=True, reconnect_hop_fix=True,
-                 auto_reconnect_fix=True, connect_sets_channel_fix=True):
+    def __init__(self, saved_channel, hunting_tx_fix=True, reconnect_hop_fix=True):
         self.state = DISCONNECTED
         self.last_state_change = 0
         self.last_updated = -10**9   # remoteStats.lastUpdated (never)
@@ -41,31 +40,24 @@ class Remote:
         self.hop_accum = 0
         self.hop_cursor = 0
         self.last_send = -10**9
-        self.auto_reconnect = True
         # Feature flags to contrast old vs fixed behavior
         self.hunting_tx_fix = hunting_tx_fix
         self.reconnect_hop_fix = reconnect_hop_fix
-        self.auto_reconnect_fix = auto_reconnect_fix
-        self.connect_sets_channel_fix = connect_sets_channel_fix
 
     def set_state(self, s, t):
         self.state = s
         self.last_state_change = t
 
     def connect_to_default(self, t):
-        # connection_connect_to_peer
-        if self.connect_sets_channel_fix:
-            self.radio_channel = self.saved_channel
+        # connection_connect_to_peer: radio jumps to the saved channel
+        self.radio_channel = self.saved_channel
         self.set_state(CONNECTING, t)
 
     def conn_task(self, t):
         if t % CONN_TASK_MS:
             return
-        if self.state == DISCONNECTED:
-            if (self.auto_reconnect_fix and self.auto_reconnect and
-                    t - self.last_state_change > AUTO_RECONNECT_MS):
-                self.connect_to_default(t)
-        elif self.state == CONNECTED:
+        # DISCONNECTED is terminal: connect only on boot or user action
+        if self.state == CONNECTED:
             if t - self.last_updated > RECONNECTING_MS:
                 self.set_state(RECONNECTING, t)
         elif self.state == CONNECTING:
@@ -234,16 +226,25 @@ check("S5 channel move recovers <=8s, never DISCONNECTED",
       f"dropped at {drop}, recovered {t-5000 if t else 'never'}ms after move")
 
 # S5-old: without reconnect-hop -> stuck: never returns to CONNECTED after drop
-r, b, h = run("s5o", 60000, events=[(5000, move_channel)], reconnect_hop_fix=False, auto_reconnect_fix=False)
+r, b, h = run("s5o", 60000, events=[(5000, move_channel)], reconnect_hop_fix=False)
 drop = first_time_in(h, RECONNECTING, after=5001)
 t = first_time_in(h, CONNECTED, after=drop) if drop else None
 check("S5-OLD (no reconnect hop/auto) never recovers (regression guard)", drop is not None and t is None,
       f"old dropped at {drop}, recovered at {t}")
 
-# S6: board off for 60s -> auto-reconnect brings it back
-r, b, h = run("s6", 120000, events=[(5000, board_off), (65000, board_on)])
-t = first_time_in(h, CONNECTED, after=65000)
-check("S6 60s absence: auto-reconnect recovers <=15s after return", t is not None and t - 65000 <= 15000, f"recovered {t-65000 if t else 'never'}ms after return")
+# S6: board off for 60s -> DISCONNECTED is terminal (no self-reconnect);
+# a manual (user) connect after the board returns recovers promptly
+def manual_connect(rm, bd):
+    rm.connect_to_default(75000)
+r, b, h = run("s6", 120000, events=[(5000, board_off), (65000, board_on), (75000, manual_connect)])
+disc = first_time_in(h, DISCONNECTED, after=5001)
+idle_states = states_between(h, disc + STEP, 74999) if disc is not None else set()
+t = first_time_in(h, CONNECTED, after=75000)
+check("S6 board absence lands DISCONNECTED and never self-reconnects",
+      disc is not None and idle_states == {DISCONNECTED},
+      f"disconnected at {disc}, states while idle: {sorted(idle_states)}")
+check("S6 manual connect after board returns recovers <=5s",
+      t is not None and t - 75000 <= 5000, f"recovered {t-75000 if t else 'never'}ms after connect")
 
 # S7: sustained 30% packet loss -> stays connected for 60s
 r, b, h = run("s7", 60000, loss=0.30, seed=42)
@@ -257,11 +258,10 @@ check("S7b 60% loss never drops to DISCONNECTED over 60s", bad is None, f"discon
 
 # S8: manual disconnect -> no reconnection ever
 def manual_disconnect(rm, bd):
-    rm.auto_reconnect = False
     rm.set_state(DISCONNECTED, 5000)
 r, b, h = run("s8", 90000, events=[(5000, manual_disconnect)])
 t = first_time_in(h, CONNECTING, after=5001)
-check("S8 manual disconnect never auto-reconnects (85s observed)", t is None, f"reconnected at {t}")
+check("S8 manual disconnect never self-reconnects (85s observed)", t is None, f"reconnected at {t}")
 
 # S9: remote sleeps/wakes (fresh boot object) with stale saved channel after
 # board moved while remote was asleep

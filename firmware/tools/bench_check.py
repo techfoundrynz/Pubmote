@@ -65,7 +65,15 @@ def main():
     if "--baud" in sys.argv:
         baud = int(sys.argv[sys.argv.index("--baud") + 1])
 
-    ser = serial.Serial(port, baud, timeout=0.2)
+    # Open without toggling DTR/RTS - those lines drive the ESP32 auto-reset
+    # circuit and a default open would hard-reset the remote under test
+    ser = serial.Serial()
+    ser.port = port
+    ser.baudrate = baud
+    ser.timeout = 0.2
+    ser.dtr = False
+    ser.rts = False
+    ser.open()
     print(f"Listening on {port} @ {baud}. Ctrl-C to abort.\n")
     results = []
 

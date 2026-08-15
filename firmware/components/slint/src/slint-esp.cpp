@@ -1,6 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0
 
+#include <cstring>
 #include <deque>
 #include <mutex>
 #include "slint-esp.h"
@@ -52,6 +53,59 @@ volatile uint32_t slint_esp_last_frame_us = 0;
 volatile uint32_t slint_esp_prepare_us = 0;
 volatile uint32_t slint_esp_render_us = 0;
 volatile uint32_t slint_esp_flush_us = 0;
+// Time spent inside esp_lcd_panel_draw_bitmap, to find out whether the unattributed
+// per-frame cost is the per-chunk address-window command sequence.
+static uint64_t g_drawcall_us = 0;
+static uint64_t g_drawcall_accum = 0;
+static uint32_t g_drawcall_count = 0;
+
+// Phase timestamps from inside the renderer's prepare_scene. 0=entry, 1=before the item
+// walk, 2=after it, 3=before Scene::new, 4=after.
+static uint64_t g_phase_us[5] = { 0, 0, 0, 0, 0 };
+static uint64_t g_phase_accum[4] = { 0, 0, 0, 0 };
+// Phases 5/6 bracket a text shaping pass; they nest inside the walk, so accumulate
+// rather than timestamp.
+static uint64_t g_shape_enter = 0;
+static uint64_t g_shape_us = 0;
+static uint64_t g_shape_accum = 0;
+static uint32_t g_shape_count = 0;
+static uint64_t g_text_enter = 0;
+static uint64_t g_text_us = 0;
+static uint64_t g_text_accum = 0;
+static uint32_t g_text_count = 0;
+static uint32_t g_visited = 0;
+static uint32_t g_drawn = 0;
+static uint64_t g_visited_accum = 0;
+static uint64_t g_drawn_accum = 0;
+extern "C" void slint_esp_phase_mark(uint32_t phase)
+{
+    if (phase < 5) {
+        g_phase_us[phase] = esp_timer_get_time();
+    } else if (phase == 5) {
+        g_shape_enter = esp_timer_get_time();
+    } else if (phase == 6) {
+        g_shape_us += esp_timer_get_time() - g_shape_enter;
+        g_shape_count++;
+    } else if (phase == 7) {
+        g_text_enter = esp_timer_get_time();
+    } else if (phase == 8) {
+        g_text_us += esp_timer_get_time() - g_text_enter;
+        g_text_count++;
+    } else if (phase == 9) {
+        g_visited++;
+    } else if (phase == 10) {
+        g_drawn++;
+    }
+}
+
+static inline void timed_draw_bitmap(esp_lcd_panel_handle_t p, int x0, int y0, int x1, int y1,
+                                     const void *data)
+{
+    uint64_t d0 = esp_timer_get_time();
+    esp_lcd_panel_draw_bitmap(p, x0, y0, x1, y1, data);
+    g_drawcall_us += esp_timer_get_time() - d0;
+    g_drawcall_count++;
+}
 volatile uint32_t slint_esp_dirty_px = 0;
 
 
@@ -174,6 +228,10 @@ void byte_swap_color(slint::Rgb8Pixel *pixel)
 {
     std::swap(pixel->r, pixel->b);
 }
+// Already in panel byte order - nothing to do. Present so the templated flush path
+// compiles unchanged; config.byte_swap should be false for this pixel type.
+void byte_swap_buffer(slint::platform::Rgb565BigEndianPixel *, std::size_t) { }
+
 void byte_swap_buffer(slint::platform::Rgb565Pixel *ptr, std::size_t len)
 {
     std::size_t i = 0;
@@ -351,6 +409,7 @@ void EspPlatform<PixelType>::run_event_loop()
                 uint64_t t_start = esp_timer_get_time();
                 uint64_t t_render = 0;
                 uint64_t t_copy = 0;
+                g_drawcall_us = 0;
                 uint64_t t_wait_transmit = 0;
                 uint64_t t_prepare = 0;
                 uint32_t frame_lines = 0;
@@ -375,7 +434,7 @@ void EspPlatform<PixelType>::run_event_loop()
                 uint64_t t_first_line = 0;
                 uint32_t line_callbacks = 0;
 
-                auto chunked_region = m_window->m_renderer.render_by_line<PixelType>(
+                auto region = m_window->m_renderer.render_by_line<PixelType>(
                         [&](std::size_t line_y, std::size_t line_start,
                             std::size_t line_end, auto &&render_fn) {
                             if (t_first_line == 0) {
@@ -413,7 +472,7 @@ void EspPlatform<PixelType>::run_event_loop()
                                 }
                                 t_wait_transmit += esp_timer_get_time() - wait_start;
 
-                                esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
+                                timed_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
                                                           chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
                                 dma_active = true;
                                 idx = (idx + 1) % 2;
@@ -434,9 +493,11 @@ void EspPlatform<PixelType>::run_event_loop()
                                     + lines_in_chunk * chunk_width;
                             std::span<PixelType> view { row + span_offset, span_len };
 
-                            uint64_t chunk_render_start = esp_timer_get_time();
+                            // Deliberately untimed. Timing each line cost two
+                            // esp_timer_get_time() calls per scanline - 932 per full-screen
+                            // frame - which is milliseconds of measurement overhead in the
+                            // frame it is measuring. t_render is derived below instead.
                             render_fn(view);
-                            t_render += esp_timer_get_time() - chunk_render_start;
 
                             // The panel needs even x bounds, so a dirty span with an odd edge leaves
                             // up to one untouched pixel on each side of this row. Replicate the
@@ -473,12 +534,20 @@ void EspPlatform<PixelType>::run_event_loop()
                     }
                     t_wait_transmit += esp_timer_get_time() - wait_start;
 
-                    esp_lcd_panel_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
+                    timed_draw_bitmap(panel_handle, chunk_start_x, chunk_start_y,
                                               chunk_end_x, chunk_start_y + lines_in_chunk, slint_chunk_buffer[idx]);
                     dma_active = true;
                     first_transfer = false;
                 }
 
+
+                // Everything between the first line callback and here that was not staging,
+                // waiting on the panel or issuing a draw call.
+                if (t_first_line != 0) {
+                    uint64_t spent = esp_timer_get_time() - t_first_line;
+                    uint64_t overhead = t_copy + t_wait_transmit + g_drawcall_us;
+                    t_render = spent > overhead ? spent - overhead : 0;
+                }
                 t_prepare = t_first_line ? (t_first_line - t_start) : 0;
                 frame_lines = line_callbacks;
 
@@ -500,7 +569,7 @@ void EspPlatform<PixelType>::run_event_loop()
                     static uint32_t max_area = 0;
 
                     uint32_t rects = 0, area = 0;
-                    for (auto [o, s] : chunked_region.rectangles()) {
+                    for (auto [o, s] : region.rectangles()) {
                         rects++;
                         area += (uint32_t)s.width * (uint32_t)s.height;
                     }
@@ -524,14 +593,14 @@ void EspPlatform<PixelType>::run_event_loop()
                     }
                 }
 #else
-                (void)chunked_region;
+                (void)region;
 #endif
 
                 // How much of the panel Slint asked to be repainted this frame. Cheap to
                 // total up, and it is the number that says whether invalidation or pixel
                 // cost is the limit.
                 uint32_t last_dirty_px = 0;
-                for (auto [o, s] : chunked_region.rectangles()) {
+                for (auto [o, s] : region.rectangles()) {
                     last_dirty_px += (uint32_t)s.width * (uint32_t)s.height;
                 }
 
@@ -565,6 +634,20 @@ void EspPlatform<PixelType>::run_event_loop()
 
                 accum_render += t_render;
                 accum_copy += t_copy;
+                g_drawcall_accum += g_drawcall_us;
+                g_shape_accum += g_shape_us;
+                g_shape_us = 0;
+                g_text_accum += g_text_us;
+                g_text_us = 0;
+                g_visited_accum += g_visited;
+                g_drawn_accum += g_drawn;
+                g_visited = 0;
+                g_drawn = 0;
+                if (g_phase_us[4] > g_phase_us[0]) {
+                    g_phase_accum[0] += g_phase_us[1] - g_phase_us[0];
+                    g_phase_accum[1] += g_phase_us[2] - g_phase_us[1];
+                    g_phase_accum[2] += g_phase_us[4] - g_phase_us[3];
+                }
                 accum_wait_transmit += t_wait_transmit;
                 accum_total += t_total;
                 accum_prepare += t_prepare;
@@ -580,20 +663,42 @@ void EspPlatform<PixelType>::run_event_loop()
                                           (long long)(accum_copy / 60) - (long long)(accum_wait_transmit / 60);
                     ESP_LOGI(TAG,
                              "Slint Timing [60f avg]: prepare=%lld us, render=%lld us, copy=%lld us, "
-                             "wait_transmit=%lld us, other=%lld us, total_draw=%lld us, lines=%lu",
+                             "wait_transmit=%lld us, other=%lld us, total_draw=%lld us, lines=%lu, "
+                             "drawcall=%lld us over %lu calls, setup=%lld walk=%lld scene=%lld, shape=%lld us x%lu, "
+                             "text=%lld us x%lu, visited=%lu drawn=%lu",
                              avg_prepare,
                              accum_render / 60,
                              accum_copy / 60,
                              accum_wait_transmit / 60,
                              avg_other,
                              avg_total,
-                             (unsigned long)(accum_lines / 60));
+                             (unsigned long)(accum_lines / 60),
+                             (long long)(g_drawcall_accum / 60),
+                             (unsigned long)(g_drawcall_count / 60),
+                             (long long)(g_phase_accum[0] / 60),
+                             (long long)(g_phase_accum[1] / 60),
+                             (long long)(g_phase_accum[2] / 60),
+                             (long long)(g_shape_accum / 60),
+                             (unsigned long)(g_shape_count / 60),
+                             (long long)(g_text_accum / 60),
+                             (unsigned long)(g_text_count / 60),
+                             (unsigned long)(g_visited_accum / 60),
+                             (unsigned long)(g_drawn_accum / 60));
                     accum_render = 0;
                     accum_copy = 0;
                     accum_wait_transmit = 0;
                     accum_total = 0;
                     accum_prepare = 0;
                     accum_lines = 0;
+                    g_drawcall_accum = 0;
+                    g_drawcall_count = 0;
+                    g_phase_accum[0] = g_phase_accum[1] = g_phase_accum[2] = g_phase_accum[3] = 0;
+                    g_shape_accum = 0;
+                    g_shape_count = 0;
+                    g_text_accum = 0;
+                    g_text_count = 0;
+                    g_visited_accum = 0;
+                    g_drawn_accum = 0;
                     frame_count = 0;
                 }
 #else
@@ -688,6 +793,12 @@ void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565Pixe
 {
     slint::platform::set_platform(
             std::make_unique<EspPlatform<slint::platform::Rgb565Pixel>>(config));
+}
+
+void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565BigEndianPixel> &config)
+{
+    slint::platform::set_platform(
+            std::make_unique<EspPlatform<slint::platform::Rgb565BigEndianPixel>>(config));
 }
 
 void slint_esp_init(const SlintPlatformConfiguration<slint::Rgb8Pixel> &config)

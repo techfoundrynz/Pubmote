@@ -52,7 +52,6 @@ struct SlintPlatformConfiguration {
 
 template <typename... Args> SlintPlatformConfiguration(Args...) -> SlintPlatformConfiguration<>;
 
-
 /**
  * Initialize the Slint platform for ESP-IDF.
  *
@@ -60,6 +59,7 @@ template <typename... Args> SlintPlatformConfiguration(Args...) -> SlintPlatform
  */
 void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565Pixel> &config);
 void slint_esp_init(const SlintPlatformConfiguration<slint::Rgb8Pixel> &config);
+void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565BigEndianPixel> &config);
 void slint_esp_set_rotation(slint::platform::SoftwareRenderer::RenderingRotation rotation);
 
 extern volatile uint32_t slint_esp_frame_counter;

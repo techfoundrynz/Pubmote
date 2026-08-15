@@ -242,11 +242,12 @@ extern "C"
 
 extern "C" void handle_imu_gesture(imu_gesture_t gesture);
 
-extern "C" {
-extern volatile uint32_t slint_esp_prepare_us;
-extern volatile uint32_t slint_esp_render_us;
-extern volatile uint32_t slint_esp_flush_us;
-extern volatile uint32_t slint_esp_dirty_px;
+extern "C"
+{
+  extern volatile uint32_t slint_esp_prepare_us;
+  extern volatile uint32_t slint_esp_render_us;
+  extern volatile uint32_t slint_esp_flush_us;
+  extern volatile uint32_t slint_esp_dirty_px;
 }
 
 static void connect_callbacks() {
@@ -377,11 +378,11 @@ static void slint_event_loop(void *pvParameters) {
   ESP_LOGI(TAG, "Slint task started");
 
   // Initialize Slint platform with our configuration
-  SlintPlatformConfiguration<slint::platform::Rgb565Pixel> config;
+  SlintPlatformConfiguration<slint::platform::Rgb565BigEndianPixel> config;
   config.size = slint::PhysicalSize(slint::Size<uint32_t>{(uint32_t)HOR_RES, (uint32_t)VER_RES});
   config.panel_handle = lcd_panel;
   config.touch_handle = touch_handle;
-  config.byte_swap = true; // Swap bytes for standard SPI/QSPI big-endian display interfaces
+  config.byte_swap = false;
 
   // config.buffer1/buffer2 are deliberately left unset: that selects render_by_line
   // chunked mode, which stages into slint_chunk_buffer in internal SRAM. Full-frame
