@@ -49,7 +49,6 @@
   #define RGB_ELE_ORDER LCD_RGB_ELEMENT_ORDER_BGR
 #elif DISP_SH8601 || DISP_CO5300
   #define SW_ROTATE 1
-  #define ROUNDER_CALLBACK 1
   #include "display/sh8601/display_driver_sh8601.h"
   #include "esp_lcd_sh8601.h"
   #define RGB_ELE_ORDER LCD_RGB_ELEMENT_ORDER_RGB
@@ -383,6 +382,24 @@ static void slint_event_loop(void *pvParameters) {
   config.panel_handle = lcd_panel;
   config.touch_handle = touch_handle;
   config.byte_swap = false;
+
+  // What the panel requires of a draw window horizontally - the equivalent of the LVGL
+  // rounder_cb this firmware carried until the Slint migration, which rounded x1/y1 down to
+  // even and x2/y2 up to odd, and was registered for SH8601 and CO5300 but never GC9A01.
+  // Anything above 1 makes the flush widen each span, and the renderer has not drawn the
+  // pixels that widening adds, so they are filled by replicating a neighbour and then never
+  // repainted, because they sit outside the dirty range.
+#if DISP_SH8601
+  // esp_lcd_sh8601/README.md states the part requires all four window coordinates divisible
+  // by two. Untested here, so keep the old behaviour. Note this only aligns x: chunks start
+  // and end on whatever line the dirty region does, so if the y half of that requirement is
+  // real, this path has been violating it since the Slint migration.
+  config.x_align = 2;
+#else
+  // CO5300 verified by experiment: removing the widening entirely still renders correctly.
+  // GC9A01 never had a rounder callback under LVGL.
+  config.x_align = 1;
+#endif
 
   // config.buffer1/buffer2 are deliberately left unset: that selects render_by_line
   // chunked mode, which stages into slint_chunk_buffer in internal SRAM. Full-frame

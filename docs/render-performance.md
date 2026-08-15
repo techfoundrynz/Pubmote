@@ -577,3 +577,67 @@ never drops a rect).
 Diagnostic switches in the fork: `ARC_NO_NARROWING` in `items/path.rs`, and the phase marks behind
 `slint_esp_phase_mark`. `mcu-v1.18.11` remains the clean shipping point; the cap fix is
 `mcu-v1.18.28`.
+
+## 11. Corrected cost model (measured 2026-08-15, hardware, remote untouched)
+
+Everything in sections 1-8 modelled the frame as `fixed + k * dirty%`, fitted mostly on menu and
+slider frames. That model understates the dial screens badly, because it was never fitted on one.
+Measured with `SLINT_PERF_LOG=1` on the pingumote 466x466, sitting on a dial screen with
+`ARC_NO_NARROWING = true`, 60-frame averages, device untouched:
+
+| phase | us | scales with dirty area? |
+|---|---|---|
+| prepare | 21,200 | no |
+| render | 31,000 | **yes** |
+| copy | 18 | yes |
+| wait_transmit | 560 | yes |
+| other | 1,740 | partly |
+| drawcall | 1,490 (22 calls) | yes |
+| **total** | **54,600** | **18.3 fps** |
+
+Companion line: `Dirty [60f]: rects=1.0 avg area=217156 px (100.0%)` - every frame, the whole panel.
+
+Two corrections to the earlier model:
+
+1. **Render, not prepare, dominates this screen.** Section 4 records render at ~10.8ms for a
+   100%-dirty frame. That was a *menu* frame. With two dials on screen it is 31ms, because the
+   arcs are re-rasterised over all 217k pixels rather than over a sliver. The rasteriser is not
+   slow - 143ns/pixel is overdraw across a full frame, and `draw_arc_line` does 2-4 sqrt per row
+   and `blend_slice` for span interiors. It is being asked to do ~30x the necessary work.
+2. **Narrowing is worth ~28ms/frame on this screen, i.e. 18fps against ~40fps.** Since prepare is
+   dirty-independent at 21ms and render is ~31ms at 100% dirty, a 10%-dirty frame costs roughly
+   `21 + 3 = 24ms`. Every other optimisation in this document is rounding error against that.
+   The 21ms prepare floor caps this screen at ~47fps regardless.
+
+**The arc artifact is therefore not a side quest - it is the whole remaining performance problem.**
+`ARC_NO_NARROWING = true` is not a neutral fallback; it costs more than everything sections 5-9
+recovered, combined.
+
+### Refuted this session
+
+- **Instruction cache line size.** `CONFIG_ESP32S3_INSTRUCTION_CACHE_LINE_32B` -> `64B`, on the
+  theory that a fetch-bound workload with straight-line code would halve its flash transactions.
+  A/B on hardware: 3375ms/60f vs 3367ms/60f (56.2 vs 56.1ms). No effect. Reverted. Note the data
+  cache is already at 64B; only the instruction side was ever 32B.
+- **`render_by_line` skipping lines of the dirty region.** Recorded in section 10 as the untested
+  next step. Refuted from source: `Scene::recompute_ranges` advances `current_line` past lines
+  whose `current_line_ranges` is empty, and a line is only empty when it is outside the region.
+  Skipped lines are lines nothing asked to have painted. Correct as written.
+- **`DirtyRegion` dropping a rect on overflow.** Refuted from source: `add_box` past `MAX_COUNT = 3`
+  picks the cheapest merge and `union`s into it. The region is always a superset, never lossy.
+
+### Live finding: multi-rect regions degrade the firmware chunker
+
+`render_window_frame_by_line` iterates `for r in &scene.current_line_ranges`, so a single scanline
+issues **one `process_line` callback per region rect**, all with the same `line_y`. The chunk
+accumulator in `slint-esp.cpp` keys on `line_y == chunk_start_y + lines_in_chunk` plus matching x
+bounds, so two ranges on one line force a flush between them, and the following line's first range
+forces another. With a 3-rect region overlapping in y, chunking degenerates towards one drawcall
+per rect per line.
+
+This is a performance cliff, not a correctness bug - every range is still flushed, and the traced
+buffer/DMA handoff stays balanced. It does not bite today because full invalidation produces
+`rects=1.0`. **It will bite the moment narrowing is re-enabled**, and at ~73us per drawcall it can
+claw back a meaningful share of the narrowing win. Fix before re-enabling: accumulate per-rect
+chunks independently, or coalesce a line's ranges into one span when the gap between them is
+smaller than the drawcall cost.

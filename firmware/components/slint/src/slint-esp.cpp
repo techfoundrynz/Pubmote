@@ -106,6 +106,7 @@ struct EspPlatform : public slint::platform::Platform
           panel_handle(config.panel_handle),
           touch_handle(config.touch_handle),
           byte_swap(config.byte_swap),
+          x_align(config.x_align),
           rotation(config.rotation)
     {
         task = xTaskGetCurrentTaskHandle();
@@ -133,6 +134,7 @@ private:
     esp_lcd_panel_handle_t panel_handle;
     esp_lcd_touch_handle_t touch_handle;
     bool byte_swap;
+    std::size_t x_align;
     slint::platform::SoftwareRenderer::RenderingRotation rotation;
     class EspWindowAdapter *m_window = nullptr;
 
@@ -406,13 +408,15 @@ void EspPlatform<PixelType>::run_event_loop()
                             }
                             line_callbacks++;
 
-                            // The panel turns out to accept an odd x window - tested by
-                            // removing this and seeing a correct display - so hand it exactly
-                            // the pixels the renderer drew. Widening used to invent the odd
-                            // pixel by replicating a neighbour, which wrote outside the dirty
-                            // range where nothing would ever repaint it.
-                            std::size_t aligned_start = line_start;
-                            std::size_t aligned_end = line_end;
+                            // Widen the span to whatever the panel needs of a draw window.
+                            // At x_align == 1 this is exact, which is what we want: the
+                            // renderer only draws the pixels it reported dirty, so any
+                            // widening leaves a pixel nothing has drawn, filled below by
+                            // replicating a neighbour - and since it lies outside the dirty
+                            // range, nothing ever repaints it.
+                            const std::size_t align_mask = ~(x_align - 1);
+                            std::size_t aligned_start = line_start & align_mask;
+                            std::size_t aligned_end = (line_end + x_align - 1) & align_mask;
                             
                             bool flush = false;
                             if (lines_in_chunk > 0) {
@@ -468,11 +472,11 @@ void EspPlatform<PixelType>::run_event_loop()
                             // frame it is measuring. t_render is derived below instead.
                             render_fn(view);
 
-                            // The panel needs even x bounds, so a dirty span with an odd edge leaves
-                            // up to one untouched pixel on each side of this row. Replicate the
+                            // Any pixel x_align added is not one the renderer drew. Replicate the
                             // neighbouring rendered pixel into it: a 1px colour bleed at the dirty
                             // edge is invisible, where clearing to black left a seam - and this
-                            // replaces a full slint_chunk_lines-row memset per chunk.
+                            // replaces a full slint_chunk_lines-row memset per chunk. Dead at
+                            // x_align == 1, where the span is always the whole chunk width.
                             if (span_len > 0) {
                                 if (span_offset > 0) {
                                     row[span_offset - 1] = row[span_offset];

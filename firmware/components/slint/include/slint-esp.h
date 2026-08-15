@@ -48,6 +48,7 @@ struct SlintPlatformConfiguration {
     [[deprecated("Renamed to byte_swap")]] bool color_swap_16;
     bool byte_swap = false;
   };
+  std::size_t x_align = 1;
 };
 
 template <typename... Args> SlintPlatformConfiguration(Args...) -> SlintPlatformConfiguration<>;
