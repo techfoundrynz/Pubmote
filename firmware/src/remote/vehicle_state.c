@@ -94,7 +94,12 @@ static void monitor_task(void *pvParameters) {
         if (current_duty_status > last_duty_status) {
           // Duty cycle increased, alert with haptic and buzzer
           haptic_vibrate(get_haptic_pattern(current_duty_status));
-          buzzer_set_tone(get_buzzer_tone(current_duty_status), 200 * current_duty_status);
+          // Caution and warning have no tone assigned, which is not an error - only call the
+          // buzzer when there is something to play.
+          BuzzerToneFrequency tone = get_buzzer_tone(current_duty_status);
+          if (tone) {
+            buzzer_set_tone(tone, 200 * current_duty_status);
+          }
         }
       }
       else {
