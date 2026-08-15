@@ -303,9 +303,11 @@ static esp_err_t panel_sh8601_draw_bitmap(esp_lcd_panel_t *panel, int x_start, i
         sh8601->last_y_start = y_start;
         sh8601->last_y_end = y_end;
     }
-    // transfer frame buffer
+    // transfer frame buffer. The caller counts an outstanding transfer per successful call
+    // and waits for its completion callback, so a swallowed error here would leave it waiting
+    // for a callback that can never arrive.
     size_t len = (x_end - x_start) * (y_end - y_start) * sh8601->fb_bits_per_pixel / 8;
-    tx_color(sh8601, io, LCD_CMD_RAMWR, color_data, len);
+    ESP_RETURN_ON_ERROR(tx_color(sh8601, io, LCD_CMD_RAMWR, color_data, len), TAG, "send color failed");
 
     return ESP_OK;
 }

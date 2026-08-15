@@ -54,11 +54,13 @@ static uint32_t g_drawcall_count = 0;
 // Phase timestamps from inside the renderer's prepare_scene. 0=entry, 1=before the item
 // walk, 2=after it, 3=before Scene::new, 4=after.
 
-static inline void timed_draw_bitmap(esp_lcd_panel_handle_t p, int x0, int y0, int x1, int y1, const void *data) {
+static inline esp_err_t timed_draw_bitmap(esp_lcd_panel_handle_t p, int x0, int y0, int x1, int y1,
+                                          const void *data) {
   uint64_t d0 = esp_timer_get_time();
-  esp_lcd_panel_draw_bitmap(p, x0, y0, x1, y1, data);
+  esp_err_t err = esp_lcd_panel_draw_bitmap(p, x0, y0, x1, y1, data);
   g_drawcall_us += esp_timer_get_time() - d0;
   g_drawcall_count++;
+  return err;
 }
 volatile uint32_t slint_esp_dirty_px = 0;
 
@@ -384,9 +386,15 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         int inflight_q[SLINT_CHUNK_ACCUMULATORS];
         int q_head = 0, q_len = 0;
 
+        // Bounded, not portMAX_DELAY: this runs on the event loop, and the task watchdog is
+        // fed from a Slint timer, so blocking here forever takes the UI down with it. A frame
+        // is tens of milliseconds, so a completion this late is a lost one - drop it, say so,
+        // and keep the loop alive.
         auto retire_one = [&]() {
           uint64_t wait_start = esp_timer_get_time();
-          xSemaphoreTake(trans_sem, portMAX_DELAY);
+          if (xSemaphoreTake(trans_sem, pdMS_TO_TICKS(250)) != pdTRUE) {
+            ESP_LOGW(TAG, "panel transfer completion timed out; dropping it");
+          }
           t_wait_transmit += esp_timer_get_time() - wait_start;
           q_head = (q_head + 1) % SLINT_CHUNK_ACCUMULATORS;
           q_len--;
@@ -437,10 +445,17 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
           if (q_len == SLINT_CHUNK_ACCUMULATORS) {
             retire_one();
           }
-          timed_draw_bitmap(panel_handle, c.x0, c.y0, c.x1, c.y0 + c.lines, slint_chunk_buffer[a]);
-          inflight_q[(q_head + q_len) % SLINT_CHUNK_ACCUMULATORS] = a;
-          q_len++;
-          dma_active = true;
+          // Only count a transfer that was actually queued. A failed call raises no completion
+          // callback, and waiting for one that cannot arrive wedges the event loop for good.
+          if (timed_draw_bitmap(panel_handle, c.x0, c.y0, c.x1, c.y0 + c.lines, slint_chunk_buffer[a]) == ESP_OK) {
+            inflight_q[(q_head + q_len) % SLINT_CHUNK_ACCUMULATORS] = a;
+            q_len++;
+            dma_active = true;
+          }
+          else {
+            ESP_LOGW(TAG, "draw_bitmap failed for chunk %d,%d %dx%d", (int)c.x0, (int)c.y0,
+                     (int)(c.x1 - c.x0), c.lines);
+          }
           c.lines = 0;
         };
 
