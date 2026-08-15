@@ -806,10 +806,6 @@ extern "C" void display_init() {
 
   // Start Slint Event Loop Task in internal SRAM
   // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
-  // 48KB: zeno's rasterizer reserves an 18,944 byte frame in rasterize_mask (an inline
-  // [Cell; 1024] + [i32; 512] for the storage variant we don't even use - it is a local in
-  // an untaken branch, so the frame carries it regardless). 24KB left ~5.6KB for the rest
-  // of the render chain and overflowed the first time a Path was drawn.
   xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 24 * 1024, NULL, 20, &slint_task_handle, 1);
 
   // NOTE: slint_window is created inside slint_event_loop above, so it is not safe to

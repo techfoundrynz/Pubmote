@@ -61,42 +61,6 @@ static uint32_t g_drawcall_count = 0;
 
 // Phase timestamps from inside the renderer's prepare_scene. 0=entry, 1=before the item
 // walk, 2=after it, 3=before Scene::new, 4=after.
-static uint64_t g_phase_us[5] = { 0, 0, 0, 0, 0 };
-static uint64_t g_phase_accum[4] = { 0, 0, 0, 0 };
-// Phases 5/6 bracket a text shaping pass; they nest inside the walk, so accumulate
-// rather than timestamp.
-static uint64_t g_shape_enter = 0;
-static uint64_t g_shape_us = 0;
-static uint64_t g_shape_accum = 0;
-static uint32_t g_shape_count = 0;
-static uint64_t g_text_enter = 0;
-static uint64_t g_text_us = 0;
-static uint64_t g_text_accum = 0;
-static uint32_t g_text_count = 0;
-static uint32_t g_visited = 0;
-static uint32_t g_drawn = 0;
-static uint64_t g_visited_accum = 0;
-static uint64_t g_drawn_accum = 0;
-extern "C" void slint_esp_phase_mark(uint32_t phase)
-{
-    if (phase < 5) {
-        g_phase_us[phase] = esp_timer_get_time();
-    } else if (phase == 5) {
-        g_shape_enter = esp_timer_get_time();
-    } else if (phase == 6) {
-        g_shape_us += esp_timer_get_time() - g_shape_enter;
-        g_shape_count++;
-    } else if (phase == 7) {
-        g_text_enter = esp_timer_get_time();
-    } else if (phase == 8) {
-        g_text_us += esp_timer_get_time() - g_text_enter;
-        g_text_count++;
-    } else if (phase == 9) {
-        g_visited++;
-    } else if (phase == 10) {
-        g_drawn++;
-    }
-}
 
 static inline void timed_draw_bitmap(esp_lcd_panel_handle_t p, int x0, int y0, int x1, int y1,
                                      const void *data)
@@ -442,8 +406,13 @@ void EspPlatform<PixelType>::run_event_loop()
                             }
                             line_callbacks++;
 
-                            std::size_t aligned_start = line_start & ~1;
-                            std::size_t aligned_end = (line_end + 1) & ~1;
+                            // The panel turns out to accept an odd x window - tested by
+                            // removing this and seeing a correct display - so hand it exactly
+                            // the pixels the renderer drew. Widening used to invent the odd
+                            // pixel by replicating a neighbour, which wrote outside the dirty
+                            // range where nothing would ever repaint it.
+                            std::size_t aligned_start = line_start;
+                            std::size_t aligned_end = line_end;
                             
                             bool flush = false;
                             if (lines_in_chunk > 0) {
@@ -635,19 +604,6 @@ void EspPlatform<PixelType>::run_event_loop()
                 accum_render += t_render;
                 accum_copy += t_copy;
                 g_drawcall_accum += g_drawcall_us;
-                g_shape_accum += g_shape_us;
-                g_shape_us = 0;
-                g_text_accum += g_text_us;
-                g_text_us = 0;
-                g_visited_accum += g_visited;
-                g_drawn_accum += g_drawn;
-                g_visited = 0;
-                g_drawn = 0;
-                if (g_phase_us[4] > g_phase_us[0]) {
-                    g_phase_accum[0] += g_phase_us[1] - g_phase_us[0];
-                    g_phase_accum[1] += g_phase_us[2] - g_phase_us[1];
-                    g_phase_accum[2] += g_phase_us[4] - g_phase_us[3];
-                }
                 accum_wait_transmit += t_wait_transmit;
                 accum_total += t_total;
                 accum_prepare += t_prepare;
@@ -664,8 +620,7 @@ void EspPlatform<PixelType>::run_event_loop()
                     ESP_LOGI(TAG,
                              "Slint Timing [60f avg]: prepare=%lld us, render=%lld us, copy=%lld us, "
                              "wait_transmit=%lld us, other=%lld us, total_draw=%lld us, lines=%lu, "
-                             "drawcall=%lld us over %lu calls, setup=%lld walk=%lld scene=%lld, shape=%lld us x%lu, "
-                             "text=%lld us x%lu, visited=%lu drawn=%lu",
+                             "drawcall=%lld us over %lu calls",
                              avg_prepare,
                              accum_render / 60,
                              accum_copy / 60,
@@ -675,15 +630,7 @@ void EspPlatform<PixelType>::run_event_loop()
                              (unsigned long)(accum_lines / 60),
                              (long long)(g_drawcall_accum / 60),
                              (unsigned long)(g_drawcall_count / 60),
-                             (long long)(g_phase_accum[0] / 60),
-                             (long long)(g_phase_accum[1] / 60),
-                             (long long)(g_phase_accum[2] / 60),
-                             (long long)(g_shape_accum / 60),
-                             (unsigned long)(g_shape_count / 60),
-                             (long long)(g_text_accum / 60),
-                             (unsigned long)(g_text_count / 60),
-                             (unsigned long)(g_visited_accum / 60),
-                             (unsigned long)(g_drawn_accum / 60));
+                             (unsigned long)(g_drawcall_count / 60));
                     accum_render = 0;
                     accum_copy = 0;
                     accum_wait_transmit = 0;
@@ -692,13 +639,6 @@ void EspPlatform<PixelType>::run_event_loop()
                     accum_lines = 0;
                     g_drawcall_accum = 0;
                     g_drawcall_count = 0;
-                    g_phase_accum[0] = g_phase_accum[1] = g_phase_accum[2] = g_phase_accum[3] = 0;
-                    g_shape_accum = 0;
-                    g_shape_count = 0;
-                    g_text_accum = 0;
-                    g_text_count = 0;
-                    g_visited_accum = 0;
-                    g_drawn_accum = 0;
                     frame_count = 0;
                 }
 #else
