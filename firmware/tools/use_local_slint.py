@@ -63,6 +63,20 @@ def main() -> None:
 
     shutil.copyfile(lib, dest)
     print(f"staged {lib.stat().st_size} bytes -> {dest}")
+
+    # PlatformIO does not relink when only this archive changes - it decides the firmware is
+    # up to date and skips the build entirely, so the next upload silently reflashes the
+    # previous binary. Touching a source does not help either. Removing the link target is
+    # what actually forces it.
+    build_dir = dest.parents[3]
+    removed = []
+    for name in ("firmware.elf", "firmware.bin"):
+        target = build_dir / name
+        if target.exists():
+            target.unlink()
+            removed.append(name)
+    if removed:
+        print(f"removed {', '.join(removed)} to force a relink")
     print("now run: pio run -e", args.env)
 
 
