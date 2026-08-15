@@ -641,3 +641,93 @@ buffer/DMA handoff stays balanced. It does not bite today because full invalidat
 claw back a meaningful share of the narrowing win. Fix before re-enabling: accumulate per-rect
 chunks independently, or coalesce a line's ranges into one span when the gap between them is
 smaller than the drawcall cost.
+
+## 12. The arc artifact: root cause found (2026-08-16)
+
+**The panel requires every draw-window coordinate to be even, and the narrowed region stopped
+providing that.** `firmware/components/esp_lcd_sh8601/README.md` states the requirement, CO5300
+shares that driver, and the pre-Slint firmware carried an LVGL `rounder_cb` (`display.c:136`,
+registered for SH8601 and CO5300 but never GC9A01) that rounded x1/y1 down to even and x2/y2 up
+to odd. The Slint flush path never aligned y at all.
+
+It went unnoticed for as long as it did because **full invalidation satisfies the requirement by
+accident**: the flush starts at row 0 and advances by `slint_chunk_lines`, which `display.cpp`
+forces even, so every window came out even. A narrowed region starts on whatever row the damage
+begins, which is odd half the time. That is why full invalidation looked clean, why band slack
+made no difference at 6px or 30px, and why every renderer-side fix failed - the renderer was
+never wrong.
+
+### How it was finally cornered
+
+Two things that had defeated ten previous hypotheses:
+
+1. **Reproduce on the host.** `api/rs/slint/tests/arc_partial_repaint.rs` renders a dial screen
+   twice in lockstep - once through the partial renderer reusing its buffer, once with a full
+   repaint - both via `render_by_line` because that is the path the firmware runs, and diffs the
+   buffers every frame. Iteration went from a ~10 minute release-and-flash cycle to 4 seconds.
+2. **Ask whether the pixel was offered.** The test records every `(line, range)` the renderer
+   asks for, so a divergent pixel can be classified: never offered means the invalidation missed
+   it, offered means the invalidation was right and the drawing was wrong. It came back
+   `offered: true`, which eliminated the entire invalidation-bug family in one measurement.
+
+Across 40 configurations - `Rgb565Pixel` and `Rgb565BigEndianPixel`, all four rotations, a smooth
+climb and four stall sizes - the largest difference anywhere is **one step in a 5/6/5 channel**.
+The renderer agrees with a full repaint. Since the host cannot reproduce it and the device can,
+the fault had to be in the flush, which is what pointed at the window coordinates.
+
+### Why the fix is in the renderer, not the driver
+
+The first attempt rounded the window outward in `slint-esp.cpp` and filled the added row by
+replicating its neighbour. That removed the missing segments and immediately produced a new
+artifact trailing every area that updated: a replicated row is not what the renderer drew, and at
+the edge of a dirty band it lies outside the region, so nothing ever repaints it.
+
+The fix is `even_aligned` in `software/lib.rs`, which rounds the dirty region out to even
+coordinates **before the scene is rendered**, so the renderer genuinely paints the added row and
+column. It is applied after the rotation, because the alignment the panel needs is on the
+coordinates the draw window is expressed in. A previous partial attempt snapped x only, and did
+it before the rotation, so on a rotated screen it aligned the wrong axis.
+
+`arc_partial_repaint` now asserts the invariant on both axes and both assertions fail if the
+rounding is removed - checked, because five earlier suites passed vacuously on this same bug.
+
+## 13. Where the frame time went (2026-08-16)
+
+`ARC_NO_NARROWING` is back off. Measured on the dial screen, 60-frame averages:
+
+| | before | after |
+|---|---|---|
+| frame | 54.6ms (18.3 fps) | 21.7-32.4ms (**30.8-46.0 fps**) |
+| prepare | 21.2ms | 12.1-14.9ms |
+| render | 31.0ms | 7.3-13.4ms |
+| drawcalls | 22 / 1.5ms | 11-18 / 1.0-1.6ms |
+| dirty | 100% | 7.9-18.8% |
+
+Two firmware changes beyond the invalidation itself:
+
+**Per-rectangle chunk accumulators.** `render_by_line` issues a callback per region rectangle per
+line, all with the same `line_y`, so rectangles overlapping vertically interleave. A single
+accumulator keyed on "same x range, next line" is broken by every switch: 93 draw calls for 283
+callbacks, and windows one line tall whose odd row bounds the panel rejects. One accumulator per
+rectangle made every chunk contiguous - **93 draw calls became 14-20, and 6.2ms became 1.6ms** -
+and is also what keeps windows even, since a chunk now inherits the region's alignment.
+
+**Pipelined transfers.** `trans_sem` is a counting semaphore and the flush keeps several chunk
+transfers outstanding, blocking only when the specific buffer it needs is still being read.
+
+### Refuted, with numbers
+
+- **Merging dirty rectangles that overlap vertically.** The theory was sound - render was 15.5ms
+  over 284 callbacks, ~55us each for ~200 pixels, so callback count sets the cost. In practice the
+  1.3x growth gate rarely fired where it would have helped: dirty area rose from 20.5% to 29.0%
+  while callbacks did not drop (233-298, unchanged), and frames went from 25-38fps to 23-32fps.
+  Reverted. **Callback count is the right target; merging whole rectangles is the wrong lever.**
+- **Instruction cache line 32B to 64B** (section 11) - no effect, reverted.
+
+### What is left
+
+`prepare` (12-15ms) and `render` (7-13ms) dominate, and `render` is still ~50us per line callback
+against ~200 painted pixels, because each callback re-walks the items active on that line and
+re-runs the `first_cover` scan. Making that per-callback work cheaper - caching `first_cover` per
+line, or hoisting the active-item scan - is the next real lever, and unlike merging it does not
+trade away area.
