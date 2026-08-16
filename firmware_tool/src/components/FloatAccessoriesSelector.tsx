@@ -54,13 +54,13 @@ export function FloatAccessoriesSelector() {
       releaseType: ReleaseType.Release
     },
     {
-      version: "v3.4.0",
+      version: "v3.3.0",
       date: "7/5/2026",
       variants: [
         {
-          zipUrl: "/float_accessories/float_accessories-3.4.0.vescpkg",
+          zipUrl: "/float_accessories/float_accessories-3.3.0.vescpkg",
           date: "7/5/2026",
-          variant: "float_accessories-3.4.0.vescpkg"
+          variant: "float_accessories-3.3.0.vescpkg"
         }
       ],
       releaseType: ReleaseType.Nightly
