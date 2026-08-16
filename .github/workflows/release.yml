@@ -56,11 +56,7 @@ jobs:
           fi
 
           # If manually triggered without force_run, still check for version changes
-          FILE="prebuild_hook.py"
-
-          # These are the lines of the file to check
-          # If they change in the future, be sure to updated them here
-          LINES_TO_CHECK="5 6 7"
+          FILE="platformio.ini"
 
           # Get the previous commit for comparison
           PREV_COMMIT=$(git log --format="%H" -n 2 "$FILE" | tail -1)
@@ -73,17 +69,17 @@ jobs:
             exit 0
           fi
 
-          # Check if the relevant lines changed
-          CHANGED=false
-          for LINE_NUMBER in $LINES_TO_CHECK; do
-            OLD_LINE=$(git show "$PREV_COMMIT":"$FILE" | sed -n "${LINE_NUMBER}p")
-            NEW_LINE=$(sed -n "${LINE_NUMBER}p" "$FILE")
+          # Compare the version value itself, so unrelated edits to this file do not
+          # trigger a release and a reformat of the line does not look like a bump
+          extract() { grep '^custom_firmware_version' | awk -F'=' '{print $2}' | tr -d '[:space:]'; }
+          OLD_VERSION=$(git show "$PREV_COMMIT":"$FILE" | extract)
+          NEW_VERSION=$(extract < "$FILE")
 
-            if [ "$OLD_LINE" != "$NEW_LINE" ]; then
-              echo "Line $LINE_NUMBER changed: '$OLD_LINE' -> '$NEW_LINE'"
-              CHANGED=true
-            fi
-          done
+          CHANGED=false
+          if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+            echo "Version changed: '$OLD_VERSION' -> '$NEW_VERSION'"
+            CHANGED=true
+          fi
 
           if $CHANGED; then
             echo "should_continue=true" >> $GITHUB_OUTPUT
@@ -101,10 +97,8 @@ jobs:
             VERSION_TAG="${{ github.event.inputs.custom_version }}"
             echo "Using custom version: $VERSION_TAG"
           else
-            MAJOR=$(grep '^major_version' prebuild_hook.py | awk -F'=' '{print $2}' | tr -d '[:space:]')
-            MINOR=$(grep '^minor_version' prebuild_hook.py | awk -F'=' '{print $2}' | tr -d '[:space:]')
-            PATCH=$(grep '^patch_version' prebuild_hook.py | awk -F'=' '{print $2}' | tr -d '[:space:]')
-            VERSION_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+            VERSION=$(grep '^custom_firmware_version' platformio.ini | awk -F'=' '{print $2}' | tr -d '[:space:]')
+            VERSION_TAG="v${VERSION}"
             echo "Extracted Version from file: $VERSION_TAG"
           fi
 

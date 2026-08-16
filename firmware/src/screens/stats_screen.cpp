@@ -102,7 +102,7 @@ extern "C" void stats_update_screen_display() {
   }
   converted_speed = snap_zero(converted_speed, 0.05f);
   char speed_str[16];
-  if (converted_speed >= 10.0f) {
+  if (roundf(converted_speed * 10.0f) / 10.0f >= 10.0f) {
     snprintf(speed_str, sizeof(speed_str), "%.0f", converted_speed);
   }
   else {
