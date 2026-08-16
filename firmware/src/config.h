@@ -4,137 +4,140 @@
 // Set in env
 // Powershell: $env:PLATFORMIO_BUILD_FLAGS='-D RELEASE_VARIANT=\"release\"'
 #ifndef RELEASE_VARIANT
-  #define RELEASE_VARIANT "dev"
+#define RELEASE_VARIANT "dev"
 #endif
 
 // Uncomment to emulate connection state and incoming stats for UI testing
 #define TEST_MODE 0
 
+// Log heap and per-task stack use through boot and at runtime. See utilities/mem_debug.h
+#define DEBUG_MEMORY 0
+
 // Minimum required VESC receiver API version
 #define MIN_RCV_API_VERSION 1
 
 #ifndef TARGET_FPS
-  #define TARGET_FPS 60
+#define TARGET_FPS 60
 #endif
 
 #define MIN_BATTERY_VOLTAGE 3000
 #define MAX_BATTERY_VOLTAGE 4200
 
 #if defined(ACC1_POWER) && !defined(ACC1_POWER_ON_LEVEL)
-  #define ACC1_POWER_ON_LEVEL 1
+#define ACC1_POWER_ON_LEVEL 1
 #endif
 
 #if defined(ACC2_POWER) && !defined(ACC2_POWER_ON_LEVEL)
-  #define ACC2_POWER_ON_LEVEL 1
+#define ACC2_POWER_ON_LEVEL 1
 #endif
 
 #if defined(ACC2_POWER) && !defined(ACC2_POWER_DEFAULT_LEVEL)
-  #define ACC2_POWER_DEFAULT_LEVEL 20 // Default to x% brightness
+#define ACC2_POWER_DEFAULT_LEVEL 20 // Default to x% brightness
 #endif
 
 // i2c configuration
 #if (!defined(I2C_SDA) || !defined(I2C_SCL))
-  #error "I2C_SDA and I2C_SCL must be defined for I2C communication. Please define them in your build flags."
+#error "I2C_SDA and I2C_SCL must be defined for I2C communication. Please define them in your build flags."
 #endif
 
 #define I2C_SCL_FREQ_HZ 100000
 
 // Joystick configuration
 #ifdef PRIMARY_BUTTON
-  #define JOYSTICK_BUTTON_ENABLED 1
+#define JOYSTICK_BUTTON_ENABLED 1
 #else
-  #define JOYSTICK_BUTTON_ENABLED 0
+#define JOYSTICK_BUTTON_ENABLED 0
 #endif
 
 #ifdef JOYSTICK_X
-  #define JOYSTICK_X_ENABLED 1
+#define JOYSTICK_X_ENABLED 1
 #else
-  #define JOYSTICK_X_ENABLED 0
+#define JOYSTICK_X_ENABLED 0
 #endif
 
 #ifdef JOYSTICK_Y
-  #define JOYSTICK_Y_ENABLED 1
+#define JOYSTICK_Y_ENABLED 1
 #else
-  #define JOYSTICK_Y_ENABLED 0
+#define JOYSTICK_Y_ENABLED 0
 #endif
 
 #define JOYSTICK_ENABLED (JOYSTICK_X_ENABLED || JOYSTICK_Y_ENABLED)
 
 #ifndef JOYSTICK_BUTTON_LEVEL
-  #define JOYSTICK_BUTTON_LEVEL 0 // 0: active low, 1: active high (switch = 0, ps5 = 1)
+#define JOYSTICK_BUTTON_LEVEL 0 // 0: active low, 1: active high (switch = 0, ps5 = 1)
 #endif
 
 // Display configuration
 #if defined(TP_CST816S) || defined(TP_FT3168) || defined(TP_CST9217)
-  #define TOUCH_ENABLED 1
+#define TOUCH_ENABLED 1
 #else
-  #define TOUCH_ENABLED 0
+#define TOUCH_ENABLED 0
 #endif
 
 #ifndef TP_RST
-  #define TP_RST -1
+#define TP_RST -1
 #endif
 
 // UI shape: 0 = circular, 1 = square/rectangular. Square panels default to the square UI.
 #ifndef UI_SHAPE
-  #define UI_SHAPE (HOR_RES == VER_RES ? 0 : 1)
+#define UI_SHAPE (HOR_RES == VER_RES ? 0 : 1)
 #endif
 
 // Led configuration
 #if defined(LED_DATA)
-  #define LED_ENABLED 1
+#define LED_ENABLED 1
 #else
-  #define LED_ENABLED 0
+#define LED_ENABLED 0
 #endif
 
 #if LED_ENABLED && !defined(LED_COUNT)
-  #define LED_COUNT 1 // Default to 1 LED if not defined
+#define LED_COUNT 1 // Default to 1 LED if not defined
 #endif
 
 // Buzzer configuration
 #if defined(BUZZER_PWM)
-  #define BUZZER_ENABLED 1
+#define BUZZER_ENABLED 1
 #else
-  #define BUZZER_ENABLED 0
+#define BUZZER_ENABLED 0
 #endif
 
 #ifndef BUZZER_LEVEL
-  #define BUZZER_LEVEL 1
+#define BUZZER_LEVEL 1
 #endif
 
 // Haptic configuration
 #if defined(HAPTIC_DRV2605) || defined(HAPTIC_PWM)
-  #define HAPTIC_ENABLED 1
+#define HAPTIC_ENABLED 1
 #else
-  #define HAPTIC_ENABLED 0
+#define HAPTIC_ENABLED 0
 #endif
 
 // IMU configuration
 #if defined(IMU_QMI8658) || defined(IMU_BHI260)
-  #define IMU_ENABLED 1
+#define IMU_ENABLED 1
 #else
-  #define IMU_ENABLED 0
+#define IMU_ENABLED 0
 #endif
 
 // QMI8658 I2C address
 #if defined(IMU_QMI8658) && !defined(QMI8658_ADDR)
-  #define QMI8658_ADDR 0x6A
+#define QMI8658_ADDR 0x6A
 #endif
 
 #ifndef IMU_INVERT_X
-  #define IMU_INVERT_X 0
+#define IMU_INVERT_X 0
 #endif
 
 #ifndef IMU_INVERT_Y
-  #define IMU_INVERT_Y 0
+#define IMU_INVERT_Y 0
 #endif
 
 #ifndef IMU_INVERT_Z
-  #define IMU_INVERT_Z 0
+#define IMU_INVERT_Z 0
 #endif
 
 #ifndef IMU_SWAP_XY
-  #define IMU_SWAP_XY 0
+#define IMU_SWAP_XY 0
 #endif
 
 #endif

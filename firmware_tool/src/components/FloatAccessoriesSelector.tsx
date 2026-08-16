@@ -63,7 +63,7 @@ export function FloatAccessoriesSelector() {
           variant: "float_accessories-3.3.0.vescpkg"
         }
       ],
-      releaseType: ReleaseType.Nightly
+      releaseType: ReleaseType.Release
     },
     {
       version: "v4.0.0",

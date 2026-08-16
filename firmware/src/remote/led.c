@@ -1,3 +1,4 @@
+#include "utilities/psram_task.h"
 #include "led.h"
 #include "config.h"
 #include "esp_err.h"
@@ -394,11 +395,15 @@ void led_clear_alert() {
 #endif
 }
 
+static StaticTask_t led_task_tcb;
+static StackType_t *led_task_stack;
+
 void led_init() {
 #if LED_ENABLED
   ESP_LOGI(TAG, "Initializing LED strip");
   configure_led();
-  ESP_ERROR_CHECK(xTaskCreate(led_task, "led_task", 2048, NULL, 2, &led_task_handle) == pdPASS ? ESP_OK : ESP_FAIL);
+  led_task_handle = create_psram_task(led_task, "led_task", 2048, NULL, 2, &led_task_tcb, &led_task_stack);
+  ESP_ERROR_CHECK(led_task_handle ? ESP_OK : ESP_FAIL);
   register_startup_cb(play_startup_effect);
 #endif
 }

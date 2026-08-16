@@ -1,3 +1,4 @@
+#include "utilities/psram_task.h"
 #include "buzzer.h"
 #include "config.h"
 #include "esp_err.h"
@@ -203,6 +204,9 @@ static void buzzer_task(void *pvParameters) {
 }
 #endif
 
+static StaticTask_t buzzer_task_tcb;
+static StackType_t *buzzer_task_stack;
+
 void buzzer_init() {
 #if BUZZER_ENABLED
   ledc_channel_config_t channel_conf = {
@@ -218,8 +222,8 @@ void buzzer_init() {
   #endif
   };
   ledc_channel_config(&channel_conf);
-  ESP_ERROR_CHECK(xTaskCreate(buzzer_task, "buzzer_task", 1024, NULL, 2, &buzzer_task_handle) == pdPASS ? ESP_OK
-                                                                                                        : ESP_FAIL);
+  buzzer_task_handle = create_psram_task(buzzer_task, "buzzer_task", 1024, NULL, 2, &buzzer_task_tcb, &buzzer_task_stack);
+  ESP_ERROR_CHECK(buzzer_task_handle ? ESP_OK : ESP_FAIL);
   register_startup_cb(play_startup_effect);
 #endif
 }

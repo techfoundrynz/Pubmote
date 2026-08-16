@@ -35,6 +35,7 @@
 #include "screens/update_screen.h"
 #include "settings.h"
 #include "slint-esp.h"
+#include "utilities/mem_debug.h"
 
 #if TP_CST816S
   #include "esp_lcd_touch_cst816s.h"
@@ -106,8 +107,8 @@ static SlintWindowPtr slint_window;
 static TaskHandle_t slint_task_handle = NULL;
 static TaskHandle_t slint_input_task_handle = NULL;
 
-SlintWindowPtr get_slint_window() {
-  return slint_window;
+AppWindow *get_slint_window() {
+  return slint_window ? &*slint_window : nullptr;
 }
 
 #include <atomic>
@@ -416,7 +417,6 @@ static void slint_event_loop(void *pvParameters) {
   config.touch_handle = touch_handle;
   config.byte_swap = false;
 
-
   // config.buffer1/buffer2 are deliberately left unset: that selects render_by_line
   // chunked mode, which stages into slint_chunk_buffer in internal SRAM. Full-frame
   // buffers would have to live in PSRAM, and reading them back per frame is slower than
@@ -443,7 +443,9 @@ static void slint_event_loop(void *pvParameters) {
   slint_esp_init(config);
 
   ESP_LOGI(TAG, "Creating AppWindow...");
+  MEM_MARK("pre AppWindow");
   slint_window = AppWindow::create();
+  MEM_MARK("post AppWindow");
 
   // Surface unexpected reboots (panic / watchdog / brownout) as a dismissable
   // dialog so crashes don't go unnoticed as a silent restart
@@ -466,6 +468,7 @@ static void slint_event_loop(void *pvParameters) {
   }
   connect_callbacks();
   apply_theme_settings();
+  MEM_MARK("post callbacks");
 
   ESP_LOGI(TAG, "Applying initial backlight level: 0");
   display_set_bl_level(0);
@@ -484,15 +487,20 @@ static void slint_event_loop(void *pvParameters) {
   // (frozen UI) stops the feed and the watchdog panics + reboots
   ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
   slint::Timer wdt_feed_timer;
-  wdt_feed_timer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(1000), []() { esp_task_wdt_reset(); });
+  wdt_feed_timer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(500), []() { esp_task_wdt_reset(); });
 
   // Blocks until event loop ends
+  MEM_MARK("pre run loop");
   ESP_LOGI(TAG, "Running Slint window event loop...");
   slint_window->run();
 
   ESP_LOGI(TAG, "Slint event loop exited");
   wdt_feed_timer.stop();
+  // Released here rather than by whoever asked us to quit: AppWindow owns slint::Timers and
+  // those may only be destroyed on this thread.
+  slint_window.reset();
   esp_task_wdt_delete(NULL);
+  slint_task_handle = NULL;
   vTaskDelete(NULL);
 }
 
@@ -820,7 +828,7 @@ extern "C" void display_init() {
   // Allocate chunk buffers early to avoid memory fragmentation from the Slint task stack
   for (int i = 0; i < SLINT_CHUNK_ACCUMULATORS; i++) {
     slint_chunk_buffer[i] = (uint16_t *)heap_caps_malloc(HOR_RES * slint_chunk_lines * sizeof(uint16_t),
-                                                        MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+                                                         MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
     if (!slint_chunk_buffer[i]) {
       ESP_LOGE(TAG, "Failed to allocate chunk buffer %d!", i);
       abort();
@@ -844,7 +852,7 @@ extern "C" void display_init() {
 
   // Start Slint Event Loop Task in internal SRAM
   // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 24 * 1024, NULL, 20, &slint_task_handle, 1);
+  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 16 * 1024, NULL, 20, &slint_task_handle, 1);
 
   // NOTE: slint_window is created inside slint_event_loop above, so it is not safe to
   // touch UiState here - see connect_callbacks() for properties set once it exists.
@@ -859,8 +867,15 @@ extern "C" void display_deinit() {
 
   display_set_bl_level(0);
   if (slint_window) {
+    // Resetting from this task would destroy AppWindow's timers off
+    //  the Slint thread and panic the timer registry.
     slint::quit_event_loop();
-    slint_window.reset();
+    for (int i = 0; i < 100 && slint_window; i++) {
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    if (slint_window) {
+      ESP_LOGW(TAG, "Slint event loop did not exit; leaving the window allocated");
+    }
   }
   vTaskDelay(pdMS_TO_TICKS(100));
 

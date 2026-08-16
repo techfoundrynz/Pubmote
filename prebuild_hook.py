@@ -2,9 +2,7 @@ Import("env")
 from datetime import datetime
 import hashlib
 
-major_version = 0
-minor_version = 9
-patch_version = 0
+major_version, minor_version, patch_version = env.GetProjectOption("custom_firmware_version").split(".")
 
 def generate_build_id():
     # Get current timestamp

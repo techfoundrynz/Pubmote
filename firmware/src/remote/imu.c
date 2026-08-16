@@ -1,3 +1,4 @@
+#include "utilities/psram_task.h"
 #include "imu.h"
 #include "buzzer.h"
 #include "config.h"
@@ -9,12 +10,10 @@
 #include "esp_wifi.h"
 #include "imu/imu_datatypes.h"
 #include "imu/imu_driver.h"
-#include "nvs_flash.h"
 #include "settings.h"
 #include <driver/gpio.h>
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
-#include <nvs.h>
 #include <math.h>
 
 static int motionless_counter = 0;
@@ -146,6 +145,9 @@ void imu_task(void *pvParameters) {
   vTaskDelete(NULL);
 }
 
+static StaticTask_t imu_task_tcb;
+static StackType_t *imu_task_stack;
+
 void imu_init() {
   ESP_LOGI(TAG, "imu_init called. IMU_ENABLED = %d", IMU_ENABLED);
 #if IMU_ENABLED
@@ -157,7 +159,7 @@ void imu_init() {
   }
 
   imu_should_run = true;
-  xTaskCreate(imu_task, "imu_task", 4096, NULL, 2, &imu_task_handle);
+  imu_task_handle = create_psram_task(imu_task, "imu_task", 4096, NULL, 2, &imu_task_tcb, &imu_task_stack);
 #endif
 }
 
