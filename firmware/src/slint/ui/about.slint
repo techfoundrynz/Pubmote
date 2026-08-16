@@ -6,7 +6,7 @@
 //       ui_VersionInfoContainer -> ui_VersionInfoLabel
 //             "Version: unknown\nType: unknown\nHash: unknown"
 //             ui_UpdateButton (outlined) "Check for updates"
-//       ui_DebugInfoContainer   -> ui_DebugInfoLabel "Battery: unknown"
+//       ui_DebugInfoContainer, now a scrolling list of labelled diagnostics
 //   ui_AboutFooter (25%) -> ui_AboutMainActionButton 80x42 "Back"
 
 import { Theme } from "theme.slint";
@@ -14,9 +14,39 @@ import { AppButton } from "app-button.slint";
 import { PageFooter } from "page-footer.slint";
 import { Pager } from "pager.slint";
 
+// One line of the diagnostics page. A header carries only a label and titles the group
+// below it; everything else is a label on the left and its value on the right.
+export struct StatEntry {
+    label: string,
+    value: string,
+    is-header: bool,
+}
+
+component StatRow inherits HorizontalLayout {
+    in property <string> label;
+    in property <string> value;
+    spacing: 8px * Theme.scale;
+
+    Text {
+        text: root.label;
+        color: Theme.text-dim;
+        font-size: Theme.font-12;
+        overflow: elide;
+    }
+
+    Text {
+        text: root.value;
+        color: Theme.text;
+        font-family: "JetBrains Mono";
+        font-size: Theme.font-12;
+        horizontal-alignment: right;
+        horizontal-stretch: 1;
+    }
+}
+
 export component AboutScreen inherits Rectangle {
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
-    in property <string> debug-info: "Battery: unknown";
+    in property <[StatEntry]> stats: [];
     callback check-updates;
     callback back;
     background: Theme.bg;
@@ -52,19 +82,36 @@ export component AboutScreen inherits Rectangle {
                     }
                 }
             }
-            // Page 2: debug info
+            // Page 2: battery and memory. Scrolls vertically - the section list grows past
+            // the viewport on the shorter panels.
             Rectangle {
                 width: root.width;
                 background: Theme.bg;
-                VerticalLayout {
-                    padding-left: 40px * Theme.scale;
-                    padding-right: 40px * Theme.scale;
-                    alignment: center;
-                    Text {
-                        text: root.debug-info;
-                        color: Theme.text;
-                        font-size: Theme.font-14;
-                        horizontal-alignment: center;
+                Flickable {
+                    viewport-height: debug-layout.min-height;
+                    debug-layout := VerticalLayout {
+                        padding-left: Theme.page-padding-horizontal;
+                        padding-right: Theme.page-padding-horizontal;
+                        padding-top: 6px * Theme.scale;
+                        padding-bottom: 6px * Theme.scale;
+                        spacing: 2px * Theme.scale;
+
+                        for entry in root.stats: VerticalLayout {
+                            // A header gets breathing room above it, but not before the first
+                            padding-top: entry.is-header ? 8px * Theme.scale : 0;
+
+                            if entry.is-header: Text {
+                                text: entry.label;
+                                color: Theme.text;
+                                font-size: Theme.font-11;
+                                letter-spacing: 1px;
+                            }
+
+                            if !entry.is-header: StatRow {
+                                label: entry.label;
+                                value: entry.value;
+                            }
+                        }
                     }
                 }
             }

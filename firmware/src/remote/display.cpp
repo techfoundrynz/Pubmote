@@ -1,3 +1,4 @@
+#include "utilities/mem_debug.h"
 #include "display.h"
 #include "config.h"
 #include "display/display_driver.h"
@@ -443,7 +444,9 @@ static void slint_event_loop(void *pvParameters) {
   slint_esp_init(config);
 
   ESP_LOGI(TAG, "Creating AppWindow...");
+  MEM_MARK("pre AppWindow");
   slint_window = AppWindow::create();
+  MEM_MARK("post AppWindow");
 
   // Surface unexpected reboots (panic / watchdog / brownout) as a dismissable
   // dialog so crashes don't go unnoticed as a silent restart
@@ -466,6 +469,7 @@ static void slint_event_loop(void *pvParameters) {
   }
   connect_callbacks();
   apply_theme_settings();
+  MEM_MARK("post callbacks");
 
   ESP_LOGI(TAG, "Applying initial backlight level: 0");
   display_set_bl_level(0);
@@ -484,9 +488,10 @@ static void slint_event_loop(void *pvParameters) {
   // (frozen UI) stops the feed and the watchdog panics + reboots
   ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
   slint::Timer wdt_feed_timer;
-  wdt_feed_timer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(1000), []() { esp_task_wdt_reset(); });
+  wdt_feed_timer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(500), []() { esp_task_wdt_reset(); });
 
   // Blocks until event loop ends
+  MEM_MARK("pre run loop");
   ESP_LOGI(TAG, "Running Slint window event loop...");
   slint_window->run();
 
