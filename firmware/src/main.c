@@ -2,9 +2,9 @@
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
-#include "esp_task_wdt.h"
 #include "esp_sleep.h"
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -18,6 +18,7 @@
 #include "remote/i2c.h"
 #include "remote/imu.h"
 #include "remote/led.h"
+#include "remote/orchestrator.h"
 #include "remote/peers.h"
 #include "remote/powermanagement.h"
 #include "remote/receiver.h"
@@ -29,97 +30,102 @@
 #include "remote/time.h"
 #include "remote/transmitter.h"
 #include "remote/vehicle_state.h"
+#include "utilities/mem_debug.h"
 #include <stdio.h>
 #include <string.h>
 
 static const char *TAG = "PUBREMOTE-MAIN";
 
-#define DEBUG_MEMORY 0
-
 // ─── Log level config ────────────────────────────────────────────────────────
 // Edit here to silence or verbose any module. Call this before any init so the
 // levels are applied from the first log line of each module.
 // Levels: ESP_LOG_NONE / ERROR / WARN / INFO / DEBUG / VERBOSE
-static void configure_log_levels(void) {
-  // Third-party drivers — always silenced (noisy on I2C NACKs during sleep)
-  esp_log_level_set("FT5x06", ESP_LOG_NONE);
-  esp_log_level_set("CST816S", ESP_LOG_NONE);
-  esp_log_level_set("i2c.master", ESP_LOG_NONE);
-  esp_log_level_set("lcd_panel.io.i2c", ESP_LOG_NONE);
+static void configure_log_levels(void)
+{
+    // Third-party drivers — always silenced (noisy on I2C NACKs during sleep)
+    esp_log_level_set("FT5x06", ESP_LOG_NONE);
+    esp_log_level_set("CST816S", ESP_LOG_NONE);
+    esp_log_level_set("i2c.master", ESP_LOG_NONE);
+    esp_log_level_set("lcd_panel.io.i2c", ESP_LOG_NONE);
 
-  // Module overrides — comment a line out to restore the global default
-  esp_log_level_set("PUBREMOTE-IMU", ESP_LOG_ERROR);
-  esp_log_level_set("PUBREMOTE-IMU_DRIVER_QMI8658", ESP_LOG_ERROR);
-  esp_log_level_set("PUBREMOTE-DISPLAY", ESP_LOG_ERROR);
-  esp_log_level_set("PUBREMOTE-DISPLAY-DRIVER", ESP_LOG_ERROR);
-  esp_log_level_set("NimBLE", ESP_LOG_WARN);
+    // Module overrides — comment a line out to restore the global default
+    esp_log_level_set("PUBREMOTE-IMU", ESP_LOG_ERROR);
+    esp_log_level_set("PUBREMOTE-IMU_DRIVER_QMI8658", ESP_LOG_ERROR);
+    esp_log_level_set("PUBREMOTE-DISPLAY", ESP_LOG_ERROR);
+    esp_log_level_set("PUBREMOTE-DISPLAY-DRIVER", ESP_LOG_ERROR);
+    esp_log_level_set("NimBLE", ESP_LOG_WARN);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-void app_main(void) {
-  configure_log_levels();
+void app_main(void)
+{
+    configure_log_levels();
 
-  // Cover the boot window with the task watchdog: until power_management_task
-  // exists nothing else could recover from an init step hanging forever
-  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+    // Cover the boot window with the task watchdog: until power_management_task
+    // exists nothing else could recover from an init step hanging forever
+    ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
 
-  // Release deep sleep pin holds before any peripheral init - held pads
-  // ignore reconfiguration until the hold is lifted
-  power_management_preinit();
+    // Release deep sleep pin holds before any peripheral init - held pads
+    // ignore reconfiguration until the hold is lifted
+    MEM_MARK("app_main entry");
+    power_management_preinit();
 
-  // Enable power for core peripherals
-  acc1_power_set_level(1);
-  gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
-  // Core setup
-  init_i2c();
-  settings_init();
-  init_adcs();
-  buttons_init();
-  buzzer_init();
-  haptic_init();
-  led_init();
-  power_management_init();
-  esp_task_wdt_reset();
+    // Enable power for core peripherals
+    acc1_power_set_level(1);
+    gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+    // Core setup
+    init_i2c();
+    settings_init();
+    init_adcs();
+    buttons_init();
+    buzzer_init();
+    haptic_init();
+    led_init();
+    MEM_MARK("core peripherals");
+    power_management_init();
+    esp_task_wdt_reset();
 
-  // Fire startup callbacks once boot is confirmed
-  startup_cb();
+    // Fire startup callbacks once boot is confirmed
+    startup_cb();
 // Enable accessories after callbacks
 #ifdef ACC2_POWER_DEFAULT_LEVEL
-  acc2_power_set_level(ACC2_POWER_DEFAULT_LEVEL);
+    acc2_power_set_level(ACC2_POWER_DEFAULT_LEVEL);
 #endif
 
-  // Peripherals
-  thumbstick_init();
-  display_init();
-  imu_init();
-  vehicle_monitor_init();
-  esp_task_wdt_reset();
+    // Peripherals
+    MEM_MARK("startup callbacks");
+    thumbstick_init();
+    MEM_MARK("thumbstick");
+    display_init();
+    MEM_MARK("display_init");
+    imu_init();
+    MEM_MARK("imu_init");
+    vehicle_monitor_init();
+    esp_task_wdt_reset();
 
-  // Comms
-  CommsType boot_comms_mode = settings_get_active_comms_mode();
-  comms_select_driver(boot_comms_mode);
-  comms_init();
-  connection_init();
-  receiver_init();
-  transmitter_init();
-  console_init();
+    // Comms
+    CommsType boot_comms_mode = settings_get_active_comms_mode();
+    comms_select_driver(boot_comms_mode);
+    MEM_MARK("comms driver select");
+    comms_init();
+    MEM_MARK("comms_init");
+    connection_init();
+    receiver_init();
+    transmitter_init();
+    MEM_MARK("tx/rx init");
+    console_init();
 
-  ESP_LOGI(TAG, "Boot complete");
+    MEM_MARK("console_init");
+    ESP_LOGI(TAG, "Boot complete");
 
-  // Boot finished - the main task is about to exit, so it must leave the
-  // watchdog. The subscribed long-running tasks take over from here.
-  ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
+    // Boot finished - the main task is about to exit, so it must leave the
+    // watchdog. The subscribed long-running tasks take over from here.
+    ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
 
 #if TEST_MODE
-  test_mode_init();
+    test_mode_init();
 #endif
 
-#if DEBUG_MEMORY
-  while (1) {
-    size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    size_t min_heap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
-    ESP_LOGI(TAG, "Free heap before update: %d bytes (min ever: %d bytes)", free_heap, min_heap);
-    vTaskDelay(pdMS_TO_TICKS(2000));
-  }
-#endif
+    // app_main returns here, freeing its stack; the orchestrator takes over the polling.
+    orchestrator_init();
 }

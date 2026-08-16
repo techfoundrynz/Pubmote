@@ -1,3 +1,4 @@
+#include "utilities/psram_task.h"
 #include "vehicle_state.h"
 #include "esp_log.h"
 #include "esp_task.h"
@@ -118,9 +119,12 @@ static void monitor_task(void *pvParameters) {
   monitor_task_handle = NULL;
 }
 
+static StaticTask_t monitor_task_tcb;
+static StackType_t *monitor_task_stack;
+
 void vehicle_monitor_init() {
-  ESP_ERROR_CHECK(xTaskCreate(monitor_task, "monitor_task", 4096, NULL, 5, &monitor_task_handle) == pdPASS ? ESP_OK
-                                                                                                           : ESP_FAIL);
+  monitor_task_handle = create_psram_task(monitor_task, "monitor_task", 4096, NULL, 5, &monitor_task_tcb, &monitor_task_stack);
+  ESP_ERROR_CHECK(monitor_task_handle ? ESP_OK : ESP_FAIL);
   ESP_LOGI("VEHICLE_STATE", "Vehicle state monitor initialized");
 }
 

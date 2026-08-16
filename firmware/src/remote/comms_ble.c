@@ -1,3 +1,4 @@
+#include "utilities/psram_task.h"
 #include "comms.h"
 #include "utilities/vesc_utils.h"
 #include <esp_log.h>
@@ -538,6 +539,9 @@ static void ble_host_task(void *param) {
   nimble_port_freertos_deinit();
 }
 
+static StaticTask_t rssi_poll_task_tcb;
+static StackType_t *rssi_poll_task_stack;
+
 static esp_err_t ble_driver_init(void) {
   if (is_initialized) {
     return ESP_OK;
@@ -595,10 +599,11 @@ static esp_err_t ble_driver_init(void) {
 
   nimble_port_freertos_init(ble_host_task);
 
+
   rssi_poll_should_exit = false;
-  ESP_ERROR_CHECK(xTaskCreate(rssi_poll_task, "ble_rssi_poll", 3072, NULL, 2, &rssi_poll_task_handle) == pdPASS
-                      ? ESP_OK
-                      : ESP_FAIL);
+  rssi_poll_task_handle = create_psram_task(rssi_poll_task, "ble_rssi_poll", 3072, NULL, 2, &rssi_poll_task_tcb,
+                                            &rssi_poll_task_stack);
+  ESP_ERROR_CHECK(rssi_poll_task_handle ? ESP_OK : ESP_FAIL);
 
   is_initialized = true;
   return ESP_OK;

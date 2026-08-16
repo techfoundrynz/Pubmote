@@ -844,7 +844,7 @@ extern "C" void display_init() {
 
   // Start Slint Event Loop Task in internal SRAM
   // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 24 * 1024, NULL, 20, &slint_task_handle, 1);
+  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 16 * 1024, NULL, 20, &slint_task_handle, 1);
 
   // NOTE: slint_window is created inside slint_event_loop above, so it is not safe to
   // touch UiState here - see connect_callbacks() for properties set once it exists.

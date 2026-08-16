@@ -1,5 +1,6 @@
 
 #include "config.h"
+#include "driver/usb_serial_jtag.h"
 #include "esp_console.h"
 #include "esp_core_dump.h"
 #include "esp_log.h"
@@ -435,7 +436,9 @@ static void register_complete_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
-void console_init() {
+static esp_console_repl_t *s_repl = NULL;
+
+static void console_start(void) {
   ESP_LOGI(TAG, "Initializing console");
   esp_console_repl_t *repl = NULL;
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
@@ -475,6 +478,7 @@ void console_init() {
 #endif
 
   if (err != ESP_OK) {
+    esp_console_deinit();
     ESP_LOGE(TAG, "Failed to initialize console REPL (err: %s). Insufficient memory?", esp_err_to_name(err));
     return;
   }
@@ -485,8 +489,59 @@ void console_init() {
 
   err = esp_console_start_repl(repl);
   if (err != ESP_OK) {
+    repl->del(repl);
     ESP_LOGE(TAG, "Failed to start console REPL (err: %s).", esp_err_to_name(err));
     return;
   }
+  s_repl = repl;
   ESP_LOGI(TAG, "Console initialized");
+}
+
+static void console_stop(void) {
+  if (!s_repl) {
+    return;
+  }
+  // Tears down the REPL task, the command list and the USB driver, and puts the VFS back in
+  // non-blocking mode so ESP_LOG keeps working without the console.
+  esp_err_t err = s_repl->del(s_repl);
+  s_repl = NULL;
+  ESP_LOGI(TAG, "Console stopped (err: %s)", esp_err_to_name(err));
+}
+
+// The REPL is worth its internal RAM only while something is listening. SOF packets come
+// from a real host, so a charger or power bank reads as disconnected.
+void console_poll_usb(void) {
+#if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
+  static int agree = 0;
+  bool connected = usb_serial_jtag_is_connected();
+  if (connected == (s_repl != NULL)) {
+    agree = 0;
+    return;
+  }
+  // Debounced, so a cable settling does not install and uninstall the driver
+  if (++agree < 4) {
+    return;
+  }
+  agree = 0;
+  if (connected) {
+    console_start();
+  }
+  else {
+    console_stop();
+  }
+#endif
+}
+
+void console_init() {
+#if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
+  // Straight to console_start, not through the debounce - at boot there is nothing to settle
+  if (usb_serial_jtag_is_connected()) {
+    console_start();
+  }
+  else {
+    ESP_LOGI(TAG, "No USB host attached; console deferred");
+  }
+#else
+  console_start();
+#endif
 }
