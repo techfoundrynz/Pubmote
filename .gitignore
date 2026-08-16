@@ -21,3 +21,6 @@ api/.wrangler/
 
 # Slint generated C++ files
 firmware/src/generated/
+
+# slint-lsp fetched by scripts/sync_slint_lsp.py for the editor preview
+.slint/

@@ -39,12 +39,12 @@ export component RoundStats inherits Rectangle {
     property <bool> was-long-pressed: false;
 
     // --- Dials (centered, drawn first so the content sits on top) ---
-    // ui_SpeedDial: full-size arc (240 of 240 base == 100% of panel).
+    // ui_SpeedDial
     ArcGauge {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
+        width: parent.width - 2px;
+        height: parent.height - 2px;
         thickness: 12px * Theme.scale;
         start-angle: 140deg;
         span-angle: 260deg;
@@ -57,8 +57,8 @@ export component RoundStats inherits Rectangle {
     ArcGauge {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: parent.width - (32px * Theme.scale);
-        height: parent.height - (32px * Theme.scale);
+        width: parent.width - (34px * Theme.scale);
+        height: parent.height - (34px * Theme.scale);
         thickness: 8px * Theme.scale;
         start-angle: 140deg;
         span-angle: 260deg;
@@ -114,6 +114,7 @@ export component RoundStats inherits Rectangle {
                 speed: root.speed;
                 speed-unit: root.speed-unit;
             }
+
             HorizontalLayout {
                 alignment: center;
                 SecondaryStat {

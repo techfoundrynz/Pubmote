@@ -1,4 +1,5 @@
 {
+    "slint.lspBinaryPath": "C:\\Repos\\PubRemote\\.slint\\mcu-v1.18.10\\slint-lsp-windows-x86_64.exe",
     "C_Cpp.intelliSenseEngine": "default",
     "files.associations": {
       "*.ejs": "ejs",
