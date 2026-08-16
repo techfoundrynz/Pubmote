@@ -7,9 +7,9 @@ turn. This builds the same library locally and drops it over the staged copy, wh
 firmware/components/slint/CMakeLists.txt then reuses because it only downloads when
 lib/libslint_cpp.a is missing. About a minute a turn instead.
 
-    python firmware/tools/use_local_slint.py                 # default env
-    python firmware/tools/use_local_slint.py --env <name>    # a specific one
-    python firmware/tools/use_local_slint.py --no-build      # stage an existing build
+    python scripts/use_local_slint.py                 # default env
+    python scripts/use_local_slint.py --env <name>    # a specific one
+    python scripts/use_local_slint.py --no-build      # stage an existing build
 
 Caveats:
   - The staged headers and slint-compiler still come from the release. That is fine for
@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[1]
 SLINT = Path("C:/Repos/slint")
 TARGET = "xtensa-esp32s3-none-elf"
 # Must match SLINT_MCU_FEATURES in the fork's mcu_prebuilt.yaml.

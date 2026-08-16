@@ -62,53 +62,42 @@ Suggestions for additional hardware targets are welcomed. For new projects, we r
 - VS Code or other code editor
 - PlatformIO
 
-No Rust toolchain is required. Slint is consumed as a prebuilt release — the library, the
-generated headers and the `.slint` compiler all come from the one `SLINT_PREBUILT_TAG` pinned in
-`platformio.ini` — so a normal `pio run` needs nothing but Python and PlatformIO.
+No Rust toolchain is required. Slint is consumed as a prebuilt release pinned by
+`SLINT_PREBUILT_TAG` in `platformio.ini`, so `pio run` needs nothing but Python and PlatformIO.
 
 ### Slint live preview
 
 The UI uses arc properties that only exist in our Slint fork, so the language server bundled
 with the VS Code Slint extension rejects them with `Unknown property arc-center-x` and no
-preview opens. Point the extension at the fork's language server instead:
+preview opens. The **Sync Slint LSP** task in `.vscode/tasks.json` points it at the fork's
+language server on every folder open (trusted folders only). By hand:
 
 ```sh
-python scripts/sync_slint_lsp.py
+python scripts/sync_slint_lsp.py     # --help for --local, --print-setting, --restore
 ```
 
-That downloads the `slint-lsp` matching the `SLINT_PREBUILT_TAG` already pinned in
-`platformio.ini` — so the preview and the firmware can never be on different versions of
-Slint — caches it in the gitignored `.slint/`, prunes older tags, and sets
-`slint.lspBinaryPath` in `.vscode/settings.json`. Reload the window afterwards.
+It fetches the `slint-lsp` matching the pinned tag - so the preview and the firmware can never
+be on different versions of Slint - caches it in the gitignored `.slint/`, and writes
+`slint.lspBinaryPath` into `.vscode/settings.json`. Reload the window afterwards.
 
 > [!IMPORTANT]
-> `.vscode/settings.json` is committed and that setting is an absolute path, so it only works
-> on the machine that ran the script. Run `git restore .vscode/settings.json` before
-> committing. A path from someone else's machine does not fall back to the bundled server —
-> the extension starts no language server at all.
+> `.vscode/settings.json` is generated and gitignored - every run rewrites it from the tracked
+> `.vscode/settings.shared.json`. Project-wide settings go in that file; personal ones go in
+> your VS Code user settings.
 
-Other options: `--local PATH` for your own `cargo build --release -p slint-lsp`,
-`--print-setting` to see the value without changing anything, and `--restore` to go back to
-the packaged server.
-
-Note the preview draws arcs through the `MoveTo`/`ArcTo` fallback in the `.slint` source, not
-the fast arc path — only the software renderer implements `arc-center-x`, and the desktop
-preview uses femtovg. It is good for shape and layout, and tells you nothing about how the
-panel will rasterise it.
+The preview draws arcs through the `MoveTo`/`ArcTo` fallback rather than the MCU fast path, so
+it is good for shape and layout and tells you nothing about how the panel will rasterise them.
 
 ### Changing Slint itself
 
 Renderer and language changes live in the fork at
 [techfoundrynz/slint](https://github.com/techfoundrynz/slint), not here. Going through a release
-to try one is about ten minutes a turn, so build the library locally instead and stage it over
-the downloaded copy:
+to try one is about ten minutes a turn, so build the library locally instead:
 
 ```sh
-python firmware/tools/use_local_slint.py
+python scripts/use_local_slint.py
 ```
 
-This needs the Xtensa Rust toolchain ([espup](https://github.com/esp-rs/espup), giving you the
-`+esp` toolchain the script invokes) and a checkout of the fork — the path is a constant at the
-top of the script. It stages only the library; the headers and compiler still come from the
-release, so cut a real release once the C++ API or the `.slint` language changes. See the
-script's docstring for the rest of the caveats.
+This needs the Xtensa Rust toolchain ([espup](https://github.com/esp-rs/espup)) and a checkout
+of the fork. It stages only the library, so cut a real release once the C++ API or the `.slint`
+language changes - the script's docstring has the rest of the caveats.

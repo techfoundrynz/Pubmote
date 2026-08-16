@@ -767,7 +767,7 @@ the host suites as regression guards, not as proof.
 
 The Slint library normally comes from a GitHub release, so trying one renderer change meant
 commit → tag → CI → bump the tag: about ten minutes a turn, which is why the wrong theory
-survived as long as it did. `firmware/tools/use_local_slint.py` builds `libslint_cpp.a` from the
+survived as long as it did. `scripts/use_local_slint.py` builds `libslint_cpp.a` from the
 local checkout and drops it over the staged copy, which `firmware/components/slint/CMakeLists.txt`
 reuses because it only downloads when the file is missing. **About 77 seconds a turn** - 32s for
 Slint, 45s for the firmware.
