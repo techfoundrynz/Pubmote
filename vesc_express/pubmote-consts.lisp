@@ -1,28 +1,35 @@
-;@const-symbol-strings
 @const-start
 
 ; Pubmote protocol constants. Load before the other pubmote files.
+; Everything is prefixed - LispBM has one global namespace to share with the host.
 
 ; Pairing states
-(def PAIR_STATE_IDLE 0)
-(def PAIR_STATE_INITIATED 1)
-(def PAIR_STATE_BONDING 2)
+(def PUBMOTE_PAIR_IDLE 0)
+(def PUBMOTE_PAIR_INITIATED 1)
+(def PUBMOTE_PAIR_BONDING 2)
 
 ; Vehicle types reported to the remote
-(def VEHICLE_TYPE_UNSPECIFIED 0)
-(def VEHICLE_TYPE_ONEWHEEL 1)
-(def VEHICLE_TYPE_ESKATE 2)
-(def VEHICLE_TYPE_SCOOTER 3)
-(def VEHICLE_TYPE_EUC 4)
+(def PUBMOTE_VEHICLE_UNSPECIFIED 0)
+(def PUBMOTE_VEHICLE_ONEWHEEL 1)
+(def PUBMOTE_VEHICLE_ESKATE 2)
+(def PUBMOTE_VEHICLE_SCOOTER 3)
+(def PUBMOTE_VEHICLE_EUC 4)
 
 ; Protocol commands
-(def REM_VERSION 0)
-(def REM_VERSION_REC 5)
-(def REM_PAIR_INIT 10)
-(def REM_PAIR_BOND 11)
-(def REM_PAIR_COMPLETE 12)
-(def REM_SET_CORE_DATA 100)
-(def REM_SET_INPUT_STATE 150)
+(def PUBMOTE_CMD_VERSION 0)
+(def PUBMOTE_CMD_VERSION_REC 5)
+(def PUBMOTE_CMD_PAIR_INIT 10)
+(def PUBMOTE_CMD_PAIR_BOND 11)
+(def PUBMOTE_CMD_PAIR_COMPLETE 12)
+(def PUBMOTE_CMD_SET_CORE_DATA 100)
+(def PUBMOTE_CMD_SET_INPUT_STATE 150)
 (def PUBMOTE_MAGIC 169)
+
+; Log levels, most severe first. Error/warn/info are expected to always reach
+; the console; debug is verbose and for the host to gate.
+(def PUBMOTE_LOG_ERROR 0)
+(def PUBMOTE_LOG_WARN 1)
+(def PUBMOTE_LOG_INFO 2)
+(def PUBMOTE_LOG_DEBUG 3)
 
 @const-end

@@ -44,6 +44,13 @@ static bool arc_fraction_moved(float value, float *last) {
   return true;
 }
 
+// printf keeps the sign of anything that rounds to zero, so a reading a hair below it - which is
+// where the board parks speed, temps and trip at rest - prints as "-0.0". threshold is half the
+// last displayed digit, i.e. the point below which the sign is the only thing left.
+static float snap_zero(float value, float threshold) {
+  return fabsf(value) < threshold ? 0.0f : value;
+}
+
 extern "C" void setup_menu_properties(); // from menu_screen.cpp
 extern "C" void teardown_stats_properties();
 
@@ -93,6 +100,7 @@ extern "C" void stats_update_screen_display() {
   if (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) {
     converted_speed = convert_kph_to_mph(remoteStats.speed);
   }
+  converted_speed = snap_zero(converted_speed, 0.05f);
   char speed_str[16];
   if (converted_speed >= 10.0f) {
     snprintf(speed_str, sizeof(speed_str), "%.0f", converted_speed);
@@ -146,6 +154,8 @@ extern "C" void stats_update_screen_display() {
     float converted_mot = should_convert ? convert_c_to_f(remoteStats.motorTemp) : remoteStats.motorTemp;
     float converted_cont = should_convert ? convert_c_to_f(remoteStats.controllerTemp) : remoteStats.controllerTemp;
     const char *temp_unit = should_convert ? "F" : "C";
+    converted_mot = snap_zero(converted_mot, 0.5f);
+    converted_cont = snap_zero(converted_cont, 0.5f);
     snprintf(left_val, sizeof(left_val), "%.0f%s|%.0f%s", converted_mot, temp_unit, converted_cont, temp_unit);
     snprintf(left_lbl, sizeof(left_lbl), "TEMP");
     break;
@@ -153,9 +163,10 @@ extern "C" void stats_update_screen_display() {
   case SECONDARY_STAT_DISTANCE: {
     float trip_dist = remoteStats.tripDistance / 1000.0f;
     if (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) {
-      trip_dist = convert_kph_to_mph(trip_dist);
+      trip_dist = convert_km_to_mi(trip_dist);
     }
     const char *dist_unit = (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) ? "mi" : "km";
+    trip_dist = snap_zero(trip_dist, 0.05f);
     snprintf(left_val, sizeof(left_val), "%.1f%s", trip_dist, dist_unit);
     snprintf(left_lbl, sizeof(left_lbl), "TRIP");
     break;
