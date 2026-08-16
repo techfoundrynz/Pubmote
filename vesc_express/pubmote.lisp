@@ -159,8 +159,8 @@
     (if (pubmote-init) {
         (setq pubmote-loop-delay (pubmote-get-cfg 'pubmote-loop-delay))
         (if (< pubmote-loop-delay 1) {
-            (pubmote-warn "rem bad rate, using 20Hz")
-            (setq pubmote-loop-delay 20)
+            (pubmote-warn "rem bad rate, using 30Hz")
+            (setq pubmote-loop-delay 30)
         })
         (var next-run-time (secs-since 0))
         (var loop-start-time 0)
