@@ -1,13 +1,12 @@
 name: Publish Release
 
-# Runs on every update to the master branch with a change to the prebuild_hook.py
-# OR can be manually triggered
+# Runs on a master push that touches platformio.ini, or manually
 on:
   push:
     branches:
       - master
     paths:
-      - prebuild_hook.py
+      - platformio.ini
   workflow_dispatch:
     inputs:
       force_run:
@@ -58,21 +57,20 @@ jobs:
           # If manually triggered without force_run, still check for version changes
           FILE="platformio.ini"
 
-          # Get the previous commit for comparison
-          PREV_COMMIT=$(git log --format="%H" -n 2 "$FILE" | tail -1)
-
-          echo "Comparing commits: $PREV_COMMIT -> HEAD"
-
-          if [ -z "$PREV_COMMIT" ]; then
-            echo "No previous commit found for comparison."
+          # Compare against the push's parent, not the file's history - only 2
+          # commits are fetched, so a history walk can return HEAD itself
+          if ! git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            echo "No parent commit available for comparison."
             echo "should_continue=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
+          echo "Comparing commits: $(git rev-parse HEAD^) -> HEAD"
+
           # Compare the version value itself, so unrelated edits to this file do not
           # trigger a release and a reformat of the line does not look like a bump
           extract() { grep '^custom_firmware_version' | awk -F'=' '{print $2}' | tr -d '[:space:]'; }
-          OLD_VERSION=$(git show "$PREV_COMMIT":"$FILE" | extract)
+          OLD_VERSION=$(git show HEAD^:"$FILE" 2>/dev/null | extract)
           NEW_VERSION=$(extract < "$FILE")
 
           CHANGED=false
