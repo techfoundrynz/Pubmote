@@ -31,6 +31,5 @@
     "files.exclude": {
       "*.dev.zip": true,
       "sdkconfig.*.old": true
-    },
-  }
-  
+    }
+}

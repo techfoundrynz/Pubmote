@@ -10,6 +10,9 @@
 // Uncomment to emulate connection state and incoming stats for UI testing
 #define TEST_MODE 0
 
+// Minimum required VESC receiver API version
+#define MIN_RCV_API_VERSION 1
+
 #ifndef TARGET_FPS
   #define TARGET_FPS 60
 #endif
@@ -43,13 +46,13 @@
   #define JOYSTICK_BUTTON_ENABLED 0
 #endif
 
-#if defined(JOYSTICK_X_ADC) && defined(JOYSTICK_X_ADC_UNIT)
+#ifdef JOYSTICK_X
   #define JOYSTICK_X_ENABLED 1
 #else
   #define JOYSTICK_X_ENABLED 0
 #endif
 
-#if defined(JOYSTICK_Y_ADC) && defined(JOYSTICK_Y_ADC_UNIT)
+#ifdef JOYSTICK_Y
   #define JOYSTICK_Y_ENABLED 1
 #else
   #define JOYSTICK_Y_ENABLED 0
@@ -70,6 +73,11 @@
 
 #ifndef TP_RST
   #define TP_RST -1
+#endif
+
+// UI shape: 0 = circular, 1 = square/rectangular. Square panels default to the square UI.
+#ifndef UI_SHAPE
+  #define UI_SHAPE (HOR_RES == VER_RES ? 0 : 1)
 #endif
 
 // Led configuration

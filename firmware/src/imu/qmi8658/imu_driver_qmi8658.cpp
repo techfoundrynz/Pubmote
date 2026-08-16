@@ -216,8 +216,8 @@ void qmi8658_get_data(imu_data_t *data) {
         data->event = IMU_EVENT_WOM_MOTION;
     }
 
-    IMUdata acc = {0};
-    IMUdata gyr = {0};
+    IMUdata acc = {};
+    IMUdata gyr = {};
     // Read accelerometer data
     imu.getAccelerometer(acc.x, acc.y, acc.z);
     data->accel_x = acc.x;
@@ -256,7 +256,7 @@ void qmi8658_imu_driver_deinit() {
     }
     ESP_LOGI(TAG, "Deinitializing QMI8658 IMU driver");
     
-    imu.reset(false);
+    imu.powerDown();
     imu_initialized = false;
     
     #ifdef IMU_EN

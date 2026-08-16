@@ -1,4 +1,5 @@
 #include "screens/stats_screen.h"
+#include "config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "generated/app-window.h"
@@ -20,6 +21,35 @@
 
 static const char *TAG = "PUBREMOTE-STATS_SCREEN";
 static float max_speed = 40.0f;
+
+// The dials are full-screen-sized items and Slint tracks dirty regions per item
+// bounding box, so any change to an arc's value repaints most of the panel. At 466px
+// across with a 260deg sweep, one degree of arc is only ~4px of travel, so telemetry
+// jitter far below that buys a full repaint while being invisible.
+//
+// Quantise to 1/256 - just over a degree - and only push when the arc would actually
+// move. Steady riding then costs zero arc invalidation instead of one repaint per
+// telemetry tick. The quantised value is what gets pushed, so the arc also lands on
+// stable positions rather than drifting sub-pixel.
+#define ARC_QUANT_STEPS 256.0f
+
+// Returns true (updating *last) only when the quantised fraction actually moved.
+static bool arc_fraction_moved(float value, float *last) {
+  float clamped = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
+  float quantised = roundf(clamped * ARC_QUANT_STEPS) / ARC_QUANT_STEPS;
+  if (quantised == *last) {
+    return false;
+  }
+  *last = quantised;
+  return true;
+}
+
+// printf keeps the sign of anything that rounds to zero, so a reading a hair below it - which is
+// where the board parks speed, temps and trip at rest - prints as "-0.0". threshold is half the
+// last displayed digit, i.e. the point below which the sign is the only thing left.
+static float snap_zero(float value, float threshold) {
+  return fabsf(value) < threshold ? 0.0f : value;
+}
 
 extern "C" void setup_menu_properties(); // from menu_screen.cpp
 extern "C" void teardown_stats_properties();
@@ -70,6 +100,7 @@ extern "C" void stats_update_screen_display() {
   if (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) {
     converted_speed = convert_kph_to_mph(remoteStats.speed);
   }
+  converted_speed = snap_zero(converted_speed, 0.05f);
   char speed_str[16];
   if (converted_speed >= 10.0f) {
     snprintf(speed_str, sizeof(speed_str), "%.0f", converted_speed);
@@ -123,6 +154,8 @@ extern "C" void stats_update_screen_display() {
     float converted_mot = should_convert ? convert_c_to_f(remoteStats.motorTemp) : remoteStats.motorTemp;
     float converted_cont = should_convert ? convert_c_to_f(remoteStats.controllerTemp) : remoteStats.controllerTemp;
     const char *temp_unit = should_convert ? "F" : "C";
+    converted_mot = snap_zero(converted_mot, 0.5f);
+    converted_cont = snap_zero(converted_cont, 0.5f);
     snprintf(left_val, sizeof(left_val), "%.0f%s|%.0f%s", converted_mot, temp_unit, converted_cont, temp_unit);
     snprintf(left_lbl, sizeof(left_lbl), "TEMP");
     break;
@@ -130,9 +163,10 @@ extern "C" void stats_update_screen_display() {
   case SECONDARY_STAT_DISTANCE: {
     float trip_dist = remoteStats.tripDistance / 1000.0f;
     if (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) {
-      trip_dist = convert_kph_to_mph(trip_dist);
+      trip_dist = convert_km_to_mi(trip_dist);
     }
     const char *dist_unit = (device_settings.distance_units == DISTANCE_UNITS_IMPERIAL) ? "mi" : "km";
+    trip_dist = snap_zero(trip_dist, 0.05f);
     snprintf(left_val, sizeof(left_val), "%.1f%s", trip_dist, dist_unit);
     snprintf(left_lbl, sizeof(left_lbl), "TRIP");
     break;
@@ -185,16 +219,31 @@ extern "C" void stats_update_screen_display() {
     ui_update_pending.store(false);
 
     const auto &state = get_slint_window()->global<UiState>();
+
+    // Centrally force HBM off if a confirm dialog is open and HBM was triggered by raise
+    if (device_settings.hbm_mode == HBM_MODE_RAISED && display_get_hbm()) {
+      if (state.get_show_confirm_dialog()) {
+        display_set_hbm(false);
+      }
+    }
+
     state.set_speed(slint_speed_str);
     state.set_speed_unit(slint_speed_unit);
-    state.set_speed_fraction(speed_fraction);
-    state.set_duty_fraction(duty_fraction);
+    static float last_speed_fraction = -1.0f;
+    static float last_duty_fraction = -1.0f;
+    if (arc_fraction_moved(speed_fraction, &last_speed_fraction)) {
+      state.set_speed_fraction(last_speed_fraction);
+    }
+    if (arc_fraction_moved(duty_fraction, &last_duty_fraction)) {
+      state.set_duty_fraction(last_duty_fraction);
+    }
     state.set_left_pad(left_pad);
     state.set_right_pad(right_pad);
     state.set_remote_battery(remoteStats.remoteBatteryPercentage);
     state.set_remote_charging(remoteStats.chargeState == CHARGE_STATE_CHARGING ||
                               remoteStats.chargeState == CHARGE_STATE_DONE);
     state.set_is_connected(connected);
+    state.set_connection_state((int)connection_state);
     state.set_connection_state_label(slint_state_label);
     state.set_secondary_stat_left_value(slint_left_val);
     state.set_secondary_stat_left_label(slint_left_lbl);
@@ -203,6 +252,7 @@ extern "C" void stats_update_screen_display() {
     state.set_pocket_mode_active(pocket_mode_active);
     state.set_lights_on(false);
     state.set_board_state_message(slint_board_state_message);
+    state.set_vehicle_type(remoteStats.vehicleType);
   });
 }
 
@@ -223,6 +273,11 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
 
   if (device_settings.hbm_mode == HBM_MODE_RAISED && display_supports_hbm() && !is_pocket_mode_enabled()) {
     if (gesture == IMU_GESTURE_RAISED) {
+      // Do not trigger HBM raise logic if a confirmation dialog/alert is currently open
+      if (get_slint_window() && get_slint_window()->global<UiState>().get_show_confirm_dialog()) {
+        return;
+      }
+
       if (!display_get_hbm()) {
         ESP_LOGI(TAG, "Raise-to-HBM: viewing position detected. Enabling HBM.");
         display_set_hbm(true);

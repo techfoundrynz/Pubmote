@@ -2,6 +2,14 @@ import { Theme } from "theme.slint";
 
 export component FpsOverlay inherits Rectangle {
     in property <int> fps: 0;
+    // Where the frame went, in ms: prepare is scene building, render the per-line
+    // rasterisation, flush the byte swap plus waiting on the panel transfer. dirty is how
+    // much of the panel Slint asked to be repainted. Shown here rather than only logged
+    // because the panel is easier to read than a serial monitor.
+    in property <int> prepare-ms: 0;
+    in property <int> render-ms: 0;
+    in property <int> flush-ms: 0;
+    in property <int> dirty-pct: 0;
 
     background: rgba(0, 0, 0, 0.6);
     border-radius: 12px;
@@ -9,20 +17,39 @@ export component FpsOverlay inherits Rectangle {
     height: fps-layout.preferred-height;
     z: 9999;
 
-    fps-layout := HorizontalLayout {
+    fps-layout := VerticalLayout {
         padding-left: 16px;
         padding-right: 16px;
         padding-top: 8px;
         padding-bottom: 8px;
-        
+        spacing: 2px;
+
         Text {
             text: root.fps + " FPS";
             color: #FFFFFF;
-            font-size: 24px;
+            // Theme token, not a raw px: only the scaled Theme sizes are embedded as
+            // glyphs, so a hardcoded 24px renders from a scaled fallback.
+            font-size: Theme.font-14;
             font-weight: Theme.w-medium;
             font-family: "JetBrains Mono";
             horizontal-alignment: center;
             vertical-alignment: center;
+        }
+
+        Text {
+            text: "p\{root.prepare-ms} r\{root.render-ms} f\{root.flush-ms}";
+            color: #FFFFFF;
+            font-size: Theme.font-10;
+            font-family: "JetBrains Mono";
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: "dirty \{root.dirty-pct}%";
+            color: #FFFFFF;
+            font-size: Theme.font-10;
+            font-family: "JetBrains Mono";
+            horizontal-alignment: center;
         }
     }
 }

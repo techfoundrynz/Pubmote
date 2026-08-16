@@ -29,6 +29,7 @@ export component StatsScreen inherits Rectangle {
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;       // 0..100, small battery pill
     in property <int> rssi: -100;
+    in property <bool> searching: false;
     in property <bool> remote-charging: false;   // is remote charging
     in property <bool> is-connected: false;
     in property <string> connection-state-label: "Disconnected";
@@ -36,6 +37,7 @@ export component StatsScreen inherits Rectangle {
     in property <bool> pocket-mode-active: false;
     in property <bool> lights-on: false;
     in property <string> board-state-message: "";
+    in property <int> vehicle-type: 0;
     callback secondary-stat-left-clicked();
     callback board-battery-clicked();
 
@@ -86,9 +88,11 @@ export component StatsScreen inherits Rectangle {
         connection-state-label: root.connection-state-label;
         board-battery: root.board-battery;
         rssi: root.rssi;
+        searching: root.searching;
         pocket-mode-active: root.pocket-mode-active;
         lights-on: root.lights-on;
         board-state-message: root.board-state-message;
+        vehicle-type: root.vehicle-type;
         secondary-stat-left-value: root.secondary-stat-left-value;
         secondary-stat-left-label: root.secondary-stat-left-label;
         secondary-stat-left-clicked => { root.secondary-stat-left-clicked(); }
@@ -110,9 +114,11 @@ export component StatsScreen inherits Rectangle {
         connection-state-label: root.connection-state-label;
         board-battery: root.board-battery;
         rssi: root.rssi;
+        searching: root.searching;
         pocket-mode-active: root.pocket-mode-active;
         lights-on: root.lights-on;
         board-state-message: root.board-state-message;
+        vehicle-type: root.vehicle-type;
         secondary-stat-left-value: root.secondary-stat-left-value;
         secondary-stat-left-label: root.secondary-stat-left-label;
         secondary-stat-left-clicked => { root.secondary-stat-left-clicked(); }

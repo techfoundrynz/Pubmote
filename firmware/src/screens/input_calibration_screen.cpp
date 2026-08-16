@@ -8,6 +8,7 @@
 #include "remote/display.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
+#include <algorithm>
 #include <stdio.h>
 #include <string.h>
 
@@ -43,16 +44,21 @@ static void reset_min_max_data() {
   min_max_data.y_max = STICK_MIN_VAL;
 }
 
+// Widest resting deviation seen on any wired axis
 static int16_t get_deadband() {
-  int16_t x1_diff = min_max_data.x_max - calibration_data.x_center;
-  int16_t y1_diff = min_max_data.y_max - calibration_data.y_center;
-  int16_t x2_diff = calibration_data.x_center - min_max_data.x_min;
-  int16_t y2_diff = calibration_data.y_center - min_max_data.y_min;
+  int widest = STICK_DEADBAND;
 
-  int16_t x_diff = (x1_diff > x2_diff ? x1_diff : x2_diff);
-  int16_t y_diff = (y1_diff > y2_diff ? y1_diff : y2_diff);
+  if (input_pins_x_enabled()) {
+    widest = std::max(widest, (int)min_max_data.x_max - calibration_data.x_center);
+    widest = std::max(widest, (int)calibration_data.x_center - min_max_data.x_min);
+  }
 
-  return x_diff > y_diff ? x_diff : y_diff;
+  if (input_pins_y_enabled()) {
+    widest = std::max(widest, (int)min_max_data.y_max - calibration_data.y_center);
+    widest = std::max(widest, (int)calibration_data.y_center - min_max_data.y_min);
+  }
+
+  return (int16_t)std::min(widest, (int)STICK_DEADBAND_MAX);
 }
 
 static void update_calibration_ui_strings() {
@@ -80,7 +86,7 @@ static void update_calibration_ui_strings() {
     step_label = "Set expo factor";
     break;
   case CALIBRATION_STEP_STICK_FLAGS:
-    step_label = "Axis options (Invert Y)";
+    step_label = "Axis options";
     break;
   case CALIBRATION_STEP_DONE:
     step_label = "Calibration complete!";
@@ -98,6 +104,7 @@ static void update_calibration_ui_strings() {
       state.set_expo_value(calibration_data.expo);
     }
     if (calibration_step == CALIBRATION_STEP_STICK_FLAGS) {
+      state.set_invert_x(calibration_data.invert_x);
       state.set_invert_y(calibration_data.invert_y);
     }
   });
@@ -117,17 +124,17 @@ static void calibration_task(void *pvParameters) {
 
     // 2. Convert ADC to current axis values (-1.0 to 1.0)
     float curr_x = 0;
-#if JOYSTICK_X_ENABLED
-    curr_x = convert_adc_to_axis(joystick_data.x, calibration_data.x_min, calibration_data.x_center,
-                                 calibration_data.x_max, calibration_data.deadband, calibration_data.expo, false);
-#endif
+    if (input_pins_x_enabled()) {
+      curr_x = convert_adc_to_axis(joystick_data.x, calibration_data.x_min, calibration_data.x_center,
+                                   calibration_data.x_max, calibration_data.deadband, calibration_data.expo, false);
+    }
 
     float curr_y = 0;
-#if JOYSTICK_Y_ENABLED
-    curr_y =
-        convert_adc_to_axis(joystick_data.y, calibration_data.y_min, calibration_data.y_center, calibration_data.y_max,
-                            calibration_data.deadband, calibration_data.expo, calibration_data.invert_y);
-#endif
+    if (input_pins_y_enabled()) {
+      curr_y = convert_adc_to_axis(joystick_data.y, calibration_data.y_min, calibration_data.y_center,
+                                   calibration_data.y_max, calibration_data.deadband, calibration_data.expo,
+                                   calibration_data.invert_y);
+    }
 
     // 3. Format header label
     char header_str[64];
@@ -174,6 +181,7 @@ extern "C" void setup_input_calibration_properties() {
   calibration_data.y_max = calibration_settings.y_max;
   calibration_data.deadband = calibration_settings.deadband;
   calibration_data.expo = calibration_settings.expo;
+  calibration_data.invert_x = calibration_settings.invert_x;
   calibration_data.invert_y = calibration_settings.invert_y;
 
   reset_min_max_data();
@@ -201,17 +209,27 @@ extern "C" void handle_input_calibration_primary() {
     calibration_data.y_max = STICK_MAX_VAL;
     calibration_data.deadband = STICK_DEADBAND;
     calibration_data.expo = STICK_EXPO;
+    calibration_data.invert_x = INVERT_X_AXIS;
     calibration_data.invert_y = INVERT_Y_AXIS;
   }
   else if (calibration_step == CALIBRATION_STEP_CENTER) {
-    calibration_data.x_center = joystick_data.x;
-    calibration_data.y_center = joystick_data.y;
+    // Skip unwired axes - a stored zero range would break them once assigned
+    if (input_pins_x_enabled()) {
+      calibration_data.x_center = joystick_data.x;
+    }
+    if (input_pins_y_enabled()) {
+      calibration_data.y_center = joystick_data.y;
+    }
   }
   else if (calibration_step == CALIBRATION_STEP_MINMAX) {
-    calibration_data.x_min = min_max_data.x_min;
-    calibration_data.x_max = min_max_data.x_max;
-    calibration_data.y_min = min_max_data.y_min;
-    calibration_data.y_max = min_max_data.y_max;
+    if (input_pins_x_enabled()) {
+      calibration_data.x_min = min_max_data.x_min;
+      calibration_data.x_max = min_max_data.x_max;
+    }
+    if (input_pins_y_enabled()) {
+      calibration_data.y_min = min_max_data.y_min;
+      calibration_data.y_max = min_max_data.y_max;
+    }
   }
   else if (calibration_step == CALIBRATION_STEP_DEADBAND) {
     calibration_data.deadband = deadband;
@@ -226,7 +244,9 @@ extern "C" void handle_input_calibration_primary() {
   }
   else if (calibration_step == CALIBRATION_STEP_STICK_FLAGS) {
     if (get_slint_window()) {
-      calibration_data.invert_y = get_slint_window()->global<UiState>().get_invert_y();
+      const auto &state = get_slint_window()->global<UiState>();
+      calibration_data.invert_x = state.get_invert_x();
+      calibration_data.invert_y = state.get_invert_y();
     }
   }
   else if (calibration_step >= CALIBRATION_STEP_DONE) {

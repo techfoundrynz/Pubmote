@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
 esp_err_t axp2101_charge_driver_init();
+void axp2101_charge_driver_deinit();
 RemotePowerState axp2101_get_power_state();
 void axp2101_disable_watchdog();
 void axp2101_enable_watchdog();

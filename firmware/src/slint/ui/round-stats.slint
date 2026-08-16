@@ -16,6 +16,7 @@ export component RoundStats inherits Rectangle {
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;
     in property <int> rssi: -100;
+    in property <bool> searching: false;
     in property <bool> remote-charging: false;
     in property <bool> is-connected: false;
     in property <string> connection-state-label: "Disconnected";
@@ -25,6 +26,7 @@ export component RoundStats inherits Rectangle {
     in property <string> board-state-message: "";
     in property <string> secondary-stat-left-value: "";
     in property <string> secondary-stat-left-label: "";
+    in property <int> vehicle-type: 0;
 
     callback secondary-stat-left-clicked();
     callback board-battery-clicked();
@@ -37,12 +39,12 @@ export component RoundStats inherits Rectangle {
     property <bool> was-long-pressed: false;
 
     // --- Dials (centered, drawn first so the content sits on top) ---
-    // ui_SpeedDial: full-size arc (240 of 240 base == 100% of panel).
+    // ui_SpeedDial
     ArcGauge {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: parent.width;
-        height: parent.height;
+        width: parent.width - 2px;
+        height: parent.height - 2px;
         thickness: 12px * Theme.scale;
         start-angle: 140deg;
         span-angle: 260deg;
@@ -55,8 +57,8 @@ export component RoundStats inherits Rectangle {
     ArcGauge {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: parent.width - (32px * Theme.scale);
-        height: parent.height - (32px * Theme.scale);
+        width: parent.width - (34px * Theme.scale);
+        height: parent.height - (34px * Theme.scale);
         thickness: 8px * Theme.scale;
         start-angle: 140deg;
         span-angle: 260deg;
@@ -112,6 +114,7 @@ export component RoundStats inherits Rectangle {
                 speed: root.speed;
                 speed-unit: root.speed-unit;
             }
+
             HorizontalLayout {
                 alignment: center;
                 SecondaryStat {
@@ -134,11 +137,13 @@ export component RoundStats inherits Rectangle {
             StatusRow {
                 is-connected: root.is-connected;
                 rssi: root.rssi;
+                searching: root.searching;
                 left-pad: root.left-pad;
                 right-pad: root.right-pad;
                 connection-state-label: root.connection-state-label;
                 pocket-mode-active: root.pocket-mode-active;
                 lights-on: root.lights-on;
+                is-onewheel: root.vehicle-type == 1;
             }
         }
     }

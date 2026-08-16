@@ -45,6 +45,11 @@ typedef struct {
     int y_gap;
     uint8_t fb_bits_per_pixel;
     uint8_t madctl_val; // save current value of LCD_CMD_MADCTL register
+    // Last CASET/RASET window written to the panel. The controller keeps these registers
+    // between writes, so re-sending an identical one is a wasted blocking SPI transaction.
+    // The chunked flush issues many draw_bitmap calls per frame that share an x range and
+    // only step in y, and at ~89us per call that overhead was measured at 4-9ms a frame.
+    int last_x_start, last_x_end, last_y_start, last_y_end;
     uint8_t colmod_val; // save surrent value of LCD_CMD_COLMOD register
     const sh8601_lcd_init_cmd_t *init_cmds;
     uint16_t init_cmds_size;
@@ -106,6 +111,11 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
     sh8601->io = io;
     sh8601->reset_gpio_num = panel_dev_config->reset_gpio_num;
     sh8601->fb_bits_per_pixel = fb_bits_per_pixel;
+    // No window written yet; -1 can never match a real one, so the first draw sends both.
+    sh8601->last_x_start = -1;
+    sh8601->last_x_end = -1;
+    sh8601->last_y_start = -1;
+    sh8601->last_y_end = -1;
     sh8601_vendor_config_t *vendor_config = (sh8601_vendor_config_t *)panel_dev_config->vendor_config;
     if (vendor_config) {
         sh8601->init_cmds = vendor_config->init_cmds;
@@ -189,6 +199,12 @@ static esp_err_t panel_sh8601_reset(esp_lcd_panel_t *panel)
         vTaskDelay(pdMS_TO_TICKS(80));
     }
 
+    // The reset clears CASET/RASET on the controller, so the cached window is now a lie.
+    sh8601->last_x_start = -1;
+    sh8601->last_x_end = -1;
+    sh8601->last_y_start = -1;
+    sh8601->last_y_end = -1;
+
     return ESP_OK;
 }
 
@@ -264,22 +280,34 @@ static esp_err_t panel_sh8601_draw_bitmap(esp_lcd_panel_t *panel, int x_start, i
     y_start += sh8601->y_gap;
     y_end += sh8601->y_gap;
 
-    // define an area of frame memory where MCU can access
-    ESP_RETURN_ON_ERROR(tx_param(sh8601, io, LCD_CMD_CASET, (uint8_t[]) {
-        (x_start >> 8) & 0xFF,
-        x_start & 0xFF,
-        ((x_end - 1) >> 8) & 0xFF,
-        (x_end - 1) & 0xFF,
-    }, 4), TAG, "send command failed");
-    ESP_RETURN_ON_ERROR(tx_param(sh8601, io, LCD_CMD_RASET, (uint8_t[]) {
-        (y_start >> 8) & 0xFF,
-        y_start & 0xFF,
-        ((y_end - 1) >> 8) & 0xFF,
-        (y_end - 1) & 0xFF,
-    }, 4), TAG, "send command failed");
-    // transfer frame buffer
+    // define an area of frame memory where MCU can access. Each of these is a blocking SPI
+    // transaction, and the controller retains the register, so skip whichever axis has not
+    // moved since the last call - consecutive chunks of one flush usually share an x range.
+    if (x_start != sh8601->last_x_start || x_end != sh8601->last_x_end) {
+        ESP_RETURN_ON_ERROR(tx_param(sh8601, io, LCD_CMD_CASET, (uint8_t[]) {
+            (x_start >> 8) & 0xFF,
+            x_start & 0xFF,
+            ((x_end - 1) >> 8) & 0xFF,
+            (x_end - 1) & 0xFF,
+        }, 4), TAG, "send command failed");
+        sh8601->last_x_start = x_start;
+        sh8601->last_x_end = x_end;
+    }
+    if (y_start != sh8601->last_y_start || y_end != sh8601->last_y_end) {
+        ESP_RETURN_ON_ERROR(tx_param(sh8601, io, LCD_CMD_RASET, (uint8_t[]) {
+            (y_start >> 8) & 0xFF,
+            y_start & 0xFF,
+            ((y_end - 1) >> 8) & 0xFF,
+            (y_end - 1) & 0xFF,
+        }, 4), TAG, "send command failed");
+        sh8601->last_y_start = y_start;
+        sh8601->last_y_end = y_end;
+    }
+    // transfer frame buffer. The caller counts an outstanding transfer per successful call
+    // and waits for its completion callback, so a swallowed error here would leave it waiting
+    // for a callback that can never arrive.
     size_t len = (x_end - x_start) * (y_end - y_start) * sh8601->fb_bits_per_pixel / 8;
-    tx_color(sh8601, io, LCD_CMD_RAMWR, color_data, len);
+    ESP_RETURN_ON_ERROR(tx_color(sh8601, io, LCD_CMD_RAMWR, color_data, len), TAG, "send color failed");
 
     return ESP_OK;
 }

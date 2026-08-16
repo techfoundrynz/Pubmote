@@ -1,12 +1,14 @@
 #include "settings.h"
 #include "config.h"
+#include "connection.h"
 #include "display.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "espnow.h"
 #include "nvs_flash.h"
 #include "remote/adc.h"
-#include "connection.h"
+#include "remote/remoteinputs.h"
+#include "stats.h"
 #include "string.h"
 #include <colors.h>
 #include <stdio.h>
@@ -27,6 +29,8 @@ static const uint8_t DEFAULT_PEER_ADDR[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 static const BoardBatteryDisplayOption DEFAULT_BATTERY_DISPLAY = BATTERY_DISPLAY_PERCENT;
 static const PocketModeOptions DEFAULT_POCKET_MODE = POCKET_MODE_DISABLED;
 static const StatsDoublePressAction DEFAULT_DOUBLE_PRESS_ACTION = DOUBLE_PRESS_ACTION_NONE;
+// Solid theme colour - the behaviour before led_mode was configurable
+static const LedModeOptions DEFAULT_LED_MODE = LED_MODE_SOLID;
 
 DeviceSettings device_settings = {
     .bl_level = BL_LEVEL_DEFAULT,
@@ -41,6 +45,7 @@ DeviceSettings device_settings = {
     .pocket_mode = DEFAULT_POCKET_MODE,
     .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
     .hbm_mode = HBM_MODE_OFF,
+    .led_mode = DEFAULT_LED_MODE,
 };
 
 CalibrationSettings calibration_settings = {
@@ -54,6 +59,13 @@ CalibrationSettings calibration_settings = {
     .expo = STICK_EXPO,
     .invert_x = INVERT_X_AXIS,
     .invert_y = INVERT_Y_AXIS,
+};
+
+InputPinSettings input_pin_settings = {
+    .js_x_gpio = INPUT_PIN_DISABLED,
+    .js_y_gpio = INPUT_PIN_DISABLED,
+    .btn1_gpio = INPUT_PIN_DISABLED,
+    .btn1_active_level = JOYSTICK_BUTTON_LEVEL,
 };
 
 ImuCalibrationSettings imu_calibration = {
@@ -92,10 +104,16 @@ void set_default_device_index(int8_t idx) {
     memcpy(pairing_settings.remote_addr, pairing_settings.devices[idx].mac, ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[idx].channel;
     pairing_settings.secret_code = pairing_settings.devices[idx].secret_code;
+    remoteStats.vehicleType = pairing_settings.devices[idx].vehicle_type;
+    stats_update();
   }
 }
 
 static void ensure_current_in_device_list_and_set_default() {
+  if (is_same_mac(pairing_settings.remote_addr, (uint8_t *)DEFAULT_PEER_ADDR)) {
+    return;
+  }
+
   // Ensure current remote_addr/channel are in the devices list and set as default
   if (pairing_settings.device_count > MAX_PAIRED_DEVICES) {
     pairing_settings.device_count = MAX_PAIRED_DEVICES;
@@ -110,6 +128,7 @@ static void ensure_current_in_device_list_and_set_default() {
       idx = 0;
     }
     memcpy(pairing_settings.devices[idx].mac, pairing_settings.remote_addr, ESP_NOW_ETH_ALEN);
+    pairing_settings.devices[idx].vehicle_type = 0;
   }
   pairing_settings.devices[idx].secret_code = pairing_settings.secret_code;
   pairing_settings.devices[idx].channel = pairing_settings.channel;
@@ -228,6 +247,7 @@ static esp_err_t nvs_write(const char *key, void *value, nvs_type_t type, size_t
 
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Failed to write!");
+    nvs_close(nvs_handle);
     return err;
   }
   else {
@@ -237,6 +257,7 @@ static esp_err_t nvs_write(const char *key, void *value, nvs_type_t type, size_t
   err = nvs_commit(nvs_handle);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Failed to commit!");
+    nvs_close(nvs_handle);
     return err;
   }
   else {
@@ -310,18 +331,20 @@ static esp_err_t nvs_read(const char *key, void *value, nvs_type_t type, size_t 
     // Get the size of the string first
     err = nvs_get_str(nvs_handle, key, NULL, &required_size);
     if (err == ESP_OK) {
-      char *str_value = (char *)malloc(required_size);
-      if (str_value == NULL) {
-        ESP_LOGE(TAG, "Memory allocation failed!");
-        err = ESP_ERR_NO_MEM;
+      // Guard the caller's buffer: the stored string length is independent of
+      // whatever the caller sized its buffer from (e.g. a separate length key),
+      // so a mismatch/corruption must not overflow it. length==0 means unknown
+      // (legacy callers) - fall back to trusting NVS.
+      if (length != 0 && required_size > length) {
+        ESP_LOGE(TAG, "NVS string '%s' (%u bytes) exceeds caller buffer (%u) - refusing", key, (unsigned)required_size,
+                 (unsigned)length);
+        err = ESP_ERR_INVALID_SIZE;
+        break;
       }
-      else {
-        err = nvs_get_str(nvs_handle, key, str_value, &required_size);
-        if (err == ESP_OK) {
-          strcpy((char *)value, str_value);
-          ESP_LOGI(TAG, "Read done, value = %s", str_value);
-        }
-        free(str_value);
+      // Read directly into the caller buffer - no intermediate alloc/copy
+      err = nvs_get_str(nvs_handle, key, (char *)value, &required_size);
+      if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Read done, value = %s", (char *)value);
       }
     }
     break;
@@ -381,6 +404,20 @@ esp_err_t reset_all_settings() {
   return nvs_flash_erase();
 }
 
+// Falls back when the key is missing or the value can't be a GPIO at all
+static int8_t read_pin_setting(const char *key, int8_t fallback) {
+  uint32_t raw = 0;
+  if (nvs_read_int(key, &raw) != ESP_OK) {
+    return fallback;
+  }
+  int32_t value = (int32_t)raw;
+  if (value < INPUT_PIN_DISABLED || value >= GPIO_NUM_MAX) {
+    ESP_LOGE(TAG, "Stored pin '%s' out of range (%ld)", key, (long)value);
+    return fallback;
+  }
+  return (int8_t)value;
+}
+
 static uint8_t get_auto_off_time_minutes() {
   switch (device_settings.auto_off_time) {
   case AUTO_OFF_DISABLED:
@@ -408,6 +445,35 @@ bool is_pocket_mode_enabled() {
   return device_settings.pocket_mode == POCKET_MODE_ENABLED;
 }
 
+// Dropdown option labels. Each table is indexed by its enum value and asserted
+// against that enum's _COUNT, so extending an enum without adding a label fails
+// the build instead of silently shifting what the UI saves.
+#define DEFINE_SETTING_OPTIONS(fn_name, table, count_sentinel)                                                          \
+  _Static_assert(sizeof(table) / sizeof((table)[0]) == (count_sentinel), #table " out of sync with " #count_sentinel);  \
+  SettingOptions fn_name() {                                                                                           \
+    SettingOptions options = {.labels = table, .count = sizeof(table) / sizeof((table)[0])};                            \
+    return options;                                                                                                    \
+  }
+
+static const char *const DOUBLE_PRESS_LABELS[] = {"None", "Open menu"};
+DEFINE_SETTING_OPTIONS(settings_double_press_options, DOUBLE_PRESS_LABELS, DOUBLE_PRESS_ACTION_COUNT)
+
+static const char *const ROTATION_LABELS[] = {"None", "90 degrees", "180 degrees", "270 degrees"};
+DEFINE_SETTING_OPTIONS(settings_rotation_options, ROTATION_LABELS, SCREEN_ROTATION_COUNT)
+
+static const char *const AUTO_OFF_LABELS[] = {"Disabled",   "2 minutes",  "5 minutes",
+                                              "10 minutes", "20 minutes", "30 minutes"};
+DEFINE_SETTING_OPTIONS(settings_auto_off_options, AUTO_OFF_LABELS, AUTO_OFF_COUNT)
+
+static const char *const TEMP_UNITS_LABELS[] = {"Celsius", "Fahrenheit"};
+DEFINE_SETTING_OPTIONS(settings_temp_units_options, TEMP_UNITS_LABELS, TEMP_UNITS_COUNT)
+
+static const char *const DISTANCE_UNITS_LABELS[] = {"Kilometers", "Miles"};
+DEFINE_SETTING_OPTIONS(settings_distance_units_options, DISTANCE_UNITS_LABELS, DISTANCE_UNITS_COUNT)
+
+static const char *const STARTUP_SOUND_LABELS[] = {"Disabled", "Beep", "Melody"};
+DEFINE_SETTING_OPTIONS(settings_startup_sound_options, STARTUP_SOUND_LABELS, STARTUP_SOUND_COUNT)
+
 void save_device_settings() {
   nvs_write_int(BL_LEVEL_KEY, device_settings.bl_level);
   nvs_write_int(SCREEN_ROTATION_KEY, device_settings.screen_rotation);
@@ -422,6 +488,7 @@ void save_device_settings() {
   nvs_write_int("pocket_mode", device_settings.pocket_mode);
   nvs_write_int("stats_dp", device_settings.double_press_action);
   nvs_write_int("hbm_mode", device_settings.hbm_mode);
+  nvs_write_int("led_mode", device_settings.led_mode);
 }
 
 esp_err_t save_wifi_ssid(const char *ssid) {
@@ -567,7 +634,7 @@ esp_err_t save_pairing_data() {
   }
 
   // Version the blob format to support future migrations
-  err = nvs_write_int("paired_blob_ver", 2);
+  err = nvs_write_int("paired_blob_ver", 3);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Error saving paired devices blob version!");
     return err;
@@ -593,7 +660,53 @@ void save_input_calibration() {
   nvs_write_int("y_center", calibration_settings.y_center);
   nvs_write_int("deadband", calibration_settings.deadband);
   nvs_write_int("expo", (int)(calibration_settings.expo * EXPO_ADJUST_FACTOR));
+  nvs_write_int("invert_x", calibration_settings.invert_x);
   nvs_write_int("invert_y", calibration_settings.invert_y);
+}
+
+void input_pins_load_defaults(InputPinSettings *out) {
+  if (out == NULL) {
+    return;
+  }
+
+  out->js_x_gpio = INPUT_PIN_DISABLED;
+  out->js_y_gpio = INPUT_PIN_DISABLED;
+  out->btn1_gpio = INPUT_PIN_DISABLED;
+  out->btn1_active_level = JOYSTICK_BUTTON_LEVEL;
+
+#if JOYSTICK_X_ENABLED
+  out->js_x_gpio = (int8_t)JOYSTICK_X;
+#endif
+#if JOYSTICK_Y_ENABLED
+  out->js_y_gpio = (int8_t)JOYSTICK_Y;
+#endif
+#if JOYSTICK_BUTTON_ENABLED
+  out->btn1_gpio = (int8_t)PRIMARY_BUTTON;
+#endif
+}
+
+void save_input_pins() {
+  nvs_write_int("js_x_gpio", (uint32_t)(int32_t)input_pin_settings.js_x_gpio);
+  nvs_write_int("js_y_gpio", (uint32_t)(int32_t)input_pin_settings.js_y_gpio);
+  nvs_write_int("btn1_gpio", (uint32_t)(int32_t)input_pin_settings.btn1_gpio);
+  nvs_write_int("btn1_level", input_pin_settings.btn1_active_level ? 1 : 0);
+}
+
+void reset_axis_calibration(bool reset_x, bool reset_y) {
+  if (reset_x) {
+    calibration_settings.x_min = STICK_MIN_VAL;
+    calibration_settings.x_max = STICK_MAX_VAL;
+    calibration_settings.x_center = STICK_MID_VAL;
+  }
+  if (reset_y) {
+    calibration_settings.y_min = STICK_MIN_VAL;
+    calibration_settings.y_max = STICK_MAX_VAL;
+    calibration_settings.y_center = STICK_MID_VAL;
+  }
+  if (reset_x || reset_y) {
+    calibration_settings.deadband = STICK_DEADBAND;
+    save_input_calibration();
+  }
 }
 
 void save_imu_calibration() {
@@ -672,6 +785,15 @@ esp_err_t settings_init() {
 
   device_settings.hbm_mode =
       nvs_read_int("hbm_mode", &temp_setting_value) == ESP_OK ? (HbmModeOptions)temp_setting_value : HBM_MODE_OFF;
+  if (device_settings.hbm_mode >= HBM_MODE_COUNT) {
+    device_settings.hbm_mode = HBM_MODE_OFF;
+  }
+
+  device_settings.led_mode =
+      nvs_read_int("led_mode", &temp_setting_value) == ESP_OK ? (LedModeOptions)temp_setting_value : DEFAULT_LED_MODE;
+  if (device_settings.led_mode >= LED_MODE_COUNT) {
+    device_settings.led_mode = DEFAULT_LED_MODE;
+  }
 
   // Reading calibration settings
   calibration_settings.x_min =
@@ -695,11 +817,36 @@ esp_err_t settings_init() {
       nvs_read_int("deadband", &temp_setting_value) == ESP_OK ? (uint16_t)temp_setting_value : STICK_DEADBAND;
 
   calibration_settings.expo = nvs_read_int("expo", &temp_setting_value) == ESP_OK
-                                  ? (float)(temp_setting_value / EXPO_ADJUST_FACTOR)
+                                  ? (float)temp_setting_value / EXPO_ADJUST_FACTOR
                                   : STICK_EXPO;
+
+  calibration_settings.invert_x =
+      nvs_read_int("invert_x", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : INVERT_X_AXIS;
 
   calibration_settings.invert_y =
       nvs_read_int("invert_y", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : INVERT_Y_AXIS;
+
+  // Adopt a stored assignment only if it still validates, so a stale mapping
+  // can't leave the remote without inputs
+  InputPinSettings stored_pins;
+  input_pins_load_defaults(&stored_pins);
+  input_pin_settings = stored_pins;
+
+  stored_pins.js_x_gpio = read_pin_setting("js_x_gpio", stored_pins.js_x_gpio);
+  stored_pins.js_y_gpio = read_pin_setting("js_y_gpio", stored_pins.js_y_gpio);
+  stored_pins.btn1_gpio = read_pin_setting("btn1_gpio", stored_pins.btn1_gpio);
+  stored_pins.btn1_active_level =
+      nvs_read_int("btn1_level", &temp_setting_value) == ESP_OK ? (temp_setting_value ? 1 : 0) : stored_pins.btn1_active_level;
+
+  char pin_err[96];
+  if (input_pins_validate(&stored_pins, pin_err, sizeof(pin_err)) == ESP_OK) {
+    input_pin_settings = stored_pins;
+  }
+  else {
+    ESP_LOGE(TAG, "Stored input pins rejected (%s) - using board defaults", pin_err);
+  }
+  ESP_LOGI(TAG, "Input pins: js_x=%d js_y=%d btn=%d (level %u)", input_pin_settings.js_x_gpio,
+           input_pin_settings.js_y_gpio, input_pin_settings.btn1_gpio, input_pin_settings.btn1_active_level);
 
   uint32_t temp_val;
   imu_calibration.accel_x_offset =
@@ -735,7 +882,7 @@ esp_err_t settings_init() {
   }
 
   uint32_t blob_ver = 0;
-  if (nvs_read_int("paired_blob_ver", &blob_ver) != ESP_OK || blob_ver != 2) {
+  if (nvs_read_int("paired_blob_ver", &blob_ver) != ESP_OK || blob_ver != 3) {
     pairing_settings.device_count = 0;
     pairing_settings.default_index = -1;
   }
@@ -756,6 +903,7 @@ esp_err_t settings_init() {
            ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[pairing_settings.default_index].channel;
     pairing_settings.secret_code = pairing_settings.devices[pairing_settings.default_index].secret_code;
+    remoteStats.vehicleType = pairing_settings.devices[pairing_settings.default_index].vehicle_type;
   }
   else {
     memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
@@ -764,4 +912,17 @@ esp_err_t settings_init() {
   }
 
   return ESP_OK;
+}
+
+CommsType settings_get_board_comms_mode(int8_t index) {
+  if (index >= 0 && index < pairing_settings.device_count) {
+    if (pairing_settings.devices[index].channel & 0x80) {
+      return COMMS_TYPE_BLE;
+    }
+  }
+  return COMMS_TYPE_ESPNOW;
+}
+
+CommsType settings_get_active_comms_mode(void) {
+  return settings_get_board_comms_mode(pairing_settings.default_index);
 }

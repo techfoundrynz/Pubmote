@@ -7,6 +7,7 @@ import { BrightnessIcon } from "brightness-icon.slint";
 export component StatusRow inherits Rectangle {
     in property <bool> is-connected: false;
     in property <int> rssi: -100;
+    in property <bool> searching: false;
     in property <bool> left-pad: false;
     in property <bool> right-pad: false;
     in property <string> connection-state-label: "";
@@ -14,6 +15,7 @@ export component StatusRow inherits Rectangle {
     in property <bool> lights-on: false;
     in property <LayoutAlignment> alignment: LayoutAlignment.center;
     in property <length> icon-size: 14px * Theme.scale;
+    in property <bool> is-onewheel: false;
 
     HorizontalLayout {
         alignment: root.alignment;
@@ -23,11 +25,12 @@ export component StatusRow inherits Rectangle {
             alignment: center;
             RssiIndicator {
                 rssi: root.rssi;
+                searching: root.searching;
                 icon-size: root.icon-size;
             }
         }
 
-        VerticalLayout {
+        if root.is-onewheel : VerticalLayout {
             alignment: center;
             FootpadSensor {
                 left-active: root.left-pad;

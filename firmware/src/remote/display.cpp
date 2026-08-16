@@ -10,6 +10,8 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -47,7 +49,6 @@
   #define RGB_ELE_ORDER LCD_RGB_ELEMENT_ORDER_BGR
 #elif DISP_SH8601 || DISP_CO5300
   #define SW_ROTATE 1
-  #define ROUNDER_CALLBACK 1
   #include "display/sh8601/display_driver_sh8601.h"
   #include "esp_lcd_sh8601.h"
   #define RGB_ELE_ORDER LCD_RGB_ELEMENT_ORDER_RGB
@@ -58,12 +59,6 @@
 #include "remote/haptic.h"
 
 static const char *TAG = "PUBREMOTE-DISPLAY";
-
-extern "C"
-{
-  extern void (*slint_esp_on_before_render_cb)();
-  void slint_esp_set_scroll_offset(int offset_y, int screen_index);
-}
 
 #define LCD_HOST SPI2_HOST
 #define LCD_CMD_BITS 8
@@ -77,8 +72,33 @@ static bool is_initialized = false;
 static uint8_t bl_level = 0;
 static bool hbm_mode_active = false;
 
-uint16_t *slint_chunk_buffer[2] = {NULL, NULL};
-extern const int slint_chunk_lines = 10;
+// esp_lcd panel IO is not thread safe, and brightness/HBM/sleep commands are issued from the IMU
+// and power management tasks while the Slint task is mid-flush. Two concurrent
+// spi_device_acquire_bus() calls on one device leave the bus lock held with no owner, and the
+// next caller blocks in dev_wait() forever.
+static SemaphoreHandle_t panel_io_lock = NULL;
+
+extern "C" bool panel_io_lock_acquire(uint32_t timeout_ms) {
+  if (!panel_io_lock) {
+    return true;
+  }
+  if (xSemaphoreTakeRecursive(panel_io_lock, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
+    ESP_LOGW(TAG, "panel IO lock timed out; skipping panel access");
+    return false;
+  }
+  return true;
+}
+
+extern "C" void panel_io_lock_release() {
+  if (panel_io_lock) {
+    xSemaphoreGiveRecursive(panel_io_lock);
+  }
+}
+
+uint16_t *slint_chunk_buffer[SLINT_CHUNK_ACCUMULATORS] = {};
+// Three staging buffers instead of two, so keep each shorter and hold the total roughly where
+// the double-buffered pair was - this is internal DMA-capable RAM and there is little spare.
+int slint_chunk_lines = VER_RES / 30;
 
 // PSRAM frame buffers removed for pure chunked mode
 
@@ -91,10 +111,6 @@ SlintWindowPtr get_slint_window() {
 }
 
 #include <atomic>
-
-#ifdef SHOW_FPS
-static std::atomic<int> g_loop_count(0);
-#endif
 
 static std::atomic<Screen> cached_active_screen(Screen::Splash);
 
@@ -145,6 +161,9 @@ extern "C" bool display_get_hbm() {
 extern "C" void display_set_hbm(bool active) {
   hbm_mode_active = active;
   if (is_initialized) {
+    if (!panel_io_lock_acquire(1000)) {
+      return;
+    }
 #if DISP_SH8601 || DISP_CO5300
     sh8601_set_hbm_mode(lcd_io, hbm_mode_active);
 #endif
@@ -154,6 +173,7 @@ extern "C" void display_set_hbm(bool active) {
     else {
       set_display_brightness(lcd_io, bl_level);
     }
+    panel_io_lock_release();
   }
 }
 
@@ -165,12 +185,46 @@ extern "C" bool display_supports_hbm() {
 #endif
 }
 
+extern "C" const char *hbm_mode_label(HbmModeOptions mode) {
+  switch (mode) {
+  case HBM_MODE_OFF:
+    return "OFF";
+  case HBM_MODE_ON:
+    return "ON";
+  case HBM_MODE_RAISED:
+    return "RAISED";
+  default:
+    return "OFF";
+  }
+}
+
+extern "C" void display_set_joystick_supported(bool supported) {
+  if (!get_slint_window()) {
+    // UI not up yet - connect_callbacks() picks the values up on init
+    return;
+  }
+
+  const bool x_supported = input_pins_x_enabled();
+  const bool y_supported = input_pins_y_enabled();
+
+  slint::invoke_from_event_loop([supported, x_supported, y_supported]() {
+    const auto &state = get_slint_window()->global<UiState>();
+    state.set_joystick_supported(supported);
+    state.set_joystick_x_supported(x_supported);
+    state.set_joystick_y_supported(y_supported);
+  });
+}
+
 extern "C" void display_set_bl_level(uint8_t level) {
   ESP_LOGI(TAG, "display_set_bl_level: %d (is_initialized: %d)", level, is_initialized);
   if (is_initialized) {
     bl_level = level;
     if (!hbm_mode_active) {
+      if (!panel_io_lock_acquire(1000)) {
+        return;
+      }
       set_display_brightness(lcd_io, bl_level);
+      panel_io_lock_release();
     }
   }
 }
@@ -184,6 +238,7 @@ extern "C"
   void handle_menu_connect();
   void handle_menu_pocket_mode();
   void handle_menu_toggle_hbm();
+  void handle_menu_toggle_led();
   void handle_open_settings();
   void handle_open_input_calibration();
   void handle_open_pairing();
@@ -219,11 +274,22 @@ extern "C"
 
 extern "C" void handle_imu_gesture(imu_gesture_t gesture);
 
+extern "C"
+{
+  extern volatile uint32_t slint_esp_prepare_us;
+  extern volatile uint32_t slint_esp_render_us;
+  extern volatile uint32_t slint_esp_flush_us;
+  extern volatile uint32_t slint_esp_dirty_px;
+}
+
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
+  state.set_show_fps(SHOW_FPS);
   state.set_imu_supported(IMU_ENABLED);
-  state.set_joystick_supported(JOYSTICK_ENABLED);
+  state.set_joystick_supported(input_pins_joystick_enabled());
+  state.set_joystick_x_supported(input_pins_x_enabled());
+  state.set_joystick_y_supported(input_pins_y_enabled());
 
   state.on_screen_changed([](Screen screen) {
     Screen prev = cached_active_screen.exchange(screen);
@@ -279,6 +345,7 @@ static void connect_callbacks() {
   state.on_menu_connect([]() { handle_menu_connect(); });
   state.on_menu_pocket_mode([]() { handle_menu_pocket_mode(); });
   state.on_menu_toggle_hbm([]() { handle_menu_toggle_hbm(); });
+  state.on_menu_toggle_led([]() { handle_menu_toggle_led(); });
   state.on_open_settings([]() { handle_open_settings(); });
   state.on_open_input_calibration([]() { handle_open_input_calibration(); });
   state.on_open_pairing([]() { handle_open_pairing(); });
@@ -315,10 +382,6 @@ extern "C" void apply_theme_settings() {
   theme.set_panel_width(HOR_RES);
   theme.set_panel_height(VER_RES);
 
-#ifndef UI_SHAPE
-  #define UI_SHAPE (HOR_RES == VER_RES ? 0 : 1)
-#endif
-
   // Set the screen shape mode (false = circular, true = square/rectangular)
   theme.set_is_square_mode(UI_SHAPE == 1);
 
@@ -347,38 +410,18 @@ static void slint_event_loop(void *pvParameters) {
   ESP_LOGI(TAG, "Slint task started");
 
   // Initialize Slint platform with our configuration
-  SlintPlatformConfiguration<slint::platform::Rgb565Pixel> config;
+  SlintPlatformConfiguration<slint::platform::Rgb565BigEndianPixel> config;
   config.size = slint::PhysicalSize(slint::Size<uint32_t>{(uint32_t)HOR_RES, (uint32_t)VER_RES});
   config.panel_handle = lcd_panel;
-// Define this to 1 to use full-frame PSRAM double buffering (Artifact-free, 60fps)
-// Define this to 0 to use internal SRAM chunked rendering (Saves PSRAM, may cause tearing)
-#define USE_PSRAM_DOUBLE_BUFFERING 1
-
   config.touch_handle = touch_handle;
-  config.byte_swap = true; // Swap bytes for standard SPI/QSPI big-endian display interfaces
+  config.byte_swap = false;
 
-#if USE_PSRAM_DOUBLE_BUFFERING
-  slint::platform::Rgb565Pixel *buffer1 = (slint::platform::Rgb565Pixel *)heap_caps_malloc(
-      HOR_RES * VER_RES * sizeof(slint::platform::Rgb565Pixel), MALLOC_CAP_SPIRAM);
-  slint::platform::Rgb565Pixel *buffer2 = (slint::platform::Rgb565Pixel *)heap_caps_malloc(
-      HOR_RES * VER_RES * sizeof(slint::platform::Rgb565Pixel), MALLOC_CAP_SPIRAM);
 
-  if (buffer1 && buffer2) {
-    config.buffer1 = std::span<slint::platform::Rgb565Pixel>(buffer1, HOR_RES * VER_RES);
-    config.buffer2 = std::span<slint::platform::Rgb565Pixel>(buffer2, HOR_RES * VER_RES);
-    ESP_LOGI(TAG, "PSRAM double-buffering enabled for 60fps artifact-free rendering");
-  }
-  else {
-    ESP_LOGW(TAG, "Failed to allocate PSRAM buffers, falling back to chunked rendering");
-    if (buffer1)
-      heap_caps_free(buffer1);
-    if (buffer2)
-      heap_caps_free(buffer2);
-  }
-#else
-  // buffer1 and buffer2 remain unassigned, forcing render_by_line chunked mode (uses slint_chunk_buffer)
+  // config.buffer1/buffer2 are deliberately left unset: that selects render_by_line
+  // chunked mode, which stages into slint_chunk_buffer in internal SRAM. Full-frame
+  // buffers would have to live in PSRAM, and reading them back per frame is slower than
+  // rendering into SRAM chunks on this panel.
   ESP_LOGI(TAG, "Using internal SRAM chunked rendering mode");
-#endif
 
   // Map rotation
   switch (device_settings.screen_rotation) {
@@ -401,13 +444,26 @@ static void slint_event_loop(void *pvParameters) {
 
   ESP_LOGI(TAG, "Creating AppWindow...");
   slint_window = AppWindow::create();
-  slint_esp_on_before_render_cb = []() {
-    if (slint_window) {
-      int scroll_y = slint_window->global<UiState>().get_scroll_offset_y();
-      int screen = (int)slint_window->global<UiState>().get_screen();
-      slint_esp_set_scroll_offset(scroll_y, screen);
-    }
-  };
+
+  // Surface unexpected reboots (panic / watchdog / brownout) as a dismissable
+  // dialog so crashes don't go unnoticed as a silent restart
+  switch (esp_reset_reason()) {
+  case ESP_RST_PANIC:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted after a firmware crash");
+    break;
+  case ESP_RST_TASK_WDT:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted because a task stopped responding");
+    break;
+  case ESP_RST_INT_WDT:
+  case ESP_RST_WDT:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted after a watchdog timeout");
+    break;
+  case ESP_RST_BROWNOUT:
+    slint_window->global<UiState>().set_boot_notice("The remote restarted due to a power brownout");
+    break;
+  default:
+    break;
+  }
   connect_callbacks();
   apply_theme_settings();
 
@@ -423,11 +479,20 @@ static void slint_event_loop(void *pvParameters) {
     display_set_hbm(false);
   }
 
+  // Subscribe this task to the task watchdog and feed it from a Slint timer:
+  // timers are dispatched by the event loop itself, so a wedged event loop
+  // (frozen UI) stops the feed and the watchdog panics + reboots
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+  slint::Timer wdt_feed_timer;
+  wdt_feed_timer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(1000), []() { esp_task_wdt_reset(); });
+
   // Blocks until event loop ends
   ESP_LOGI(TAG, "Running Slint window event loop...");
   slint_window->run();
 
   ESP_LOGI(TAG, "Slint event loop exited");
+  wdt_feed_timer.stop();
+  esp_task_wdt_delete(NULL);
   vTaskDelete(NULL);
 }
 
@@ -438,8 +503,7 @@ static void slint_input_task(void *pvParameters) {
 
 #if SHOW_FPS
   static uint32_t last_fps_time = 0;
-  static int last_frame_count = 0;
-  static std::atomic<bool> loop_ready(true);
+  static uint32_t last_frame_count = 0;
 #endif
 
   while (true) {
@@ -486,34 +550,51 @@ static void slint_input_task(void *pvParameters) {
       }
 
 #if SHOW_FPS
-      // Keep event loop saturated with a single counting payload
-      if (loop_ready.exchange(false)) {
-        slint::invoke_from_event_loop([]() {
-          g_loop_count++;
-          loop_ready.store(true);
-        });
-      }
-
-      // Calculate and send true FPS to Slint every second
+      // Frames actually drawn per second, straight from the renderer. The
+      // previous version posted closures into the event loop and counted how
+      // fast they came back - that measured event-loop dispatch rate, not
+      // frame rate, and the closure traffic plus a 1 ms poll perturbed the
+      // very thing it was measuring.
       uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-      if (now - last_fps_time >= 1000) {
-        int current_count = g_loop_count.load();
-        int fps = current_count - last_frame_count;
+      if (last_fps_time == 0) {
+        // Start the window here rather than at tick 0: otherwise the first sample
+        // reports every frame drawn since boot as if it happened in one second.
+        last_fps_time = now;
+        last_frame_count = slint_esp_frame_counter;
+      }
+      else if (now - last_fps_time >= 1000) {
+        uint32_t current_count = slint_esp_frame_counter;
+        uint32_t elapsed = now - last_fps_time;
+        // Scale by the real window: this task polls every 30ms, so the window
+        // overshoots 1000ms and a raw frame count would read low.
+        int fps = (int)(((current_count - last_frame_count) * 1000 + elapsed / 2) / elapsed);
         last_frame_count = current_count;
         last_fps_time = now;
+        // Sampled alongside the frame rate so the overlay can show where a frame goes:
+        // prepare is scene building, render the per-line rasterisation, flush the byte
+        // swap plus waiting on the panel. Reading these off the panel avoids needing a
+        // serial monitor, which holds firmware.elf open for the exception decoder.
+        int prepare_ms = (int)((slint_esp_prepare_us + 500) / 1000);
+        int render_ms = (int)((slint_esp_render_us + 500) / 1000);
+        int flush_ms = (int)((slint_esp_flush_us + 500) / 1000);
+        int dirty_pct = (int)((slint_esp_dirty_px * 100ULL + (HOR_RES * VER_RES) / 2) / (HOR_RES * VER_RES));
         slint::invoke_from_event_loop([=]() {
           if (slint_window) {
+            const auto &st = slint_window->global<UiState>();
+            st.set_perf_prepare_ms(prepare_ms);
+            st.set_perf_render_ms(render_ms);
+            st.set_perf_flush_ms(flush_ms);
+            st.set_perf_dirty_pct(dirty_pct);
             slint_window->global<UiState>().set_fps(fps);
           }
         });
       }
 #endif
     }
-#if SHOW_FPS
-    vTaskDelay(pdMS_TO_TICKS(1)); // Poll frequently enough to capture high FPS
-#else
-    vTaskDelay(pdMS_TO_TICKS(30)); // Standard polling rate
-#endif
+    // One rate, always. Nothing needs sub-30 ms polling now that the frame
+    // count comes from the renderer rather than being inferred from how fast
+    // this task can round-trip a closure.
+    vTaskDelay(pdMS_TO_TICKS(30));
   }
 }
 
@@ -725,19 +806,35 @@ static esp_err_t app_touch_init(void) {
 extern "C" void display_init() {
   ESP_LOGI(TAG, "Initializing Slint display wrapper");
 
-  // Allocate chunk buffers early to avoid memory fragmentation from the 64KB Slint task stack
-  slint_chunk_buffer[0] = (uint16_t *)heap_caps_malloc(HOR_RES * slint_chunk_lines * sizeof(uint16_t),
-                                                       MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-  slint_chunk_buffer[1] = (uint16_t *)heap_caps_malloc(HOR_RES * slint_chunk_lines * sizeof(uint16_t),
-                                                       MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-  if (!slint_chunk_buffer[0] || !slint_chunk_buffer[1]) {
-    ESP_LOGE(TAG, "Failed to allocate early chunk buffers!");
-    abort();
+  // Chunk height must be even. LVGL's rounder_cb aligned BOTH axes to even bounds and had
+  // no artifacts; our chunked path only aligns x, so an odd height puts every other chunk
+  // on an odd panel row (0, 23, 46, 69...) and shows as horizontal seams at the boundaries.
+  if (slint_chunk_lines % 2 != 0) {
+    ESP_LOGW(TAG, "slint_chunk_lines %d is odd; using %d so chunks start on even rows", slint_chunk_lines,
+             slint_chunk_lines - 1);
+    slint_chunk_lines--;
+  }
+  ESP_LOGI(TAG, "Chunk buffers: %d x %d lines (%u bytes each)", SLINT_CHUNK_ACCUMULATORS, slint_chunk_lines,
+           (unsigned)(HOR_RES * slint_chunk_lines * sizeof(uint16_t)));
+
+  // Allocate chunk buffers early to avoid memory fragmentation from the Slint task stack
+  for (int i = 0; i < SLINT_CHUNK_ACCUMULATORS; i++) {
+    slint_chunk_buffer[i] = (uint16_t *)heap_caps_malloc(HOR_RES * slint_chunk_lines * sizeof(uint16_t),
+                                                        MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    if (!slint_chunk_buffer[i]) {
+      ESP_LOGE(TAG, "Failed to allocate chunk buffer %d!", i);
+      abort();
+    }
   }
 
   // PSRAM frame buffers removed for pure chunked mode
 
-  trans_sem = xSemaphoreCreateBinary();
+  // Counting, not binary: the flush keeps several chunk transfers outstanding so rendering
+  // overlaps the panel DMA, and a binary semaphore would collapse two completions into one.
+  trans_sem = xSemaphoreCreateCounting(SLINT_CHUNK_ACCUMULATORS, 0);
+  if (!panel_io_lock) {
+    panel_io_lock = xSemaphoreCreateRecursiveMutex();
+  }
   ESP_ERROR_CHECK(app_lcd_init());
 #if TOUCH_ENABLED
   ESP_ERROR_CHECK(app_touch_init());
@@ -747,18 +844,13 @@ extern "C" void display_init() {
 
   // Start Slint Event Loop Task in internal SRAM
   // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
-  // Stack size optimized to 48KB to conserve internal SRAM.
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 48 * 1024, NULL, 20, &slint_task_handle, 1);
+  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 24 * 1024, NULL, 20, &slint_task_handle, 1);
 
-  // Provide global settings
-  if (slint_window) {
-#ifdef SHOW_FPS
-    slint_window->global<UiState>().set_show_fps(true);
-#endif
-  }
+  // NOTE: slint_window is created inside slint_event_loop above, so it is not safe to
+  // touch UiState here - see connect_callbacks() for properties set once it exists.
 
   // Start Input Polling Task (pinned to core 0, leaving core 1 fully dedicated to the Slint event loop)
-  xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 4096, NULL, 20, &slint_input_task_handle, 0);
+  xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 2048, NULL, 20, &slint_input_task_handle, 0);
 }
 
 extern "C" void display_deinit() {
@@ -776,6 +868,7 @@ extern "C" void display_deinit() {
     esp_lcd_touch_del(touch_handle);
     touch_handle = NULL;
   }
+  bool panel_locked = panel_io_lock_acquire(1000);
   if (lcd_panel) {
     esp_lcd_panel_del(lcd_panel);
     lcd_panel = NULL;
@@ -785,15 +878,19 @@ extern "C" void display_deinit() {
     lcd_io = NULL;
   }
   spi_bus_free(LCD_HOST);
+  if (panel_locked) {
+    panel_io_lock_release();
+  }
 
   is_initialized = false;
 }
 
 extern "C" void display_off() {
   ESP_LOGI(TAG, "Display sleep");
-  if (lcd_panel) {
+  if (lcd_panel && panel_io_lock_acquire(1000)) {
     esp_lcd_panel_disp_on_off(lcd_panel, false);
     esp_lcd_panel_disp_sleep(lcd_panel, true);
+    panel_io_lock_release();
   }
   if (touch_handle) {
     esp_lcd_touch_enter_sleep(touch_handle);

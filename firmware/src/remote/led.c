@@ -42,6 +42,9 @@ static RGB last_displayed_color = {0, 0, 0};
 static RGB transition_start_color = {0, 0, 0};
 static int64_t transition_start_time = 0;
 
+// True while a duty alert is overriding the configured mode
+static bool alert_active = false;
+
 static void trigger_transition() {
   transition_start_color = last_displayed_color;
   transition_start_time = esp_timer_get_time();
@@ -153,24 +156,29 @@ static RGB hex_to_rgb(uint32_t hex) {
   return color;
 }
 
-static void pulse_effect() {
+// Advance the breathing ramp by one step, bouncing at 0 and brightness_level.
+static void ramp_brightness() {
   static bool increasing = true;
+  // Stepped as a signed value: brightness_level is not necessarily a multiple
+  // of BRIGHTNESS_STEP, so the descending leg can otherwise underflow uint8_t.
+  int level = current_brightness;
 
-  if (increasing) {
-    current_brightness += BRIGHTNESS_STEP;
-  }
-  else {
-    current_brightness -= BRIGHTNESS_STEP;
-  }
+  level += increasing ? BRIGHTNESS_STEP : -BRIGHTNESS_STEP;
 
-  if (current_brightness >= brightness_level) {
-    current_brightness = brightness_level;
+  if (level >= brightness_level) {
+    level = brightness_level;
     increasing = false;
   }
-  else if (current_brightness <= 0) {
-    current_brightness = 0;
+  else if (level <= 0) {
+    level = 0;
     increasing = true;
   }
+
+  current_brightness = (uint8_t)level;
+}
+
+static void pulse_effect() {
+  ramp_brightness();
   apply_led_effect();
   vTaskDelay(pdMS_TO_TICKS(ANIMATION_DELAY_MS));
 }
@@ -230,7 +238,7 @@ static void no_effect() {
 static esp_timer_handle_t led_startup_off_timer = NULL;
 
 static void startup_effect_stop() {
-  led_set_effect_default();
+  led_apply_mode();
 
   if (led_startup_off_timer != NULL) {
     esp_timer_delete(led_startup_off_timer);
@@ -325,9 +333,64 @@ void led_set_effect_none() {
 #endif
 }
 
-void led_set_effect_default() {
+void led_apply_mode() {
 #if LED_ENABLED
-  led_set_effect_solid(device_settings.theme_color);
+  if (alert_active) {
+    return;
+  }
+
+  switch (device_settings.led_mode) {
+  case LED_MODE_SOLID:
+    led_set_effect_solid(device_settings.theme_color);
+    break;
+  case LED_MODE_OFF:
+  case LED_MODE_ALERTS:
+  default:
+    // ALERTS rests dark and is lit only by led_set_alert()
+    led_set_effect_none();
+    break;
+  }
+#endif
+}
+
+const char *led_mode_label(LedModeOptions mode) {
+  switch (mode) {
+  case LED_MODE_OFF:
+    return "OFF";
+  case LED_MODE_SOLID:
+    return "SOLID";
+  case LED_MODE_ALERTS:
+    return "ALERTS";
+  default:
+    return "OFF";
+  }
+}
+
+bool led_is_supported() {
+  return LED_ENABLED;
+}
+
+void led_set_alert(uint32_t color) {
+#if LED_ENABLED
+  // OFF stays dark. SOLID and ALERTS both let the alert colour take over, and
+  // led_clear_alert() drops them back to their resting behaviour.
+  if (device_settings.led_mode == LED_MODE_OFF) {
+    return;
+  }
+
+  alert_active = true;
+  led_set_effect_solid(color);
+#endif
+}
+
+void led_clear_alert() {
+#if LED_ENABLED
+  if (!alert_active) {
+    return;
+  }
+
+  alert_active = false;
+  led_apply_mode();
 #endif
 }
 

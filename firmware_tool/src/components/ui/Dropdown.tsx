@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 
 interface DropdownOption {
@@ -25,6 +26,21 @@ interface DropdownProps {
   variant?: "default" | "icon";
 }
 
+// Viewport coordinates, anchored by the trigger's right edge so a content-sized
+// menu right-aligns without being measured first
+type MenuPosition = {
+  right: number;
+  top?: number;
+  bottom?: number;
+  width?: number;
+  maxWidth: number;
+  maxHeight: number;
+};
+
+const VIEWPORT_MARGIN = 8;
+const TRIGGER_GAP = 4;
+const MIN_DROP_HEIGHT = 160;
+
 export function Dropdown({
   options,
   value,
@@ -40,20 +56,68 @@ export function Dropdown({
   variant = "default",
 }: DropdownProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const [position, setPosition] = React.useState<MenuPosition | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  const updatePosition = React.useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - TRIGGER_GAP - VIEWPORT_MARGIN;
+    const spaceAbove = rect.top - TRIGGER_GAP - VIEWPORT_MARGIN;
+    // Flip up only when there isn't usable room below
+    const openUp = spaceBelow < MIN_DROP_HEIGHT && spaceAbove > spaceBelow;
+
+    setPosition({
+      right: Math.max(VIEWPORT_MARGIN, window.innerWidth - rect.right),
+      top: openUp ? undefined : rect.bottom + TRIGGER_GAP,
+      bottom: openUp ? window.innerHeight - rect.top + TRIGGER_GAP : undefined,
+      width:
+        typeof dropdownWidth === "number"
+          ? dropdownWidth
+          : dropdownWidth === "button"
+            ? rect.width
+            : undefined,
+      maxWidth: window.innerWidth - VIEWPORT_MARGIN * 2,
+      maxHeight: Math.max(MIN_DROP_HEIGHT, openUp ? spaceAbove : spaceBelow),
+    });
+  }, [dropdownWidth]);
+
+  // Position before first paint so it can't flash in the wrong spot
+  React.useLayoutEffect(() => {
+    if (isOpen) updatePosition();
+  }, [isOpen, updatePosition]);
 
   React.useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
+    if (!isOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      // The portalled menu isn't inside the trigger's subtree
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
       }
+      setIsOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+
+    // Capture scrolls from ancestor containers, not just the window
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen, updatePosition]);
 
   const handleOptionClick = (optionValue: string) => {
     const selectedOption = options.find((o) => o.value === optionValue);
@@ -82,26 +146,73 @@ export function Dropdown({
     return value === optionValue;
   };
 
-
-
   const getOptionTooltip = (option: DropdownOption) => {
     if (option.tooltip) return option.tooltip;
     if (typeof option.label === "string") return option.label;
     return "";
   };
 
-  const getDropdownWidth = () => {
-    if (typeof dropdownWidth === "number") return `${dropdownWidth}px`;
-    if (dropdownWidth === "auto") return "auto";
-    return "100%";
-  };
+  // In document.body: inside the page flow it gets clipped by ancestor overflow
+  // and painted under later stacking contexts
+  const menu =
+    isOpen && position
+      ? createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: "fixed",
+              top: position.top,
+              bottom: position.bottom,
+              right: position.right,
+              width: position.width,
+              maxWidth: position.maxWidth,
+              maxHeight: position.maxHeight,
+              zIndex: 1000,
+            }}
+            className="flex flex-col overflow-hidden rounded-lg border border-gray-600 bg-[var(--color-bg-secondary)] py-1 shadow-lg min-w-[200px]"
+          >
+            {multiple && (
+              <div className="flex-shrink-0 px-3 py-2 text-xs font-medium text-gray-400 uppercase border-b border-gray-800">
+                {multipleLabel}
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto px-2">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleOptionClick(option.value)}
+                  title={getOptionTooltip(option)}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-[#2a2a2a] rounded cursor-pointer"
+                >
+                  {multiple && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected(option.value)}
+                      onChange={() => handleOptionClick(option.value)}
+                      className={`flex-shrink-0 rounded border-gray-600 ${
+                        option.color || "text-blue-500"
+                      } focus:ring-blue-500 focus:ring-offset-gray-900`}
+                    />
+                  )}
+                  {option.icon && <span className="flex-shrink-0">{option.icon}</span>}
+                  <span className="flex-1 truncate text-sm text-[var(--color-text-primary)]">
+                    {option.label}
+                  </span>
+                  {!multiple && isSelected(option.value) && (
+                    <Check className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
-    <div
-      className={`relative ${width === "fixed" ? "w-45" : ""} ${className}`}
-      ref={dropdownRef}
-    >
+    <div className={`relative ${width === "fixed" ? "w-45" : ""} ${className}`}>
       <button
+        ref={triggerRef}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         title={label}
@@ -152,49 +263,7 @@ export function Dropdown({
         )}
       </button>
 
-      {isOpen && (
-        <div
-          style={{ width: getDropdownWidth() }}
-          className={`absolute right-0 mt-1 bg-[var(--color-bg-secondary)] border border-gray-600 rounded-lg shadow-lg py-1 z-10 min-w-[200px]`}
-        >
-          {multiple && (
-            <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase border-b border-gray-800">
-              {multipleLabel}
-            </div>
-          )}
-          <div className="max-h-48 overflow-y-auto px-2">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => handleOptionClick(option.value)}
-                title={getOptionTooltip(option)}
-                className="flex w-full items-center gap-2 px-2 py-1.5 hover:bg-[#2a2a2a] rounded cursor-pointer"
-              >
-                {multiple ? (
-                  <input
-                    type="checkbox"
-                    checked={isSelected(option.value)}
-                    onChange={() => handleOptionClick(option.value)}
-                    className={`rounded border-gray-600 ${
-                      option.color || "text-blue-500"
-                    } focus:ring-blue-500 focus:ring-offset-gray-900`}
-                  />
-                ) : (
-                  isSelected(option.value) && (
-                    <span className="w-4 h-4 flex-shrink-0">
-                      <Check className="h-4 w-4 text-blue-500" />
-                    </span>
-                  )
-                )}
-                {option.icon && <span>{option.icon}</span>}
-                <span className="text-sm text-[var(--color-text-primary)] truncate">
-                  {option.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {menu}
     </div>
   );
 }

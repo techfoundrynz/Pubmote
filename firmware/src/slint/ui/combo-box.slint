@@ -6,6 +6,24 @@ export component ComboBox inherits Rectangle {
     in-out property <int> current-index: 0;
     callback selected(string);
 
+    // Dropdown geometry: the popup is height-capped to the space available on
+    // screen and scrolls, so long models stay reachable
+    property <length> item-height: round(32px / 1px * Theme.scale) * 1px;
+    property <length> item-spacing: 2px;
+    property <length> list-padding: 4px;
+    property <length> popup-gap: 4px;
+    property <length> screen-margin: round(8px / 1px * Theme.scale) * 1px;
+    property <length> content-height: root.model.length * (root.item-height + root.item-spacing) - root.item-spacing + 2 * root.list-padding;
+    property <length> space-below: Theme.panel-height - (root.absolute-position.y + root.height + root.popup-gap) - root.screen-margin;
+    property <length> space-above: root.absolute-position.y - root.popup-gap - root.screen-margin;
+    property <bool> opens-up: root.content-height > root.space-below && root.space-above > root.space-below;
+    // On round screens an anchored popup near the top/bottom edge gets clipped
+    // by the bezel, so open it centered on the panel instead (widest point)
+    // and cap it to the inscribed square - the area guaranteed fully visible
+    property <bool> round-screen: !Theme.is-square-mode;
+    property <length> safe-height: Theme.panel-height * 0.7071;
+    property <length> popup-height: min(root.content-height, root.round-screen ? root.safe-height : (root.opens-up ? root.space-above : root.space-below));
+
     height: round(36px / 1px * Theme.scale) * 1px;
     border-radius: round(8px / 1px * Theme.scale) * 1px;
     background: Theme.track;
@@ -44,39 +62,52 @@ export component ComboBox inherits Rectangle {
     }
 
     popup := PopupWindow {
-        x: 0;
-        y: root.height + 4px;
+        x: root.round-screen ? (Theme.panel-width - root.width) / 2 - root.absolute-position.x : 0;
+        y: root.round-screen ? (Theme.panel-height - root.popup-height) / 2 - root.absolute-position.y
+                             : (root.opens-up ? -(root.popup-height + root.popup-gap) : root.height + root.popup-gap);
         width: root.width;
-        
+        height: root.popup-height;
+
         Rectangle {
+            height: root.popup-height;
             background: Theme.track;
             border-radius: round(8px / 1px * Theme.scale) * 1px;
             border-width: 1px;
             border-color: Theme.track;
-            
-            VerticalLayout {
-                padding: 4px;
-                spacing: 2px;
-                for item[idx] in root.model : Rectangle {
-                    height: round(32px / 1px * Theme.scale) * 1px;
-                    background: item-touch.pressed ? Theme.accent.darker(0.2) : transparent;
-                    border-radius: round(4px / 1px * Theme.scale) * 1px;
-                    border-width: (idx == root.current-index) ? 1px : 0px;
-                    border-color: (idx == root.current-index) ? Theme.accent : transparent;
-                    
-                    Text {
-                        x: 12px;
-                        text: item;
-                        color: Theme.text;
-                        font-size: Theme.font-14;
-                        vertical-alignment: center;
-                    }
-                    
-                    item-touch := TouchArea {
-                        clicked => {
-                            root.current-index = idx;
-                            root.selected(item);
-                            popup.close();
+            clip: true;
+
+            Flickable {
+                viewport-height: items-layout.min-height;
+                init => {
+                    // Bring the selected item into view (centered when possible)
+                    self.viewport-y = -min(
+                        max(0px, root.current-index * (root.item-height + root.item-spacing) + root.list-padding - (root.popup-height - root.item-height) / 2),
+                        max(0px, root.content-height - root.popup-height));
+                }
+                items-layout := VerticalLayout {
+                    padding: root.list-padding;
+                    spacing: root.item-spacing;
+                    for item[idx] in root.model : Rectangle {
+                        height: root.item-height;
+                        background: item-touch.pressed ? Theme.accent.darker(0.2) : transparent;
+                        border-radius: round(4px / 1px * Theme.scale) * 1px;
+                        border-width: (idx == root.current-index) ? 1px : 0px;
+                        border-color: (idx == root.current-index) ? Theme.accent : transparent;
+
+                        Text {
+                            x: 12px;
+                            text: item;
+                            color: Theme.text;
+                            font-size: Theme.font-14;
+                            vertical-alignment: center;
+                        }
+
+                        item-touch := TouchArea {
+                            clicked => {
+                                root.current-index = idx;
+                                root.selected(item);
+                                popup.close();
+                            }
                         }
                     }
                 }

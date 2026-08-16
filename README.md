@@ -61,7 +61,43 @@ Suggestions for additional hardware targets are welcomed. For new projects, we r
 
 - VS Code or other code editor
 - PlatformIO
-- SquareLine Studio
 
-> [!TIP]
-> If SL Studio repeatedly fails on startup because of a font error, try clearing the font bin files.
+No Rust toolchain is required. Slint is consumed as a prebuilt release pinned by
+`SLINT_PREBUILT_TAG` in `platformio.ini`, so `pio run` needs nothing but Python and PlatformIO.
+
+### Slint live preview
+
+The UI uses arc properties that only exist in our Slint fork, so the language server bundled
+with the VS Code Slint extension rejects them with `Unknown property arc-center-x` and no
+preview opens. The **Sync Slint LSP** task in `.vscode/tasks.json` points it at the fork's
+language server on every folder open (trusted folders only). By hand:
+
+```sh
+python scripts/sync_slint_lsp.py     # --help for --local, --print-setting, --restore
+```
+
+It fetches the `slint-lsp` matching the pinned tag - so the preview and the firmware can never
+be on different versions of Slint - caches it in the gitignored `.slint/`, and writes
+`slint.lspBinaryPath` into `.vscode/settings.json`. Reload the window afterwards.
+
+> [!IMPORTANT]
+> `.vscode/settings.json` is generated and gitignored - every run rewrites it from the tracked
+> `.vscode/settings.shared.json`. Project-wide settings go in that file; personal ones go in
+> your VS Code user settings.
+
+The preview draws arcs through the `MoveTo`/`ArcTo` fallback rather than the MCU fast path, so
+it is good for shape and layout and tells you nothing about how the panel will rasterise them.
+
+### Changing Slint itself
+
+Renderer and language changes live in the fork at
+[techfoundrynz/slint](https://github.com/techfoundrynz/slint), not here. Going through a release
+to try one is about ten minutes a turn, so build the library locally instead:
+
+```sh
+python scripts/use_local_slint.py
+```
+
+This needs the Xtensa Rust toolchain ([espup](https://github.com/esp-rs/espup)) and a checkout
+of the fork. It stages only the library, so cut a real release once the C++ API or the `.slint`
+language changes - the script's docstring has the rest of the caveats.

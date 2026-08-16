@@ -1,8 +1,12 @@
 #include "display_driver_sh8601.h"
+#include "config.h"
 #include "driver/ledc.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <esp_lcd_panel_io.h>
 #include <esp_lcd_sh8601.h>
 #include <esp_log.h>
+#include <string.h>
 
 static const char *TAG = "PUBREMOTE-SH8601";
 
@@ -58,23 +62,26 @@ static esp_err_t tx_param(esp_lcd_panel_io_handle_t io, int lcd_cmd, const void 
   return esp_lcd_panel_io_tx_param(io, lcd_cmd, param, param_size);
 }
 
-static esp_err_t rx_param(esp_lcd_panel_io_handle_t io, int lcd_cmd, const void *param, size_t param_size) {
+static esp_err_t rx_param(esp_lcd_panel_io_handle_t io, int lcd_cmd, void *param, size_t param_size) {
   if (USE_QSPI_INTERFACE) {
     lcd_cmd &= 0xff;
     lcd_cmd <<= 8;
     lcd_cmd |= LCD_OPCODE_READ_CMD << 24;
   }
-  return esp_lcd_panel_io_tx_param(io, lcd_cmd, param, param_size);
+  return esp_lcd_panel_io_rx_param(io, lcd_cmd, param, param_size);
 }
 
 esp_err_t sh8601_test_display_communication(esp_lcd_panel_io_handle_t io_handle) {
   ESP_LOGI(TAG, "Testing SH8601Z communication");
 
-  uint8_t id_array[3] = {0};
+  // Poisoned rather than zeroed so "the read did nothing" is distinguishable
+  // from a panel that genuinely reported zeroes.
+  uint8_t id_array[3] = {0xA5, 0xA5, 0xA5};
 
-  rx_param(io_handle, SH8601_R_RDID, &id_array, 3);
+  esp_err_t err = rx_param(io_handle, SH8601_R_RDID, id_array, sizeof(id_array));
 
-  ESP_LOGI(TAG, "Display ID: %02X %02X %02X", id_array[0], id_array[1], id_array[2]);
+  ESP_LOGI(TAG, "Display ID: %02X %02X %02X (%s; 0xA5 = untouched)", id_array[0], id_array[1], id_array[2],
+           esp_err_to_name(err));
   return ESP_OK;
 }
 
@@ -95,6 +102,6 @@ esp_err_t sh8601_set_display_brightness(esp_lcd_panel_io_handle_t io_handle, uin
 }
 
 esp_err_t sh8601_set_hbm_mode(esp_lcd_panel_io_handle_t io_handle, bool hbm_on) {
-  uint8_t ctl_val[1] = { (uint8_t)(hbm_on ? 0xFF : 0x00) };
+  uint8_t ctl_val[1] = {(uint8_t)(hbm_on ? 0xFF : 0x00)};
   return tx_param(io_handle, SH8601_W_WHBMCTL, ctl_val, 1);
 }

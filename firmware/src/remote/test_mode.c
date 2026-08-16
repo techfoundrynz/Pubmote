@@ -49,7 +49,7 @@ static void test_mode_task(void *pvParameters) {
 
     stats_update();
 
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(15));
   }
 }
 

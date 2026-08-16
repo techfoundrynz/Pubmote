@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Sync Slint LSP",
+            "type": "shell",
+            "command": "python",
+            "args": ["scripts/sync_slint_lsp.py"],
+            "linux": { "command": "python3" },
+            "osx": { "command": "python3" },
+            "runOptions": { "runOn": "folderOpen" },
+            "presentation": {
+                "reveal": "silent",
+                "revealProblems": "onProblem",
+                "panel": "dedicated",
+                "close": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

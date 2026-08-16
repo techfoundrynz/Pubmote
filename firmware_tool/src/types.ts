@@ -12,6 +12,7 @@ export interface DeviceInfoData {
   variant?: string;
   hardware?: string;
   hasCoredump?: boolean;
+  hasFirmware?: boolean;
 }
 
 export interface FlashProgress {
