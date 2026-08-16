@@ -21,6 +21,8 @@ static int motionless_counter = 0;
 
 static const char *TAG = "PUBREMOTE-IMU";
 static TaskHandle_t imu_task_handle = NULL;
+static volatile bool imu_should_run = false;
+static volatile bool imu_running = false;
 
 #define DEBUG_IMU 0
 
@@ -132,12 +134,14 @@ static void imu_get_data() {
 }
 
 void imu_task(void *pvParameters) {
-  while (1) {
+  imu_running = true;
+  while (imu_should_run) {
     imu_get_data();
     vTaskDelay(pdMS_TO_TICKS(50));
   }
 
   ESP_LOGI(TAG, "IMU task ended");
+  imu_running = false;
   // terminate self
   vTaskDelete(NULL);
 }
@@ -152,6 +156,7 @@ void imu_init() {
     ESP_LOGI(TAG, "imu_driver_init succeeded");
   }
 
+  imu_should_run = true;
   xTaskCreate(imu_task, "imu_task", 4096, NULL, 2, &imu_task_handle);
 #endif
 }
@@ -159,7 +164,20 @@ void imu_init() {
 void imu_deinit() {
 #if IMU_ENABLED
   if (imu_task_handle != NULL) {
-    vTaskDelete(imu_task_handle);
+    // Ask it to exit and wait. vTaskDelete does not release mutexes the victim holds, and this
+    // task spends its life in I2C transactions - killing it mid-transfer strands the driver's
+    // bus mutex and every later transfer on the bus times out for good.
+    imu_should_run = false;
+    for (int i = 0; i < 100 && imu_running; i++) {
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    if (imu_running) {
+      ESP_LOGE(TAG, "IMU task did not exit - forcing deletion");
+      vTaskDelete(imu_task_handle);
+      imu_running = false;
+    }
+
     imu_task_handle = NULL;
   }
   imu_driver_deinit();

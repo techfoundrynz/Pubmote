@@ -72,6 +72,29 @@ static bool is_initialized = false;
 static uint8_t bl_level = 0;
 static bool hbm_mode_active = false;
 
+// esp_lcd panel IO is not thread safe, and brightness/HBM/sleep commands are issued from the IMU
+// and power management tasks while the Slint task is mid-flush. Two concurrent
+// spi_device_acquire_bus() calls on one device leave the bus lock held with no owner, and the
+// next caller blocks in dev_wait() forever.
+static SemaphoreHandle_t panel_io_lock = NULL;
+
+extern "C" bool panel_io_lock_acquire(uint32_t timeout_ms) {
+  if (!panel_io_lock) {
+    return true;
+  }
+  if (xSemaphoreTakeRecursive(panel_io_lock, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
+    ESP_LOGW(TAG, "panel IO lock timed out; skipping panel access");
+    return false;
+  }
+  return true;
+}
+
+extern "C" void panel_io_lock_release() {
+  if (panel_io_lock) {
+    xSemaphoreGiveRecursive(panel_io_lock);
+  }
+}
+
 uint16_t *slint_chunk_buffer[SLINT_CHUNK_ACCUMULATORS] = {};
 // Three staging buffers instead of two, so keep each shorter and hold the total roughly where
 // the double-buffered pair was - this is internal DMA-capable RAM and there is little spare.
@@ -138,6 +161,9 @@ extern "C" bool display_get_hbm() {
 extern "C" void display_set_hbm(bool active) {
   hbm_mode_active = active;
   if (is_initialized) {
+    if (!panel_io_lock_acquire(1000)) {
+      return;
+    }
 #if DISP_SH8601 || DISP_CO5300
     sh8601_set_hbm_mode(lcd_io, hbm_mode_active);
 #endif
@@ -147,6 +173,7 @@ extern "C" void display_set_hbm(bool active) {
     else {
       set_display_brightness(lcd_io, bl_level);
     }
+    panel_io_lock_release();
   }
 }
 
@@ -193,7 +220,11 @@ extern "C" void display_set_bl_level(uint8_t level) {
   if (is_initialized) {
     bl_level = level;
     if (!hbm_mode_active) {
+      if (!panel_io_lock_acquire(1000)) {
+        return;
+      }
       set_display_brightness(lcd_io, bl_level);
+      panel_io_lock_release();
     }
   }
 }
@@ -801,6 +832,9 @@ extern "C" void display_init() {
   // Counting, not binary: the flush keeps several chunk transfers outstanding so rendering
   // overlaps the panel DMA, and a binary semaphore would collapse two completions into one.
   trans_sem = xSemaphoreCreateCounting(SLINT_CHUNK_ACCUMULATORS, 0);
+  if (!panel_io_lock) {
+    panel_io_lock = xSemaphoreCreateRecursiveMutex();
+  }
   ESP_ERROR_CHECK(app_lcd_init());
 #if TOUCH_ENABLED
   ESP_ERROR_CHECK(app_touch_init());
@@ -834,6 +868,7 @@ extern "C" void display_deinit() {
     esp_lcd_touch_del(touch_handle);
     touch_handle = NULL;
   }
+  bool panel_locked = panel_io_lock_acquire(1000);
   if (lcd_panel) {
     esp_lcd_panel_del(lcd_panel);
     lcd_panel = NULL;
@@ -843,15 +878,19 @@ extern "C" void display_deinit() {
     lcd_io = NULL;
   }
   spi_bus_free(LCD_HOST);
+  if (panel_locked) {
+    panel_io_lock_release();
+  }
 
   is_initialized = false;
 }
 
 extern "C" void display_off() {
   ESP_LOGI(TAG, "Display sleep");
-  if (lcd_panel) {
+  if (lcd_panel && panel_io_lock_acquire(1000)) {
     esp_lcd_panel_disp_on_off(lcd_panel, false);
     esp_lcd_panel_disp_sleep(lcd_panel, true);
+    panel_io_lock_release();
   }
   if (touch_handle) {
     esp_lcd_touch_enter_sleep(touch_handle);

@@ -337,19 +337,26 @@ static void enter_sleep_internal() {
   vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow effects to finish
   esp_task_wdt_reset();
 
+  // Each of these waits on a task to exit or talks to an I2C device, and an unresponsive bus
+  // costs the full transfer timeout per call - feed between them or shutdown trips the watchdog.
   imu_deinit();
+  esp_task_wdt_reset();
   haptic_deinit(); // Stops the DRV2605 and drives HAPTIC_EN low
-  led_deinit();    // Releases the RMT channel so LED_DATA can be latched low
+  esp_task_wdt_reset();
+  led_deinit(); // Releases the RMT channel so LED_DATA can be latched low
   buzzer_deinit();
+  esp_task_wdt_reset();
 
   acc1_power_set_level(0);
   acc2_power_set_level(0);
 
   enable_wake();
+  esp_task_wdt_reset();
 
 #ifdef PMU_INT
   await_pmu_int_reset();
   power_state_update();
+  esp_task_wdt_reset();
 #endif
 
   // Must come after the last power_state_update - it turns off the PMU ADC

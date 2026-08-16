@@ -22,6 +22,11 @@
 
 static const char *TAG = "slint_platform";
 
+// Defined in display.cpp. Serialises panel IO against the brightness, HBM and sleep commands
+// other tasks issue on the same esp_lcd handle.
+extern "C" bool panel_io_lock_acquire(uint32_t timeout_ms);
+extern "C" void panel_io_lock_release();
+
 // Interrupt-driven touch: the ISR wakes the event loop so a touch report is
 // processed immediately instead of on the next 20ms poll tick.
 static TaskHandle_t s_touch_notify_task = nullptr;
@@ -350,7 +355,11 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         }
       }
 
-      if (std::exchange(m_window->needs_redraw, false)) {
+      // Held for the whole frame, not per draw call: tx_color is queued DMA that outlives
+      // draw_bitmap, so a foreign tx_param between chunks would still race the bus lock and the
+      // driver's in-flight bookkeeping. If it is not free the frame stays pending and retries.
+      if (m_window->needs_redraw && panel_io_lock_acquire(1000)) {
+        m_window->needs_redraw = false;
         uint64_t t_start = esp_timer_get_time();
         uint64_t t_render = 0;
         uint64_t t_copy = 0;
@@ -360,7 +369,6 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         uint32_t frame_lines = 0;
 
         extern SemaphoreHandle_t trans_sem;
-        static bool dma_active = false;
 
         extern uint16_t *slint_chunk_buffer[SLINT_CHUNK_ACCUMULATORS];
         extern int slint_chunk_lines; // resolved at init in display.cpp
@@ -400,28 +408,31 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
           q_len--;
         };
 
-        // Block only when this particular buffer is still being read. Everything else keeps
-        // rendering while the panel drains, which is the whole point of having one buffer per
-        // accumulator.
+        // draw_bitmap opens with a CASET/RASET tx_param, and esp_lcd's tx_param acquires the SPI
+        // bus, which acquire_core() only grants once the queue is empty - so a draw call already
+        // waits for every outstanding transfer, just inside spi_device_acquire_bus at
+        // portMAX_DELAY. Retiring here costs the same wall clock and stays bounded.
+        auto drain_all = [&]() {
+          if (!trans_sem) {
+            return;
+          }
+          while (q_len > 0) {
+            retire_one();
+          }
+        };
+
+        // Rendering keeps going while the panel drains, so only stall when the line about to be
+        // written belongs to a buffer still being read. Transfers retire oldest first.
         auto wait_for = [&](int buf) {
           if (!trans_sem) {
             return;
           }
-          bool queued = false;
           for (int i = 0; i < q_len; i++) {
             if (inflight_q[(q_head + i) % SLINT_CHUNK_ACCUMULATORS] == buf) {
-              queued = true;
-              break;
-            }
-          }
-          while (queued) {
-            retire_one();
-            queued = false;
-            for (int i = 0; i < q_len; i++) {
-              if (inflight_q[(q_head + i) % SLINT_CHUNK_ACCUMULATORS] == buf) {
-                queued = true;
-                break;
+              for (int r = 0; r <= i; r++) {
+                retire_one();
               }
+              return;
             }
           }
         };
@@ -440,17 +451,12 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
           }
           t_copy += esp_timer_get_time() - chunk_copy_start;
 
-          // Only this buffer has to be free; the queue absorbs the rest.
-          wait_for(a);
-          if (q_len == SLINT_CHUNK_ACCUMULATORS) {
-            retire_one();
-          }
+          drain_all();
           // Only count a transfer that was actually queued. A failed call raises no completion
           // callback, and waiting for one that cannot arrive wedges the event loop for good.
           if (timed_draw_bitmap(panel_handle, c.x0, c.y0, c.x1, c.y0 + c.lines, slint_chunk_buffer[a]) == ESP_OK) {
             inflight_q[(q_head + q_len) % SLINT_CHUNK_ACCUMULATORS] = a;
             q_len++;
-            dma_active = true;
           }
           else {
             ESP_LOGW(TAG, "draw_bitmap failed for chunk %d,%d %dx%d", (int)c.x0, (int)c.y0,
@@ -546,7 +552,6 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
             retire_one();
           }
         }
-        dma_active = false;
 
         // How much of the panel Slint asked to be repainted this frame. Cheap to total up,
         // and it is the number that says whether invalidation or pixel cost is the limit:
@@ -640,6 +645,7 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         (void)t_copy;
         (void)t_wait_transmit;
 #endif
+        panel_io_lock_release();
       }
 
       if (m_window->window().has_active_animations()) {

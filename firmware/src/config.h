@@ -14,7 +14,7 @@
 #define MIN_RCV_API_VERSION 1
 
 #ifndef TARGET_FPS
-  #define TARGET_FPS 50
+  #define TARGET_FPS 60
 #endif
 
 #define MIN_BATTERY_VOLTAGE 3000
