@@ -1,4 +1,5 @@
 #include "wifi.h"
+#include "esp_heap_caps.h"
 #include "string.h"
 
 #define ESP_MAXIMUM_RETRY 5
@@ -6,13 +7,16 @@
 
 static bool is_initialized = false;
 static const char *TAG = "PUBMOTE-WIFI";
-static EventGroupHandle_t s_wifi_event_group;
+static EventGroupHandle_t s_wifi_event_group = NULL;
 static int s_retry_num = 0;
 static wifi_connection_state_t s_wifi_state = WIFI_STATE_DISCONNECTED;
 static bool s_auto_reconnect_enabled = true;
 static char s_stored_ssid[33] = "";
 static char s_stored_password[65] = "";
 static TimerHandle_t s_reconnect_timer = NULL;
+static esp_event_handler_instance_t s_instance_any_id = NULL;
+static esp_event_handler_instance_t s_instance_got_ip = NULL;
+static bool s_owns_event_loop = false;
 esp_netif_t *wifi_netif_sta = NULL;
 
 // Timer callback for automatic reconnection
@@ -87,8 +91,52 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
   }
 }
 
+// Release everything wifi_init() allocated. Safe to call on a partially
+// initialized module - every step is guarded by its own handle
+static void wifi_release_resources(void) {
+  if (s_instance_any_id != NULL) {
+    esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, s_instance_any_id);
+    s_instance_any_id = NULL;
+  }
+  if (s_instance_got_ip != NULL) {
+    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, s_instance_got_ip);
+    s_instance_got_ip = NULL;
+  }
+
+  if (wifi_netif_sta != NULL) {
+    esp_netif_destroy_default_wifi(wifi_netif_sta);
+    wifi_netif_sta = NULL;
+  }
+
+  // Only tear down the event loop if this module created it - the failure paths
+  // reach here too, and ESP-NOW's loop is not ours to delete
+  if (s_owns_event_loop) {
+    esp_err_t err = esp_event_loop_delete_default();
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+      ESP_LOGW(TAG, "esp_event_loop_delete_default failed: %s", esp_err_to_name(err));
+    }
+    s_owns_event_loop = false;
+  }
+
+  if (s_reconnect_timer != NULL) {
+    xTimerStop(s_reconnect_timer, 0);
+    xTimerDelete(s_reconnect_timer, 0);
+    s_reconnect_timer = NULL;
+  }
+
+  if (s_wifi_event_group != NULL) {
+    vEventGroupDelete(s_wifi_event_group);
+    s_wifi_event_group = NULL;
+  }
+}
+
 // Initialize WiFi station mode after ESP-NOW
 esp_err_t wifi_init(void) {
+  if (is_initialized) {
+    ESP_LOGW(TAG, "WiFi already initialized");
+    return ESP_OK;
+  }
+
   ESP_LOGI(TAG, "Initializing WiFi station mode after ESP-NOW");
 
   // Note: Call esp_now_deinit() before calling this function
@@ -113,7 +161,8 @@ esp_err_t wifi_init(void) {
   s_wifi_event_group = xEventGroupCreate();
   if (s_wifi_event_group == NULL) {
     ESP_LOGE(TAG, "Failed to create event group");
-    return ESP_ERR_NO_MEM;
+    ret = ESP_ERR_NO_MEM;
+    goto fail;
   }
 
   // Create reconnection timer
@@ -122,14 +171,16 @@ esp_err_t wifi_init(void) {
                                    NULL, reconnect_timer_callback);
   if (s_reconnect_timer == NULL) {
     ESP_LOGE(TAG, "Failed to create reconnection timer");
-    return ESP_ERR_NO_MEM;
+    ret = ESP_ERR_NO_MEM;
+    goto fail;
   }
 
   // Network interface should already be initialized from ESP-NOW
   esp_err_t netif_ret = esp_netif_init();
   if (netif_ret != ESP_OK && netif_ret != ESP_ERR_INVALID_STATE) {
     ESP_LOGE(TAG, "Failed to initialize network interface: %s", esp_err_to_name(netif_ret));
-    return netif_ret;
+    ret = netif_ret;
+    goto fail;
   }
   if (netif_ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGI(TAG, "Network interface already initialized from ESP-NOW");
@@ -139,8 +190,10 @@ esp_err_t wifi_init(void) {
   esp_err_t event_loop_ret = esp_event_loop_create_default();
   if (event_loop_ret != ESP_OK && event_loop_ret != ESP_ERR_INVALID_STATE) {
     ESP_LOGE(TAG, "Failed to create event loop: %s", esp_err_to_name(event_loop_ret));
-    return event_loop_ret;
+    ret = event_loop_ret;
+    goto fail;
   }
+  s_owns_event_loop = (event_loop_ret == ESP_OK);
   if (event_loop_ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGI(TAG, "Event loop already exists from ESP-NOW");
   }
@@ -148,35 +201,53 @@ esp_err_t wifi_init(void) {
   // Create WiFi station network interface
   if (wifi_netif_sta == NULL) {
     wifi_netif_sta = esp_netif_create_default_wifi_sta();
+    if (wifi_netif_sta == NULL) {
+      ESP_LOGE(TAG, "Failed to create WiFi STA netif");
+      ret = ESP_ERR_NO_MEM;
+      goto fail;
+    }
   }
 
   // WiFi should already be initialized from ESP-NOW
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   esp_err_t wifi_init_ret = esp_wifi_init(&cfg);
   if (wifi_init_ret != ESP_OK && wifi_init_ret != ESP_ERR_INVALID_STATE) {
-    ESP_LOGE(TAG, "Failed to initialize WiFi: %s", esp_err_to_name(wifi_init_ret));
-    return wifi_init_ret;
+    ESP_LOGE(TAG, "Failed to initialize WiFi: %s (free internal: %u, largest block: %u)",
+             esp_err_to_name(wifi_init_ret), heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    ret = wifi_init_ret;
+    goto fail;
   }
   if (wifi_init_ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGI(TAG, "WiFi already initialized from ESP-NOW, reconfiguring...");
   }
 
   // Register event handlers for WiFi station
-  esp_event_handler_instance_t instance_any_id;
-  esp_event_handler_instance_t instance_got_ip;
-  ESP_ERROR_CHECK(
-      esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id));
-  ESP_ERROR_CHECK(
-      esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
+  ret = esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &s_instance_any_id);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to register WiFi event handler: %s", esp_err_to_name(ret));
+    goto fail_wifi;
+  }
+  ret = esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &s_instance_got_ip);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to register IP event handler: %s", esp_err_to_name(ret));
+    goto fail_wifi;
+  }
 
   // Set WiFi mode to station (transition from ESP-NOW mode)
-  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+  ret = esp_wifi_set_mode(WIFI_MODE_STA);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to set WiFi mode: %s", esp_err_to_name(ret));
+    goto fail_wifi;
+  }
 
   // WiFi should already be started from ESP-NOW
   esp_err_t wifi_start_ret = esp_wifi_start();
   if (wifi_start_ret != ESP_OK && wifi_start_ret != ESP_ERR_INVALID_STATE) {
-    ESP_LOGE(TAG, "Failed to start WiFi: %s", esp_err_to_name(wifi_start_ret));
-    return wifi_start_ret;
+    ESP_LOGE(TAG, "Failed to start WiFi: %s (free internal: %u, largest block: %u)", esp_err_to_name(wifi_start_ret),
+             heap_caps_get_free_size(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    ret = wifi_start_ret;
+    goto fail_wifi;
   }
   if (wifi_start_ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGI(TAG, "WiFi already started from ESP-NOW, continuing...");
@@ -188,6 +259,14 @@ esp_err_t wifi_init(void) {
   ESP_LOGI(TAG, "WiFi station initialization completed after ESP-NOW transition");
   is_initialized = true;
   return ESP_OK;
+
+fail_wifi:
+  esp_wifi_stop();
+  esp_wifi_deinit();
+fail:
+  wifi_release_resources();
+  s_wifi_state = WIFI_STATE_DISCONNECTED;
+  return ret;
 }
 
 // Scan for available WiFi networks and return list
@@ -276,6 +355,11 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
     return ESP_ERR_INVALID_ARG;
   }
 
+  if (!is_initialized || s_wifi_event_group == NULL) {
+    ESP_LOGE(TAG, "WiFi is not initialized - cannot connect");
+    return ESP_ERR_WIFI_NOT_INIT;
+  }
+
   ESP_LOGI(TAG, "Connecting to WiFi network: %s", ssid);
 
   // Store credentials for auto-reconnection
@@ -305,7 +389,12 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
   }
 
   // Set WiFi configuration
-  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+  esp_err_t cfg_err = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+  if (cfg_err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to set WiFi config: %s", esp_err_to_name(cfg_err));
+    s_wifi_state = WIFI_STATE_DISCONNECTED;
+    return cfg_err;
+  }
 
   // Reset retry counter and update state
   s_retry_num = 0;
@@ -336,7 +425,8 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
       return ESP_ERR_TIMEOUT;
     }
 
-    bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(check_interval_ms));
+    bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE,
+                               pdMS_TO_TICKS(check_interval_ms));
     if (bits & (WIFI_CONNECTED_BIT | WIFI_FAIL_BIT)) {
       break;
     }
@@ -389,11 +479,9 @@ esp_err_t wifi_disconnect(void) {
 esp_err_t wifi_uninit(void) {
   ESP_LOGI(TAG, "Uninitializing WiFi");
 
-  // Stop and delete reconnection timer
+  // Stop the reconnection timer before tearing the driver down
   if (s_reconnect_timer != NULL) {
     xTimerStop(s_reconnect_timer, 0);
-    xTimerDelete(s_reconnect_timer, 0);
-    s_reconnect_timer = NULL;
   }
 
   // Clear stored credentials
@@ -416,20 +504,7 @@ esp_err_t wifi_uninit(void) {
   // Destroy the netif and event loop so a following BLE (re)init gets its
   // internal RAM back (the lwip TCP/IP thread itself cannot be reclaimed -
   // esp_netif_deinit is unsupported - but everything else can)
-  if (wifi_netif_sta != NULL) {
-    esp_netif_destroy_default_wifi(wifi_netif_sta);
-    wifi_netif_sta = NULL;
-  }
-  err = esp_event_loop_delete_default();
-  if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-    ESP_LOGW(TAG, "esp_event_loop_delete_default failed: %s", esp_err_to_name(err));
-  }
-
-  // Clean up event group
-  if (s_wifi_event_group) {
-    vEventGroupDelete(s_wifi_event_group);
-    s_wifi_event_group = NULL;
-  }
+  wifi_release_resources();
 
   // Reset state
   s_wifi_state = WIFI_STATE_DISCONNECTED;
