@@ -67,7 +67,7 @@ export component AppButton inherits Rectangle {
             vertical-alignment: center;
         }
 
-        if root.right-text != "" || root.variant == "ghost" : Text {
+        if root.right-text != "" : Text {
             text: root.right-text;
             color: !root.enabled ? Theme.text-dim :
                 root.variant == "ghost" ? Theme.text-dim :
