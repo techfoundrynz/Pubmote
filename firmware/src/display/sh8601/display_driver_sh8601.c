@@ -24,9 +24,10 @@ const sh8601_lcd_init_cmd_t sh8601_lcd_init_cmds[] = {
     {SH8601_C_INVOFF, (uint8_t[]){0x00}, 0, 0},
     {SH8601_W_PIXFMT, (uint8_t[]){0x05}, 1, 0}, // Interface Pixel Format 16bit/pixel
     {SH8601_C_DISPON, (uint8_t[]){0x00}, 0, 0},
-    {SH8601_W_WCTRLD1, (uint8_t[]){0x28}, 1, 0},            // Brightness Control On and Display Dimming On
-    {SH8601_W_WDBRIGHTNESSVALNOR, (uint8_t[]){0x00}, 1, 0}, // Brightness adjustment
-    {SH8601_W_WCE, (uint8_t[]){0x00}, 1, 10},               // High contrast mode (Sunlight Readability Enhancement)
+    {SH8601_W_WCTRLD1, (uint8_t[]){0x28}, 1, 0},                  // Brightness Control On and Display Dimming On
+    {SH8601_W_WDBRIGHTNESSVALHBM, (uint8_t[]){0xFF, 0x03}, 2, 0}, // HBM brightness at full scale
+    {SH8601_W_WDBRIGHTNESSVALNOR, (uint8_t[]){0x00, 0x00}, 2, 0}, // Brightness adjustment
+    {SH8601_W_WCE, (uint8_t[]){0x00}, 1, 10}, // High contrast mode (Sunlight Readability Enhancement)
 };
 
 size_t sh8601_get_lcd_init_cmds_size(void) {
@@ -94,14 +95,23 @@ esp_err_t sh8601_display_driver_preinit() {
 }
 
 esp_err_t sh8601_set_display_brightness(esp_lcd_panel_io_handle_t io_handle, uint8_t brightness) {
-  // Create a buffer for the command and brightness value
+#if DISP_SH8601
+  // DBV is 10 bit across two parameters here. DBV[9:8] stays 0 - the module, not the
+  // controller, defines the DBV to luminance curve and 0x0FF is its reset value
+  uint8_t data[2] = {brightness, 0x00};
+  return tx_param(io_handle, SH8601_W_WDBRIGHTNESSVALNOR, data, 2);
+#else
   uint8_t data[1] = {brightness};
-
-  // Send the command and brightness value over SPI
   return tx_param(io_handle, SH8601_W_WDBRIGHTNESSVALNOR, data, 1);
+#endif
 }
 
 esp_err_t sh8601_set_hbm_mode(esp_lcd_panel_io_handle_t io_handle, bool hbm_on) {
+#if DISP_SH8601
+  uint8_t ctl_val[1] = {(uint8_t)(hbm_on ? SH8601_HBMCTL_ON : SH8601_HBMCTL_OFF)};
+#else
+  // CO5300 only defines HBM_EN
   uint8_t ctl_val[1] = {(uint8_t)(hbm_on ? 0xFF : 0x00)};
+#endif
   return tx_param(io_handle, SH8601_W_WHBMCTL, ctl_val, 1);
 }

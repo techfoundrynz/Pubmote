@@ -6,9 +6,9 @@
 #include <esp_lcd_sh8601.h>
 #include <esp_lcd_types.h>
 
-
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #define LCD_PIXEL_CLOCK_HZ (80 * 1000 * 1000)
@@ -79,6 +79,9 @@ extern "C" {
 #define SH8601_W_WDBRIGHTNESSVALHBM 0x63 // Write Display Brightness Value in HBM Mode
 #define SH8601_R_WDBRIGHTNESSVALHBM 0x64 // Read Display Brightness Value in HBM Mode
 #define SH8601_W_WHBMCTL 0x66            // Write HBM Control
+// HBMCTL bitfield: HBM_MODE in D[5:4], HBM_EN in D[1], all other bits reserved and must be 0
+#define SH8601_HBMCTL_OFF 0x10 // Reset value - HBM_MODE0, HBM_EN off
+#define SH8601_HBMCTL_ON 0x12  // HBM_MODE0 - HBM_EN on
 
 #define SH8601_W_COLORSET0 0x70  // Color Set 0
 #define SH8601_W_COLORSET1 0x71  // Color Set 1
@@ -119,23 +122,21 @@ extern "C" {
 #define SH8601_MADCTL_BGR 0x08                      // Blue-Green-Red pixel order
 #define SH8601_MADCTL_COLOR_ORDER SH8601_MADCTL_RGB // RGB
 
-enum {
-  SH8601_ContrastOff = 0,
-  SH8601_LowContrast,
-  SH8601_MediumContrast,
-  SH8601_HighContrast
-};
+  enum {
+    SH8601_ContrastOff = 0,
+    SH8601_LowContrast,
+    SH8601_MediumContrast,
+    SH8601_HighContrast
+  };
 
-extern const sh8601_lcd_init_cmd_t sh8601_lcd_init_cmds[];
-extern const sh8601_lcd_init_cmd_t co5300_lcd_init_cmds[];
-size_t sh8601_get_lcd_init_cmds_size(void);
-size_t co5300_get_lcd_init_cmds_size(void);
-esp_err_t sh8601_test_display_communication(esp_lcd_panel_io_handle_t io_handle);
-esp_err_t sh8601_display_driver_preinit();
-esp_err_t sh8601_set_display_brightness(esp_lcd_panel_io_handle_t io_handle, uint8_t brightness);
-esp_err_t sh8601_set_hbm_mode(esp_lcd_panel_io_handle_t io_handle, bool hbm_on);
-
-
+  extern const sh8601_lcd_init_cmd_t sh8601_lcd_init_cmds[];
+  extern const sh8601_lcd_init_cmd_t co5300_lcd_init_cmds[];
+  size_t sh8601_get_lcd_init_cmds_size(void);
+  size_t co5300_get_lcd_init_cmds_size(void);
+  esp_err_t sh8601_test_display_communication(esp_lcd_panel_io_handle_t io_handle);
+  esp_err_t sh8601_display_driver_preinit();
+  esp_err_t sh8601_set_display_brightness(esp_lcd_panel_io_handle_t io_handle, uint8_t brightness);
+  esp_err_t sh8601_set_hbm_mode(esp_lcd_panel_io_handle_t io_handle, bool hbm_on);
 
 #ifdef __cplusplus
 }
