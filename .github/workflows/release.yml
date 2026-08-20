@@ -15,7 +15,7 @@ on:
         default: false
         type: boolean
       custom_version:
-        description: 'Custom version tag (e.g., v1.2.3) - leave empty to use version from prebuild_hook.py'
+        description: 'Custom version tag (e.g., v1.2.3) - leave empty to use version from platformio.ini'
         required: false
         default: ''
         type: string
