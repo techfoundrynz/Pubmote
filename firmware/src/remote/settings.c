@@ -788,6 +788,11 @@ esp_err_t settings_init() {
   if (device_settings.hbm_mode >= HBM_MODE_COUNT) {
     device_settings.hbm_mode = HBM_MODE_OFF;
   }
+#if !IMU_ENABLED
+  if (device_settings.hbm_mode == HBM_MODE_RAISED) {
+    device_settings.hbm_mode = HBM_MODE_OFF;
+  }
+#endif
 
   device_settings.led_mode =
       nvs_read_int("led_mode", &temp_setting_value) == ESP_OK ? (LedModeOptions)temp_setting_value : DEFAULT_LED_MODE;

@@ -160,6 +160,9 @@ extern "C" bool display_get_hbm() {
 }
 
 extern "C" void display_set_hbm(bool active) {
+  if (active && !display_supports_hbm()) {
+    return;
+  }
   hbm_mode_active = active;
   if (is_initialized) {
     if (!panel_io_lock_acquire(1000)) {
