@@ -49,9 +49,22 @@ export component AboutScreen inherits Rectangle {
     in property <[StatEntry]> stats: [];
     callback check-updates;
     callback back;
+    callback secret;
     background: Theme.bg;
 
     property <int> current-page: 0;
+    property <int> version-taps: 0;
+
+    function count-version-tap() {
+        root.version-taps += 1;
+        tap-window.running = false;
+        if (root.version-taps >= 5) {
+            root.version-taps = 0;
+            root.secret();
+        } else {
+            tap-window.running = true;
+        }
+    }
 
     VerticalLayout {
         Pager {
@@ -67,11 +80,49 @@ export component AboutScreen inherits Rectangle {
                     padding-right: 40px * Theme.scale;
                     spacing: 10px * Theme.scale;
                     alignment: center;
-                    Text {
-                        text: root.version-info;
-                        color: Theme.text;
-                        font-size: Theme.font-14;
-                        horizontal-alignment: center;
+                    Rectangle {
+                        Text {
+                            text: root.version-info;
+                            color: Theme.text;
+                            font-size: Theme.font-14;
+                            horizontal-alignment: center;
+                        }
+
+                        // Sits on top of the Pager's swipe detector, so it has to
+                        // reproduce the page snap itself or paging dies here.
+                        TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            property <length> start-x;
+                            pointer-event(evt) => {
+                                if (evt.button != PointerEventButton.left) {
+                                    return;
+                                }
+                                if (evt.kind == PointerEventKind.down) {
+                                    self.start-x = self.mouse-x;
+                                } else if (evt.kind == PointerEventKind.up) {
+                                    let diff = self.mouse-x - self.start-x;
+                                    if (diff > 40px && root.current-page > 0) {
+                                        root.current-page -= 1;
+                                        root.version-taps = 0;
+                                    } else if (diff < -40px && root.current-page < 1) {
+                                        root.current-page += 1;
+                                        root.version-taps = 0;
+                                    } else {
+                                        root.count-version-tap();
+                                    }
+                                }
+                            }
+                        }
+
+                        tap-window := Timer {
+                            interval: 1200ms;
+                            running: false;
+                            triggered => {
+                                self.running = false;
+                                root.version-taps = 0;
+                            }
+                        }
                     }
 
                     AppButton {

@@ -22,6 +22,7 @@
 #include "remote/color_utils.h"
 #include "remote/i2c.h"
 #include "remote/imu.h"
+#include "remote/input_router.h"
 #include "remote/led.h"
 #include "remoteinputs.h"
 #include "screens/about_screen.h"
@@ -29,9 +30,12 @@
 #include "screens/imu_calibration_screen.h"
 #include "screens/input_calibration_screen.h"
 #include "screens/menu_screen.h"
+#include "screens/flappy_screen.h"
+#include "screens/games_screen.h"
 #include "screens/pairing_screen.h"
 #include "screens/settings_screen.h"
 #include "screens/stats_screen.h"
+#include "screens/tetris_screen.h"
 #include "screens/update_screen.h"
 #include "settings.h"
 #include "slint-esp.h"
@@ -151,6 +155,14 @@ extern "C" bool is_update_screen_active() {
   return cached_active_screen.load() == Screen::Update;
 }
 
+extern "C" bool is_tetris_screen_active() {
+  return cached_active_screen.load() == Screen::Tetris;
+}
+
+extern "C" bool is_flappy_screen_active() {
+  return cached_active_screen.load() == Screen::Flappy;
+}
+
 extern "C" uint8_t display_get_bl_level() {
   return bl_level;
 }
@@ -210,12 +222,14 @@ extern "C" void display_set_joystick_supported(bool supported) {
 
   const bool x_supported = input_pins_x_enabled();
   const bool y_supported = input_pins_y_enabled();
+  const bool button_supported = input_pins_button_enabled();
 
-  slint::invoke_from_event_loop([supported, x_supported, y_supported]() {
+  slint::invoke_from_event_loop([supported, x_supported, y_supported, button_supported]() {
     const auto &state = get_slint_window()->global<UiState>();
     state.set_joystick_supported(supported);
     state.set_joystick_x_supported(x_supported);
     state.set_joystick_y_supported(y_supported);
+    state.set_button_supported(button_supported);
   });
 }
 
@@ -271,6 +285,19 @@ extern "C"
   void handle_update_primary();
   void handle_update_secondary();
   void handle_update_selected(int index);
+  void handle_open_games();
+  void handle_games_tetris();
+  void handle_games_flappy();
+  void handle_games_back();
+  void handle_tetris_tick();
+  void handle_tetris_press(int zone);
+  void handle_tetris_release();
+  void handle_tetris_rotate();
+  void handle_tetris_gesture(int kind);
+  void handle_tetris_back();
+  void handle_flappy_tick();
+  void handle_flappy_flap();
+  void handle_flappy_back();
 }
 
 #include <algorithm>
@@ -286,6 +313,33 @@ extern "C"
   extern volatile uint32_t slint_esp_dirty_px;
 }
 
+// Default input handlers. Focus navigation is the right behaviour for a menu, so
+// it is registered as the router's default and any screen that wants the stick
+// for itself simply claims it.
+static void nav_dispatch_key(std::u8string_view key) {
+  slint::SharedString text(key);
+  slint::invoke_from_event_loop([text]() {
+    if (slint_window) {
+      slint_window->window().dispatch_key_press_event(text);
+      slint_window->window().dispatch_key_release_event(text);
+    }
+  });
+}
+
+static void nav_focus_next() {
+  nav_dispatch_key(slint::platform::key_codes::Tab);
+}
+
+static void nav_focus_previous() {
+  nav_dispatch_key(slint::platform::key_codes::Backtab);
+}
+
+// A button click is delivered as Return, so a screen claims it the ordinary
+// Slint way with a FocusScope rather than through a parallel registry.
+extern "C" void ui_dispatch_activate() {
+  nav_dispatch_key(slint::platform::key_codes::Return);
+}
+
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
 
@@ -294,6 +348,10 @@ static void connect_callbacks() {
   state.set_joystick_supported(input_pins_joystick_enabled());
   state.set_joystick_x_supported(input_pins_x_enabled());
   state.set_joystick_y_supported(input_pins_y_enabled());
+  state.set_button_supported(input_pins_button_enabled());
+
+  input_router_set_default(INPUT_ACTION_STICK_DOWN, nav_focus_next, input_repeat(750, 500));
+  input_router_set_default(INPUT_ACTION_STICK_UP, nav_focus_previous, input_repeat(750, 500));
 
   state.on_screen_changed([](Screen screen) {
     Screen prev = cached_active_screen.exchange(screen);
@@ -311,6 +369,16 @@ static void connect_callbacks() {
       else if (prev == Screen::Menu) {
         teardown_menu_properties();
       }
+      else if (prev == Screen::Tetris) {
+        teardown_tetris_properties();
+      }
+      else if (prev == Screen::Flappy) {
+        teardown_flappy_properties();
+      }
+
+      // Whatever the outgoing screen claimed is dropped here, so a screen only
+      // ever has to say what it handles, never to remember to release it.
+      input_router_restore_defaults();
 
       // Enter hooks
       if (screen == Screen::Stats) {
@@ -339,6 +407,15 @@ static void connect_callbacks() {
       }
       else if (screen == Screen::Boards) {
         setup_boards_properties();
+      }
+      else if (screen == Screen::Games) {
+        setup_games_properties();
+      }
+      else if (screen == Screen::Tetris) {
+        setup_tetris_properties();
+      }
+      else if (screen == Screen::Flappy) {
+        setup_flappy_properties();
       }
     }
   });
@@ -372,6 +449,19 @@ static void connect_callbacks() {
   state.on_update_primary([]() { handle_update_primary(); });
   state.on_update_secondary([]() { handle_update_secondary(); });
   state.on_update_selected([](int index) { handle_update_selected(index); });
+  state.on_open_games([]() { handle_open_games(); });
+  state.on_games_tetris([]() { handle_games_tetris(); });
+  state.on_games_flappy([]() { handle_games_flappy(); });
+  state.on_games_back([]() { handle_games_back(); });
+  state.on_tetris_tick([]() { handle_tetris_tick(); });
+  state.on_tetris_press([](int zone) { handle_tetris_press(zone); });
+  state.on_tetris_release([]() { handle_tetris_release(); });
+  state.on_tetris_rotate([]() { handle_tetris_rotate(); });
+  state.on_tetris_gesture([](int kind) { handle_tetris_gesture(kind); });
+  state.on_tetris_back([]() { handle_tetris_back(); });
+  state.on_flappy_tick([]() { handle_flappy_tick(); });
+  state.on_flappy_flap([]() { handle_flappy_flap(); });
+  state.on_flappy_back([]() { handle_flappy_back(); });
 
   const auto &color_slider_gen = slint_window->global<ColorSliderGenerator>();
   color_slider_gen.on_generate_track(generate_color_slider_track);
@@ -507,10 +597,9 @@ static void slint_event_loop(void *pvParameters) {
   vTaskDelete(NULL);
 }
 
-// Input polling task to map remote control buttons/joystick to Slint navigation
+// Feeds the router the analog state it turns into direction edges. Button
+// clicks arrive on their own callback from remoteinputs.
 static void slint_input_task(void *pvParameters) {
-  static bool was_pressed = false;
-  static int last_dir = 0; // -1: up, 1: down, 0: center
 
 #if SHOW_FPS
   static uint32_t last_fps_time = 0;
@@ -519,46 +608,7 @@ static void slint_input_task(void *pvParameters) {
 
   while (true) {
     if (slint_window) {
-      // 1. Button C mapping to Return/Enter key
-      bool is_pressed = remote_data.bt_c;
-      if (is_pressed != was_pressed) {
-        was_pressed = is_pressed;
-        slint::invoke_from_event_loop([=]() {
-          if (is_pressed) {
-            slint_window->window().dispatch_key_press_event("\n");
-          }
-          else {
-            slint_window->window().dispatch_key_release_event("\n");
-          }
-        });
-      }
-
-      // 2. Joystick Y mapping to Tab/Backtab for focus navigation
-      // Using an edge-triggered approach to prevent rapid scrolling on hold or drift.
-      int current_dir = 0;
-      if (remote_data.js_y > 0.7) {
-        current_dir = 1; // Down -> Tab
-      }
-      else if (remote_data.js_y < -0.7) {
-        current_dir = -1; // Up -> Backtab
-      }
-
-      if (current_dir != last_dir) {
-        // Trigger only on transition (neutral -> active)
-        if (current_dir != 0) {
-          slint::invoke_from_event_loop([=]() {
-            if (current_dir == 1) {
-              slint_window->window().dispatch_key_press_event("\t");
-              slint_window->window().dispatch_key_release_event("\t");
-            }
-            else {
-              slint_window->window().dispatch_key_press_event("\x19"); // Backtab
-              slint_window->window().dispatch_key_release_event("\x19");
-            }
-          });
-        }
-        last_dir = current_dir;
-      }
+      input_router_poll_stick(remote_data.js_x, remote_data.js_y);
 
 #if SHOW_FPS
       // Frames actually drawn per second, straight from the renderer. The

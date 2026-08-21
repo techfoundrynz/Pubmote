@@ -1,0 +1,481 @@
+// TetrisScreen - hidden game, reached by tapping the version number on the
+// About screen five times.
+//
+// The firmware owns all game state; this file is a dumb renderer plus an input
+// decoder. `cells` is a flat 10x20 model, one int per cell:
+//   0        empty
+//   1..7     locked/active mino, indexed by piece type
+//   9        line-clear flash
+//   11..17   ghost of piece 1..7
+//
+// Touch zones are derived from the well's own geometry: left of the well moves
+// left, right of it moves right, the well itself rotates on release, and a
+// vertical swipe on the well hard-drops or holds.
+
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+
+export component TetrisScreen inherits Rectangle {
+    in property <[int]> cells;
+    in property <[int]> next-cells;
+    in property <string> score: "0";
+    in property <string> best: "0";
+    in property <string> level: "1";
+    in property <string> lines: "0";
+    in property <string> banner: "";
+    // 0 = ready, 1 = playing, 2 = game over
+    in property <int> game-state: 0;
+    in property <bool> has-joystick: false;
+    in property <bool> has-button: false;
+
+    callback tick();
+    // 0 = left zone, 1 = right zone, 2 = well
+    callback press(int);
+    callback release();
+    callback rotate();
+    // 0 = swipe down (hard drop), 1 = swipe up (hold)
+    callback gesture(int);
+    callback back();
+
+    background: Theme.bg;
+
+    property <length> footer-h: Math.round(44px * Theme.scale / 1px) * 1px;
+    property <length> footer-y: root.height - root.footer-h;
+    // A round panel only guarantees the inscribed square, so the board starts
+    // where that square does and stops at the footer either way.
+    property <length> usable-w: Theme.is-square-mode ? root.width : Math.round(root.width * 0.707 / 1px) * 1px;
+    property <length> usable-y: Theme.is-square-mode ? 0px : Math.round((root.height - Math.round(root.height * 0.707 / 1px) * 1px) / 2 / 1px) * 1px;
+    property <length> usable-h: root.footer-y - root.usable-y;
+
+    // Reserve a usable touch strip either side before the well takes the rest.
+    property <length> lobe-min: Math.round(40px * Theme.scale / 1px) * 1px;
+    property <int> cell-px: Math.max(3, Math.min(Math.floor(root.usable-h / 1px / 20), Math.floor((root.usable-w - root.lobe-min * 2) / 1px / 10)));
+    property <length> cell: root.cell-px * 1px;
+    property <length> well-w: root.cell * 10;
+    property <length> well-h: root.cell * 20;
+    property <length> well-x: Math.round((root.width - root.well-w) / 2 / 1px) * 1px;
+    property <length> well-y: root.usable-y + Math.round((root.usable-h - root.well-h) / 2 / 1px) * 1px;
+
+    property <length> lobe-pad: Math.round(4px * Theme.scale / 1px) * 1px;
+    // Round panels need the text pulled well off the rim or the crescent leaves
+    // no height for it.
+    property <length> lobe-inset: Theme.is-square-mode ? root.lobe-pad : Math.round(root.width * 0.1 / 1px) * 1px;
+    property <length> lobe-w: root.well-x - root.lobe-inset - root.lobe-pad;
+    property <length> pcell: Math.max(3px, Math.round(root.cell * 0.5 / 1px) * 1px);
+    property <length> swipe-threshold: Math.round(22px * Theme.scale / 1px) * 1px;
+    property <length> well-border: 1px;
+    // Tall narrow panels leave a lobe too slim for font-14 digits.
+    property <bool> slim-lobe: root.lobe-w < Math.round(56px * Theme.scale / 1px) * 1px;
+    property <length> stat-font: root.slim-lobe ? Theme.font-11 : Theme.font-14;
+    property <length> stat-sub-font: root.slim-lobe ? Theme.font-10 : Theme.font-12;
+
+    pure function mino-color(v: int) -> color {
+        if (v == 1) { return #24d1e0; }
+        if (v == 2) { return #4a72ff; }
+        if (v == 3) { return #ff9d2e; }
+        if (v == 4) { return #ffd426; }
+        if (v == 5) { return #3ddc6b; }
+        if (v == 6) { return #b45bff; }
+        if (v == 7) { return #ff4d5e; }
+        return #6b6b6b;
+    }
+
+    pure function cell-fill(v: int) -> color {
+        if (v == 0) { return transparent; }
+        if (v == 9) { return #ffffff; }
+        if (v > 10) { return root.mino-color(v - 10).transparentize(0.8); }
+        return root.mino-color(v);
+    }
+
+    Timer {
+        interval: 33ms;
+        running: root.game-state == 1;
+        triggered => { root.tick(); }
+    }
+
+    // The physical button reaches the UI as Return. Holding focus here is what
+    // keeps it away from the Exit button below.
+    keys := FocusScope {
+        width: 0;
+        height: 0;
+        init => { self.focus(); }
+        key-pressed(event) => {
+            if (event.text == Key.Return) {
+                root.rotate();
+                return accept;
+            }
+            reject
+        }
+    }
+
+    TouchArea {
+        width: 100%;
+        height: 100%;
+        property <length> down-y;
+        property <int> zone: 2;
+        property <bool> swiped: false;
+        property <bool> active: false;
+
+        pointer-event(e) => {
+            if (e.button != PointerEventButton.left) {
+                return;
+            }
+            if (e.kind == PointerEventKind.down) {
+                self.down-y = self.mouse-y;
+                self.swiped = false;
+                self.active = self.mouse-y < root.footer-y;
+                self.zone = self.mouse-x < root.well-x ? 0 : (self.mouse-x > root.well-x + root.well-w ? 1 : 2);
+                if (self.active && self.zone != 2) {
+                    root.press(self.zone);
+                }
+            } else if (e.kind == PointerEventKind.up) {
+                if (self.active) {
+                    if (self.zone != 2) {
+                        root.release();
+                    } else if (!self.swiped) {
+                        root.rotate();
+                    }
+                }
+                self.active = false;
+            }
+        }
+
+        moved => {
+            if (!self.active || self.swiped) {
+                return;
+            }
+            if (self.zone != 2) {
+                // A drag out of a side zone is still a hold, not a swipe
+                return;
+            }
+            if (self.mouse-y - self.down-y > root.swipe-threshold) {
+                self.swiped = true;
+                root.gesture(0);
+            } else if (self.down-y - self.mouse-y > root.swipe-threshold) {
+                self.swiped = true;
+                root.gesture(1);
+            }
+        }
+    }
+
+    // The well. Slint draws a border inside the element box and positions children
+    // from that same origin, so the frame is grown outward by its own width and
+    // the cells inset by it - otherwise the outermost blocks sit on the border.
+    Rectangle {
+        x: root.well-x - root.well-border;
+        y: root.well-y - root.well-border;
+        width: root.well-w + root.well-border * 2;
+        height: root.well-h + root.well-border * 2;
+        background: #0b0b10;
+        border-width: root.well-border;
+        border-color: Theme.track;
+
+        for v[i] in root.cells: Rectangle {
+            x: root.well-border + Math.mod(i, 10) * root.cell;
+            y: root.well-border + Math.floor(i / 10) * root.cell;
+            width: root.cell - 1px;
+            height: root.cell - 1px;
+            background: root.cell-fill(v);
+        }
+    }
+
+    // Left lobe: score
+    VerticalLayout {
+        x: root.lobe-inset;
+        y: root.well-y;
+        width: root.lobe-w;
+        height: root.well-h;
+        alignment: center;
+        spacing: Math.round(1px * Theme.scale / 1px) * 1px;
+
+        Text {
+            text: "SCORE";
+            color: Theme.text-dim;
+            font-size: Theme.font-10;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.score;
+            color: Theme.text;
+            font-family: "JetBrains Mono";
+            font-size: root.stat-font;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+
+        Rectangle { height: Math.round(8px * Theme.scale / 1px) * 1px; }
+
+        Text {
+            text: "BEST";
+            color: Theme.text-dim;
+            font-size: Theme.font-10;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.best;
+            color: Theme.text-dim;
+            font-family: "JetBrains Mono";
+            font-size: root.stat-sub-font;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+
+        Rectangle { height: Math.round(10px * Theme.scale / 1px) * 1px; }
+
+        Text {
+            text: "<";
+            color: Theme.track;
+            font-size: Theme.font-28;
+            horizontal-alignment: center;
+        }
+    }
+
+    // Right lobe: level, lines, next piece
+    VerticalLayout {
+        x: root.well-x + root.well-w + root.lobe-pad;
+        y: root.well-y;
+        width: root.lobe-w;
+        height: root.well-h;
+        alignment: center;
+        spacing: Math.round(1px * Theme.scale / 1px) * 1px;
+
+        Text {
+            text: "LEVEL";
+            color: Theme.text-dim;
+            font-size: Theme.font-10;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.level;
+            color: Theme.text;
+            font-family: "JetBrains Mono";
+            font-size: root.stat-font;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+
+        Rectangle { height: Math.round(6px * Theme.scale / 1px) * 1px; }
+
+        Text {
+            text: "LINES";
+            color: Theme.text-dim;
+            font-size: Theme.font-10;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.lines;
+            color: Theme.text-dim;
+            font-family: "JetBrains Mono";
+            font-size: root.stat-sub-font;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+
+        Rectangle { height: Math.round(8px * Theme.scale / 1px) * 1px; }
+
+        Text {
+            text: "NEXT";
+            color: Theme.text-dim;
+            font-size: Theme.font-10;
+            horizontal-alignment: center;
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: root.pcell * 4;
+                height: root.pcell * 4;
+                for v[i] in root.next-cells: Rectangle {
+                    x: Math.mod(i, 4) * root.pcell;
+                    y: Math.floor(i / 4) * root.pcell;
+                    width: root.pcell - 1px;
+                    height: root.pcell - 1px;
+                    background: v == 0 ? transparent : root.mino-color(v);
+                }
+            }
+        }
+
+        Rectangle { height: Math.round(8px * Theme.scale / 1px) * 1px; }
+
+        Text {
+            text: ">";
+            color: Theme.track;
+            font-size: Theme.font-28;
+            horizontal-alignment: center;
+        }
+    }
+
+    if root.banner != "" && root.game-state == 1: Text {
+        x: 0;
+        y: root.well-y + root.well-h * 0.32;
+        width: 100%;
+        text: root.banner;
+        color: Theme.accent;
+        font-size: Theme.font-14;
+        font-weight: Theme.w-semibold;
+        horizontal-alignment: center;
+    }
+
+    if root.game-state == 0: Rectangle {
+        x: 0;
+        y: root.usable-y;
+        width: 100%;
+        height: root.usable-h;
+        background: #000000e6;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: Math.round(3px * Theme.scale / 1px) * 1px;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+
+            Text {
+                text: "TETRIS";
+                color: Theme.accent;
+                font-size: Theme.font-28;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(6px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "Tap the sides to move";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "Tap the well to rotate";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "Swipe down to drop";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "Swipe up to hold";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            if root.has-joystick: Text {
+                text: "Stick moves and drops";
+                color: Theme.accent;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            if root.has-button: Text {
+                text: "Button rotates";
+                color: Theme.accent;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(10px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "TAP TO START";
+                color: Theme.text;
+                font-size: Theme.font-12;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    if root.game-state == 2: Rectangle {
+        x: 0;
+        y: root.usable-y;
+        width: 100%;
+        height: root.usable-h;
+        background: #000000e6;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: Math.round(2px * Theme.scale / 1px) * 1px;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+
+            Text {
+                text: "GAME OVER";
+                color: Theme.color-critical;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(8px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "SCORE";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: root.score;
+                color: Theme.text;
+                font-family: "JetBrains Mono";
+                font-size: Theme.font-28;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "BEST " + root.best;
+                color: Theme.text-dim;
+                font-size: Theme.font-11;
+                horizontal-alignment: center;
+            }
+
+            if root.banner != "": Text {
+                text: root.banner;
+                color: Theme.accent;
+                font-size: Theme.font-12;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(10px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "TAP TO RETRY";
+                color: Theme.text;
+                font-size: Theme.font-12;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    Rectangle {
+        x: 0;
+        y: root.footer-y;
+        width: 100%;
+        height: root.height - root.footer-y;
+
+        AppButton {
+            x: (parent.width - self.width) / 2;
+            y: Math.max(0px, (parent.height - self.height) / 2 - Math.round(2px * Theme.scale / 1px) * 1px);
+            width: Math.round(76px * Theme.scale / 1px) * 1px;
+            text: "Exit";
+            variant: "secondary";
+            size: "small";
+            clicked => { root.back(); }
+        }
+    }
+}

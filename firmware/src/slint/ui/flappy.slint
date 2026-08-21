@@ -1,0 +1,350 @@
+// FlappyScreen - hidden game, reached from the arcade menu on the About screen.
+//
+// The firmware owns all game state; this file is a dumb renderer plus an input
+// decoder. Positions arrive in playfield units, a 100x100 space mapped onto the
+// whole panel, so the physics never sees pixels.
+//
+// The play band is inset inside those units rather than the playfield being
+// inset inside the panel: on a round panel the gap edges, the snow line and the
+// score all have to fall inside the visible circle at the columns they occupy,
+// while the ice and sky still run out to the bezel.
+
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+
+export struct IcePillar {
+    x: float,
+    gap-y: float,
+}
+
+export component FlappyScreen inherits Rectangle {
+    in property <[IcePillar]> pillars;
+    in property <float> bird-y: 50;
+    // -1 climbing .. 1 diving
+    in property <float> tilt: 0;
+    // 0 = raised, 1 = level, 2 = down-stroke
+    in property <int> wing: 1;
+    in property <float> gap: 26;
+    in property <string> score: "0";
+    in property <string> best: "0";
+    // 0 = ready, 1 = playing, 2 = game over
+    in property <int> game-state: 0;
+    in property <bool> has-joystick: false;
+    in property <bool> has-button: false;
+
+    callback tick();
+    callback flap();
+    callback back();
+
+    background: #071a2b;
+
+    property <length> ux: root.width / 100;
+    property <length> uy: root.height / 100;
+    property <length> pillar-w: 12 * root.ux;
+    property <length> ground-h: 14 * root.uy;
+    property <length> bird-w: 8 * root.ux;
+    property <length> bird-h: 7 * root.uy;
+    property <length> corner: Math.round(5px * Theme.scale / 1px) * 1px;
+    property <length> star: Math.round(2px * Theme.scale / 1px) * 1px;
+    property <length> exit-w: Math.round(root.width * 0.26 / 1px) * 1px;
+    property <length> exit-h: Math.round(root.height * 0.10 / 1px) * 1px;
+
+    Timer {
+        interval: 33ms;
+        running: root.game-state == 1;
+        triggered => { root.tick(); }
+    }
+
+    // The physical button reaches the UI as Return. Holding focus here is what
+    // keeps it away from the Exit button below.
+    FocusScope {
+        width: 0;
+        height: 0;
+        init => { self.focus(); }
+        key-pressed(event) => {
+            if (event.text == Key.Return) {
+                root.flap();
+                return accept;
+            }
+            reject
+        }
+    }
+
+    // The Exit button is declared last, so it sits above this and takes its own
+    // taps instead of flapping.
+    TouchArea {
+        width: 100%;
+        height: 100%;
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                root.flap();
+            }
+        }
+    }
+
+    Rectangle {
+        width: 100%;
+        height: 100%;
+        clip: true;
+
+        Rectangle { x: 20 * root.ux; y: 16 * root.uy; width: root.star; height: root.star; background: #7fb6d6; }
+        Rectangle { x: 44 * root.ux; y: 10 * root.uy; width: root.star; height: root.star; background: #9fd8f2; }
+        Rectangle { x: 66 * root.ux; y: 18 * root.uy; width: root.star; height: root.star; background: #7fb6d6; }
+        Rectangle { x: 80 * root.ux; y: 13 * root.uy; width: root.star; height: root.star; background: #9fd8f2; }
+
+        for p in root.pillars: Rectangle {
+            x: p.x * root.ux - root.pillar-w / 2;
+            y: (p.gap-y - root.gap / 2) * root.uy - root.height;
+            width: root.pillar-w;
+            height: root.height;
+            background: #2f9dc4;
+            border-width: 2px;
+            border-color: #c9f0ff;
+            border-radius: root.corner;
+        }
+
+        for p in root.pillars: Rectangle {
+            x: p.x * root.ux - root.pillar-w / 2;
+            y: (p.gap-y + root.gap / 2) * root.uy;
+            width: root.pillar-w;
+            height: root.height;
+            background: #2f9dc4;
+            border-width: 2px;
+            border-color: #c9f0ff;
+            border-radius: root.corner;
+        }
+
+        // Penguin. Nothing here can rotate, so the climb/dive read comes from the
+        // beak and feet shifting against a fixed body.
+        Rectangle {
+            x: 26 * root.ux - root.bird-w / 2;
+            y: root.bird-y * root.uy - root.bird-h / 2;
+            width: root.bird-w;
+            height: root.bird-h;
+
+            Rectangle {
+                x: parent.width * 0.06;
+                y: parent.height * 0.18;
+                width: parent.width * 0.82;
+                height: parent.height * 0.78;
+                border-radius: self.width * 0.46;
+                background: #101a26;
+                border-width: 1px;
+                border-color: #9fd8f2;
+            }
+
+            Rectangle {
+                x: parent.width * 0.34;
+                y: parent.height * 0.40;
+                width: parent.width * 0.48;
+                height: parent.height * 0.52;
+                border-radius: self.width * 0.46;
+                background: #f2fbff;
+            }
+
+            Rectangle {
+                x: parent.width * 0.18;
+                y: parent.height * (0.40 + (root.wing == 0 ? -0.10 : (root.wing == 2 ? 0.16 : 0.0)));
+                width: parent.width * 0.22;
+                height: parent.height * 0.34;
+                border-radius: self.width * 0.5;
+                background: #23384c;
+            }
+
+            Rectangle {
+                x: parent.width * 0.56;
+                y: parent.height * (0.28 + root.tilt * 0.05);
+                width: parent.width * 0.16;
+                height: parent.width * 0.16;
+                border-radius: self.width * 0.5;
+                background: #f2fbff;
+            }
+
+            Rectangle {
+                x: parent.width * 0.62;
+                y: parent.height * (0.31 + root.tilt * 0.05);
+                width: parent.width * 0.08;
+                height: parent.width * 0.08;
+                border-radius: self.width * 0.5;
+                background: #101a26;
+            }
+
+            Rectangle {
+                x: parent.width * 0.82;
+                y: parent.height * (0.42 + root.tilt * 0.14);
+                width: parent.width * 0.20;
+                height: parent.height * 0.14;
+                border-radius: 1px;
+                background: #ff9d2e;
+            }
+
+            Rectangle {
+                x: parent.width * 0.36;
+                y: parent.height * (0.92 - root.tilt * 0.08);
+                width: parent.width * 0.28;
+                height: parent.height * 0.10;
+                border-radius: 1px;
+                background: #ff9d2e;
+            }
+        }
+
+        Rectangle {
+            x: 0;
+            y: root.height - root.ground-h;
+            width: 100%;
+            height: root.ground-h;
+            background: #e8f6ff;
+            border-width: 2px;
+            border-color: #9fd8f2;
+        }
+
+        Text {
+            x: 0;
+            y: 8 * root.uy;
+            width: 100%;
+            text: root.score;
+            color: #eaf8ff;
+            font-family: "JetBrains Mono";
+            font-size: Theme.font-28;
+            font-weight: Theme.w-semibold;
+            horizontal-alignment: center;
+        }
+    }
+
+    if root.game-state == 0: Rectangle {
+        width: 100%;
+        height: 100%;
+        background: #000000d9;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: Math.round(3px * Theme.scale / 1px) * 1px;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-bottom: root.exit-h;
+
+            Text {
+                text: "FLAPPY PENGUIN";
+                color: #6fd8f5;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(6px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "Tap to flap";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "Mind the ice";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            if root.has-joystick: Text {
+                text: "Stick flaps too";
+                color: #6fd8f5;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            if root.has-button: Text {
+                text: "Button flaps too";
+                color: #6fd8f5;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(8px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "BEST " + root.best;
+                color: Theme.text-dim;
+                font-size: Theme.font-11;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "TAP TO START";
+                color: Theme.text;
+                font-size: Theme.font-12;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    if root.game-state == 2: Rectangle {
+        width: 100%;
+        height: 100%;
+        background: #000000d9;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: Math.round(2px * Theme.scale / 1px) * 1px;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-bottom: root.exit-h;
+
+            Text {
+                text: "SPLASH";
+                color: Theme.color-critical;
+                font-size: Theme.font-14;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(8px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "SCORE";
+                color: Theme.text-dim;
+                font-size: Theme.font-10;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: root.score;
+                color: Theme.text;
+                font-family: "JetBrains Mono";
+                font-size: Theme.font-28;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "BEST " + root.best;
+                color: Theme.text-dim;
+                font-size: Theme.font-11;
+                horizontal-alignment: center;
+            }
+
+            Rectangle { height: Math.round(10px * Theme.scale / 1px) * 1px; }
+
+            Text {
+                text: "TAP TO RETRY";
+                color: Theme.text;
+                font-size: Theme.font-12;
+                font-weight: Theme.w-semibold;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    // Sits on the snow, clear of the bird's floor and inside a round panel's rim.
+    AppButton {
+        x: (root.width - self.width) / 2;
+        y: Math.round(root.height * 0.96 / 1px) * 1px - self.height;
+        width: root.exit-w;
+        height: root.exit-h;
+        text: "Exit";
+        variant: "secondary";
+        size: "small";
+        clicked => { root.back(); }
+    }
+}

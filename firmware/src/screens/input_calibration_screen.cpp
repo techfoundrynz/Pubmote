@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 #include "generated/app-window.h"
 #include "remote/display.h"
+#include "remote/input_router.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
 #include <algorithm>
@@ -171,6 +172,14 @@ static void calibration_task(void *pvParameters) {
 
 extern "C" void setup_input_calibration_properties() {
   calibration_step = CALIBRATION_STEP_START;
+
+  // The stick is what this screen measures, so deflecting it must not move
+  // focus. The button keeps its default Enter so a remote without touch can
+  // still advance the steps.
+  input_router_claim(INPUT_ACTION_STICK_UP, NULL, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_DOWN, NULL, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_LEFT, NULL, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_RIGHT, NULL, INPUT_ONCE);
 
   // Load current values
   calibration_data.x_center = calibration_settings.x_center;

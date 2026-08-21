@@ -6,6 +6,7 @@
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/imu.h"
+#include "remote/input_router.h"
 #include "remote/powermanagement.h"
 #include "remote/receiver.h"
 #include "remote/remoteinputs.h"
@@ -257,11 +258,10 @@ extern "C" void stats_update_screen_display() {
 }
 
 // Double press navigates to Menu Screen
-static bool double_press_handler() {
+static void double_press_handler() {
   if (device_settings.double_press_action == DOUBLE_PRESS_ACTION_OPEN_MENU) {
     slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
   }
-  return true;
 }
 
 extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
@@ -303,7 +303,12 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
 extern "C" void setup_stats_properties() {
   ui_update_pending.store(false);
   stats_register_update_cb(stats_update_screen_display);
-  register_primary_button_cb(BUTTON_EVENT_DOUBLE_PRESS, double_press_handler);
+  input_router_claim(INPUT_ACTION_DOUBLE_PRESS, double_press_handler, INPUT_ONCE);
+  // Riding: the stick is throttle and goes to the board, so it must not also
+  // walk focus
+  input_router_claim(INPUT_ACTION_STICK_UP, NULL, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_DOWN, NULL, INPUT_ONCE);
+  input_router_claim_board_forwarding();
   imu_register_gesture_callback(handle_imu_gesture);
 
   if (get_slint_window()) {
@@ -334,7 +339,6 @@ extern "C" void setup_stats_properties() {
 
 extern "C" void teardown_stats_properties() {
   stats_unregister_update_cb(stats_update_screen_display);
-  unregister_primary_button_cb(BUTTON_EVENT_DOUBLE_PRESS);
   imu_unregister_gesture_callback(handle_imu_gesture);
   if (device_settings.hbm_mode == HBM_MODE_RAISED) {
     display_set_hbm(false);
