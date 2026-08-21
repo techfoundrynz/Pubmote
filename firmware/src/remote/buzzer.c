@@ -40,12 +40,29 @@ static const int melody[] = {NOTE_C4, 100, NOTE_D4, 100, NOTE_E4, 100, NOTE_F4, 
                              NOTE_G4, 100, NOTE_A4, 100, NOTE_B4, 100, NOTE_C5, 200};
 
 static const int melody_duration = 900;
+
+// A sequence is stepped faster than the idle tick so note edges land close to
+// where they were written; 50ms would smear anything shorter than a quarter.
+  #define SEQUENCE_TICK_MS 10
+  #define NOTE_GAP_MS 18
+
+static const BuzzerNote *volatile seq_notes = NULL;
+static size_t seq_count = 0;
+static size_t seq_index = 0;
+static bool seq_repeat = false;
+static int seq_tone_left = 0;
+static int seq_gap_left = 0;
+
+static int buzzer_off_duty() {
+  return BUZZER_LEVEL ? 0 : BUZZER_MAX_DUTY;
+}
 #endif
 
 void buzzer_stop() {
 #if BUZZER_ENABLED
-  int duty = BUZZER_LEVEL ? 0 : BUZZER_MAX_DUTY; // Invert duty if needed
-  current_pattern = BUZZER_PATTERN_NONE;         // Reset pattern
+  int duty = buzzer_off_duty();
+  current_pattern = BUZZER_PATTERN_NONE; // Reset pattern
+  seq_notes = NULL;                      // Ends any sequence in progress
 
   if (duty == current_duty) {
     return;
@@ -55,6 +72,67 @@ void buzzer_stop() {
   current_duty = duty;
 #endif
 }
+
+#if BUZZER_ENABLED
+// Unlike buzzer_stop(), this only changes the pin - it leaves the pattern and
+// sequence running, which is what a rest between notes needs.
+static void set_tone_output(int frequency) {
+  static int last_frequency = 0;
+  int duty = frequency > 0 ? BUZZER_MAX_DUTY / 2 : buzzer_off_duty();
+
+  if (frequency > 0 && frequency != last_frequency) {
+    ledc_timer_config_t timer_conf = {.speed_mode = LEDC_LOW_SPEED_MODE,
+                                      .timer_num = BUZZER_TIMER,
+                                      .duty_resolution = BUZZER_RESOLUTION,
+                                      .freq_hz = frequency,
+                                      .clk_cfg = LEDC_AUTO_CLK};
+    ledc_timer_config(&timer_conf);
+    last_frequency = frequency;
+  }
+
+  if (current_duty != duty) {
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, BUZZER_CHANNEL, duty);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, BUZZER_CHANNEL);
+    current_duty = duty;
+  }
+}
+
+static void sequence_begin_note() {
+  const BuzzerNote *note = &seq_notes[seq_index];
+  int total = note->duration_ms;
+  int gap = total > NOTE_GAP_MS * 2 ? NOTE_GAP_MS : 0;
+  seq_tone_left = total - gap;
+  seq_gap_left = gap;
+  set_tone_output(note->frequency);
+}
+
+static void sequence_step(int elapsed_ms) {
+  if (seq_tone_left > 0) {
+    seq_tone_left -= elapsed_ms;
+    if (seq_tone_left > 0) {
+      return;
+    }
+    set_tone_output(NOTE_REST);
+  }
+
+  if (seq_gap_left > 0) {
+    seq_gap_left -= elapsed_ms;
+    if (seq_gap_left > 0) {
+      return;
+    }
+  }
+
+  seq_index++;
+  if (seq_index >= seq_count) {
+    if (!seq_repeat) {
+      buzzer_stop();
+      return;
+    }
+    seq_index = 0;
+  }
+  sequence_begin_note();
+}
+#endif
 
 static void process_current_note() {
 #if BUZZER_ENABLED
@@ -136,6 +214,32 @@ void buzzer_set_pattern(BuzzerPatttern pattern) {
 #endif
 }
 
+void buzzer_play_sequence(const BuzzerNote *notes, size_t count, bool repeat) {
+#if BUZZER_ENABLED
+  buzzer_stop();
+  if (notes == NULL || count == 0) {
+    return;
+  }
+  seq_count = count;
+  seq_index = 0;
+  seq_repeat = repeat;
+  seq_notes = notes; // Set last: the task treats a non-NULL pointer as armed
+  sequence_begin_note();
+#else
+  (void)notes;
+  (void)count;
+  (void)repeat;
+#endif
+}
+
+bool buzzer_sequence_playing() {
+#if BUZZER_ENABLED
+  return seq_notes != NULL;
+#else
+  return false;
+#endif
+}
+
 void buzzer_set_tone(BuzzerToneFrequency frequency, int duration) {
 #if BUZZER_ENABLED
   if (!frequency || !duration) {
@@ -183,6 +287,12 @@ static void play_startup_effect() {
 static void buzzer_task(void *pvParameters) {
 
   while (true) {
+    if (seq_notes != NULL) {
+      sequence_step(SEQUENCE_TICK_MS);
+      vTaskDelay(pdMS_TO_TICKS(SEQUENCE_TICK_MS));
+      continue;
+    }
+
     if (current_time_left == 0 || current_pattern == BUZZER_PATTERN_NONE) {
       current_pattern = BUZZER_PATTERN_NONE; // Reset pattern
       current_time_left = 0;                 // Reset time left

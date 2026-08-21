@@ -1,0 +1,62 @@
+// GamesScreen - the hidden arcade menu, reached by tapping the version number on
+// the About screen five times.
+
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { PageFooter } from "page-footer.slint";
+
+export component GamesScreen inherits Rectangle {
+    in property <string> tetris-best: "0";
+    in property <string> flappy-best: "0";
+    callback play-tetris;
+    callback play-flappy;
+    callback back;
+
+    background: Theme.bg;
+
+    VerticalLayout {
+        Rectangle {
+            VerticalLayout {
+                padding-left: Theme.page-padding-horizontal;
+                padding-right: Theme.page-padding-horizontal;
+                spacing: 8px * Theme.scale;
+                alignment: center;
+
+                Text {
+                    text: "ARCADE";
+                    color: Theme.accent;
+                    font-size: Theme.font-14;
+                    font-weight: Theme.w-semibold;
+                    letter-spacing: 2px;
+                    horizontal-alignment: center;
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Theme.track;
+                }
+
+                AppButton {
+                    text: "Tetris";
+                    right-text: "BEST " + root.tetris-best;
+                    variant: "secondary";
+                    clicked => { root.play-tetris(); }
+                }
+
+                AppButton {
+                    text: "Flappy Penguin";
+                    right-text: "BEST " + root.flappy-best;
+                    variant: "secondary";
+                    clicked => { root.play-flappy(); }
+                }
+            }
+        }
+
+        PageFooter {
+            AppButton {
+                text: "Back";
+                clicked => { root.back(); }
+            }
+        }
+    }
+}

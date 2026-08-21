@@ -1,5 +1,9 @@
 #include "remoteinputs.h"
 #include "adc.h"
+#include "input_router.h"
+
+// Implemented in display.cpp: dispatches Return to the focused widget.
+extern void ui_dispatch_activate();
 #include "config.h"
 #include "driver/rtc_io.h"
 #include "esp_adc/adc_oneshot.h"
@@ -292,18 +296,14 @@ void thumbstick_init() {
   thumbstick_start();
 }
 
-static button_callback_t registered_single_click_cb = NULL;
 static void button_single_click_cb(void *arg, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON SINGLE CLICK");
-  bool handled = false;
-
-  if (registered_single_click_cb) {
-    handled = registered_single_click_cb();
-  }
-
-  if (!handled) {
-    reset_sleep_timer();
-  }
+  // A click is user activity whether or not a screen consumes it. This used to
+  // be conditional, which was harmless only because nothing ever claimed the
+  // slot - now navigation does.
+  reset_sleep_timer();
+  // Delivered as a Return key so screens claim it with a FocusScope
+  ui_dispatch_activate();
 }
 
 static button_callback_t registered_button_down_cb = NULL;
@@ -335,18 +335,10 @@ static void button_up_cb(void *arg, void *usr_data) {
   }
 }
 
-static button_callback_t registered_double_click_cb = NULL;
 static void button_double_click_cb(void *arg, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON DOUBLE CLICK");
-  bool handled = false;
-
-  if (registered_double_click_cb) {
-    handled = registered_double_click_cb();
-  }
-
-  if (!handled) {
-    reset_sleep_timer();
-  }
+  reset_sleep_timer();
+  input_router_dispatch(INPUT_ACTION_DOUBLE_PRESS);
 }
 
 static button_callback_t registered_long_press_hold_cb = NULL;
@@ -418,12 +410,6 @@ void register_primary_button_cb(ButtonEvent event, button_callback_t cb) {
   case BUTTON_EVENT_UP:
     registered_button_up_cb = cb;
     break;
-  case BUTTON_EVENT_PRESS:
-    registered_single_click_cb = cb;
-    break;
-  case BUTTON_EVENT_DOUBLE_PRESS:
-    registered_double_click_cb = cb;
-    break;
   case BUTTON_EVENT_LONG_PRESS_HOLD:
     registered_long_press_hold_cb = cb;
     break;
@@ -441,12 +427,6 @@ void unregister_primary_button_cb(ButtonEvent event) {
     break;
   case BUTTON_EVENT_UP:
     registered_button_up_cb = NULL;
-    break;
-  case BUTTON_EVENT_PRESS:
-    registered_single_click_cb = NULL;
-    break;
-  case BUTTON_EVENT_DOUBLE_PRESS:
-    registered_double_click_cb = NULL;
     break;
   case BUTTON_EVENT_LONG_PRESS_HOLD:
     registered_long_press_hold_cb = NULL;

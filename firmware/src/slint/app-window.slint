@@ -26,6 +26,9 @@ export { ColorSliderGenerator }
 import { ArcGauge } from "ui/arc-gauge.slint";
 import { ConfirmDialog } from "ui/confirm-dialog.slint";
 import { BoardsScreen, PairedBoard } from "ui/boards.slint";
+import { TetrisScreen } from "ui/tetris.slint";
+import { GamesScreen } from "ui/games.slint";
+import { FlappyScreen, IcePillar } from "ui/flappy.slint";
 
 export enum Screen {
     splash,
@@ -39,6 +42,9 @@ export enum Screen {
     charge,
     imu-calibration,
     boards,
+    games,
+    tetris,
+    flappy,
 }
 
 // Single binding surface for the firmware.
@@ -136,6 +142,42 @@ export global UiState {
     // --- About (ui_AboutScreen) ---
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
     in property <[StatEntry]> about-stats: [];
+
+    // --- Arcade (hidden, five taps on the About version string) ---
+    in property <bool> button-supported: false;
+    in property <string> flappy-best: "0";
+    callback open-games();
+    callback games-tetris();
+    callback games-flappy();
+    callback games-back();
+
+    // --- Tetris ---
+    in property <[int]> tetris-cells: [];
+    in property <[int]> tetris-next: [];
+    in property <string> tetris-score: "0";
+    in property <string> tetris-best: "0";
+    in property <string> tetris-level: "1";
+    in property <string> tetris-lines: "0";
+    in property <string> tetris-banner: "";
+    in property <int> tetris-game-state: 0;
+    callback tetris-tick();
+    callback tetris-press(int);
+    callback tetris-release();
+    callback tetris-rotate();
+    callback tetris-gesture(int);
+    callback tetris-back();
+
+    // --- Flappy Penguin ---
+    in property <[IcePillar]> flappy-pillars: [];
+    in property <float> flappy-bird-y: 50;
+    in property <float> flappy-tilt: 0;
+    in property <int> flappy-wing: 1;
+    in property <float> flappy-gap: 32;
+    in property <string> flappy-score: "0";
+    in property <int> flappy-game-state: 0;
+    callback flappy-tick();
+    callback flappy-flap();
+    callback flappy-back();
 
     // --- IMU Calibration ---
     in property <float> imu-calibration-accel-x: 0.0;
@@ -270,6 +312,9 @@ export component AppWindow inherits Window {
         if (s == Screen.imu-calibration) { return 1; }
         if (s == Screen.boards) { return 1; }
         if (s == Screen.update) { return 2; }
+        if (s == Screen.games) { return 2; }
+        if (s == Screen.tetris) { return 3; }
+        if (s == Screen.flappy) { return 3; }
         return 0;
     }
 
@@ -487,6 +532,62 @@ export component AppWindow inherits Window {
         stats: UiState.about-stats;
         check-updates => { UiState.about-check-updates(); }
         back => { UiState.about-back(); }
+        secret => { UiState.open-games(); }
+    }
+
+    if UiState.screen == Screen.games || root.previous-screen == Screen.games: GamesScreen {
+        width: 100%;
+        height: 100%;
+        x: (screen-x(Screen.games) - root.view-x) * self.width;
+        y: (screen-y(Screen.games) - root.view-y) * self.height;
+        tetris-best: UiState.tetris-best;
+        flappy-best: UiState.flappy-best;
+        play-tetris => { UiState.games-tetris(); }
+        play-flappy => { UiState.games-flappy(); }
+        back => { UiState.games-back(); }
+    }
+
+    if UiState.screen == Screen.flappy || root.previous-screen == Screen.flappy: FlappyScreen {
+        width: 100%;
+        height: 100%;
+        x: (screen-x(Screen.flappy) - root.view-x) * self.width;
+        y: (screen-y(Screen.flappy) - root.view-y) * self.height;
+        pillars: UiState.flappy-pillars;
+        bird-y: UiState.flappy-bird-y;
+        tilt: UiState.flappy-tilt;
+        wing: UiState.flappy-wing;
+        gap: UiState.flappy-gap;
+        score: UiState.flappy-score;
+        best: UiState.flappy-best;
+        game-state: UiState.flappy-game-state;
+        has-joystick: UiState.joystick-supported;
+        has-button: UiState.button-supported;
+        tick => { UiState.flappy-tick(); }
+        flap => { UiState.flappy-flap(); }
+        back => { UiState.flappy-back(); }
+    }
+
+    if UiState.screen == Screen.tetris || root.previous-screen == Screen.tetris: TetrisScreen {
+        width: 100%;
+        height: 100%;
+        x: (screen-x(Screen.tetris) - root.view-x) * self.width;
+        y: (screen-y(Screen.tetris) - root.view-y) * self.height;
+        cells: UiState.tetris-cells;
+        next-cells: UiState.tetris-next;
+        score: UiState.tetris-score;
+        best: UiState.tetris-best;
+        level: UiState.tetris-level;
+        lines: UiState.tetris-lines;
+        banner: UiState.tetris-banner;
+        game-state: UiState.tetris-game-state;
+        has-joystick: UiState.joystick-supported;
+        has-button: UiState.button-supported;
+        tick => { UiState.tetris-tick(); }
+        press(zone) => { UiState.tetris-press(zone); }
+        release => { UiState.tetris-release(); }
+        rotate => { UiState.tetris-rotate(); }
+        gesture(kind) => { UiState.tetris-gesture(kind); }
+        back => { UiState.tetris-back(); }
     }
 
     if UiState.screen == Screen.imu-calibration || root.previous-screen == Screen.imu-calibration: ImuCalibrationScreen {
