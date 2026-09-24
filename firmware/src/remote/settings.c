@@ -365,8 +365,7 @@ static esp_err_t nvs_read(const char *key, void *value, nvs_type_t type, size_t 
   case ESP_OK:
     ESP_LOGI(TAG, "Read done");
     break;
-  case ESP_ERR_NVS_NOT_FOUND:
-    ESP_LOGE(TAG, "The value is not initialized yet!");
+  case ESP_ERR_NVS_NOT_FOUND: // Never saved; callers fall back to defaults
     break;
   default:
     ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
@@ -469,7 +468,10 @@ esp_err_t save_wifi_password(const char *password) {
 char *get_wifi_ssid() {
   int ssid_length = 0;
   esp_err_t err = nvs_read_int("wifi_ssid_l", (uint32_t *)&ssid_length);
-  if (err != ESP_OK || ssid_length <= 0 || ssid_length > WIFI_SSID_MAX_BYTES) {
+  if (err == ESP_ERR_NVS_NOT_FOUND || (err == ESP_OK && ssid_length == 0)) {
+    return NULL;
+  }
+  if (err != ESP_OK || ssid_length < 0 || ssid_length > WIFI_SSID_MAX_BYTES) {
     ESP_LOGE(TAG, "Error reading SSID length: %s", esp_err_to_name(err));
     return NULL;
   }
@@ -496,7 +498,10 @@ char *get_wifi_ssid() {
 char *get_wifi_password() {
   int password_length = 0;
   esp_err_t err = nvs_read_int("wifi_key_l", (uint32_t *)&password_length);
-  if (err != ESP_OK || password_length <= 0 || password_length > WIFI_PASSWORD_MAX_BYTES) {
+  if (err == ESP_ERR_NVS_NOT_FOUND || (err == ESP_OK && password_length == 0)) {
+    return NULL;
+  }
+  if (err != ESP_OK || password_length < 0 || password_length > WIFI_PASSWORD_MAX_BYTES) {
     ESP_LOGE(TAG, "Error reading password length: %s", esp_err_to_name(err));
     return NULL;
   }
