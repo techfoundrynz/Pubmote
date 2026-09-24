@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 interface DialogProps {

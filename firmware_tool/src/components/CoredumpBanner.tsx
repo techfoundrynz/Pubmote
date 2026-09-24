@@ -1,5 +1,5 @@
 import React from "react";
-import { X, FileText, Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 
 interface CoredumpBannerProps {
   onView: () => void;

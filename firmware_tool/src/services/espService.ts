@@ -72,7 +72,7 @@ export class ESPService {
   private isConnecting: boolean = false;
   private monitorSerial: boolean = false;
   private logBuffer: string = "";
-  private port: any = null;
+  private port: SerialPort | null = null;
 
   private logListeners: Array<LogListener> = [(d, t) => {
     this.log(
@@ -449,24 +449,6 @@ export class ESPService {
     }
   }
 
-  private async readResponse(timeout = 1000): Promise<string> {
-    let response = "";
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeout) {
-      const data = await this.espLoader?.transport.rawRead(timeout);
-      if (data) {
-        response += data;
-        if (response.includes("\n")) {
-          break;
-        }
-      }
-      await delay(10);
-    }
-
-    return response;
-  }
-
   private encodeCommand(command: string): Uint8Array {
     const encoder = new TextEncoder();
     return encoder.encode(command + "\n");
@@ -623,7 +605,7 @@ export class ESPService {
     if (this.espLoader) {
       try {
         await this.espLoader.transport.disconnect();
-      } catch (error) {
+      } catch {
         // Ignore disconnect errors
       }
       this.espLoader = null;
@@ -636,7 +618,7 @@ export class ESPService {
 
   // Execute a command silently and capture output
   executeCommand = async (command: string, timeout = 2000): Promise<string[]> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const lines: string[] = [];
       const timeoutId = setTimeout(() => {
         this.removeSilentListener(listener);

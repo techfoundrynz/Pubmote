@@ -1,4 +1,3 @@
-import React from 'react';
 import { FlashProgress as FlashProgressType } from '../types';
 import { CheckCircle, AlertCircle, Loader2, CircleDot } from 'lucide-react';
 

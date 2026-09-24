@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import Header from "./components/Header";
 import { ESPService } from "./services/espService";
 import { TerminalService } from "./services/terminal";
-import { DeviceInfoData, FlashProgress as FlashProgressType } from "./types";
+import { DeviceInfoData, FlashProgress as FlashProgressType, GitHubRelease } from "./types";
 import SettingsPage from "./components/SettingsPage";
 import FirmwarePage from "./components/FirmwarePage";
 import DeviceInfoPage from "./components/DeviceInfoPage";
@@ -104,10 +104,10 @@ const AppContent = () => {
       const response = await fetchWithCorsProxy('https://api.github.com/repos/techfoundrynz/pubmote/releases');
       if (!response.ok) return;
       
-      const releases = await response.json();
+      const releases: GitHubRelease[] = await response.json();
       if (releases && releases.length > 0) {
         // Filter out nightly builds (releases with "nightly" in tag_name)
-        const nonNightlyReleases = releases.filter((release: any) => 
+        const nonNightlyReleases = releases.filter((release) => 
           !release.tag_name.toLowerCase().includes('nightly')
         );
         
@@ -216,13 +216,13 @@ const AppContent = () => {
       const response = await fetchWithCorsProxy('https://api.github.com/repos/techfoundrynz/pubmote/releases');
       if (!response.ok) throw new Error(`GitHub API Error: ${response.statusText}`);
       
-      const releases = await response.json();
+      const releases: GitHubRelease[] = await response.json();
 
       // 1. Try to find precise tag match
-      let release = releases.find((r: any) => r.tag_name === version || r.name === version);
+      let release = releases.find((r) => r.tag_name === version || r.name === version);
       
       if (!release) {
-         release = releases.find((r: any) => r.tag_name === `v${version}` || r.name === `v${version}`);
+         release = releases.find((r) => r.tag_name === `v${version}` || r.name === `v${version}`);
       }
 
       if (!release) {
@@ -231,7 +231,7 @@ const AppContent = () => {
       }
 
       // 3. Find ELF asset - match against hardware name
-      const elfAsset = release.assets.find((asset: any) => 
+      const elfAsset = release.assets.find((asset) => 
         asset.name.endsWith('.elf') && asset.name.includes(hardware)
       );
 

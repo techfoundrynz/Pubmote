@@ -9,6 +9,7 @@
     "firmware-tool:dev": "pnpm --filter @pubmote/firmware-tool dev",
     "firmware-tool:build": "pnpm --filter @pubmote/firmware-tool build",
     "firmware-tool:lint": "pnpm --filter @pubmote/firmware-tool lint",
+    "firmware-tool:typecheck": "pnpm --filter @pubmote/firmware-tool typecheck",
     "firmware-tool:format": "pnpm --filter @pubmote/firmware-tool format",
     "firmware-tool:format:check": "pnpm --filter @pubmote/firmware-tool format:check",
     "firmware-tool:preview": "pnpm --filter @pubmote/firmware-tool preview",

@@ -46,3 +46,10 @@ export interface CommandInfo {
   help: string;
   hint?: string;
 }
+
+// The part of the GitHub releases API response the tool reads.
+export interface GitHubRelease {
+  tag_name: string;
+  name: string | null;
+  assets: { name: string; browser_download_url: string }[];
+}

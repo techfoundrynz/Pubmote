@@ -45,6 +45,9 @@ jobs:
       - name: Lint
         run: pnpm firmware-tool:lint
 
+      - name: Type check
+        run: pnpm firmware-tool:typecheck
+
       - name: Build
         working-directory: ./firmware_tool
         run: pnpm build

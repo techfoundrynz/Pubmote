@@ -161,7 +161,7 @@ export default {
       if (customHeadersStr) {
         try {
           customHeaders = JSON.parse(customHeadersStr);
-        } catch (e) {
+        } catch {
           // Ignore invalid JSON
         }
       }
