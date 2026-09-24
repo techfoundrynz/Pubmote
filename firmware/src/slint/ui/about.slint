@@ -54,6 +54,7 @@ export component AboutScreen inherits Rectangle {
 
     property <int> current-page: 0;
     property <int> version-taps: 0;
+    changed current-page => { root.version-taps = 0; }
 
     function count-version-tap() {
         root.version-taps += 1;
@@ -88,30 +89,8 @@ export component AboutScreen inherits Rectangle {
                             horizontal-alignment: center;
                         }
 
-                        // Sits on the Pager's swipe detector, so it must do the page snap itself
                         TouchArea {
-                            width: 100%;
-                            height: 100%;
-                            property <length> start-x;
-                            pointer-event(evt) => {
-                                if (evt.button != PointerEventButton.left) {
-                                    return;
-                                }
-                                if (evt.kind == PointerEventKind.down) {
-                                    self.start-x = self.mouse-x;
-                                } else if (evt.kind == PointerEventKind.up) {
-                                    let diff = self.mouse-x - self.start-x;
-                                    if (diff > 40px && root.current-page > 0) {
-                                        root.current-page -= 1;
-                                        root.version-taps = 0;
-                                    } else if (diff < -40px && root.current-page < 1) {
-                                        root.current-page += 1;
-                                        root.version-taps = 0;
-                                    } else {
-                                        root.count-version-tap();
-                                    }
-                                }
-                            }
+                            clicked => { root.count-version-tap(); }
                         }
 
                         tap-window := Timer {
@@ -137,40 +116,29 @@ export component AboutScreen inherits Rectangle {
             Rectangle {
                 width: root.width;
                 background: Theme.bg;
-                // The Flickable grabs every press once it can scroll, so the Pager underneath never sees the swipe
-                SwipeGestureHandler {
-                    width: 100%;
-                    height: 100%;
-                    handle-swipe-right: true;
-                    swiped => {
-                        if (self.current-position.x - self.pressed-position.x > 40px) {
-                            root.current-page = 0;
-                        }
-                    }
-                    Flickable {
-                        viewport-height: debug-layout.min-height;
-                        debug-layout := VerticalLayout {
-                            padding-left: Theme.page-padding-horizontal;
-                            padding-right: Theme.page-padding-horizontal;
-                            padding-top: 6px * Theme.scale;
-                            padding-bottom: 6px * Theme.scale;
-                            spacing: 2px * Theme.scale;
+                Flickable {
+                    viewport-height: debug-layout.min-height;
+                    debug-layout := VerticalLayout {
+                        padding-left: Theme.page-padding-horizontal;
+                        padding-right: Theme.page-padding-horizontal;
+                        padding-top: 6px * Theme.scale;
+                        padding-bottom: 6px * Theme.scale;
+                        spacing: 2px * Theme.scale;
 
-                            for entry in root.stats: VerticalLayout {
-                                // A header gets breathing room above it, but not before the first
-                                padding-top: entry.is-header ? 8px * Theme.scale : 0;
+                        for entry in root.stats: VerticalLayout {
+                            // A header gets breathing room above it, but not before the first
+                            padding-top: entry.is-header ? 8px * Theme.scale : 0;
 
-                                if entry.is-header: Text {
-                                    text: entry.label;
-                                    color: Theme.text;
-                                    font-size: Theme.font-11;
-                                    letter-spacing: 1px;
-                                }
+                            if entry.is-header: Text {
+                                text: entry.label;
+                                color: Theme.text;
+                                font-size: Theme.font-11;
+                                letter-spacing: 1px;
+                            }
 
-                                if !entry.is-header: StatRow {
-                                    label: entry.label;
-                                    value: entry.value;
-                                }
+                            if !entry.is-header: StatRow {
+                                label: entry.label;
+                                value: entry.value;
                             }
                         }
                     }

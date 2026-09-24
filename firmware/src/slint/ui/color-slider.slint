@@ -1,4 +1,5 @@
 import { Theme } from "theme.slint";
+import { PagerGesture } from "pager.slint";
 
 export global ColorSliderGenerator {
     pure callback generate-track(length, length, int, float, float, float) -> image;
@@ -75,6 +76,11 @@ export component ColorSlider inherits Rectangle {
                 property <bool> is-long-press: false;
                 
                 pointer-event(evt) => {
+                    if evt.kind == PointerEventKind.move || evt.kind == PointerEventKind.down {
+                        PagerGesture.claimed = true;
+                    } else if evt.kind == PointerEventKind.up || evt.kind == PointerEventKind.cancel {
+                        PagerGesture.claimed = false;
+                    }
                     if evt.button == PointerEventButton.left && evt.kind == PointerEventKind.down {
                         self.start-val = root.value;
                         self.start-x = self.mouse-x;
