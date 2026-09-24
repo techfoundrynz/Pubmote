@@ -21,6 +21,8 @@ export component MenuScreen inherits Rectangle {
     in property <bool> led-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
+    // The sub-screen button last opened, refocused on return so the stick continues from it
+    in-out property <string> focus-item: "";
     in property <bool> imu-supported: false;
     in property <bool> joystick-supported: false;
     callback back;
@@ -126,7 +128,15 @@ export component MenuScreen inherits Rectangle {
                 text: "Settings";
                 variant: "ghost";
                 right-text: "\u{203a}";
-                clicked => { root.settings(); }
+                init => {
+                    if (root.focus-item == "settings") {
+                        self.focus();
+                    }
+                }
+                clicked => {
+                    root.focus-item = "settings";
+                    root.settings();
+                }
             }
 
             Rectangle {
@@ -140,7 +150,15 @@ export component MenuScreen inherits Rectangle {
                     text: "Inputs";
                     variant: "ghost";
                     right-text: "\u{203a}";
-                    clicked => { root.calibration(); }
+                    init => {
+                        if (root.focus-item == "inputs") {
+                            self.focus();
+                        }
+                    }
+                    clicked => {
+                        root.focus-item = "inputs";
+                        root.calibration();
+                    }
                 }
 
                 Rectangle {
@@ -155,7 +173,15 @@ export component MenuScreen inherits Rectangle {
                     text: "IMU";
                     variant: "ghost";
                     right-text: "\u{203a}";
-                    clicked => { root.imu-calibration(); }
+                    init => {
+                        if (root.focus-item == "imu") {
+                            self.focus();
+                        }
+                    }
+                    clicked => {
+                        root.focus-item = "imu";
+                        root.imu-calibration();
+                    }
                 }
 
                 Rectangle {
@@ -168,7 +194,15 @@ export component MenuScreen inherits Rectangle {
                 text: "Pairing";
                 variant: "ghost";
                 right-text: "\u{203a}";
-                clicked => { root.pairing(); }
+                init => {
+                    if (root.focus-item == "pairing") {
+                        self.focus();
+                    }
+                }
+                clicked => {
+                    root.focus-item = "pairing";
+                    root.pairing();
+                }
             }
 
             Rectangle {
@@ -180,7 +214,15 @@ export component MenuScreen inherits Rectangle {
                 text: "About";
                 variant: "ghost";
                 right-text: "\u{203a}";
-                clicked => { root.about(); }
+                init => {
+                    if (root.focus-item == "about") {
+                        self.focus();
+                    }
+                }
+                clicked => {
+                    root.focus-item = "about";
+                    root.about();
+                }
             }
 
             Rectangle {

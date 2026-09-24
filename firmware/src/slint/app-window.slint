@@ -88,6 +88,7 @@ export global UiState {
     in property <bool> led-mode-supported: false;
     in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
+    in-out property <string> menu-focus-item: "";
 
     // --- Settings (ui_SettingsScreen) ---
     in-out property <float> brightness: 128;
@@ -328,6 +329,7 @@ export component AppWindow inherits Window {
     changed active-screen => {
         if (self.active-screen == Screen.stats) {
             UiState.scroll-offset-y = 0;
+            UiState.menu-focus-item = "";
         }
         root.screen-loaded = false;
         root.is-animating = false;
@@ -428,6 +430,7 @@ export component AppWindow inherits Window {
         led-mode-supported: UiState.led-mode-supported;
         shutdown-text: UiState.shutdown-text;
         scroll-offset-y <=> UiState.scroll-offset-y;
+        focus-item <=> UiState.menu-focus-item;
         imu-supported: UiState.imu-supported;
         joystick-supported: UiState.joystick-supported;
         back => { UiState.menu-back(); }

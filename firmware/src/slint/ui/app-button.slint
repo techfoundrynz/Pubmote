@@ -11,6 +11,7 @@ export component AppButton inherits Rectangle {
     callback clicked;
     callback long-clicked;
     property <bool> was-long-pressed: false;
+    forward-focus: f-scope;
 
     pure function get-base-color() -> color {
         if (root.button-color == "success") { return Theme.color-success; }
