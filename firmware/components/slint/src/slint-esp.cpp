@@ -148,6 +148,7 @@ std::unique_ptr<slint::platform::WindowAdapter> EspPlatform<PixelType>::create_w
   auto window = std::make_unique<EspWindowAdapter>(RepaintBufferType::ReusedBuffer, size);
   m_window = window.get();
   m_window->m_renderer.set_rendering_rotation(rotation);
+  m_window->m_renderer.set_dirty_region_alignment(2, 2);
   return window;
 }
 
