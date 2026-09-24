@@ -1,37 +1,56 @@
-name: Deploy to GitHub Pages
+name: Firmware Tool
 
-# Runs on every push to master under the firmware tool path
+# Checks every PR and master push under the firmware tool path; deploys from master
 on:
   push:
     branches:
       - master
     paths:
       - firmware_tool/**
+      - package.json
+      - pnpm-lock.yaml
+      - .oxlintrc.json
+      - .oxfmtrc.json
+      - .github/workflows/firmware-tool.yml
+  pull_request:
+    branches:
+      - master
+    paths:
+      - firmware_tool/**
+      - package.json
+      - pnpm-lock.yaml
+      - .oxlintrc.json
+      - .oxfmtrc.json
+      - .github/workflows/firmware-tool.yml
 
 jobs:
   build-and-deploy:
-    if: github.repository == 'techfoundrynz/Pubmote'
-
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
-          
+
       - name: Install dependencies
-        working-directory: ./firmware_tool # Change to the firmware_tool directory
-        run: corepack enable && pnpm i
-        
+        run: corepack enable && pnpm i --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm firmware-tool:format:check
+
+      - name: Lint
+        run: pnpm firmware-tool:lint
+
       - name: Build
         working-directory: ./firmware_tool
         run: pnpm build
-        
+
       - name: GH Pages deploy
+        if: github.event_name == 'push' && github.repository == 'techfoundrynz/Pubmote'
         uses: Cecilapp/GitHub-Pages-deploy@3.2.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,5 +60,3 @@ jobs:
           build_dir: ./firmware_tool/dist
           # Which branch to push files.
           cname: pubmote.com
-
-          

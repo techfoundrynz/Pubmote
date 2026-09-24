@@ -26,6 +26,10 @@
       "editor.wrappingStrategy": "advanced",
       "editor.formatOnPaste": false
     },
+    "[javascript][javascriptreact][typescript][typescriptreact][css][html]": {
+      "editor.defaultFormatter": "oxc.oxc-vscode",
+      "editor.formatOnSave": true
+    },
     "C_Cpp.clang_format_style": "file",
     "cmake.configureOnOpen": false,
     "files.exclude": {

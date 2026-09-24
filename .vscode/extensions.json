@@ -3,9 +3,11 @@
     // for the documentation about the extensions.json format
     "recommendations": [
         "platformio.platformio-ide",
-        "slint.slint"
+        "slint.slint",
+        "oxc.oxc-vscode"
     ],
     "unwantedRecommendations": [
-        "ms-vscode.cpptools-extension-pack"
+        "ms-vscode.cpptools-extension-pack",
+        "dbaeumer.vscode-eslint"
     ]
 }

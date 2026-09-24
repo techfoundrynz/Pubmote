@@ -1,4 +1,4 @@
-/* eslint-disable no-control-regex */
+/* oxlint-disable no-control-regex */
 import { ESPLoader, Transport, LoaderOptions } from "esptool-js";
 import { delay } from "../utils/delay";
 import { LogEntry, TerminalService } from "./terminal";

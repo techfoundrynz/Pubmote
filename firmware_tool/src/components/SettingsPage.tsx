@@ -176,7 +176,7 @@ const SettingsPage: React.FC<unknown> = () => {
     if (!deviceInfo.connected) {
       resetSettings();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceInfo.connected, flashProgress.status]);
 
   // Surface the firmware's verdict on a remap, plus any caveats
