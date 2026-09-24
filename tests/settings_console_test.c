@@ -30,14 +30,6 @@ static const char *device_keys[] = {
     "pocket_mode", "temp_units",      "distance_units", "startup_sound",   "stats_dp",      "led_mode"};
 bool display_supports_hbm(void) { return supports_hbm; }
 bool led_is_supported(void) { return supports_led; }
-const char *hbm_mode_label(HbmModeOptions mode) {
-  static const char *labels[] = {"Off", "On", "Raised"};
-  return labels[mode];
-}
-const char *led_mode_label(LedModeOptions mode) {
-  static const char *labels[] = {"Off", "Solid", "Alerts"};
-  return labels[mode];
-}
 esp_err_t nvs_read_int(const char *key, uint32_t *value) {
   for (size_t i = 0; i < 13; ++i) {
     if (!strcmp(device_keys[i], key) && device_present[i]) {
@@ -298,6 +290,8 @@ static void test_records_and_pairing(void) {
   assert(cJSON_GetArraySize(cJSON_GetObjectItemCaseSensitive(metadata, "fields")) == 38);
   assert(cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(metadata_field(metadata, "stick_x_min"), "readOnly")));
   assert(cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(metadata_field(metadata, "bl_level"), "readOnly")));
+  const cJSON *led = cJSON_GetObjectItemCaseSensitive(metadata_field(metadata, "led_mode"), "options");
+  assert(!strcmp(cJSON_GetObjectItemCaseSensitive(cJSON_GetArrayItem(led, 1), "label")->valuestring, "Solid"));
   const cJSON *boards_meta = metadata_field(metadata, "paired_boards");
   assert(!strcmp(cJSON_GetObjectItemCaseSensitive(boards_meta, "type")->valuestring, "list"));
   assert(cJSON_GetObjectItemCaseSensitive(boards_meta, "maxItems")->valueint == MAX_PAIRED_DEVICES);

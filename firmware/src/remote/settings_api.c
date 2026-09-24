@@ -41,20 +41,16 @@ DEFINE_SETTING_OPTIONS(settings_distance_units_options, DISTANCE_UNITS_LABELS, D
 static const char *const STARTUP_SOUND_LABELS[] = {"Disabled", "Beep", "Melody"};
 DEFINE_SETTING_OPTIONS(settings_startup_sound_options, STARTUP_SOUND_LABELS, STARTUP_SOUND_COUNT)
 
+static const char *const HBM_LABELS[] = {"Off", "On", "Raised"};
+_Static_assert(sizeof(HBM_LABELS) / sizeof(HBM_LABELS[0]) == HBM_MODE_COUNT, "HBM_LABELS out of sync");
 static SettingOptions hbm_options(void) {
-  static const char *labels[HBM_MODE_COUNT];
-  for (int i = 0; i < HBM_MODE_COUNT; ++i) {
-    labels[i] = hbm_mode_label((HbmModeOptions)i);
-  }
-  return (SettingOptions){labels, display_supports_hbm() ? (IMU_ENABLED ? HBM_MODE_COUNT : 2) : 1};
+  return (SettingOptions){HBM_LABELS, display_supports_hbm() ? (IMU_ENABLED ? HBM_MODE_COUNT : 2) : 1};
 }
 
+static const char *const LED_LABELS[] = {"Off", "Solid", "Alerts"};
+_Static_assert(sizeof(LED_LABELS) / sizeof(LED_LABELS[0]) == LED_MODE_COUNT, "LED_LABELS out of sync");
 static SettingOptions led_options(void) {
-  static const char *labels[LED_MODE_COUNT];
-  for (int i = 0; i < LED_MODE_COUNT; ++i) {
-    labels[i] = led_mode_label((LedModeOptions)i);
-  }
-  return (SettingOptions){labels, led_is_supported() ? LED_MODE_COUNT : 1};
+  return (SettingOptions){LED_LABELS, led_is_supported() ? LED_MODE_COUNT : 1};
 }
 
 static const char *const BATTERY_LABELS[] = {"Percentage", "Voltage"};
