@@ -1,0 +1,41 @@
+name: Format Check
+
+# Runs on every PR that touches formatted sources or the style
+on:
+  pull_request:
+    paths:
+      - 'firmware/src/**'
+      - '.clang-format'
+      - '.github/workflows/format-check.yml'
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Pinned: other clang-format versions format some constructs differently.
+      # Keep in step with the version bundled with the VS Code C/C++ extension.
+      - name: Install clang-format
+        run: pip install clang-format==23.1.0
+
+      # Vendored code under firmware/components is intentionally not checked.
+      - name: Check formatting
+        run: |
+          clang-format --version
+          if ! git ls-files -z 'firmware/src/*.c' 'firmware/src/*.h' 'firmware/src/*.cpp' 'firmware/src/*.hpp' \
+              | xargs -0 -r clang-format --style=file --dry-run --Werror; then
+            echo "::error::C/C++ sources are not formatted. Run clang-format 23.1.0 (or format-on-save in VS Code) on the files above."
+            exit 1
+          fi
