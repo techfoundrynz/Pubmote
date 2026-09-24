@@ -3,7 +3,7 @@
 #include "settings.h"
 #include <string.h>
 
-// Hysteresis; expo squashes the mid range, so engage early and release late
+// Hysteresis so a stick near the threshold doesn't chatter
 #define STICK_ENGAGE 0.45f
 #define STICK_RELEASE 0.2f
 

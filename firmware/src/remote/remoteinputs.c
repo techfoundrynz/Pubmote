@@ -122,11 +122,7 @@ float convert_adc_to_axis(int adc_value, int min_val, int mid_val, int max_val, 
 
   // Apply expo
   if (expo > 1) {
-    bool negative = axis < 0;
-    axis = pow(axis, expo);
-    if (negative) {
-      axis = -axis;
-    }
+    axis = copysignf(powf(fabsf(axis), expo), axis);
   }
 
   // clamp between -1 and 1
