@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Pubmote monorepo",
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@12.6.0+sha512.3ef68f951cb111ac204b4a5a16f0b2ddf0da56a96e0413e81d855d9f0b55ef926714709028e1cd00c405c2c5fb7b9e8ec4dc46777c805d0373c2f2ff00fd20ec",
   "scripts": {
     "dev": "pnpm --filter @pubmote/* dev",
     "firmware-tool:dev": "pnpm --filter @pubmote/firmware-tool dev",
@@ -23,7 +23,7 @@
   },
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=9.0.0"
+    "pnpm": ">=12.0.0"
   },
   "devDependencies": {
     "oxfmt": "0.70.0",
