@@ -1,4 +1,3 @@
-#include "utilities/psram_task.h"
 #include "vehicle_state.h"
 #include "esp_log.h"
 #include "esp_task.h"
@@ -7,6 +6,7 @@
 #include "remote/haptic.h"
 #include "remote/led.h"
 #include "remote/stats.h"
+#include "utilities/psram_task.h"
 
 static const char *TAG = "PUBREMOTE-VEHICLE_STATE";
 #define VEHICLE_STATE_LOOP_TIME_MS 100
@@ -123,7 +123,8 @@ static StaticTask_t monitor_task_tcb;
 static StackType_t *monitor_task_stack;
 
 void vehicle_monitor_init() {
-  monitor_task_handle = create_psram_task(monitor_task, "monitor_task", 4096, NULL, 5, &monitor_task_tcb, &monitor_task_stack);
+  monitor_task_handle =
+      create_psram_task(monitor_task, "monitor_task", 4096, NULL, 5, &monitor_task_tcb, &monitor_task_stack);
   ESP_ERROR_CHECK(monitor_task_handle ? ESP_OK : ESP_FAIL);
   ESP_LOGI("VEHICLE_STATE", "Vehicle state monitor initialized");
 }

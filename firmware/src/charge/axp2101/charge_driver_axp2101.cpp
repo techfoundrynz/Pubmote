@@ -47,7 +47,6 @@ static esp_err_t axp2101_init() {
   PMU.setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
   PMU.setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_1000MA);
   PMU.enableWatchdog();
-  
 
   ESP_LOGI(TAG, "AXP2101 initialized successfully");
   return ESP_OK;
@@ -72,7 +71,8 @@ extern "C" esp_err_t axp2101_charge_driver_init() {
 
 extern "C" RemotePowerState axp2101_get_power_state() {
   PMU.clrWatchdog();
-  RemotePowerState state = {.voltage = 0, .chargeState = CHARGE_STATE_UNKNOWN, .current = 0, .isPowered = false, .isFault = false};
+  RemotePowerState state = {
+      .voltage = 0, .chargeState = CHARGE_STATE_UNKNOWN, .current = 0, .isPowered = false, .isFault = false};
   state.voltage = PMU.getBattVoltage();
   state.current = 0; // AXP2101 does not provide current reading directly
 
@@ -102,10 +102,8 @@ extern "C" RemotePowerState axp2101_get_power_state() {
   state.isPowered = PMU.isVbusIn();
   state.isFault = false;
 
-
-  ESP_LOGD(TAG, "\nVBUS: %s %04dmV\nVBAT: %04dmV\nVSYS: %04dmV",
-           PMU.isVbusIn() ? "Connected" : "Disconnect", PMU.getVbusVoltage(), PMU.getBattVoltage(),
-           PMU.getSystemVoltage());
+  ESP_LOGD(TAG, "\nVBUS: %s %04dmV\nVBAT: %04dmV\nVSYS: %04dmV", PMU.isVbusIn() ? "Connected" : "Disconnect",
+           PMU.getVbusVoltage(), PMU.getBattVoltage(), PMU.getSystemVoltage());
 
   return state;
 }

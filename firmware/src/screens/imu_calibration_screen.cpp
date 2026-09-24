@@ -3,9 +3,9 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "remote/display.h"
 #include "generated/app-window.h"
 #include "imu/imu_driver.h"
+#include "remote/display.h"
 #include "remote/settings.h"
 #include <stdio.h>
 
@@ -18,47 +18,47 @@ static void update_imu_calibration_ui_strings() {
   slint::invoke_from_event_loop([]() {
     if (get_slint_window()) {
       const auto &state = get_slint_window()->global<UiState>();
-      
+
       switch (imu_calibration_step) {
-        case 1:
-          state.set_imu_calibration_step_text("Verify the bubble level moves. Tap Next to begin calibration.");
-          state.set_imu_calibration_primary_button_text("Next");
-          state.set_imu_calibration_show_axis_controls(false);
-          break;
-        case 2:
-          state.set_imu_calibration_step_text("Place the remote on a flat, level surface and tap Calibrate.");
-          state.set_imu_calibration_primary_button_text("Calibrate");
-          state.set_imu_calibration_show_axis_controls(false);
-          break;
-        case 3:
-          state.set_imu_calibration_step_text("Verify direction. Use Inv X/Y and Swap XY buttons below if needed.");
-          state.set_imu_calibration_primary_button_text("Next");
-          state.set_imu_calibration_show_axis_controls(true);
-          break;
-        case 4:
-          state.set_imu_calibration_step_text("Confirm the bubble level tilts correctly. Tap Save to apply.");
-          state.set_imu_calibration_primary_button_text("Save");
-          state.set_imu_calibration_show_axis_controls(false);
-          break;
-        default:
-          break;
+      case 1:
+        state.set_imu_calibration_step_text("Verify the bubble level moves. Tap Next to begin calibration.");
+        state.set_imu_calibration_primary_button_text("Next");
+        state.set_imu_calibration_show_axis_controls(false);
+        break;
+      case 2:
+        state.set_imu_calibration_step_text("Place the remote on a flat, level surface and tap Calibrate.");
+        state.set_imu_calibration_primary_button_text("Calibrate");
+        state.set_imu_calibration_show_axis_controls(false);
+        break;
+      case 3:
+        state.set_imu_calibration_step_text("Verify direction. Use Inv X/Y and Swap XY buttons below if needed.");
+        state.set_imu_calibration_primary_button_text("Next");
+        state.set_imu_calibration_show_axis_controls(true);
+        break;
+      case 4:
+        state.set_imu_calibration_step_text("Confirm the bubble level tilts correctly. Tap Save to apply.");
+        state.set_imu_calibration_primary_button_text("Save");
+        state.set_imu_calibration_show_axis_controls(false);
+        break;
+      default:
+        break;
       }
     }
   });
 }
 
-static const char* event_to_string(imu_event_t event) {
+static const char *event_to_string(imu_event_t event) {
   switch (event) {
-    case IMU_EVENT_NONE:
-      return "None";
-    case IMU_EVENT_WOM_MOTION:
-      return "Motion";
-    case IMU_EVENT_TAP:
-      return "Tap";
-    case IMU_EVENT_ORIENTATION_CHANGE:
-      return "Orientation Change";
-    default:
-      return "Unknown";
+  case IMU_EVENT_NONE:
+    return "None";
+  case IMU_EVENT_WOM_MOTION:
+    return "Motion";
+  case IMU_EVENT_TAP:
+    return "Tap";
+  case IMU_EVENT_ORIENTATION_CHANGE:
+    return "Orientation Change";
+  default:
+    return "Unknown";
   }
 }
 
@@ -76,13 +76,14 @@ static void imu_calibration_task(void *pvParameters) {
     char gesture_str[64];
     snprintf(accel_str, sizeof(accel_str), "A: X=%.2f Y=%.2f Z=%.2f", data.accel_x, data.accel_y, data.accel_z);
     snprintf(gyro_str, sizeof(gyro_str), "G: X=%.1f Y=%.1f Z=%.1f", data.gyro_x, data.gyro_y, data.gyro_z);
-    
+
     // Use calibrated/inverted Z directly to evaluate viewing tilt angle and orientation status
     float raw_z = data.accel_z;
     const char *face_status = "Tilted";
     if (raw_z > 0.70f) {
       face_status = "Face Up";
-    } else if (raw_z < -0.70f) {
+    }
+    else if (raw_z < -0.70f) {
       face_status = "Face Down";
     }
     snprintf(gesture_str, sizeof(gesture_str), "Orient: %s (Z=%.2f)", face_status, raw_z);
@@ -122,7 +123,8 @@ static void imu_calibration_task(void *pvParameters) {
 
 extern "C" void setup_imu_calibration_properties() {
   ESP_LOGI(TAG, "setup_imu_calibration_properties called. IMU_ENABLED = %d", IMU_ENABLED);
-  if (!get_slint_window()) return;
+  if (!get_slint_window())
+    return;
 
   original_imu_calibration = imu_calibration;
   imu_calibration_step = 1;
@@ -134,7 +136,8 @@ extern "C" void setup_imu_calibration_properties() {
     esp_err_t err = imu_driver_init();
     if (err == ESP_OK) {
       ESP_LOGI(TAG, "Re-initialization succeeded");
-    } else {
+    }
+    else {
       ESP_LOGE(TAG, "Re-initialization failed: %d", err);
     }
   }
@@ -166,12 +169,13 @@ extern "C" void setup_imu_calibration_properties() {
         if (raw_data.accel_z < 0.0f) {
           imu_calibration.invert_z = true;
           imu_calibration.accel_z_offset = raw_data.accel_z + 1.0f;
-        } else {
+        }
+        else {
           imu_calibration.invert_z = false;
           imu_calibration.accel_z_offset = raw_data.accel_z - 1.0f;
         }
-        ESP_LOGI(TAG, "Level calibrated (in-memory). Offsets: X=%.4f, Y=%.4f, Z=%.4f",
-                 imu_calibration.accel_x_offset, imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);
+        ESP_LOGI(TAG, "Level calibrated (in-memory). Offsets: X=%.4f, Y=%.4f, Z=%.4f", imu_calibration.accel_x_offset,
+                 imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);
       });
 
       state.on_imu_calibration_toggle_invert_x([]() {
@@ -203,14 +207,15 @@ extern "C" void setup_imu_calibration_properties() {
           }
         });
       });
-      }
+    }
   });
 
 #if IMU_ENABLED
   if (imu_calibration_task_handle == NULL) {
     xTaskCreate(imu_calibration_task, "imu_calibration_task", 3072, NULL, 2, &imu_calibration_task_handle);
     ESP_LOGI(TAG, "Created imu_calibration_task");
-  } else {
+  }
+  else {
     ESP_LOGI(TAG, "imu_calibration_task already running");
   }
 #else
@@ -220,17 +225,13 @@ extern "C" void setup_imu_calibration_properties() {
 
 extern "C" void handle_open_imu_calibration() {
   ESP_LOGI(TAG, "Open IMU calibration pressed");
-  slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::ImuCalibration);
-  });
+  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::ImuCalibration); });
 }
 
 extern "C" void handle_imu_calibration_back() {
   ESP_LOGI(TAG, "IMU back/cancel pressed. Restoring original calibration settings...");
   imu_calibration = original_imu_calibration;
-  slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Menu);
-  });
+  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
 }
 
 extern "C" void handle_imu_calibration_primary() {
@@ -250,24 +251,25 @@ extern "C" void handle_imu_calibration_primary() {
     imu_calibration.invert_y = false;
     imu_calibration.invert_z = false;
     imu_calibration.swap_xy = false;
-    
+
     imu_data_t raw_data = {};
     imu_driver_get_data(&raw_data);
-    
+
     imu_calibration = temp;
     imu_calibration.accel_x_offset = raw_data.accel_x;
     imu_calibration.accel_y_offset = raw_data.accel_y;
     if (raw_data.accel_z < 0.0f) {
       imu_calibration.invert_z = true;
       imu_calibration.accel_z_offset = raw_data.accel_z + 1.0f;
-    } else {
+    }
+    else {
       imu_calibration.invert_z = false;
       imu_calibration.accel_z_offset = raw_data.accel_z - 1.0f;
     }
-    
-    ESP_LOGI(TAG, "Level calibrated. Offsets: X=%.4f, Y=%.4f, Z=%.4f",
-             imu_calibration.accel_x_offset, imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);
-             
+
+    ESP_LOGI(TAG, "Level calibrated. Offsets: X=%.4f, Y=%.4f, Z=%.4f", imu_calibration.accel_x_offset,
+             imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);
+
     imu_calibration_step = 3;
     update_imu_calibration_ui_strings();
   }
@@ -278,9 +280,7 @@ extern "C" void handle_imu_calibration_primary() {
   else if (imu_calibration_step == 4) {
     ESP_LOGI(TAG, "IMU Calibration completed. Saving to NVS...");
     save_imu_calibration();
-    
-    slint::invoke_from_event_loop([]() {
-      get_slint_window()->global<UiState>().set_screen(Screen::Menu);
-    });
+
+    slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
   }
 }

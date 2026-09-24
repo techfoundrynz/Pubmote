@@ -8,9 +8,9 @@ extern "C"
 {
 #endif
 
-    void console_init();
+  void console_init();
 
-    void console_poll_usb();
+  void console_poll_usb();
 
 #ifdef __cplusplus
 }

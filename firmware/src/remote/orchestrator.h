@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-    void orchestrator_init(void);
+  void orchestrator_init(void);
 
 #ifdef __cplusplus
 }

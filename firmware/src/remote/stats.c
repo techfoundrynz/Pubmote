@@ -1,6 +1,6 @@
 #include "stats.h"
-#include "settings.h"
 #include "receiver.h"
+#include "settings.h"
 #include <screens/stats_screen.h>
 
 RemoteStats remoteStats = {.signalStrength = -255, .state = BOARD_STATE_BOOT};

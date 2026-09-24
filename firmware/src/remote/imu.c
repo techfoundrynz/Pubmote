@@ -1,4 +1,3 @@
-#include "utilities/psram_task.h"
 #include "imu.h"
 #include "buzzer.h"
 #include "config.h"
@@ -11,6 +10,7 @@
 #include "imu/imu_datatypes.h"
 #include "imu/imu_driver.h"
 #include "settings.h"
+#include "utilities/psram_task.h"
 #include <driver/gpio.h>
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
@@ -26,7 +26,7 @@ static volatile bool imu_running = false;
 #define DEBUG_IMU 0
 
 #if IMU_ENABLED
-#define MAX_IMU_CALLBACKS 4
+  #define MAX_IMU_CALLBACKS 4
 static imu_gesture_cb_t gesture_callbacks[MAX_IMU_CALLBACKS] = {NULL};
 
 esp_err_t imu_register_gesture_callback(imu_gesture_cb_t cb) {
@@ -94,9 +94,8 @@ static void imu_get_data() {
   float raw_z = imu_data.accel_z;
 
   // Calculate gyroscope magnitude (angular velocity in dps)
-  float gyro_mag = sqrtf(imu_data.gyro_x * imu_data.gyro_x +
-                         imu_data.gyro_y * imu_data.gyro_y +
-                         imu_data.gyro_z * imu_data.gyro_z);
+  float gyro_mag =
+      sqrtf(imu_data.gyro_x * imu_data.gyro_x + imu_data.gyro_y * imu_data.gyro_y + imu_data.gyro_z * imu_data.gyro_z);
 
   // Z acceleration component is close to 1g (screen facing up/towards user).
   // We allow a comfortable tilt range (Z > 0.70g corresponds to tilt < ~45 degrees).
@@ -107,15 +106,19 @@ static void imu_get_data() {
   bool is_motionless = (gyro_mag < 8.0f);
 
   if (should_log) {
-    ESP_LOGI(TAG, "Gesture check - Raw Z: %.3f (Accel Z: %.3f, Offset: %.3f), Gyro Mag: %.3f, Flat: %d, Motionless: %d, Counter: %d",
-             raw_z, imu_data.accel_z, imu_calibration.accel_z_offset, gyro_mag, is_flat, is_motionless, motionless_counter);
+    ESP_LOGI(TAG,
+             "Gesture check - Raw Z: %.3f (Accel Z: %.3f, Offset: %.3f), Gyro Mag: %.3f, Flat: %d, Motionless: %d, "
+             "Counter: %d",
+             raw_z, imu_data.accel_z, imu_calibration.accel_z_offset, gyro_mag, is_flat, is_motionless,
+             motionless_counter);
   }
 
   if (is_flat && is_motionless) {
     if (motionless_counter < 100) { // cap at 5 seconds (50ms * 100)
       motionless_counter++;
     }
-  } else {
+  }
+  else {
     motionless_counter = 0;
   }
 
@@ -123,7 +126,8 @@ static void imu_get_data() {
   if (is_flat) {
     if (motionless_counter > 60) {
       current_gesture = IMU_GESTURE_TABLE_FLAT;
-    } else {
+    }
+    else {
       current_gesture = IMU_GESTURE_RAISED;
     }
   }
@@ -154,7 +158,8 @@ void imu_init() {
   esp_err_t err = imu_driver_init();
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "imu_driver_init failed with error: %d", err);
-  } else {
+  }
+  else {
     ESP_LOGI(TAG, "imu_driver_init succeeded");
   }
 

@@ -4,11 +4,12 @@
 #include "comms.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-// Compatibility definitions for the old ESP-NOW header
-typedef comms_event_t esp_now_event_t;
+  // Compatibility definitions for the old ESP-NOW header
+  typedef comms_event_t esp_now_event_t;
 
 #define espnow_init comms_init
 #define espnow_deinit comms_deinit

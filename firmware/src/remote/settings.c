@@ -448,10 +448,10 @@ bool is_pocket_mode_enabled() {
 // Dropdown option labels. Each table is indexed by its enum value and asserted
 // against that enum's _COUNT, so extending an enum without adding a label fails
 // the build instead of silently shifting what the UI saves.
-#define DEFINE_SETTING_OPTIONS(fn_name, table, count_sentinel)                                                          \
-  _Static_assert(sizeof(table) / sizeof((table)[0]) == (count_sentinel), #table " out of sync with " #count_sentinel);  \
+#define DEFINE_SETTING_OPTIONS(fn_name, table, count_sentinel)                                                         \
+  _Static_assert(sizeof(table) / sizeof((table)[0]) == (count_sentinel), #table " out of sync with " #count_sentinel); \
   SettingOptions fn_name() {                                                                                           \
-    SettingOptions options = {.labels = table, .count = sizeof(table) / sizeof((table)[0])};                            \
+    SettingOptions options = {.labels = table, .count = sizeof(table) / sizeof((table)[0])};                           \
     return options;                                                                                                    \
   }
 
@@ -821,9 +821,8 @@ esp_err_t settings_init() {
   calibration_settings.deadband =
       nvs_read_int("deadband", &temp_setting_value) == ESP_OK ? (uint16_t)temp_setting_value : STICK_DEADBAND;
 
-  calibration_settings.expo = nvs_read_int("expo", &temp_setting_value) == ESP_OK
-                                  ? (float)temp_setting_value / EXPO_ADJUST_FACTOR
-                                  : STICK_EXPO;
+  calibration_settings.expo =
+      nvs_read_int("expo", &temp_setting_value) == ESP_OK ? (float)temp_setting_value / EXPO_ADJUST_FACTOR : STICK_EXPO;
 
   calibration_settings.invert_x =
       nvs_read_int("invert_x", &temp_setting_value) == ESP_OK ? (bool)temp_setting_value : INVERT_X_AXIS;
@@ -840,8 +839,9 @@ esp_err_t settings_init() {
   stored_pins.js_x_gpio = read_pin_setting("js_x_gpio", stored_pins.js_x_gpio);
   stored_pins.js_y_gpio = read_pin_setting("js_y_gpio", stored_pins.js_y_gpio);
   stored_pins.btn1_gpio = read_pin_setting("btn1_gpio", stored_pins.btn1_gpio);
-  stored_pins.btn1_active_level =
-      nvs_read_int("btn1_level", &temp_setting_value) == ESP_OK ? (temp_setting_value ? 1 : 0) : stored_pins.btn1_active_level;
+  stored_pins.btn1_active_level = nvs_read_int("btn1_level", &temp_setting_value) == ESP_OK
+                                      ? (temp_setting_value ? 1 : 0)
+                                      : stored_pins.btn1_active_level;
 
   char pin_err[96];
   if (input_pins_validate(&stored_pins, pin_err, sizeof(pin_err)) == ESP_OK) {

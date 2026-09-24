@@ -2,8 +2,8 @@
 
 #if DEBUG_MEMORY
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+  #include "freertos/FreeRTOS.h"
+  #include "freertos/task.h"
 
 static const char *TAG = "PUBREMOTE-MEM";
 
@@ -15,22 +15,19 @@ static const char *const watched_tasks[] = {
     "ble_rssi_poll",   "thumbstick_task", "orchestrator",
 };
 
-void mem_debug_report(void)
-{
-    ESP_LOGI(TAG, "internal free=%u min-ever=%u largest=%u psram=%u",
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+void mem_debug_report(void) {
+  ESP_LOGI(TAG, "internal free=%u min-ever=%u largest=%u psram=%u",
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+           (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
+           (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 
-    for (size_t i = 0; i < sizeof(watched_tasks) / sizeof(watched_tasks[0]); i++)
-    {
-        TaskHandle_t handle = xTaskGetHandle(watched_tasks[i]);
-        if (handle)
-        {
-            ESP_LOGW(TAG, "stack %-18s unused=%5u", watched_tasks[i], (unsigned)uxTaskGetStackHighWaterMark(handle));
-        }
+  for (size_t i = 0; i < sizeof(watched_tasks) / sizeof(watched_tasks[0]); i++) {
+    TaskHandle_t handle = xTaskGetHandle(watched_tasks[i]);
+    if (handle) {
+      ESP_LOGW(TAG, "stack %-18s unused=%5u", watched_tasks[i], (unsigned)uxTaskGetStackHighWaterMark(handle));
     }
+  }
 }
 
 #endif

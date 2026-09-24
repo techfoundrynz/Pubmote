@@ -1,5 +1,5 @@
-#include "utilities/psram_task.h"
 #include "comms.h"
+#include "utilities/psram_task.h"
 #include "utilities/vesc_utils.h"
 #include <esp_log.h>
 #include <string.h>
@@ -335,10 +335,10 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
       // at 20Hz and a slow negotiated interval can't drain that rate, causing
       // chronic TX buffer pressure (failed writes) and added input latency
       struct ble_gap_upd_params upd_params = {
-          .itvl_min = 12,              // 15ms (1.25ms units)
-          .itvl_max = 24,              // 30ms
+          .itvl_min = 12, // 15ms (1.25ms units)
+          .itvl_max = 24, // 30ms
           .latency = 0,
-          .supervision_timeout = 400,  // 4s (10ms units)
+          .supervision_timeout = 400, // 4s (10ms units)
           .min_ce_len = 0,
           .max_ce_len = 0,
       };
@@ -450,8 +450,8 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
   case BLE_GAP_EVENT_CONN_UPDATE: {
     struct ble_gap_conn_desc desc;
     if (ble_gap_conn_find(event->conn_update.conn_handle, &desc) == 0) {
-      ESP_LOGI(TAG, "Conn params updated: interval=%.2fms latency=%d timeout=%dms (status=%d)",
-               desc.conn_itvl * 1.25, desc.conn_latency, desc.supervision_timeout * 10, event->conn_update.status);
+      ESP_LOGI(TAG, "Conn params updated: interval=%.2fms latency=%d timeout=%dms (status=%d)", desc.conn_itvl * 1.25,
+               desc.conn_latency, desc.supervision_timeout * 10, event->conn_update.status);
     }
     return 0;
   }
@@ -599,10 +599,9 @@ static esp_err_t ble_driver_init(void) {
 
   nimble_port_freertos_init(ble_host_task);
 
-
   rssi_poll_should_exit = false;
-  rssi_poll_task_handle = create_psram_task(rssi_poll_task, "ble_rssi_poll", 3072, NULL, 2, &rssi_poll_task_tcb,
-                                            &rssi_poll_task_stack);
+  rssi_poll_task_handle =
+      create_psram_task(rssi_poll_task, "ble_rssi_poll", 3072, NULL, 2, &rssi_poll_task_tcb, &rssi_poll_task_stack);
   ESP_ERROR_CHECK(rssi_poll_task_handle ? ESP_OK : ESP_FAIL);
 
   is_initialized = true;

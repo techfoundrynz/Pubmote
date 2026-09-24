@@ -2,17 +2,14 @@
 #define __STARTUP_H
 #include "utilities/callback_registry.h"
 
-
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-
-void register_startup_cb(callback_t callback);
-void remove_startup_cb(callback_t callback);
-void startup_cb();
-
-
+  void register_startup_cb(callback_t callback);
+  void remove_startup_cb(callback_t callback);
+  void startup_cb();
 
 #ifdef __cplusplus
 }

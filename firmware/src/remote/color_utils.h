@@ -4,11 +4,10 @@
 #include <slint.h>
 #include <stdint.h>
 
-struct HSVColor
-{
-    float h; // 0..360
-    float s; // 0..100
-    float v; // 0..100
+struct HSVColor {
+  float h; // 0..360
+  float s; // 0..100
+  float v; // 0..100
 };
 
 HSVColor rgb_to_hsv(uint32_t rgb);

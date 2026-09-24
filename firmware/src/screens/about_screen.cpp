@@ -4,10 +4,10 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "generated/app-window.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/stats.h"
-#include "generated/app-window.h"
 #include <memory>
 #include <stdio.h>
 #include <string.h>
@@ -16,16 +16,15 @@ static const char *TAG = "PUBREMOTE-ABOUT_SCREEN";
 static TaskHandle_t about_task_handle = NULL;
 
 void update_about_version_info() {
-  if (!get_slint_window()) return;
+  if (!get_slint_window())
+    return;
 
   char formattedString[128];
-  snprintf(formattedString, sizeof(formattedString), "Version: %d.%d.%d.%s\nHW: %s\nHash: %s", 
-           VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, RELEASE_VARIANT, HW_TYPE, BUILD_ID);
+  snprintf(formattedString, sizeof(formattedString), "Version: %d.%d.%d.%s\nHW: %s\nHash: %s", VERSION_MAJOR,
+           VERSION_MINOR, VERSION_PATCH, RELEASE_VARIANT, HW_TYPE, BUILD_ID);
 
   slint::SharedString version_info(formattedString);
-  slint::invoke_from_event_loop([=]() {
-    get_slint_window()->global<UiState>().set_version_info(version_info);
-  });
+  slint::invoke_from_event_loop([=]() { get_slint_window()->global<UiState>().set_version_info(version_info); });
 }
 
 static char last_stats_signature[512] = {0};
@@ -107,7 +106,7 @@ extern "C" void setup_about_properties() {
   last_stats_signature[0] = '\0'; // Force update on screen entry
   update_about_version_info();
   update_about_stats();
-  
+
   if (about_task_handle == NULL) {
     xTaskCreate(about_task, "about_task", 3072, NULL, 2, &about_task_handle);
   }
@@ -116,14 +115,10 @@ extern "C" void setup_about_properties() {
 // Slint event handlers
 extern "C" void handle_about_back() {
   ESP_LOGI(TAG, "About back pressed");
-  slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Menu);
-  });
+  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
 }
 
 extern "C" void handle_about_check_updates() {
   ESP_LOGI(TAG, "Check updates pressed");
-  slint::invoke_from_event_loop([]() {
-    get_slint_window()->global<UiState>().set_screen(Screen::Update);
-  });
+  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Update); });
 }

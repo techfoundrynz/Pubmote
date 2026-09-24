@@ -8,7 +8,8 @@ uint16_t vesc_crc16(const uint8_t *buf, uint32_t len) {
     for (int j = 0; j < 8; j++) {
       if (cksum & 0x8000) {
         cksum = (cksum << 1) ^ 0x1021;
-      } else {
+      }
+      else {
         cksum <<= 1;
       }
     }
@@ -34,7 +35,8 @@ size_t vesc_wrap_packet(const uint8_t *payload, size_t payload_len, uint8_t *out
     out_buf[payload_len + 2] = crc >> 8;
     out_buf[payload_len + 3] = crc & 0xFF;
     out_buf[payload_len + 4] = 3;
-  } else {
+  }
+  else {
     tx_len = payload_len + 6;
     if (tx_len > max_out_len) {
       return 0;
@@ -52,8 +54,7 @@ size_t vesc_wrap_packet(const uint8_t *payload, size_t payload_len, uint8_t *out
   return tx_len;
 }
 
-int vesc_parse_packet(const uint8_t *stream_buf, size_t stream_len, 
-                      uint8_t *out_payload, size_t max_payload_len, 
+int vesc_parse_packet(const uint8_t *stream_buf, size_t stream_len, uint8_t *out_payload, size_t max_payload_len,
                       size_t *out_payload_len, size_t *bytes_consumed) {
   *bytes_consumed = 0;
   *out_payload_len = 0;
@@ -77,20 +78,20 @@ int vesc_parse_packet(const uint8_t *stream_buf, size_t stream_len,
       return 0;
     }
     payload_len = stream_buf[1];
-  } else if (start_byte == 3) {
+  }
+  else if (start_byte == 3) {
     header_len = 3;
     if (stream_len < header_len) {
       return 0;
     }
     payload_len = ((uint32_t)stream_buf[1] << 8) | stream_buf[2];
-  } else if (start_byte == 4) {
+  }
+  else if (start_byte == 4) {
     header_len = 4;
     if (stream_len < header_len) {
       return 0;
     }
-    payload_len = ((uint32_t)stream_buf[1] << 16) | 
-                  ((uint32_t)stream_buf[2] << 8) | 
-                  stream_buf[3];
+    payload_len = ((uint32_t)stream_buf[1] << 16) | ((uint32_t)stream_buf[2] << 8) | stream_buf[3];
   }
 
   if (payload_len > max_payload_len) {
@@ -109,8 +110,7 @@ int vesc_parse_packet(const uint8_t *stream_buf, size_t stream_len,
     return -1;
   }
 
-  uint16_t rx_crc = ((uint16_t)stream_buf[header_len + payload_len] << 8) |
-                    stream_buf[header_len + payload_len + 1];
+  uint16_t rx_crc = ((uint16_t)stream_buf[header_len + payload_len] << 8) | stream_buf[header_len + payload_len + 1];
   uint16_t calc_crc = vesc_crc16(&stream_buf[header_len], payload_len);
 
   if (rx_crc != calc_crc) {

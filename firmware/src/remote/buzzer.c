@@ -1,4 +1,3 @@
-#include "utilities/psram_task.h"
 #include "buzzer.h"
 #include "config.h"
 #include "esp_err.h"
@@ -11,6 +10,7 @@
 #include "remote/startup.h"
 #include "settings.h"
 #include "tones.h"
+#include "utilities/psram_task.h"
 #include <driver/ledc.h>
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
@@ -222,7 +222,8 @@ void buzzer_init() {
   #endif
   };
   ledc_channel_config(&channel_conf);
-  buzzer_task_handle = create_psram_task(buzzer_task, "buzzer_task", 1024, NULL, 2, &buzzer_task_tcb, &buzzer_task_stack);
+  buzzer_task_handle =
+      create_psram_task(buzzer_task, "buzzer_task", 1024, NULL, 2, &buzzer_task_tcb, &buzzer_task_stack);
   ESP_ERROR_CHECK(buzzer_task_handle ? ESP_OK : ESP_FAIL);
   register_startup_cb(play_startup_effect);
 #endif

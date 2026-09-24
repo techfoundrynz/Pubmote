@@ -5,13 +5,14 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-esp_err_t imu_driver_init();
-esp_err_t imu_driver_deinit();
-void imu_driver_get_data(imu_data_t *data);
-bool imu_driver_is_initialized();
+  esp_err_t imu_driver_init();
+  esp_err_t imu_driver_deinit();
+  void imu_driver_get_data(imu_data_t *data);
+  bool imu_driver_is_initialized();
 
 #ifdef __cplusplus
 }
