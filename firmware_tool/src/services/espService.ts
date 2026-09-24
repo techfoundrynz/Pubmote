@@ -18,7 +18,7 @@ const getLogLevel = (data: string): LogEntry["type"] => {
     }
   }
   return "info";
-}
+};
 
 const removeLogLevelPrefix = (data: string): string => {
   for (const prefixes of Object.values(LogTypePrefixMap)) {
@@ -29,31 +29,33 @@ const removeLogLevelPrefix = (data: string): string => {
     }
   }
   return data;
-}
+};
 
 const removeAnsiEscapeCodes = (data: string): string => {
-  return data
-    // Remove ANSI escape sequences (ESC[...)
-    .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
-    // Remove other escape sequences (ESC(...)
-    .replace(/\x1b\([0-9;]*[A-Za-z]/g, '')
-    // Remove CSI sequences
-    .replace(/\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]/g, '')
-    // Remove all control characters (0x00-0x1F) except newline (0x0A) and tab (0x09)
-    // This includes carriage return (0x0D) which we handle separately
-    .replace(/[\x00-\x08\x0B-\x1F\x7F-\x9F]/g, '')
-    // Remove any remaining replacement characters
-    .replace(/\uFFFD/g, '');
+  return (
+    data
+      // Remove ANSI escape sequences (ESC[...)
+      .replace(/\x1b\[[0-9;]*[A-Za-z]/g, "")
+      // Remove other escape sequences (ESC(...)
+      .replace(/\x1b\([0-9;]*[A-Za-z]/g, "")
+      // Remove CSI sequences
+      .replace(/\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]/g, "")
+      // Remove all control characters (0x00-0x1F) except newline (0x0A) and tab (0x09)
+      // This includes carriage return (0x0D) which we handle separately
+      .replace(/[\x00-\x08\x0B-\x1F\x7F-\x9F]/g, "")
+      // Remove any remaining replacement characters
+      .replace(/\uFFFD/g, "")
+  );
 };
 
 const getEspLogInfo = (
-  data: string
+  data: string,
 ): {
   data: string;
   type: LogEntry["type"];
 } => {
   // Convert carriage returns to newlines for proper display
-  const normalizedData = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const normalizedData = data.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const cleanedData = removeAnsiEscapeCodes(normalizedData.trimEnd());
   const type = getLogLevel(cleanedData);
 
@@ -74,20 +76,19 @@ export class ESPService {
   private logBuffer: string = "";
   private port: SerialPort | null = null;
 
-  private logListeners: Array<LogListener> = [(d, t) => {
-    this.log(
-      d, t
-    );
+  private logListeners: Array<LogListener> = [
+    (d, t) => {
+      this.log(d, t);
 
-    return true;
-  }];
+      return true;
+    },
+  ];
 
   // Silent execution implementation
   private silentListeners: LogListener[] = [];
 
   public onReboot?: () => void;
   public onDisconnect?: () => void;
-
 
   private stacktraceService: StacktraceService = new StacktraceService();
 
@@ -115,18 +116,18 @@ export class ESPService {
 
   public addLogListener = (listener: LogListener) => {
     this.logListeners.unshift(listener);
-  }
+  };
 
   public removeLogListener = (listener: LogListener) => {
     this.logListeners = this.logListeners.filter((l) => l !== listener);
-  }
+  };
 
   public log = (message: string, type: "info" | "error" | "success" = "info") => {
     if (!message.replace("pubconsole>", "").trim()) {
       return;
     }
     this.terminal?.writeLine(message, type);
-  }
+  };
 
   // Override emitToListeners to check silent listeners first
   private emitToListeners = (...args: Parameters<LogListener>) => {
@@ -142,7 +143,7 @@ export class ESPService {
         break; // Break on first listener that marks log as handled
       }
     }
-  }
+  };
 
   private processEspLog = async (data: string | Uint8Array) => {
     // Always append to buffer
@@ -183,7 +184,11 @@ export class ESPService {
         }
 
         // Matches "rst:0x" or "rst: 0x" anywhere in the line
-        if (logInfo.data.includes("rst:0x") || logInfo.data.includes("rst: 0x") || logInfo.data.includes("rst:")) {
+        if (
+          logInfo.data.includes("rst:0x") ||
+          logInfo.data.includes("rst: 0x") ||
+          logInfo.data.includes("rst:")
+        ) {
           console.log("[DEBUG] Reboot detected (buffered):", logInfo.data);
           this.onReboot?.();
         }
@@ -198,9 +203,9 @@ export class ESPService {
       this.emitToListeners("pubconsole>", "info");
       this.logBuffer = ""; // Clear buffer after detecting prompt to be clean for next input
     }
-  }
+  };
 
-  getVersionInfo = async (): Promise<{ version: string; variant: string, hardware: string }> => {
+  getVersionInfo = async (): Promise<{ version: string; variant: string; hardware: string }> => {
     const timeout = 5000;
     let version: string | null = null;
     let variant: string | null = null;
@@ -228,7 +233,7 @@ export class ESPService {
           hardware = data.replace(/^hardware:\s*/i, "").trim();
         }
 
-        if (data === 'pubconsole>' && version && variant && hardware) {
+        if (data === "pubconsole>" && version && variant && hardware) {
           clearTimeout(timeoutId);
           this.removeLogListener(versionLogListener);
           this.log("Version info successfully loaded");
@@ -239,9 +244,9 @@ export class ESPService {
         return true; // Mark log as handled
       };
       this.addLogListener(versionLogListener);
-      this.sendCommand("version")
+      this.sendCommand("version");
     });
-  }
+  };
 
   checkCoredump = async (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -271,7 +276,7 @@ export class ESPService {
       this.addLogListener(coreDumpListener);
       this.sendCommand("coredump_info");
     });
-  }
+  };
 
   connect = async (): Promise<{
     connected: boolean;
@@ -292,12 +297,14 @@ export class ESPService {
       this.log("Requesting serial port...");
 
       if (!navigator.serial) {
-        throw new Error("Web Serial API not supported in this browser. Please use a compatible browser like Chrome or Edge.");
+        throw new Error(
+          "Web Serial API not supported in this browser. Please use a compatible browser like Chrome or Edge.",
+        );
       }
 
       const port = await navigator.serial.requestPort();
       this.port = port;
-      this.port.addEventListener('disconnect', this.handlePortDisconnect);
+      this.port.addEventListener("disconnect", this.handlePortDisconnect);
 
       const transport = new Transport(port, true);
 
@@ -362,7 +369,7 @@ export class ESPService {
         this.espLoader = loader;
         this.log(
           "No firmware detected. Device is in bootloader mode and ready for a first-time install.",
-          "success"
+          "success",
         );
       } else {
         this.log("Rebooting into normal mode...");
@@ -384,15 +391,14 @@ export class ESPService {
           hardware = res.hardware;
 
           // Check for core dump
-          hasCoredump = await this.checkCoredump().catch(e => {
+          hasCoredump = await this.checkCoredump().catch((e) => {
             console.error(e);
             return false;
           });
         } catch (e) {
           this.log(
-            `Connection failed: ${e instanceof Error ? e.message : "Unknown error"
-            }`,
-            "error"
+            `Connection failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+            "error",
           );
         }
       }
@@ -412,21 +418,20 @@ export class ESPService {
         hasFirmware
           ? `Device ready: ${info.chipId} running ${variant} v${version}`
           : `Device ready: ${info.chipId} (no firmware — ready to flash)`,
-        "success"
+        "success",
       );
       return info;
     } catch (error) {
       this.log(
-        `Connection failed: ${error instanceof Error ? error.message : "Unknown error"
-        }`,
-        "error"
+        `Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error",
       );
       await this.disconnect();
       throw error;
     } finally {
       this.isConnecting = false;
     }
-  }
+  };
 
   // Detect whether the chip already contains valid firmware. Must be called
   // while the loader is in bootloader/stub mode (i.e. right after main()/sync()).
@@ -443,7 +448,7 @@ export class ESPService {
       // present so we don't skip version detection on a healthy device.
       this.log(
         `Could not read flash to detect firmware (${e instanceof Error ? e.message : "unknown error"}); assuming firmware present.`,
-        "info"
+        "info",
       );
       return true;
     }
@@ -466,18 +471,18 @@ export class ESPService {
       }
     } catch (error) {
       this.log(
-        `Failed to send command: ${error instanceof Error ? error.message : "Unknown error"
-        }`,
-        "error"
+        `Failed to send command: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error",
       );
       throw error;
     }
   }
 
-  async flash(firmware: FirmwareFiles, eraseFlash: boolean = true, onFlashProgess: (update: {
-    status: string;
-    progress: number;
-  }) => void): Promise<void> {
+  async flash(
+    firmware: FirmwareFiles,
+    eraseFlash: boolean = true,
+    onFlashProgess: (update: { status: string; progress: number }) => void,
+  ): Promise<void> {
     if (!this.espLoader) {
       throw new Error("Not connected to device");
     }
@@ -495,30 +500,25 @@ export class ESPService {
         await this.espLoader.eraseFlash();
       }
 
-
       const files: Array<{
         data: string;
         address: number;
         name: string;
-      }> = [
-        ];
+      }> = [];
 
       if (firmware.bootloader) {
-        files.push(
-          {
-            data: await this.readFileAsString(firmware.bootloader),
-            address: 0x0,
-            name: "Bootloader",
-          });
-
+        files.push({
+          data: await this.readFileAsString(firmware.bootloader),
+          address: 0x0,
+          name: "Bootloader",
+        });
       }
       if (firmware.partitionTable) {
-        files.push(
-          {
-            data: await this.readFileAsString(firmware.partitionTable),
-            address: 0x8000,
-            name: "Partition Table",
-          });
+        files.push({
+          data: await this.readFileAsString(firmware.partitionTable),
+          address: 0x8000,
+          name: "Partition Table",
+        });
       }
 
       if (firmware.application) {
@@ -528,7 +528,6 @@ export class ESPService {
           name: "Application",
         });
       }
-
 
       this.log("Writing firmware...");
       await this.espLoader.writeFlash({
@@ -555,9 +554,8 @@ export class ESPService {
       this.log("Device reset and ready", "success");
     } catch (error) {
       this.log(
-        `Flash failed: ${error instanceof Error ? error.message : "Unknown error"
-        }`,
-        "error"
+        `Flash failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error",
       );
       throw error;
     }
@@ -599,7 +597,7 @@ export class ESPService {
   async disconnect(): Promise<void> {
     this.removeSerialMonitor();
     if (this.port) {
-      this.port.removeEventListener('disconnect', this.handlePortDisconnect);
+      this.port.removeEventListener("disconnect", this.handlePortDisconnect);
     }
 
     if (this.espLoader) {
@@ -628,7 +626,7 @@ export class ESPService {
 
       const listener: LogListener = (data) => {
         const trimmed = data.trim();
-        if (trimmed === 'pubconsole>') {
+        if (trimmed === "pubconsole>") {
           clearTimeout(timeoutId);
           this.removeSilentListener(listener);
           resolve(lines);
@@ -644,14 +642,14 @@ export class ESPService {
       this.addSilentListener(listener);
       this.sendCommand(command, true);
     });
-  }
+  };
 
   private addSilentListener(listener: LogListener) {
     this.silentListeners.push(listener);
   }
 
   private removeSilentListener(listener: LogListener) {
-    this.silentListeners = this.silentListeners.filter(l => l !== listener);
+    this.silentListeners = this.silentListeners.filter((l) => l !== listener);
   }
 
   getCompletions = async (prefix: string): Promise<string[]> => {
@@ -661,6 +659,12 @@ export class ESPService {
     const lines = await this.executeCommand(`complete "${prefix}"`, 3000); // Increased timeout to 3s
 
     // Filter out empty lines or other noise if any
-    return lines.filter(l => l.trim().length > 0 && !l.includes("Usage: complete") && !l.startsWith("complete ") && !l.includes("Unrecognized command"));
-  }
+    return lines.filter(
+      (l) =>
+        l.trim().length > 0 &&
+        !l.includes("Usage: complete") &&
+        !l.startsWith("complete ") &&
+        !l.includes("Unrecognized command"),
+    );
+  };
 }

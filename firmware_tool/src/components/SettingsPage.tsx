@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  AlertTriangle,
-  Eraser,
-  Eye,
-  EyeOff,
-  RefreshCcw,
-  Save,
-} from "lucide-react";
+import { AlertTriangle, Eraser, Eye, EyeOff, RefreshCcw, Save } from "lucide-react";
 import useDeviceTools from "../hooks/useDeviceTools";
 import { useToast } from "../context/ToastContext";
 import { LogListener } from "../services/espService";
@@ -70,8 +63,7 @@ const parsePinList = (value: string | undefined): number[] => {
 };
 
 const SettingsPage: React.FC<unknown> = () => {
-  const { deviceInfo, flashProgress, sendTerminalCommand, espService } =
-    useDeviceTools();
+  const { deviceInfo, flashProgress, sendTerminalCommand, espService } = useDeviceTools();
   const { toast } = useToast();
   const [settingsIsLoading, _setSettingsIsLoading] = React.useState(false);
   const settingsLoading = React.useRef<boolean>(false);
@@ -81,20 +73,14 @@ const SettingsPage: React.FC<unknown> = () => {
     _setSettingsIsLoading(loading);
   }, []);
 
-  const [showWifiPassword, setshowWifiPassword] =
-    React.useState<boolean>(false);
+  const [showWifiPassword, setshowWifiPassword] = React.useState<boolean>(false);
   const [settings, setSettings] = React.useState(DEFAULT_SETTINGS);
   // Used to send only what changed, so saving WiFi doesn't re-apply pins
   const [loadedSettings, setLoadedSettings] = React.useState(DEFAULT_SETTINGS);
   const [pinInfo, setPinInfo] = React.useState(DEFAULT_PIN_INFO);
-  const disabled =
-    !deviceInfo.connected ||
-    flashProgress.status !== "idle" ||
-    settingsIsLoading;
+  const disabled = !deviceInfo.connected || flashProgress.status !== "idle" || settingsIsLoading;
 
-  const retrieveSettings = React.useCallback(async (): Promise<
-    Record<string, string>
-  > => {
+  const retrieveSettings = React.useCallback(async (): Promise<Record<string, string>> => {
     const timeout = 5000;
     const values: Record<string, string> = {};
 
@@ -196,9 +182,7 @@ const SettingsPage: React.FC<unknown> = () => {
     setTimeout(() => espService.removeLogListener(listener), 5000);
   }, [espService, toast]);
 
-  const pinsChanged = PIN_KEYS.some(
-    (key) => settings[key] !== loadedSettings[key]
-  );
+  const pinsChanged = PIN_KEYS.some((key) => settings[key] !== loadedSettings[key]);
 
   const handleSave = React.useCallback(() => {
     let saveValuesString = "save_settings";
@@ -223,40 +207,26 @@ const SettingsPage: React.FC<unknown> = () => {
     // Pull back the applied state - a remap can be rejected or reset a
     // calibration
     setTimeout(() => fetchSettings(), 1500);
-  }, [
-    fetchSettings,
-    loadedSettings,
-    pinsChanged,
-    sendTerminalCommand,
-    settings,
-    watchPinResult,
-  ]);
+  }, [fetchSettings, loadedSettings, pinsChanged, sendTerminalCommand, settings, watchPinResult]);
 
-  const pinOptions = React.useCallback(
-    (allowed: number[], current: string) => {
-      const options = [
-        { value: PIN_DISABLED, label: "Not used" },
-        ...allowed.map((pin) => ({
-          value: String(pin),
-          label: `GPIO ${pin}`,
-        })),
-      ];
+  const pinOptions = React.useCallback((allowed: number[], current: string) => {
+    const options = [
+      { value: PIN_DISABLED, label: "Not used" },
+      ...allowed.map((pin) => ({
+        value: String(pin),
+        label: `GPIO ${pin}`,
+      })),
+    ];
 
-      // Keep the device's own value selectable even if not in the allowed list
-      if (
-        current !== PIN_DISABLED &&
-        !options.some((option) => option.value === current)
-      ) {
-        options.push({ value: current, label: `GPIO ${current} (current)` });
-      }
+    // Keep the device's own value selectable even if not in the allowed list
+    if (current !== PIN_DISABLED && !options.some((option) => option.value === current)) {
+      options.push({ value: current, label: `GPIO ${current} (current)` });
+    }
 
-      return options;
-    },
-    []
-  );
+    return options;
+  }, []);
 
-  const pinLabel = (value: string) =>
-    value === PIN_DISABLED ? "Not used" : `GPIO ${value}`;
+  const pinLabel = (value: string) => (value === PIN_DISABLED ? "Not used" : `GPIO ${value}`);
 
   const noButton = settings.btn1_gpio === PIN_DISABLED;
   // Firmware that can't report its pins won't accept them either
@@ -279,8 +249,7 @@ const SettingsPage: React.FC<unknown> = () => {
         <div>
           <h3 className="font-medium">Wi-Fi</h3>
           <p className="text-sm text-[var(--color-text-secondary)] mb-3">
-            Used for over-the-air firmware updates. Leave blank to keep the
-            remote offline.
+            Used for over-the-air firmware updates. Leave blank to keep the remote offline.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -324,11 +293,7 @@ const SettingsPage: React.FC<unknown> = () => {
                   onClick={() => setshowWifiPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-[var(--color-text-primary)]"
                 >
-                  {showWifiPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showWifiPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -338,19 +303,17 @@ const SettingsPage: React.FC<unknown> = () => {
         <div className="border-t border-gray-700 pt-4">
           <h3 className="font-medium">Input Pins</h3>
           <p className="text-sm text-[var(--color-text-secondary)] mb-3">
-            Remap the joystick axes and the primary button. Changes apply
-            immediately - no reboot or reflash. Axes must sit on an analog
-            capable pin and the button on an RTC pin so it can still wake the
-            remote; pins already used by this board are not listed.
+            Remap the joystick axes and the primary button. Changes apply immediately - no reboot or
+            reflash. Axes must sit on an analog capable pin and the button on an RTC pin so it can
+            still wake the remote; pins already used by this board are not listed.
           </p>
 
           {deviceInfo.connected && !settingsIsLoading && !pinInfo.supported && (
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-yellow-600/50 bg-yellow-500/10 p-3 text-sm text-yellow-200">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>
-                This firmware doesn't report the input pins this tool expects -
-                flash a newer build to remap them. The values below are not what
-                the remote is using.
+                This firmware doesn't report the input pins this tool expects - flash a newer build
+                to remap them. The values below are not what the remote is using.
               </span>
             </div>
           )}
@@ -407,11 +370,7 @@ const SettingsPage: React.FC<unknown> = () => {
             <div>
               <span className="block text-sm mb-1">Button active level</span>
               <Dropdown
-                label={
-                  settings.btn1_level === "1"
-                    ? "Active high"
-                    : "Active low"
-                }
+                label={settings.btn1_level === "1" ? "Active high" : "Active low"}
                 disabled={pinsDisabled || noButton}
                 value={settings.btn1_level}
                 options={[
@@ -432,8 +391,8 @@ const SettingsPage: React.FC<unknown> = () => {
             <div className="mt-3 flex items-start gap-2 rounded-lg border border-yellow-600/50 bg-yellow-500/10 p-3 text-sm text-yellow-200">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>
-                With no primary button the remote can't be powered off or woken
-                from deep sleep by button - it will need a reset to come back.
+                With no primary button the remote can't be powered off or woken from deep sleep by
+                button - it will need a reset to come back.
               </span>
             </div>
           )}
@@ -447,8 +406,8 @@ const SettingsPage: React.FC<unknown> = () => {
 
           {pinsChanged && (
             <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
-              Moving an axis to a different pin clears that axis' calibration -
-              recalibrate the joystick on the remote after saving.
+              Moving an axis to a different pin clears that axis' calibration - recalibrate the
+              joystick on the remote after saving.
             </p>
           )}
         </div>

@@ -1,10 +1,10 @@
-import React from 'react';
-import { TerminalService } from '../services/terminal';
-import { ESPService } from '../services/espService';
-import { DeviceInfoData, FlashProgress } from '../types';
+import React from "react";
+import { TerminalService } from "../services/terminal";
+import { ESPService } from "../services/espService";
+import { DeviceInfoData, FlashProgress } from "../types";
 
 export type DeviceToolsContextType = {
-  terminal: TerminalService; 
+  terminal: TerminalService;
   espService: ESPService;
   deviceInfo: DeviceInfoData;
   flashProgress: FlashProgress;
@@ -31,23 +31,30 @@ export const DeviceToolsProvider: React.FC<DeviceToolsProviderProps> = ({
   sendTerminalCommand,
   disconnect,
 }) => {
-
-  const value = React.useMemo(() => ({
-    terminal,
-    espService,
-    deviceInfo,
-    flashProgress,
-    setDeviceInfo,
-    setFlashProgress,
-    sendTerminalCommand,
-    disconnect,
-  }), [terminal, espService, deviceInfo, flashProgress, setDeviceInfo, setFlashProgress, sendTerminalCommand, disconnect]);
-
-  return (
-    <DeviceToolsContext.Provider value={value}>
-      {children}
-    </DeviceToolsContext.Provider>
+  const value = React.useMemo(
+    () => ({
+      terminal,
+      espService,
+      deviceInfo,
+      flashProgress,
+      setDeviceInfo,
+      setFlashProgress,
+      sendTerminalCommand,
+      disconnect,
+    }),
+    [
+      terminal,
+      espService,
+      deviceInfo,
+      flashProgress,
+      setDeviceInfo,
+      setFlashProgress,
+      sendTerminalCommand,
+      disconnect,
+    ],
   );
-}
+
+  return <DeviceToolsContext.Provider value={value}>{children}</DeviceToolsContext.Provider>;
+};
 
 export default DeviceToolsContext;

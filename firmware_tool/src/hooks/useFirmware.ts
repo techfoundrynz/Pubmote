@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { FirmwareVersion, ReleaseType } from '../types';
-import sortBy from 'lodash/sortBy';
-import uniqBy from 'lodash/uniqBy';
-import { fetchWithCorsProxy } from '../utils/corsProxy';
+import { useEffect, useState } from "react";
+import { FirmwareVersion, ReleaseType } from "../types";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
+import { fetchWithCorsProxy } from "../utils/corsProxy";
 
-const GITHUB_REPO = 'techfoundrynz/pubmote';
-const GITHUB_API = 'https://api.github.com';
+const GITHUB_REPO = "techfoundrynz/pubmote";
+const GITHUB_API = "https://api.github.com";
 
 interface GitHubRelease {
   name: string;
@@ -29,8 +29,8 @@ export function useFirmware() {
       try {
         const response = await fetchWithCorsProxy(`${GITHUB_API}/repos/${GITHUB_REPO}/releases`, {
           headers: {
-            'Accept': 'application/vnd.github.v3+json'
-          }
+            Accept: "application/vnd.github.v3+json",
+          },
         });
 
         if (!response.ok) {
@@ -39,38 +39,42 @@ export function useFirmware() {
 
         const releases: GitHubRelease[] = await response.json();
 
-        let firmwareVersions: FirmwareVersion[] = releases.map(release => {
-          const variants = release.assets
-            .filter(asset => asset.name.endsWith('.zip'))
-            .map(asset => {
-              const variant = asset.name.split('-')[0];
-              return {
-                variant,
-                zipUrl: asset.browser_download_url,
-                date: release.published_at,
-              };
-            });
+        let firmwareVersions: FirmwareVersion[] = releases
+          .map((release) => {
+            const variants = release.assets
+              .filter((asset) => asset.name.endsWith(".zip"))
+              .map((asset) => {
+                const variant = asset.name.split("-")[0];
+                return {
+                  variant,
+                  zipUrl: asset.browser_download_url,
+                  date: release.published_at,
+                };
+              });
 
-          let releaseType: ReleaseType = release.prerelease ? ReleaseType.Prerelease : ReleaseType.Release;
-          if (release.prerelease && release.tag_name.toLowerCase().includes('nightly')) {
-            releaseType = ReleaseType.Nightly;
-          }
+            let releaseType: ReleaseType = release.prerelease
+              ? ReleaseType.Prerelease
+              : ReleaseType.Release;
+            if (release.prerelease && release.tag_name.toLowerCase().includes("nightly")) {
+              releaseType = ReleaseType.Nightly;
+            }
 
-          let releaseName = release.name;
+            let releaseName = release.name;
 
-          if (releaseType === ReleaseType.Nightly) {
-            releaseName = releaseName.replace(' Nightly Build', '');
-          }
+            if (releaseType === ReleaseType.Nightly) {
+              releaseName = releaseName.replace(" Nightly Build", "");
+            }
 
-          return {
-            version: releaseName,
-            date: release.published_at,
-            releaseType,
-            variants,
-          };
-        }).filter(version => version.variants.length > 0);
+            return {
+              version: releaseName,
+              date: release.published_at,
+              releaseType,
+              variants,
+            };
+          })
+          .filter((version) => version.variants.length > 0);
 
-        firmwareVersions = sortBy(firmwareVersions, v => {
+        firmwareVersions = sortBy(firmwareVersions, (v) => {
           let order = 2;
 
           // Order by release type
@@ -87,13 +91,12 @@ export function useFirmware() {
           return parseFloat(`${order}.${secondarySort}`);
         });
 
-        firmwareVersions = uniqBy(firmwareVersions, 'releaseType');
-
+        firmwareVersions = uniqBy(firmwareVersions, "releaseType");
 
         setVersions(firmwareVersions);
         setLoading(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load firmware versions');
+        setError(err instanceof Error ? err.message : "Failed to load firmware versions");
         setLoading(false);
       }
     }

@@ -1,4 +1,4 @@
-import init, { decode } from './esp_stacktrace_decoder_rs.js';
+import init, { decode } from "./esp_stacktrace_decoder_rs.js";
 
 export class StacktraceService {
   private elfContent: Uint8Array | null = null;
@@ -55,7 +55,6 @@ export class StacktraceService {
         if (addr.free) addr.free();
       }
       return output;
-
     } catch (e) {
       console.error("Backtrace decoding failed:", e);
       return `Backtrace decoding failed: ${e}`;

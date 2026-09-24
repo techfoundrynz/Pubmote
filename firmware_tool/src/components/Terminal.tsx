@@ -1,11 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Terminal as TerminalIcon, Send, Trash2, Filter, Download, ArrowDownCircle, FileCode, Upload, Cloud, Search, X } from 'lucide-react';
-import { Dropdown } from './ui/Dropdown';
-import { DeviceInfoData, FlashProgress } from '../types';
-import { LogEntry, TerminalService } from '../services/terminal';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Terminal as TerminalIcon,
+  Send,
+  Trash2,
+  Filter,
+  Download,
+  ArrowDownCircle,
+  FileCode,
+  Upload,
+  Cloud,
+  Search,
+  X,
+} from "lucide-react";
+import { Dropdown } from "./ui/Dropdown";
+import { DeviceInfoData, FlashProgress } from "../types";
+import { LogEntry, TerminalService } from "../services/terminal";
 
-import { CoredumpBanner } from './CoredumpBanner';
-import { cn } from '../utils/cn';
+import { CoredumpBanner } from "./CoredumpBanner";
+import { cn } from "../utils/cn";
 
 interface Props {
   terminal: TerminalService;
@@ -21,10 +33,10 @@ interface Props {
   getCompletions?: (prefix: string) => Promise<string[]>;
 }
 
-export function Terminal({ 
-  terminal, 
-  onSendCommand, 
-  disabled = false, 
+export function Terminal({
+  terminal,
+  onSendCommand,
+  disabled = false,
   deviceInfo,
   onViewCoredump,
   onClearCoredump,
@@ -32,20 +44,20 @@ export function Terminal({
   onDownloadElf,
   isElfLoaded,
   flashProgress,
-  getCompletions
+  getCompletions,
 }: Props) {
-  const [command, setCommand] = React.useState('');
+  const [command, setCommand] = React.useState("");
   const [suggestion, setSuggestion] = React.useState<string | null>(null);
   const commandBuffer = React.useRef<string[]>([]);
   const commandBufferIndex = React.useRef<number>(0);
   const [logs, setLogs] = React.useState<LogEntry[]>([]);
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = React.useState("");
   const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
   const [autoScroll, setAutoScroll] = React.useState(true);
   const [enabledLogTypes, setEnabledLogTypes] = React.useState<string[]>([
-    'info',
-    'error',
-    'success',
+    "info",
+    "error",
+    "success",
   ]);
   const terminalRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,9 +68,8 @@ export function Terminal({
       if (data === null) {
         setLogs([]);
       } else {
-
         if (data) {
-          setLogs(prev => [...prev, data]);
+          setLogs((prev) => [...prev, data]);
         }
       }
     };
@@ -83,7 +94,7 @@ export function Terminal({
       commandBuffer.current.push(finalCommand);
       commandBufferIndex.current = commandBuffer.current.length; // Reset index to the end
       onSendCommand(finalCommand);
-      setCommand('');
+      setCommand("");
     }
   };
 
@@ -95,26 +106,26 @@ export function Terminal({
   const downloadLogs = () => {
     const deviceInfoText = deviceInfo?.connected
       ? `Device Information:
-- Chip Type: ${deviceInfo.chipId || 'N/A'}
-- MAC Address: ${deviceInfo.macAddress || 'N/A'}
-- Firmware Version: ${deviceInfo.version || 'N/A'}
-- Firmware Variant: ${deviceInfo.variant || 'N/A'}
+- Chip Type: ${deviceInfo.chipId || "N/A"}
+- MAC Address: ${deviceInfo.macAddress || "N/A"}
+- Firmware Version: ${deviceInfo.version || "N/A"}
+- Firmware Variant: ${deviceInfo.variant || "N/A"}
 
 `
-      : 'Device not connected\n\n';
+      : "Device not connected\n\n";
 
     const logsText = logs
-      .filter(log => enabledLogTypes.includes(log.type))
-      .map(log => `[${log.timestamp}] ${log.type.toUpperCase()}: ${log.message}`)
-      .join('\n');
-    
-    const fullText = deviceInfoText + 'Terminal Logs:\n' + logsText;
-    
-    const blob = new Blob([fullText], { type: 'text/plain' });
+      .filter((log) => enabledLogTypes.includes(log.type))
+      .map((log) => `[${log.timestamp}] ${log.type.toUpperCase()}: ${log.message}`)
+      .join("\n");
+
+    const fullText = deviceInfoText + "Terminal Logs:\n" + logsText;
+
+    const blob = new Blob([fullText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `pubmote-${new Date().toISOString().slice(0, 19).replace(/[:]/g, '-')}.log`;
+    a.download = `pubmote-${new Date().toISOString().slice(0, 19).replace(/[:]/g, "-")}.log`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -127,37 +138,37 @@ export function Terminal({
     }
     // Reset input so same file can be selected again
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = logs.filter((log) => {
     const matchesType = enabledLogTypes.includes(log.type);
-    const matchesSearch = searchQuery 
+    const matchesSearch = searchQuery
       ? log.message.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
     return matchesType && matchesSearch;
   });
 
   const logLevelOptions = [
-    { value: 'info', label: 'Info', color: 'text-blue-500' },
-    { value: 'error', label: 'Errors', color: 'text-red-500' },
-    { value: 'success', label: 'Success', color: 'text-green-500' },
+    { value: "info", label: "Info", color: "text-blue-500" },
+    { value: "error", label: "Errors", color: "text-red-500" },
+    { value: "success", label: "Success", color: "text-green-500" },
   ];
 
   const elfOptions = [
-    { 
-      value: 'pick', 
-      label: 'Pick file', 
+    {
+      value: "pick",
+      label: "Pick file",
       icon: <Upload className="h-4 w-4" />,
-      onClick: () => fileInputRef.current?.click() 
+      onClick: () => fileInputRef.current?.click(),
     },
-    { 
-      value: 'download', 
-      label: 'Download from release', 
+    {
+      value: "download",
+      label: "Download from release",
       icon: <Cloud className="h-4 w-4" />,
       onClick: () => onDownloadElf && onDownloadElf(true),
-      disabled: !onDownloadElf 
+      disabled: !onDownloadElf,
     },
   ];
 
@@ -167,30 +178,30 @@ export function Terminal({
   const [candidateIndex, setCandidateIndex] = useState<number>(-1);
 
   const handleCommandChange = (val: string) => {
-      setCommand(val);
-      setSuggestion(null); // Clear old suggestion immediately
+    setCommand(val);
+    setSuggestion(null); // Clear old suggestion immediately
 
-      // If we are just typing, reset candidates
-      // Note: We might want to keep candidates if we are narrowing down?
-      // For now simpler: fetch new candidates on every type
-      setCandidates([]);
-      setCandidateIndex(-1);
+    // If we are just typing, reset candidates
+    // Note: We might want to keep candidates if we are narrowing down?
+    // For now simpler: fetch new candidates on every type
+    setCandidates([]);
+    setCandidateIndex(-1);
 
-      if (debounceTimer.current) {
-          clearTimeout(debounceTimer.current);
-      }
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
 
-      if (val.trim()) {
-          debounceTimer.current = setTimeout(() => {
-              getCompletions?.(val).then(completions => {
-                  if (completions && completions.length > 0) {
-                      setCandidates(completions);
-                      const match = completions.find(c => c.startsWith(val));
-                      if (match) setSuggestion(match);
-                  }
-              });
-          }, 150); // 150ms debounce
-      }
+    if (val.trim()) {
+      debounceTimer.current = setTimeout(() => {
+        getCompletions?.(val).then((completions) => {
+          if (completions && completions.length > 0) {
+            setCandidates(completions);
+            const match = completions.find((c) => c.startsWith(val));
+            if (match) setSuggestion(match);
+          }
+        });
+      }, 150); // 150ms debounce
+    }
   };
 
   return (
@@ -213,7 +224,7 @@ export function Terminal({
           <Dropdown
             options={logLevelOptions}
             value={enabledLogTypes}
-            onChange={(value) => setEnabledLogTypes(value as LogEntry['type'][])}
+            onChange={(value) => setEnabledLogTypes(value as LogEntry["type"][])}
             multiple
             label="Log Levels"
             multipleLabel="Select log levels"
@@ -225,30 +236,39 @@ export function Terminal({
           <button
             onClick={() => setAutoScroll(!autoScroll)}
             className={`p-1 transition-colors ${
-              autoScroll ? 'text-blue-400 hover:text-blue-300' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+              autoScroll
+                ? "text-blue-400 hover:text-blue-300"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
-            title={autoScroll ? 'Disable autoscroll' : 'Enable autoscroll'}
+            title={autoScroll ? "Disable autoscroll" : "Enable autoscroll"}
           >
             <ArrowDownCircle className="h-4 w-4" />
           </button>
-          
+
           {(onLoadElf || onDownloadElf) && (
-             <Dropdown
-               options={elfOptions.map(opt => ({
-                 value: opt.value,
-                 label: opt.label,
-                 icon: opt.icon,
-                 onClick: opt.onClick,
-                 disabled: opt.disabled
-               }))}
-               value={[]}
-               onChange={() => {}}
-               label="Load debug symbols"
-               icon={<FileCode className={cn("h-4 w-4", !disabled && (isElfLoaded ? "text-green-500" : "text-yellow-500"))} />}
-               variant="icon"
-               dropdownWidth="auto"
-               disabled={disabled}
-             />
+            <Dropdown
+              options={elfOptions.map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+                icon: opt.icon,
+                onClick: opt.onClick,
+                disabled: opt.disabled,
+              }))}
+              value={[]}
+              onChange={() => {}}
+              label="Load debug symbols"
+              icon={
+                <FileCode
+                  className={cn(
+                    "h-4 w-4",
+                    !disabled && (isElfLoaded ? "text-green-500" : "text-yellow-500"),
+                  )}
+                />
+              }
+              variant="icon"
+              dropdownWidth="auto"
+              disabled={disabled}
+            />
           )}
 
           <button
@@ -265,10 +285,12 @@ export function Terminal({
           >
             <Trash2 className="h-4 w-4" />
           </button>
-          
-          <div className={`relative flex items-center transition-all duration-300 ease-in-out ${
-            isSearchExpanded || searchQuery ? "w-48" : "w-6"
-          }`}>
+
+          <div
+            className={`relative flex items-center transition-all duration-300 ease-in-out ${
+              isSearchExpanded || searchQuery ? "w-48" : "w-6"
+            }`}
+          >
             {isSearchExpanded || searchQuery ? (
               <div className="relative w-full">
                 <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
@@ -285,7 +307,7 @@ export function Terminal({
                   <button
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      setSearchQuery('');
+                      setSearchQuery("");
                     }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
                   >
@@ -307,13 +329,12 @@ export function Terminal({
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col bg-[var(--color-bg-primary)] rounded overflow-hidden">
-        {deviceInfo?.hasCoredump && onViewCoredump && onClearCoredump && 
-         !['erasing', 'flashing', 'verifying'].includes(flashProgress?.status || '') && (
-          <CoredumpBanner
-            onView={onViewCoredump}
-            onClear={onClearCoredump}
-          />
-        )}
+        {deviceInfo?.hasCoredump &&
+          onViewCoredump &&
+          onClearCoredump &&
+          !["erasing", "flashing", "verifying"].includes(flashProgress?.status || "") && (
+            <CoredumpBanner onView={onViewCoredump} onClear={onClearCoredump} />
+          )}
         <div
           ref={terminalRef}
           className="flex-1 min-h-0 font-mono text-sm overflow-y-auto text-[var(--color-text-secondary)] scroll-smooth"
@@ -321,32 +342,27 @@ export function Terminal({
           <div className="p-3 space-y-1">
             {filteredLogs.length > 0 ? (
               filteredLogs.map((log, index) => (
-                <div
-                  key={index}
-                  className="leading-relaxed flex gap-2"
-                >
+                <div key={index} className="leading-relaxed flex gap-2">
                   <div className="text-[var(--color-text-secondary)] flex-shrink-0">
-                    [{log.timestamp}]{' '}
-                    {log.type === 'error'
-                      ? '❌'
-                      : log.type === 'success'
-                      ? '✅'
-                      : 'ℹ️'}
+                    [{log.timestamp}]{" "}
+                    {log.type === "error" ? "❌" : log.type === "success" ? "✅" : "ℹ️"}
                   </div>
-                  <div className={`whitespace-pre-wrap break-all flex-1 ${
-                    log.type === 'error'
-                      ? 'text-red-400'
-                      : log.type === 'success'
-                      ? 'text-green-400'
-                      : 'text-[var(--color-text-secondary)]'
-                  }`}>
+                  <div
+                    className={`whitespace-pre-wrap break-all flex-1 ${
+                      log.type === "error"
+                        ? "text-red-400"
+                        : log.type === "success"
+                          ? "text-green-400"
+                          : "text-[var(--color-text-secondary)]"
+                    }`}
+                  >
                     {log.message}
                   </div>
                 </div>
               ))
             ) : (
               <div className="text-gray-500 italic">
-                {disabled ? 'Connect a device to see terminal output...' : 'No logs to display'}
+                {disabled ? "Connect a device to see terminal output..." : "No logs to display"}
               </div>
             )}
           </div>
@@ -355,56 +371,60 @@ export function Terminal({
 
       <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
         <div className="relative flex-1 bg-[var(--color-bg-secondary)] rounded-lg focus-within:ring-2 focus-within:ring-blue-500">
-           {/* Ghost input for suggestion */}
-           <div className="absolute inset-0 px-3 py-2 text-sm font-mono pointer-events-none text-transparent">
-             <span className="invisible">{command}</span>
-             {suggestion && command.trim().length > 0 && (() => {
-               const suffix = suggestion.slice(command.length);
-               return <span className="text-[var(--color-text-tertiary)] opacity-50">{suffix}</span>;
-             })()}
-           </div>
+          {/* Ghost input for suggestion */}
+          <div className="absolute inset-0 px-3 py-2 text-sm font-mono pointer-events-none text-transparent">
+            <span className="invisible">{command}</span>
+            {suggestion &&
+              command.trim().length > 0 &&
+              (() => {
+                const suffix = suggestion.slice(command.length);
+                return (
+                  <span className="text-[var(--color-text-tertiary)] opacity-50">{suffix}</span>
+                );
+              })()}
+          </div>
 
           <input
             type="text"
             value={command}
             onChange={(e) => handleCommandChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'ArrowUp') {
+              if (e.key === "ArrowUp") {
                 e.preventDefault();
                 if (commandBufferIndex.current > 0) {
                   commandBufferIndex.current -= 1;
-                  setCommand(commandBuffer.current[commandBufferIndex.current] || '');
+                  setCommand(commandBuffer.current[commandBufferIndex.current] || "");
                 }
-              } else if (e.key === 'ArrowDown') {
+              } else if (e.key === "ArrowDown") {
                 e.preventDefault();
                 if (commandBufferIndex.current < commandBuffer.current.length - 1) {
                   commandBufferIndex.current += 1;
-                  setCommand(commandBuffer.current[commandBufferIndex.current] || '');
+                  setCommand(commandBuffer.current[commandBufferIndex.current] || "");
                 } else {
                   commandBufferIndex.current = commandBuffer.current.length; // Reset to end
-                  setCommand('');
+                  setCommand("");
                 }
-              } else if (e.key === 'Tab') {
+              } else if (e.key === "Tab") {
                 e.preventDefault();
-                
+
                 if (candidates.length > 0) {
-                    // Cycle through candidates
-                    const nextIndex = (candidateIndex + 1) % candidates.length;
-                    setCandidateIndex(nextIndex);
-                    const nextCommand = candidates[nextIndex] + " ";
-                    
-                    // Directly set command, bypassing handleCommandChange to preserve candidates
-                    setCommand(nextCommand);
-                    setSuggestion(null); // Clear ghost text as we are filling it in
+                  // Cycle through candidates
+                  const nextIndex = (candidateIndex + 1) % candidates.length;
+                  setCandidateIndex(nextIndex);
+                  const nextCommand = candidates[nextIndex] + " ";
+
+                  // Directly set command, bypassing handleCommandChange to preserve candidates
+                  setCommand(nextCommand);
+                  setSuggestion(null); // Clear ghost text as we are filling it in
                 } else if (suggestion && command.trim().length > 0) {
-                   // Fallback to old behavior if somehow candidates missing but suggestion present
-                   setCommand(suggestion + " ");
-                   setSuggestion(null);
+                  // Fallback to old behavior if somehow candidates missing but suggestion present
+                  setCommand(suggestion + " ");
+                  setSuggestion(null);
                 }
               }
             }}
             disabled={disabled}
-            placeholder={disabled ? 'Connect device to send commands...' : 'Enter command...'}
+            placeholder={disabled ? "Connect device to send commands..." : "Enter command..."}
             className="w-full px-3 py-2 text-sm font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none bg-transparent relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>

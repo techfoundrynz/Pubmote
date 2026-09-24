@@ -6,17 +6,12 @@ interface CoredumpBannerProps {
   onClear: () => void;
 }
 
-export const CoredumpBanner: React.FC<CoredumpBannerProps> = ({
-  onView,
-  onClear,
-}) => {
+export const CoredumpBanner: React.FC<CoredumpBannerProps> = ({ onView, onClear }) => {
   return (
     <div className="bg-[var(--color-danger)] border-b border-red-500/30 p-2 flex items-center justify-between animate-in fade-in slide-in-from-top-2 sticky top-0">
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-white" />
-        <span className="text-xs font-medium text-white">
-          Crash Dump Detected
-        </span>
+        <span className="text-xs font-medium text-white">Crash Dump Detected</span>
       </div>
       <div className="flex items-center gap-2">
         <button

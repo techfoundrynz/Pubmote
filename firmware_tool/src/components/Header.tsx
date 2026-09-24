@@ -1,6 +1,6 @@
-import { Link, Link2Off, Sun, Moon } from 'lucide-react'
-import { HeaderLinksSelector } from './HeaderLinksSelector'
-import { useTheme } from '../context/ThemeContext'
+import { Link, Link2Off, Sun, Moon } from "lucide-react";
+import { HeaderLinksSelector } from "./HeaderLinksSelector";
+import { useTheme } from "../context/ThemeContext";
 
 interface HeaderProps {
   isConnected: boolean;
@@ -9,12 +9,7 @@ interface HeaderProps {
   onDisconnect: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-  isConnected, 
-  isConnecting, 
-  onConnect, 
-  onDisconnect 
-}) => {
+const Header: React.FC<HeaderProps> = ({ isConnected, isConnecting, onConnect, onDisconnect }) => {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -23,8 +18,12 @@ const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3">
           <img src="/favicon.svg" alt="Pubmote Logo" className="h-12 w-12" />
           <div>
-            <h1 className="text-xl font-bold text-[var(--color-text-primary)] leading-none">Pubmote Firmware Tool</h1>
-            <p className="text-xs text-[var(--color-text-tertiary)] mt-1">Diagnostic tool and firmware updater</p>
+            <h1 className="text-xl font-bold text-[var(--color-text-primary)] leading-none">
+              Pubmote Firmware Tool
+            </h1>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+              Diagnostic tool and firmware updater
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -50,9 +49,9 @@ const Header: React.FC<HeaderProps> = ({
           <button
             onClick={toggleTheme}
             className="p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
           <div className="h-6 w-px bg-gray-800"></div>
           <HeaderLinksSelector />
@@ -60,7 +59,6 @@ const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
   );
-}
-
+};
 
 export default Header;

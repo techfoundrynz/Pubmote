@@ -1,8 +1,8 @@
 {
   "name": "@pubmote/firmware-tool",
+  "version": "0.0.0",
   "private": true,
   "homepage": "https://techfoundrynz.github.io/pubmote",
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

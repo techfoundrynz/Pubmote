@@ -205,7 +205,7 @@ export function Dropdown({
               ))}
             </div>
           </div>,
-          document.body
+          document.body,
         )
       : null;
 
@@ -238,11 +238,7 @@ export function Dropdown({
         ) : (
           <>
             {icon && (
-              <span
-                className={`flex-shrink-0 ${
-                  disabled ? "opacity-50" : "text-gray-500"
-                }`}
-              >
+              <span className={`flex-shrink-0 ${disabled ? "opacity-50" : "text-gray-500"}`}>
                 {icon}
               </span>
             )}

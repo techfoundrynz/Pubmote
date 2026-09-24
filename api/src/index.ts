@@ -1,10 +1,10 @@
 /**
  * CORS Proxy for GitHub Files
- * 
+ *
  * This Cloudflare Worker provides a CORS proxy specifically for fetching files
  * from GitHub.com and related domains. It handles preflight requests and adds
  * appropriate CORS headers to enable cross-origin requests.
- * 
+ *
  * Usage: https://your-worker.workers.dev/cors?https://github.com/user/repo/file
  */
 
@@ -27,7 +27,7 @@ const ALLOWED_ORIGIN_PATTERNS = [
  * Check if a URL matches any pattern in the whitelist
  */
 function isUrlAllowed(url: string, patterns: RegExp[]): boolean {
-  return patterns.some(pattern => pattern.test(url));
+  return patterns.some((pattern) => pattern.test(url));
 }
 
 /**
@@ -89,7 +89,9 @@ function createInfoResponse(request: Request): Response {
     "",
     origin ? `Origin: ${origin}` : "",
     ip ? `IP: ${ip}` : "",
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return new Response(info, {
     status: 200,
@@ -112,7 +114,7 @@ function createForbiddenResponse(reason: string): Response {
       headers: {
         "Content-Type": "application/json",
       },
-    }
+    },
   );
 }
 
@@ -136,7 +138,9 @@ export default {
 
       // Check if the target URL is allowed
       if (!isUrlAllowed(targetUrl, ALLOWED_URL_PATTERNS)) {
-        return createForbiddenResponse("Target URL is not in the allowed list (GitHub domains only)");
+        return createForbiddenResponse(
+          "Target URL is not in the allowed list (GitHub domains only)",
+        );
       }
 
       // Check if the origin is allowed
@@ -230,7 +234,7 @@ export default {
             headers: {
               "Content-Type": "application/json",
             },
-          }
+          },
         );
       }
     }
