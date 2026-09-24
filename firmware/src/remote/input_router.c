@@ -104,9 +104,9 @@ static void drive_axis(float value, InputAction negative, InputAction positive, 
   }
 }
 
-// Positive js_y is DOWN on this remote (the old nav sent Tab on js_y > 0.7)
+// Positive js_y is UP (throttle), as the LVGL-era encoder nav had it
 void input_router_poll_stick(float x, float y) {
   const int64_t now_us = esp_timer_get_time();
   drive_axis(x, INPUT_ACTION_STICK_LEFT, INPUT_ACTION_STICK_RIGHT, &x_latch, &x_next_repeat_us, now_us);
-  drive_axis(y, INPUT_ACTION_STICK_UP, INPUT_ACTION_STICK_DOWN, &y_latch, &y_next_repeat_us, now_us);
+  drive_axis(y, INPUT_ACTION_STICK_DOWN, INPUT_ACTION_STICK_UP, &y_latch, &y_next_repeat_us, now_us);
 }
