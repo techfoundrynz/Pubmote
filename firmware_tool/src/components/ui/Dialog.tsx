@@ -1,13 +1,13 @@
-import React from "react";
-import { AlertTriangle } from "lucide-react";
-import { cn } from "../../utils/cn";
+import React from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { cn } from '../../utils/cn';
 
 interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   message: string;
-  type?: "error" | "info" | "warning";
+  type?: 'error' | 'info' | 'warning';
 }
 
 export const Dialog: React.FC<DialogProps> = ({
@@ -15,7 +15,7 @@ export const Dialog: React.FC<DialogProps> = ({
   onClose,
   title,
   message,
-  type = "error",
+  type = 'error',
 }) => {
   if (!isOpen) return null;
 
@@ -26,8 +26,8 @@ export const Dialog: React.FC<DialogProps> = ({
           <div className="flex items-start gap-4">
             <div
               className={cn(
-                "p-3 rounded-full flex-shrink-0",
-                type === "error" ? "bg-red-900/30 text-red-500" : "bg-blue-900/30 text-blue-500",
+                'p-3 rounded-full flex-shrink-0',
+                type === 'error' ? 'bg-red-900/30 text-red-500' : 'bg-blue-900/30 text-blue-500',
               )}
             >
               <AlertTriangle className="h-6 w-6" />

@@ -1,6 +1,6 @@
 export interface LogEntry {
   message: string;
-  type: "info" | "error" | "success";
+  type: 'info' | 'error' | 'success';
   timestamp: string;
 }
 
@@ -8,7 +8,7 @@ export class TerminalService {
   private logs: LogEntry[] = [];
   private subscribers: Set<(log: LogEntry | null) => void> = new Set();
 
-  log(message: string, type: LogEntry["type"] = "info"): void {
+  log(message: string, type: LogEntry['type'] = 'info'): void {
     const entry: LogEntry = {
       message: message.trim(),
       type,
@@ -18,7 +18,7 @@ export class TerminalService {
     this.notifySubscribers(entry);
   }
 
-  writeLine(message: string, type?: LogEntry["type"]): void {
+  writeLine(message: string, type?: LogEntry['type']): void {
     this.log(message, type);
   }
 

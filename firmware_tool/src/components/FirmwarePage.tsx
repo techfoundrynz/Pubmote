@@ -1,9 +1,9 @@
-import React from "react";
-import { FirmwareSelector } from "./FirmwareSelector";
-import useDeviceTools from "../hooks/useDeviceTools";
-import { FlashProgress } from "./FlashProgress";
-import { FirmwareFiles } from "../types";
-import { Usb, Sparkles } from "lucide-react";
+import React from 'react';
+import { FirmwareSelector } from './FirmwareSelector';
+import useDeviceTools from '../hooks/useDeviceTools';
+import { FlashProgress } from './FlashProgress';
+import { FirmwareFiles } from '../types';
+import { Usb, Sparkles } from 'lucide-react';
 
 const FirmwarePage: React.FC<{ onLoadElf?: (file: File) => void }> = ({ onLoadElf }) => {
   const { deviceInfo, espService, flashProgress, disconnect, setFlashProgress } = useDeviceTools();
@@ -26,26 +26,26 @@ const FirmwarePage: React.FC<{ onLoadElf?: (file: File) => void }> = ({ onLoadEl
 
     try {
       if (eraseFlash) {
-        setFlashProgress({ status: "erasing", progress: 20 });
+        setFlashProgress({ status: 'erasing', progress: 20 });
       }
 
       const currentProgress = 20;
 
       await espService.flash(selectedFirmware, eraseFlash, (status) => {
         setFlashProgress({
-          status: "flashing",
+          status: 'flashing',
           progress: Math.round(currentProgress + status.progress * (100 - currentProgress)),
         });
       });
 
-      setFlashProgress({ status: "complete", progress: 100 });
+      setFlashProgress({ status: 'complete', progress: 100 });
       disconnect();
     } catch (error) {
-      console.error("Flash error:", error);
+      console.error('Flash error:', error);
       setFlashProgress({
-        status: "error",
+        status: 'error',
         progress: 0,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       });
     }
   };
@@ -94,7 +94,7 @@ const FirmwarePage: React.FC<{ onLoadElf?: (file: File) => void }> = ({ onLoadEl
             disabled={
               !selectedFirmware ||
               !deviceInfo.connected ||
-              !["complete", "idle"].includes(flashProgress.status)
+              !['complete', 'idle'].includes(flashProgress.status)
             }
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-disabled)] disabled:text-[var(--color-text-disabled)]"
           >

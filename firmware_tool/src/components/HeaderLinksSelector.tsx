@@ -1,10 +1,10 @@
-import { Info } from "lucide-react";
-import { Dropdown } from "./ui/Dropdown";
-import { SiDiscord, SiGithub } from "@icons-pack/react-simple-icons";
+import { Info } from 'lucide-react';
+import { Dropdown } from './ui/Dropdown';
+import { SiDiscord, SiGithub } from '@icons-pack/react-simple-icons';
 
 export function HeaderLinksSelector() {
   const handleLinkSelect = (url: string) => {
-    window.open(url, "_blank");
+    window.open(url, '_blank');
   };
 
   return (
@@ -13,7 +13,7 @@ export function HeaderLinksSelector() {
         <Dropdown
           options={[
             {
-              value: "https://github.com/techfoundrynz/Pubmote",
+              value: 'https://github.com/techfoundrynz/Pubmote',
               tooltip: `Pubmote GitHub repository`,
               icon: <SiGithub className="h-4 w-4" />,
               label: (
@@ -25,7 +25,7 @@ export function HeaderLinksSelector() {
               ),
             },
             {
-              value: "https://github.com/Relys/vesc_pkg/tree/float-accessories",
+              value: 'https://github.com/Relys/vesc_pkg/tree/float-accessories',
               tooltip: `Float Accessories GitHub repository`,
               icon: <SiGithub className="h-4 w-4" />,
               label: (
@@ -37,7 +37,7 @@ export function HeaderLinksSelector() {
               ),
             },
             {
-              value: "https://discord.gg/7hTnbgPfKt",
+              value: 'https://discord.gg/7hTnbgPfKt',
               tooltip: `Pubmote discussion channel in PubWheel Discord`,
               icon: <SiDiscord className="h-4 w-4" />,
               label: (

@@ -1,5 +1,5 @@
-import React from "react";
-import { FloatAccessoriesSelector } from "./FloatAccessoriesSelector";
+import React from 'react';
+import { FloatAccessoriesSelector } from './FloatAccessoriesSelector';
 
 const DeviceInfoPage: React.FC<unknown> = () => {
   return (

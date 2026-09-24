@@ -16,15 +16,15 @@ export interface DeviceInfoData {
 }
 
 export interface FlashProgress {
-  status: "idle" | "connecting" | "erasing" | "flashing" | "verifying" | "complete" | "error";
+  status: 'idle' | 'connecting' | 'erasing' | 'flashing' | 'verifying' | 'complete' | 'error';
   progress: number;
   error?: string;
 }
 
 export enum ReleaseType {
-  Release = "release",
-  Prerelease = "prerelease",
-  Nightly = "nightly",
+  Release = 'release',
+  Prerelease = 'prerelease',
+  Nightly = 'nightly',
 }
 
 export interface FirmwareVersion {

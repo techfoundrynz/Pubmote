@@ -1,78 +1,78 @@
-import { Tag } from "lucide-react";
-import { FirmwareVersion, ReleaseType } from "../types";
-import { Badge } from "./ui/Badge";
-import { Dropdown } from "./ui/Dropdown";
+import { Tag } from 'lucide-react';
+import { FirmwareVersion, ReleaseType } from '../types';
+import { Badge } from './ui/Badge';
+import { Dropdown } from './ui/Dropdown';
 
 export function FloatAccessoriesSelector() {
   const versions = [
     {
-      version: "v2.5.0",
-      date: "2/6/2025",
+      version: 'v2.5.0',
+      date: '2/6/2025',
       variants: [
         {
-          zipUrl: "/float_accessories/float_accessories-2.5.0.vescpkg",
-          date: "2/6/2025",
-          variant: "float_accessories-2.5.vescpkg",
+          zipUrl: '/float_accessories/float_accessories-2.5.0.vescpkg',
+          date: '2/6/2025',
+          variant: 'float_accessories-2.5.vescpkg',
         },
       ],
       releaseType: ReleaseType.Release,
     },
     {
-      version: "v2.6.0",
-      date: "3/28/2025",
+      version: 'v2.6.0',
+      date: '3/28/2025',
       variants: [
         {
-          zipUrl: "/float_accessories/float_accessories-2.6.0.vescpkg",
-          date: "3/28/2025",
-          variant: "float_accessories-2.6.vescpkg",
+          zipUrl: '/float_accessories/float_accessories-2.6.0.vescpkg',
+          date: '3/28/2025',
+          variant: 'float_accessories-2.6.vescpkg',
         },
       ],
       releaseType: ReleaseType.Release,
     },
     {
-      version: "v3.1.2",
-      date: "7/24/2025",
+      version: 'v3.1.2',
+      date: '7/24/2025',
       variants: [
         {
-          zipUrl: "/float_accessories/float_accessories-3.1.2.vescpkg",
-          date: "7/24/2025",
-          variant: "float_accessories-3.1.2.vescpkg",
+          zipUrl: '/float_accessories/float_accessories-3.1.2.vescpkg',
+          date: '7/24/2025',
+          variant: 'float_accessories-3.1.2.vescpkg',
         },
       ],
       releaseType: ReleaseType.Release,
     },
     {
-      version: "v3.2.0",
-      date: "7/29/2025",
+      version: 'v3.2.0',
+      date: '7/29/2025',
       variants: [
         {
-          zipUrl: "/float_accessories/float_accessories-3.2.0.vescpkg",
-          date: "5/27/2025",
-          variant: "float_accessories-3.2.0.vescpkg",
+          zipUrl: '/float_accessories/float_accessories-3.2.0.vescpkg',
+          date: '5/27/2025',
+          variant: 'float_accessories-3.2.0.vescpkg',
         },
       ],
       releaseType: ReleaseType.Release,
     },
     {
-      version: "v3.3.0",
-      date: "7/5/2026",
+      version: 'v3.3.0',
+      date: '7/5/2026',
       variants: [
         {
-          zipUrl: "/float_accessories/float_accessories-3.3.0.vescpkg",
-          date: "7/5/2026",
-          variant: "float_accessories-3.3.0.vescpkg",
+          zipUrl: '/float_accessories/float_accessories-3.3.0.vescpkg',
+          date: '7/5/2026',
+          variant: 'float_accessories-3.3.0.vescpkg',
         },
       ],
       releaseType: ReleaseType.Release,
     },
     {
-      version: "v4.0.0",
-      date: "8/16/2026",
+      version: 'v4.0.0',
+      date: '8/16/2026',
       variants: [
         {
-          zipUrl: "/float_accessories/float_accessories-4.0.0.vescpkg",
-          date: "8/16/2026",
-          variant: "float_accessories-4.0.0.vescpkg",
+          zipUrl: '/float_accessories/float_accessories-4.0.0.vescpkg',
+          date: '8/16/2026',
+          variant: 'float_accessories-4.0.0.vescpkg',
         },
       ],
       releaseType: ReleaseType.Nightly,
@@ -113,7 +113,7 @@ export function FloatAccessoriesSelector() {
   );
 
   const handleVersionSelect = (url: string) => {
-    window.open(url, "_blank");
+    window.open(url, '_blank');
   };
 
   return (
@@ -134,7 +134,7 @@ export function FloatAccessoriesSelector() {
       <p>A VESC Express package for controlling LEDs, BMS and Pubmote. To install:</p>
       <div className="space-y-4">
         <div className="space-y-4 rounded-lg bg-[var(--color-bg-tertiary)] px-4">
-          <ul className="p-4" style={{ listStyleType: "decimal" }}>
+          <ul className="p-4" style={{ listStyleType: 'decimal' }}>
             <li>Select a build to download from the dropdown above and unzip it</li>
             <li>In VESC Tool, connect to your VESC Express</li>
             <li>Navigate to "VESC Packages" on desktop, or "Package Store" on mobile</li>

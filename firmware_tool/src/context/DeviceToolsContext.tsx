@@ -1,7 +1,7 @@
-import React from "react";
-import { TerminalService } from "../services/terminal";
-import { ESPService } from "../services/espService";
-import { DeviceInfoData, FlashProgress } from "../types";
+import React from 'react';
+import { TerminalService } from '../services/terminal';
+import { ESPService } from '../services/espService';
+import { DeviceInfoData, FlashProgress } from '../types';
 
 export type DeviceToolsContextType = {
   terminal: TerminalService;

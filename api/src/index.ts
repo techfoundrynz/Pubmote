@@ -34,27 +34,27 @@ function isUrlAllowed(url: string, patterns: RegExp[]): boolean {
  * Set up CORS headers for the response
  */
 function setupCORSHeaders(headers: Headers, request: Request, isPreflight: boolean): Headers {
-  const origin = request.headers.get("Origin");
+  const origin = request.headers.get('Origin');
 
   if (origin) {
-    headers.set("Access-Control-Allow-Origin", origin);
+    headers.set('Access-Control-Allow-Origin', origin);
   } else {
-    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set('Access-Control-Allow-Origin', '*');
   }
 
   if (isPreflight) {
-    const requestMethod = request.headers.get("Access-Control-Request-Method");
-    const requestHeaders = request.headers.get("Access-Control-Request-Headers");
+    const requestMethod = request.headers.get('Access-Control-Request-Method');
+    const requestHeaders = request.headers.get('Access-Control-Request-Headers');
 
     if (requestMethod) {
-      headers.set("Access-Control-Allow-Methods", requestMethod);
+      headers.set('Access-Control-Allow-Methods', requestMethod);
     }
 
     if (requestHeaders) {
-      headers.set("Access-Control-Allow-Headers", requestHeaders);
+      headers.set('Access-Control-Allow-Headers', requestHeaders);
     }
 
-    headers.set("Access-Control-Max-Age", "86400"); // 24 hours
+    headers.set('Access-Control-Max-Age', '86400'); // 24 hours
   }
 
   return headers;
@@ -65,33 +65,33 @@ function setupCORSHeaders(headers: Headers, request: Request, isPreflight: boole
  */
 function createInfoResponse(request: Request): Response {
   const url = new URL(request.url);
-  const origin = request.headers.get("Origin");
-  const ip = request.headers.get("CF-Connecting-IP");
+  const origin = request.headers.get('Origin');
+  const ip = request.headers.get('CF-Connecting-IP');
 
   const headers = new Headers();
   setupCORSHeaders(headers, request, false);
-  headers.set("Content-Type", "text/plain");
+  headers.set('Content-Type', 'text/plain');
 
   const info = [
-    "PUBMOTE CORS PROXY FOR GITHUB",
-    "",
-    "Usage:",
+    'PUBMOTE CORS PROXY FOR GITHUB',
+    '',
+    'Usage:',
     `${url.origin}/cors?<github-url>`,
-    "",
-    "Example:",
+    '',
+    'Example:',
     `${url.origin}/cors?https://raw.githubusercontent.com/user/repo/main/file.txt`,
-    "",
-    "Allowed domains:",
-    "- github.com",
-    "- raw.githubusercontent.com",
-    "- gist.github.com",
-    "- api.github.com",
-    "",
-    origin ? `Origin: ${origin}` : "",
-    ip ? `IP: ${ip}` : "",
+    '',
+    'Allowed domains:',
+    '- github.com',
+    '- raw.githubusercontent.com',
+    '- gist.github.com',
+    '- api.github.com',
+    '',
+    origin ? `Origin: ${origin}` : '',
+    ip ? `IP: ${ip}` : '',
   ]
     .filter(Boolean)
-    .join("\n");
+    .join('\n');
 
   return new Response(info, {
     status: 200,
@@ -105,14 +105,14 @@ function createInfoResponse(request: Request): Response {
 function createForbiddenResponse(reason: string): Response {
   return new Response(
     JSON.stringify({
-      error: "Forbidden",
+      error: 'Forbidden',
       reason,
-      message: "This CORS proxy only allows requests to GitHub domains.",
+      message: 'This CORS proxy only allows requests to GitHub domains.',
     }),
     {
       status: 403,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     },
   );
@@ -124,29 +124,29 @@ function createForbiddenResponse(reason: string): Response {
 export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const isPreflight = request.method === "OPTIONS";
+    const isPreflight = request.method === 'OPTIONS';
 
     // Handle /cors path
-    if (url.pathname === "/cors") {
+    if (url.pathname === '/cors') {
       // Get the target URL from the query string
       const targetUrl = decodeURIComponent(url.search.substring(1));
 
       // If no target URL, return info page
-      if (!targetUrl || targetUrl === "") {
+      if (!targetUrl || targetUrl === '') {
         return createInfoResponse(request);
       }
 
       // Check if the target URL is allowed
       if (!isUrlAllowed(targetUrl, ALLOWED_URL_PATTERNS)) {
         return createForbiddenResponse(
-          "Target URL is not in the allowed list (GitHub domains only)",
+          'Target URL is not in the allowed list (GitHub domains only)',
         );
       }
 
       // Check if the origin is allowed
-      const origin = request.headers.get("Origin");
+      const origin = request.headers.get('Origin');
       if (origin && !isUrlAllowed(origin, ALLOWED_ORIGIN_PATTERNS)) {
-        return createForbiddenResponse("Origin is not allowed");
+        return createForbiddenResponse('Origin is not allowed');
       }
 
       // Handle preflight request
@@ -161,7 +161,7 @@ export default {
 
       // Parse custom headers if provided
       let customHeaders: Record<string, string> = {};
-      const customHeadersStr = request.headers.get("x-cors-headers");
+      const customHeadersStr = request.headers.get('x-cors-headers');
       if (customHeadersStr) {
         try {
           customHeaders = JSON.parse(customHeadersStr);
@@ -177,11 +177,11 @@ export default {
       for (const [key, value] of request.headers.entries()) {
         // Skip headers that shouldn't be forwarded
         if (
-          !key.startsWith("cf-") &&
-          !key.startsWith("x-forwarded-") &&
-          key !== "origin" &&
-          key !== "referer" &&
-          key !== "x-cors-headers"
+          !key.startsWith('cf-') &&
+          !key.startsWith('x-forwarded-') &&
+          key !== 'origin' &&
+          key !== 'referer' &&
+          key !== 'x-cors-headers'
         ) {
           proxyHeaders[key] = value;
         }
@@ -195,8 +195,8 @@ export default {
         const proxyRequest = new Request(targetUrl, {
           method: request.method,
           headers: proxyHeaders,
-          body: request.method !== "GET" && request.method !== "HEAD" ? request.body : undefined,
-          redirect: "follow",
+          body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
+          redirect: 'follow',
         });
 
         const response = await fetch(proxyRequest);
@@ -214,9 +214,9 @@ export default {
           allResponseHeaders[key] = value;
         }
 
-        exposedHeaders.push("cors-received-headers");
-        responseHeaders.set("Access-Control-Expose-Headers", exposedHeaders.join(","));
-        responseHeaders.set("cors-received-headers", JSON.stringify(allResponseHeaders));
+        exposedHeaders.push('cors-received-headers');
+        responseHeaders.set('Access-Control-Expose-Headers', exposedHeaders.join(','));
+        responseHeaders.set('cors-received-headers', JSON.stringify(allResponseHeaders));
 
         return new Response(response.body, {
           status: response.status,
@@ -226,13 +226,13 @@ export default {
       } catch (error) {
         return new Response(
           JSON.stringify({
-            error: "Proxy Error",
-            message: error instanceof Error ? error.message : "Unknown error occurred",
+            error: 'Proxy Error',
+            message: error instanceof Error ? error.message : 'Unknown error occurred',
           }),
           {
             status: 500,
             headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json',
             },
           },
         );
@@ -240,6 +240,6 @@ export default {
     }
 
     // For any other path, return 404
-    return new Response("Not Found", { status: 404 });
+    return new Response('Not Found', { status: 404 });
   },
 };

@@ -1,10 +1,10 @@
 // DeviceInfo.tsx
-import { Box, Tag, Cpu, Wifi } from "lucide-react";
-import { Badge } from "./ui/Badge";
-import { DeviceInfoData, FlashProgress } from "../types";
+import { Box, Tag, Cpu, Wifi } from 'lucide-react';
+import { Badge } from './ui/Badge';
+import { DeviceInfoData, FlashProgress } from '../types';
 
-import { Terminal } from "./Terminal";
-import { TerminalService } from "../services/terminal";
+import { Terminal } from './Terminal';
+import { TerminalService } from '../services/terminal';
 
 interface Props {
   deviceInfo: DeviceInfoData;
@@ -37,8 +37,8 @@ export function DeviceInfo({
     <div className="rounded-lg bg-[var(--color-bg-secondary)] p-6 flex flex-col h-full">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Device Information</h2>
-        <Badge variant={deviceInfo.connected ? "success" : "destructive"} size="lg">
-          {deviceInfo.connected ? "Connected" : "Disconnected"}
+        <Badge variant={deviceInfo.connected ? 'success' : 'destructive'} size="lg">
+          {deviceInfo.connected ? 'Connected' : 'Disconnected'}
         </Badge>
       </div>
 
@@ -49,9 +49,9 @@ export function DeviceInfo({
             <div className="text-xs text-[var(--color-text-tertiary)] truncate">Hardware</div>
             <div
               className="text-base font-medium text-[var(--color-text-primary)] truncate"
-              title={deviceInfo.hardware || "Unknown"}
+              title={deviceInfo.hardware || 'Unknown'}
             >
-              {deviceInfo.hardware || "Unknown"}
+              {deviceInfo.hardware || 'Unknown'}
             </div>
           </div>
         </div>
@@ -63,9 +63,9 @@ export function DeviceInfo({
             <div className="flex items-center gap-1.5">
               <div
                 className="text-base font-medium text-[var(--color-text-primary)] truncate"
-                title={`${deviceInfo.version || "Unknown"} (${deviceInfo.variant || "unknown"})`}
+                title={`${deviceInfo.version || 'Unknown'} (${deviceInfo.variant || 'unknown'})`}
               >
-                {deviceInfo.version || "Unknown"}
+                {deviceInfo.version || 'Unknown'}
               </div>
               {updateAvailable && <Badge variant="default">Update Available</Badge>}
             </div>
@@ -79,9 +79,9 @@ export function DeviceInfo({
             <div className="text-xs text-[var(--color-text-tertiary)] truncate">Chip</div>
             <div
               className="text-base font-medium text-[var(--color-text-primary)] truncate"
-              title={deviceInfo.chipId || "Unknown"}
+              title={deviceInfo.chipId || 'Unknown'}
             >
-              {deviceInfo.chipId || "Unknown"}
+              {deviceInfo.chipId || 'Unknown'}
             </div>
           </div>
         </div>
@@ -92,9 +92,9 @@ export function DeviceInfo({
             <div className="text-xs text-[var(--color-text-tertiary)] truncate">MAC</div>
             <div
               className="text-base font-medium text-[var(--color-text-primary)] truncate"
-              title={deviceInfo.macAddress || "Unknown"}
+              title={deviceInfo.macAddress || 'Unknown'}
             >
-              {deviceInfo.macAddress || "Unknown"}
+              {deviceInfo.macAddress || 'Unknown'}
             </div>
           </div>
         </div>

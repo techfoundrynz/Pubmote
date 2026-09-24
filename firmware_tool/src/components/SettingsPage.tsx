@@ -1,9 +1,9 @@
-import React from "react";
-import { AlertTriangle, Eraser, Eye, EyeOff, RefreshCcw, Save } from "lucide-react";
-import useDeviceTools from "../hooks/useDeviceTools";
-import { useToast } from "../context/ToastContext";
-import { LogListener } from "../services/espService";
-import { Dropdown } from "./ui/Dropdown";
+import React from 'react';
+import { AlertTriangle, Eraser, Eye, EyeOff, RefreshCcw, Save } from 'lucide-react';
+import useDeviceTools from '../hooks/useDeviceTools';
+import { useToast } from '../context/ToastContext';
+import { LogListener } from '../services/espService';
+import { Dropdown } from './ui/Dropdown';
 
 type SettingsState = {
   wifi_ssid: string;
@@ -24,40 +24,40 @@ type PinInfo = {
   supported: boolean;
 };
 
-const PIN_DISABLED = "-1";
+const PIN_DISABLED = '-1';
 
 const DEFAULT_SETTINGS: SettingsState = {
-  wifi_ssid: "",
-  wifi_password: "",
+  wifi_ssid: '',
+  wifi_password: '',
   js_x_gpio: PIN_DISABLED,
   js_y_gpio: PIN_DISABLED,
   btn1_gpio: PIN_DISABLED,
-  btn1_level: "0",
+  btn1_level: '0',
 };
 
 const DEFAULT_PIN_INFO: PinInfo = {
   available: [],
   adcCapable: [],
   buttonCapable: [],
-  warning: "",
+  warning: '',
   supported: false,
 };
 
 const PIN_KEYS = [
-  "js_x_gpio",
-  "js_y_gpio",
-  "btn1_gpio",
-  "btn1_level",
+  'js_x_gpio',
+  'js_y_gpio',
+  'btn1_gpio',
+  'btn1_level',
 ] as const satisfies readonly (keyof SettingsState)[];
 
 // Sized to match the Dropdown control
 const INPUT_CLASSES =
-  "w-full rounded-lg border border-gray-600 bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-transparent focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:text-[var(--color-text-disabled)]";
+  'w-full rounded-lg border border-gray-600 bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-transparent focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:text-[var(--color-text-disabled)]';
 
 const parsePinList = (value: string | undefined): number[] => {
   if (!value) return [];
   return value
-    .split(",")
+    .split(',')
     .map((entry) => Number.parseInt(entry.trim(), 10))
     .filter((pin) => Number.isInteger(pin));
 };
@@ -78,7 +78,7 @@ const SettingsPage: React.FC<unknown> = () => {
   // Used to send only what changed, so saving WiFi doesn't re-apply pins
   const [loadedSettings, setLoadedSettings] = React.useState(DEFAULT_SETTINGS);
   const [pinInfo, setPinInfo] = React.useState(DEFAULT_PIN_INFO);
-  const disabled = !deviceInfo.connected || flashProgress.status !== "idle" || settingsIsLoading;
+  const disabled = !deviceInfo.connected || flashProgress.status !== 'idle' || settingsIsLoading;
 
   const retrieveSettings = React.useCallback(async (): Promise<Record<string, string>> => {
     const timeout = 5000;
@@ -87,11 +87,11 @@ const SettingsPage: React.FC<unknown> = () => {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         espService.removeLogListener(versionLogListener);
-        reject(new Error("Timeout while waiting for settings response"));
+        reject(new Error('Timeout while waiting for settings response'));
       }, timeout);
 
       // Request firmware info
-      espService.log("Fetching settings...");
+      espService.log('Fetching settings...');
       const versionLogListener: LogListener = (data) => {
         // "key: value" replies; log lines can't match (space before the colon)
         const match = data.match(/^([a-z0-9_]+):\s*(.*)$/i);
@@ -99,17 +99,17 @@ const SettingsPage: React.FC<unknown> = () => {
           values[match[1].toLowerCase()] = match[2].trim();
         }
 
-        if (data === "pubconsole>") {
+        if (data === 'pubconsole>') {
           clearTimeout(timeoutId);
           espService.removeLogListener(versionLogListener);
-          espService.log("Settings successfully loaded");
+          espService.log('Settings successfully loaded');
           resolve(values);
         }
 
         return true; // Mark log as handled
       };
       espService.addLogListener(versionLogListener);
-      espService.sendCommand("settings");
+      espService.sendCommand('settings');
     });
   }, [espService]);
 
@@ -119,12 +119,12 @@ const SettingsPage: React.FC<unknown> = () => {
       retrieveSettings()
         .then((values) => {
           const loaded: SettingsState = {
-            wifi_ssid: values.wifi_ssid || "",
-            wifi_password: values.wifi_password || "",
+            wifi_ssid: values.wifi_ssid || '',
+            wifi_password: values.wifi_password || '',
             js_x_gpio: values.js_x_gpio || PIN_DISABLED,
             js_y_gpio: values.js_y_gpio || PIN_DISABLED,
             btn1_gpio: values.btn1_gpio || PIN_DISABLED,
-            btn1_level: values.btn1_level || "0",
+            btn1_level: values.btn1_level || '0',
           };
           setSettings(loaded);
           setLoadedSettings(loaded);
@@ -132,7 +132,7 @@ const SettingsPage: React.FC<unknown> = () => {
             available: parsePinList(values.pins_available),
             adcCapable: parsePinList(values.pins_adc_capable),
             buttonCapable: parsePinList(values.pins_button_capable),
-            warning: values.pins_warning || "",
+            warning: values.pins_warning || '',
             // Require the keys we read: a renamed key would otherwise look
             // like an unused input
             supported:
@@ -144,7 +144,7 @@ const SettingsPage: React.FC<unknown> = () => {
           setSettingsLoading(false);
         })
         .catch((err) => {
-          console.error("Failed to retrieve settings:", err);
+          console.error('Failed to retrieve settings:', err);
           setSettingsLoading(false);
         });
     }
@@ -168,12 +168,12 @@ const SettingsPage: React.FC<unknown> = () => {
   // Surface the firmware's verdict on a remap, plus any caveats
   const watchPinResult = React.useCallback(() => {
     const listener: LogListener = (data) => {
-      if (data.startsWith("pins_error:")) {
-        toast.error(data.replace(/^pins_error:\s*/, ""), 8000);
-      } else if (data.startsWith("pins_applied:")) {
-        toast.success("Input pins applied", 4000);
-      } else if (data.startsWith("pins_warning:")) {
-        toast.warning(data.replace(/^pins_warning:\s*/, ""), 10000);
+      if (data.startsWith('pins_error:')) {
+        toast.error(data.replace(/^pins_error:\s*/, ''), 8000);
+      } else if (data.startsWith('pins_applied:')) {
+        toast.success('Input pins applied', 4000);
+      } else if (data.startsWith('pins_warning:')) {
+        toast.warning(data.replace(/^pins_warning:\s*/, ''), 10000);
       }
       return false; // Leave the line in the terminal too
     };
@@ -185,10 +185,10 @@ const SettingsPage: React.FC<unknown> = () => {
   const pinsChanged = PIN_KEYS.some((key) => settings[key] !== loadedSettings[key]);
 
   const handleSave = React.useCallback(() => {
-    let saveValuesString = "save_settings";
+    let saveValuesString = 'save_settings';
     const keysToSend: (keyof SettingsState)[] = [
-      "wifi_ssid",
-      "wifi_password",
+      'wifi_ssid',
+      'wifi_password',
       // Only remap when something changed - applying rebuilds the inputs
       ...PIN_KEYS.filter((key) => settings[key] !== loadedSettings[key]),
     ];
@@ -211,7 +211,7 @@ const SettingsPage: React.FC<unknown> = () => {
 
   const pinOptions = React.useCallback((allowed: number[], current: string) => {
     const options = [
-      { value: PIN_DISABLED, label: "Not used" },
+      { value: PIN_DISABLED, label: 'Not used' },
       ...allowed.map((pin) => ({
         value: String(pin),
         label: `GPIO ${pin}`,
@@ -226,7 +226,7 @@ const SettingsPage: React.FC<unknown> = () => {
     return options;
   }, []);
 
-  const pinLabel = (value: string) => (value === PIN_DISABLED ? "Not used" : `GPIO ${value}`);
+  const pinLabel = (value: string) => (value === PIN_DISABLED ? 'Not used' : `GPIO ${value}`);
 
   const noButton = settings.btn1_gpio === PIN_DISABLED;
   // Firmware that can't report its pins won't accept them either
@@ -275,7 +275,7 @@ const SettingsPage: React.FC<unknown> = () => {
               <span className="block text-sm mb-1">Password</span>
               <div className="relative">
                 <input
-                  type={showWifiPassword ? "text" : "password"}
+                  type={showWifiPassword ? 'text' : 'password'}
                   disabled={disabled}
                   value={settings.wifi_password}
                   autoComplete="wifi-key"
@@ -370,12 +370,12 @@ const SettingsPage: React.FC<unknown> = () => {
             <div>
               <span className="block text-sm mb-1">Button active level</span>
               <Dropdown
-                label={settings.btn1_level === "1" ? "Active high" : "Active low"}
+                label={settings.btn1_level === '1' ? 'Active high' : 'Active low'}
                 disabled={pinsDisabled || noButton}
                 value={settings.btn1_level}
                 options={[
-                  { value: "0", label: "Active low" },
-                  { value: "1", label: "Active high" },
+                  { value: '0', label: 'Active low' },
+                  { value: '1', label: 'Active high' },
                 ]}
                 onChange={(value) =>
                   setSettings((prev) => ({
@@ -417,7 +417,7 @@ const SettingsPage: React.FC<unknown> = () => {
             className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors bg-[var(--color-danger)] hover:bg-red-700 border border-red-500"
             disabled={disabled}
             onClick={() => {
-              sendTerminalCommand("erase");
+              sendTerminalCommand('erase');
               resetSettings();
               // Refetch settings after a delay to allow erase to complete
               setTimeout(() => {

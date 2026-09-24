@@ -1,4 +1,7 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["firmware_tool/src/services/esp_stacktrace_decoder_rs.*"]
+  "singleQuote": true,
+  "ignorePatterns": [
+    "firmware_tool/src/services/esp_stacktrace_decoder_rs.*"
+  ]
 }

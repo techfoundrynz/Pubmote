@@ -1,6 +1,6 @@
-import { Link, Link2Off, Sun, Moon } from "lucide-react";
-import { HeaderLinksSelector } from "./HeaderLinksSelector";
-import { useTheme } from "../context/ThemeContext";
+import { Link, Link2Off, Sun, Moon } from 'lucide-react';
+import { HeaderLinksSelector } from './HeaderLinksSelector';
+import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   isConnected: boolean;
@@ -42,16 +42,16 @@ const Header: React.FC<HeaderProps> = ({ isConnected, isConnecting, onConnect, o
               className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors bg-blue-600 hover:bg-blue-700 disabled:bg-[var(--color-bg-disabled)] disabled:text-[var(--color-text-disabled)] disabled:cursor-not-allowed"
             >
               <Link className="h-4 w-4" />
-              {isConnecting ? "Connecting..." : "Connect Device"}
+              {isConnecting ? 'Connecting...' : 'Connect Device'}
             </button>
           )}
           <div className="h-6 w-px bg-gray-800"></div>
           <button
             onClick={toggleTheme}
             className="p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
           <div className="h-6 w-px bg-gray-800"></div>
           <HeaderLinksSelector />

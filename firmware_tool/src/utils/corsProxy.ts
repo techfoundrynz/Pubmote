@@ -6,14 +6,14 @@
  * In production mode, uses api.pubmote.com directly.
  */
 
-const DEV_PROXY_URL = "http://127.0.0.1:8787/cors";
-const PROD_PROXY_URL = "https://api.pubmote.com/cors";
+const DEV_PROXY_URL = 'http://127.0.0.1:8787/cors';
+const PROD_PROXY_URL = 'https://api.pubmote.com/cors';
 
 /**
  * Check if running in development mode
  */
 function isDevMode(): boolean {
-  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 }
 
 /**
@@ -56,7 +56,7 @@ export async function fetchWithCorsProxy(url: string, options?: RequestInit): Pr
     return response;
   } catch (error) {
     // Fallback to production proxy
-    console.warn("Local CORS proxy unavailable, falling back to production:", error);
+    console.warn('Local CORS proxy unavailable, falling back to production:', error);
     const prodProxyUrl = getCorsProxyUrl(url, false);
     return fetch(prodProxyUrl, options);
   }

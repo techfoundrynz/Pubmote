@@ -1,8 +1,8 @@
-import React, { useEffect } from "react";
-import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
-import { cn } from "../../utils/cn";
+import React, { useEffect } from 'react';
+import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { cn } from '../../utils/cn';
 
-export type ToastType = "success" | "error" | "info" | "warning";
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export interface ToastProps {
   id: string;
@@ -31,16 +31,16 @@ export const Toast: React.FC<ToastProps> = ({ id, message, type, onDismiss, dura
   };
 
   const bgColors = {
-    success: "bg-[var(--color-bg-tertiary)] border-l-4 border-green-500",
-    error: "bg-[var(--color-bg-tertiary)] border-l-4 border-red-500",
-    warning: "bg-[var(--color-bg-tertiary)] border-l-4 border-yellow-500",
-    info: "bg-[var(--color-bg-tertiary)] border-l-4 border-blue-500",
+    success: 'bg-[var(--color-bg-tertiary)] border-l-4 border-green-500',
+    error: 'bg-[var(--color-bg-tertiary)] border-l-4 border-red-500',
+    warning: 'bg-[var(--color-bg-tertiary)] border-l-4 border-yellow-500',
+    info: 'bg-[var(--color-bg-tertiary)] border-l-4 border-blue-500',
   };
 
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-4 rounded-lg shadow-lg min-w-[300px] max-w-md animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto",
+        'flex items-start gap-3 p-4 rounded-lg shadow-lg min-w-[300px] max-w-md animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto',
         bgColors[type],
       )}
     >

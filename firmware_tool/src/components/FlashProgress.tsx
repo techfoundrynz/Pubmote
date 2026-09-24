@@ -1,5 +1,5 @@
-import { FlashProgress as FlashProgressType } from "../types";
-import { CheckCircle, AlertCircle, Loader2, CircleDot } from "lucide-react";
+import { FlashProgress as FlashProgressType } from '../types';
+import { CheckCircle, AlertCircle, Loader2, CircleDot } from 'lucide-react';
 
 interface Props {
   progress: FlashProgressType;
@@ -18,11 +18,11 @@ export function FlashProgress({
 }: Props) {
   const getStatusIcon = () => {
     switch (progress.status) {
-      case "idle":
+      case 'idle':
         return <CircleDot className="h-6 w-6 text-gray-500" />;
-      case "complete":
+      case 'complete':
         return <CheckCircle className="h-6 w-6 text-green-500" />;
-      case "error":
+      case 'error':
         return <AlertCircle className="h-6 w-6 text-red-500" />;
       default:
         return <Loader2 className="h-6 w-6 animate-spin text-blue-500" />;
@@ -30,29 +30,29 @@ export function FlashProgress({
   };
 
   const getStatusText = () => {
-    if (progress.status === "idle" && !isDeviceConnected) {
-      return "Connect a device to begin flashing";
+    if (progress.status === 'idle' && !isDeviceConnected) {
+      return 'Connect a device to begin flashing';
     }
 
     switch (progress.status) {
-      case "idle":
+      case 'idle':
         return hasFirmwareFiles
-          ? "Device connected - Ready to flash"
-          : "Device connected - No files selected";
-      case "connecting":
-        return "Connecting to device...";
-      case "erasing":
-        return "Erasing flash...";
-      case "flashing":
-        return "Writing firmware...";
-      case "verifying":
-        return "Verifying flash...";
-      case "complete":
-        return "Flash complete!";
-      case "error":
-        return progress.error || "An error occurred";
+          ? 'Device connected - Ready to flash'
+          : 'Device connected - No files selected';
+      case 'connecting':
+        return 'Connecting to device...';
+      case 'erasing':
+        return 'Erasing flash...';
+      case 'flashing':
+        return 'Writing firmware...';
+      case 'verifying':
+        return 'Verifying flash...';
+      case 'complete':
+        return 'Flash complete!';
+      case 'error':
+        return progress.error || 'An error occurred';
       default:
-        return "Ready to flash";
+        return 'Ready to flash';
     }
   };
 
@@ -70,16 +70,16 @@ export function FlashProgress({
             type="checkbox"
             checked={eraseFlash}
             onChange={(e) => onEraseFlashChange(e.target.checked)}
-            disabled={!["complete", "idle"].includes(progress.status)}
+            disabled={!['complete', 'idle'].includes(progress.status)}
             className="rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
           />
           Erase flash
         </label>
       </div>
 
-      {progress.status !== "idle" &&
-        progress.status !== "complete" &&
-        progress.status !== "error" && (
+      {progress.status !== 'idle' &&
+        progress.status !== 'complete' &&
+        progress.status !== 'error' && (
           <div className="space-y-2">
             <div className="h-2 overflow-hidden rounded-full bg-[var(--color-bg-primary)]">
               <div

@@ -1,4 +1,4 @@
-import init, { decode } from "./esp_stacktrace_decoder_rs.js";
+import init, { decode } from './esp_stacktrace_decoder_rs.js';
 
 export class StacktraceService {
   private elfContent: Uint8Array | null = null;
@@ -6,7 +6,7 @@ export class StacktraceService {
 
   async initialize() {
     if (!this.isInitialized) {
-      await init("/esp-stacktrace-decoder/esp_stacktrace_decoder_rs_bg.wasm");
+      await init('/esp-stacktrace-decoder/esp_stacktrace_decoder_rs_bg.wasm');
       this.isInitialized = true;
     }
   }
@@ -26,7 +26,7 @@ export class StacktraceService {
     }
 
     if (!this.elfContent) {
-      return "ELF file not loaded. Cannot decode backtrace.";
+      return 'ELF file not loaded. Cannot decode backtrace.';
     }
 
     try {
@@ -37,16 +37,16 @@ export class StacktraceService {
       const addresses = decode(this.elfContent, backtrace);
 
       if (!addresses || addresses.length === 0) {
-        return "No addresses decoded.";
+        return 'No addresses decoded.';
       }
 
-      let output = "\nDecoded Backtrace:\n";
+      let output = '\nDecoded Backtrace:\n';
       for (const addr of addresses) {
         // addr is likely a DecodedAddress object with getters
         // check if it has the properties we expect
-        const fn = addr.function_name || "??";
-        const loc = addr.location || "??:?";
-        const address = addr.address ? `0x${addr.address.toString(16)}` : "??";
+        const fn = addr.function_name || '??';
+        const loc = addr.location || '??:?';
+        const address = addr.address ? `0x${addr.address.toString(16)}` : '??';
 
         output += `${address}: ${fn} at ${loc}\n`;
 
@@ -56,7 +56,7 @@ export class StacktraceService {
       }
       return output;
     } catch (e) {
-      console.error("Backtrace decoding failed:", e);
+      console.error('Backtrace decoding failed:', e);
       return `Backtrace decoding failed: ${e}`;
     }
   }
