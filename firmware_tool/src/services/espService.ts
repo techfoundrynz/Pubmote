@@ -158,8 +158,15 @@ export class ESPService {
     // Process complete lines
     while (this.logBuffer.includes('\n')) {
       const splitIndex = this.logBuffer.indexOf('\n');
-      const line = this.logBuffer.slice(0, splitIndex);
+      let line = this.logBuffer.slice(0, splitIndex);
       this.logBuffer = this.logBuffer.slice(splitIndex + 1);
+
+      // Another task's log can follow the prompt on the same line.
+      const cleaned = removeAnsiEscapeCodes(line).trimStart();
+      if (cleaned.startsWith('pubconsole>')) {
+        this.emitToListeners('pubconsole>', 'info');
+        line = cleaned.slice('pubconsole>'.length).trimStart();
+      }
 
       const logInfo = getEspLogInfo(line);
       if (logInfo.data) {

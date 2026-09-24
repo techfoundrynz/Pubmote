@@ -291,4 +291,20 @@ describe('console response ownership', () => {
     await emit(service, 'pubconsole>');
     expect(listener).toHaveBeenCalledWith('version: 0.9.5', 'info');
   });
+
+  test('a prompt followed by a log line on the same line still ends the command', async () => {
+    const { service, write } = connected();
+    const listener = vi.fn(() => false);
+    service.addLogListener(listener);
+    const first = service.executeCommand('coredump_info');
+    const next = requestSettingsJson(service, 'settings', 'settings');
+    await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1));
+    await emit(service, 'pubconsole> I (3297) SensorLib: Tap was detected');
+    expect(await first).toEqual([]);
+    await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+    expect(listener).toHaveBeenCalledWith('(3297) SensorLib: Tap was detected', 'info');
+    await emit(service, `{"kind":"settings","id":"${lastId(write)}"}`);
+    await emit(service, 'pubconsole>');
+    expect(await next).toEqual({ kind: 'settings' });
+  });
 });
