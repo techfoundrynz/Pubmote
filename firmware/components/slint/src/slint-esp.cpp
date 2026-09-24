@@ -515,6 +515,22 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
                 flush(a);
               }
               if (acc[a].lines == 0) {
+                // A flushed accumulator may still be owned by DMA. Use an idle
+                // buffer for the next chunk when possible, so rasterisation
+                // overlaps the transfer even with only one dirty rectangle.
+                for (int i = 0; i < SLINT_CHUNK_ACCUMULATORS; i++) {
+                  if (acc[i].lines != 0) {
+                    continue;
+                  }
+                  bool inflight = false;
+                  for (int j = 0; j < q_len; j++) {
+                    inflight |= inflight_q[(q_head + j) % SLINT_CHUNK_ACCUMULATORS] == i;
+                  }
+                  if (!inflight) {
+                    a = i;
+                    break;
+                  }
+                }
                 acc[a].x0 = span_x0;
                 acc[a].x1 = span_x1;
                 acc[a].y0 = line_y;
