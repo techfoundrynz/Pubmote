@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { createSettingsBackup, mergeSettingsBackup } from '../src/services/settingsBackup';
+import {
+  createSettingsBackup,
+  mergeSettingsBackup,
+  migrateBackupValues,
+} from '../src/services/settingsBackup';
 import { type SettingsMetadata } from '../src/services/settingsProtocol';
 
 const metadata: SettingsMetadata = {
   kind: 'settings',
   version: 1,
+  schema: 2,
   warning: '',
   fields: [
     {
@@ -12,6 +17,7 @@ const metadata: SettingsMetadata = {
       label: 'Password',
       group: 'Wi-Fi',
       description: '',
+      readOnly: false,
       type: 'string',
       maxBytes: 64,
       secret: true,
@@ -21,6 +27,7 @@ const metadata: SettingsMetadata = {
       label: 'Brightness',
       group: 'Display',
       description: '',
+      readOnly: false,
       type: 'range',
       min: 10,
       max: 255,
@@ -31,6 +38,7 @@ const metadata: SettingsMetadata = {
       label: 'Mode',
       group: 'Display',
       description: '',
+      readOnly: false,
       type: 'integer',
       options: [
         { value: 0, label: 'Off' },
@@ -56,6 +64,7 @@ describe('settings backups', () => {
       values: metadata.values,
       skipped: [],
       restored: 3,
+      newer: false,
     });
   });
 
@@ -119,5 +128,63 @@ describe('settings backups', () => {
     const result = mergeSettingsBackup(metadata, input);
     expect(result.values).toEqual({ ...metadata.values, brightness: 100 });
     expect(Object.getPrototypeOf(result.values)).toBe(Object.prototype);
+  });
+
+  it('records the settings schema and migrates backups from before it was recorded', () => {
+    expect(JSON.parse(createSettingsBackup(metadata)).schema).toBe(2);
+    const merged = mergeSettingsBackup(metadata, backup({ brightness: 120 }));
+    expect(merged).toMatchObject({ restored: 1, newer: false });
+    expect(merged.values.brightness).toBe(120);
+    expect(() => migrateBackupValues({}, 1, 3)).toThrow('No migration from settings schema 2');
+  });
+
+  it('flags backups from newer firmware but restores the fields that still validate', () => {
+    const merged = mergeSettingsBackup(metadata, {
+      ...backup({ brightness: 150, added_later: 1 }),
+      schema: 3,
+    });
+    expect(merged).toMatchObject({ newer: true, restored: 1, skipped: ['added_later'] });
+  });
+
+  it('restores list settings item by item validated', () => {
+    const withBoards: SettingsMetadata = {
+      ...metadata,
+      fields: [
+        ...metadata.fields,
+        {
+          key: 'boards',
+          label: 'Boards',
+          group: 'Pairing',
+          description: '',
+          readOnly: true,
+          type: 'list',
+          maxItems: 2,
+          items: [
+            { key: 'mac', label: 'MAC', type: 'string', maxBytes: 17, secret: false },
+            {
+              key: 'secret',
+              label: 'Code',
+              type: 'range',
+              min: 0,
+              max: 99,
+              color: false,
+              secret: true,
+            },
+          ],
+        },
+      ],
+      values: { ...metadata.values, boards: [] },
+    };
+    const boards = [{ mac: 'AA:BB:CC:DD:EE:FF', secret: 7 }];
+    const exported = JSON.parse(
+      createSettingsBackup({ ...withBoards, values: { ...withBoards.values, boards } }),
+    );
+    expect(mergeSettingsBackup(withBoards, exported).values.boards).toEqual(boards);
+    const invalid = mergeSettingsBackup(
+      withBoards,
+      backup({ boards: [{ mac: 'AA', secret: 100 }] }),
+    );
+    expect(invalid).toMatchObject({ restored: 0, skipped: ['boards'] });
+    expect(invalid.values.boards).toEqual([]);
   });
 });

@@ -161,6 +161,20 @@ esp_err_t input_pins_apply(const InputPinSettings *p, char *err, size_t n) {
   ++applies;
   return 0;
 }
+ImuCalibrationSettings imu_calibration = {.accel_x_offset = 0.25f, .invert_z = true};
+PairingSettings pairing_settings = {.default_index = -1};
+static int imu_saves, pairing_replacements;
+void settings_apply_imu_calibration(const ImuCalibrationSettings *imu) {
+  imu_calibration = *imu;
+  ++imu_saves;
+}
+esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, int8_t default_index) {
+  memcpy(pairing_settings.devices, devices, count * sizeof(PairedDevice));
+  pairing_settings.device_count = count;
+  pairing_settings.default_index = default_index;
+  ++pairing_replacements;
+  return ESP_OK;
+}
 #include "remote/input_settings.c"
 #include "remote/settings_api.c"
 #include "remote/settings_console.c"
@@ -265,6 +279,92 @@ static void test_calibration_needed(void) {
   assert(!settings_calibration_needed(&pins, &calibration));
   settings_reset_calibration(&calibration, true, false);
   assert(settings_calibration_needed(&pins, &calibration));
+}
+
+static const cJSON *metadata_field(const cJSON *metadata, const char *key) {
+  const cJSON *field;
+  cJSON_ArrayForEach(field, cJSON_GetObjectItemCaseSensitive(metadata, "fields")) {
+    if (!strcmp(cJSON_GetObjectItemCaseSensitive(field, "key")->valuestring, key)) {
+      return field;
+    }
+  }
+  return NULL;
+}
+
+static void test_records_and_pairing(void) {
+  fail_apply = false;
+  cJSON *metadata = settings_describe_json();
+  assert(metadata && cJSON_GetObjectItemCaseSensitive(metadata, "schema")->valueint == SETTINGS_SCHEMA_VERSION);
+  assert(cJSON_GetArraySize(cJSON_GetObjectItemCaseSensitive(metadata, "fields")) == 38);
+  assert(cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(metadata_field(metadata, "stick_x_min"), "readOnly")));
+  assert(cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(metadata_field(metadata, "bl_level"), "readOnly")));
+  const cJSON *boards_meta = metadata_field(metadata, "paired_boards");
+  assert(!strcmp(cJSON_GetObjectItemCaseSensitive(boards_meta, "type")->valuestring, "list"));
+  assert(cJSON_GetObjectItemCaseSensitive(boards_meta, "maxItems")->valueint == MAX_PAIRED_DEVICES);
+  assert(cJSON_GetArraySize(cJSON_GetObjectItemCaseSensitive(boards_meta, "items")) == 5);
+  const cJSON *values = cJSON_GetObjectItemCaseSensitive(metadata, "values");
+  assert(cJSON_GetObjectItemCaseSensitive(values, "imu_offset_x")->valueint == 250);
+  assert(cJSON_GetObjectItemCaseSensitive(values, "imu_invert_z")->valueint == 1);
+  assert(cJSON_GetArraySize(cJSON_GetObjectItemCaseSensitive(values, "paired_boards")) == 0);
+  assert(cJSON_GetObjectItemCaseSensitive(values, "default_board")->valueint == -1);
+  cJSON_Delete(metadata);
+
+  assert(save("{\"stick_x_min\":123,\"stick_expo\":250}") == 0);
+  InputPinSettings pins;
+  CalibrationSettings stored;
+  assert(settings_load_input_state(&pins, &stored) == ESP_OK && stored.x_min == 123 && stored.expo == 2.5f);
+  assert(calibration_settings.x_min == 123);
+  assert(save("{\"imu_offset_x\":-1500,\"imu_swap_xy\":1}") == 0);
+  assert(imu_calibration.accel_x_offset == -1.5f && imu_calibration.swap_xy && imu_saves == 1);
+  assert(save("{\"imu_offset_x\":1000001}") != 0 && save("{\"stick_invert_x\":2}") != 0);
+  assert(imu_calibration.accel_x_offset == -1.5f);
+
+  // A remap resets the moved axis, then the patch's own calibration wins.
+  assert(save("{\"js_x_gpio\":1,\"js_y_gpio\":2}") == 0);
+  assert(save("{\"js_x_gpio\":-1,\"stick_x_min\":55}") == 0);
+  assert(calibration_settings.x_min == 55 && calibration_settings.x_max == STICK_MAX_VAL);
+
+  const char *two_boards = "{\"paired_boards\":[{\"mac\":\"aa:bb:cc:dd:ee:01\",\"transport\":0,\"channel\":6,"
+                           "\"secret\":4294967295,\"vehicle\":1},{\"mac\":\"AA:BB:CC:DD:EE:02\",\"transport\":1,"
+                           "\"channel\":3,\"secret\":7,\"vehicle\":4}],\"default_board\":1}";
+  assert(save(two_boards) == 0 && pairing_replacements == 1);
+  assert(pairing_settings.device_count == 2 && pairing_settings.default_index == 1);
+  assert(pairing_settings.devices[0].mac[5] == 0x01 && pairing_settings.devices[0].secret_code == UINT32_MAX);
+  assert(pairing_settings.devices[1].channel == (0x80 | 3) && pairing_settings.devices[1].vehicle_type == 4);
+  assert(save(two_boards) == 0 && pairing_replacements == 1);
+  metadata = settings_describe_json();
+  const cJSON *board = cJSON_GetArrayItem(
+      cJSON_GetObjectItemCaseSensitive(cJSON_GetObjectItemCaseSensitive(metadata, "values"), "paired_boards"), 1);
+  assert(!strcmp(cJSON_GetObjectItemCaseSensitive(board, "mac")->valuestring, "AA:BB:CC:DD:EE:02"));
+  assert(cJSON_GetObjectItemCaseSensitive(board, "transport")->valueint == 1);
+  assert(cJSON_GetObjectItemCaseSensitive(board, "channel")->valueint == 3);
+  cJSON_Delete(metadata);
+
+  const char *bad[] = {
+      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:G0\",\"transport\":0,\"channel\":1,\"secret\":1,\"vehicle\":0}]}",
+      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":1,\"secret\":1}]}",
+      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":1,\"secret\":1,\"vehicle\":0,"
+      "\"extra\":1}]}",
+      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":2,\"channel\":1,\"secret\":1,\"vehicle\":0}]}",
+      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":128,\"secret\":1,\"vehicle\":0}]}",
+      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":1,\"secret\":1,\"vehicle\":0},"
+      "{\"mac\":\"aa:bb:cc:dd:ee:00\",\"transport\":0,\"channel\":1,\"secret\":1,\"vehicle\":0}]}",
+      "{\"paired_boards\":[{},{},{},{},{},{}]}",
+      "{\"paired_boards\":[[1]]}",
+      "{\"paired_boards\":[{\"mac\":{}}]}",
+      "{\"paired_boards\":{}}",
+      "{\"default_board\":2}",
+      "{\"default_board\":-2}",
+  };
+  for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
+    assert(save(bad[i]) != 0);
+  }
+  assert(pairing_settings.device_count == 2 && pairing_replacements == 1);
+  // A shorter list without a default keeps the index valid.
+  assert(save("{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:01\",\"transport\":0,\"channel\":6,\"secret\":4294967295,"
+              "\"vehicle\":1}]}") == 0);
+  assert(pairing_settings.device_count == 1 && pairing_settings.default_index == 0 && pairing_replacements == 2);
+  assert(save("{\"paired_boards\":[]}") == 0 && pairing_settings.default_index == -1);
 }
 
 static void test_device_preferences(void) {
@@ -419,6 +519,7 @@ int main(int argc, char **argv) {
   blob_write_fails = false;
   test_input_record();
   test_calibration_needed();
+  test_records_and_pairing();
   test_device_preferences();
   test_allocation_failures();
   puts("settings console tests passed");

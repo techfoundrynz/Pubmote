@@ -2,6 +2,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define SETTINGS_SCHEMA_VERSION 2
+
 #define WIFI_SSID_MAX_BYTES 32
 #define WIFI_PASSWORD_MAX_BYTES 64
 
@@ -129,3 +131,34 @@ typedef struct {
   bool invert_x;
   float expo;
 } CalibrationSettings;
+
+#define MAX_PAIRED_DEVICES 5
+#define PAIRED_MAC_BYTES 6
+
+typedef struct {
+  uint8_t mac[PAIRED_MAC_BYTES];
+  uint8_t channel; // Bit 7 set: BLE
+  uint32_t secret_code;
+  uint8_t vehicle_type;
+} PairedDevice;
+
+typedef struct {
+  uint32_t secret_code;
+  // Selected/default device (for compatibility with existing code paths)
+  uint8_t remote_addr[PAIRED_MAC_BYTES];
+  uint8_t channel;
+  // Multi-device support
+  PairedDevice devices[MAX_PAIRED_DEVICES];
+  uint8_t device_count; // number of valid entries in devices
+  int8_t default_index; // -1 if none selected
+} PairingSettings;
+
+typedef struct {
+  float accel_x_offset;
+  float accel_y_offset;
+  float accel_z_offset;
+  bool invert_x;
+  bool invert_y;
+  bool invert_z;
+  bool swap_xy;
+} ImuCalibrationSettings;

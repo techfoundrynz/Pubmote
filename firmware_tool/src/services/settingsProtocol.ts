@@ -1,13 +1,37 @@
 import { z } from 'zod';
 
+const settingKey = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]*$/)
+  .refine((key) => !['constructor', 'prototype', '__proto__'].includes(key));
+const optionsSchema = z.array(z.object({ value: z.number().int(), label: z.string() })).nonempty();
+const validRange = (field: { min: number; max: number; color: boolean }) =>
+  field.min <= field.max && (!field.color || (field.min === 0 && field.max === 0xffffff));
+
+const itemBase = z.object({
+  key: settingKey,
+  label: z.string(),
+  secret: z.boolean().default(false),
+});
+const listItemSchema = z.discriminatedUnion('type', [
+  itemBase.extend({ type: z.literal('string'), maxBytes: z.number().int().positive() }),
+  itemBase
+    .extend({
+      type: z.literal('range'),
+      min: z.number().int().safe(),
+      max: z.number().int().safe(),
+      color: z.boolean(),
+    })
+    .refine(validRange, 'Invalid numeric range'),
+  itemBase.extend({ type: z.literal('integer'), options: optionsSchema }),
+]);
+
 const fieldBase = z.object({
-  key: z
-    .string()
-    .regex(/^[a-z][a-z0-9_]*$/)
-    .refine((key) => !['constructor', 'prototype', '__proto__'].includes(key)),
+  key: settingKey,
   label: z.string(),
   group: z.string(),
   description: z.string(),
+  readOnly: z.boolean().default(false),
 });
 const fieldSchema = z.discriminatedUnion('type', [
   fieldBase.extend({
@@ -22,20 +46,28 @@ const fieldSchema = z.discriminatedUnion('type', [
       max: z.number().int().safe(),
       color: z.boolean(),
     })
-    .refine(
-      (field) =>
-        field.min <= field.max && (!field.color || (field.min === 0 && field.max === 0xffffff)),
-      'Invalid numeric range',
-    ),
+    .refine(validRange, 'Invalid numeric range'),
+  fieldBase.extend({ type: z.literal('integer'), options: optionsSchema }),
   fieldBase.extend({
-    type: z.literal('integer'),
-    options: z.array(z.object({ value: z.number().int(), label: z.string() })).nonempty(),
+    type: z.literal('list'),
+    maxItems: z.number().int().positive(),
+    items: z
+      .array(listItemSchema)
+      .nonempty()
+      .refine(
+        (items) => new Set(items.map((item) => item.key)).size === items.length,
+        'Duplicate list item metadata',
+      ),
   }),
 ]);
+
+const scalarValue = z.union([z.string(), z.number()]);
+const settingValue = z.union([scalarValue, z.array(z.record(z.string(), scalarValue))]);
 
 export const settingsMetadataSchema = z.object({
   kind: z.literal('settings'),
   version: z.literal(1),
+  schema: z.number().int().positive(),
   fields: z
     .array(fieldSchema)
     .nonempty()
@@ -43,7 +75,7 @@ export const settingsMetadataSchema = z.object({
       (fields) => new Set(fields.map((field) => field.key)).size === fields.length,
       'Duplicate settings metadata',
     ),
-  values: z.record(z.string(), z.union([z.string(), z.number()])),
+  values: z.record(z.string(), settingValue),
   warning: z.string(),
 });
 export const settingsResultSchema = z.object({
@@ -53,34 +85,50 @@ export const settingsResultSchema = z.object({
   error: z.string().optional(),
 });
 export type SettingsMetadata = z.infer<typeof settingsMetadataSchema>;
-export type SettingsValues = Record<string, string | number>;
+export type SettingsField = SettingsMetadata['fields'][number];
+export type ListItemField = z.infer<typeof listItemSchema>;
+export type ListValue = Array<Record<string, string | number>>;
+export type SettingValue = string | number | ListValue;
+export type SettingsValues = Record<string, SettingValue>;
+
+function scalarSchema(field: SettingsField | ListItemField): z.ZodType<string | number> {
+  switch (field.type) {
+    case 'string':
+      return z
+        .string()
+        .refine(
+          (value) =>
+            !value.includes('\0') && new TextEncoder().encode(value).length <= field.maxBytes,
+          `${field.label} must be at most ${field.maxBytes} UTF-8 bytes and contain no NUL`,
+        );
+    case 'range':
+      return z.number().int().min(field.min).max(field.max);
+    case 'integer':
+      return z
+        .number()
+        .int()
+        .refine(
+          (value) => field.options.some((option) => option.value === value),
+          `Choose an allowed value for ${field.label}`,
+        );
+    case 'list':
+      throw new Error('A list is not a scalar setting');
+  }
+}
 
 export function settingsValuesSchema(metadata: SettingsMetadata) {
-  const shape: Record<string, z.ZodType<string | number>> = Object.create(null);
+  const shape: Record<string, z.ZodType<SettingValue>> = Object.create(null);
   for (const field of metadata.fields) {
-    switch (field.type) {
-      case 'string':
-        shape[field.key] = z
-          .string()
-          .refine(
-            (value) =>
-              !value.includes('\0') && new TextEncoder().encode(value).length <= field.maxBytes,
-            `${field.label} must be at most ${field.maxBytes} UTF-8 bytes and contain no NUL`,
-          );
-        break;
-      case 'range':
-        shape[field.key] = z.number().int().min(field.min).max(field.max);
-        break;
-      case 'integer':
-        shape[field.key] = z
-          .number()
-          .int()
-          .refine(
-            (value) => field.options.some((option) => option.value === value),
-            `Choose an allowed value for ${field.label}`,
-          );
-        break;
-    }
+    shape[field.key] =
+      field.type === 'list'
+        ? z
+            .array(
+              z.strictObject(
+                Object.fromEntries(field.items.map((item) => [item.key, scalarSchema(item)])),
+              ),
+            )
+            .max(field.maxItems, `${field.label} holds at most ${field.maxItems} entries`)
+        : scalarSchema(field);
   }
   return z.strictObject(shape);
 }
@@ -91,14 +139,40 @@ export function parseSettings(payload: unknown): SettingsMetadata {
   return metadata;
 }
 
+export const sameSettingValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+// Room for the request id appended after the argument.
+const MAX_COMMAND_BYTES = 2048 - 32;
+const commandBytes = (command: string) => new TextEncoder().encode(command).length;
+
 // esp_console_split_argv consumes one layer of backslash/quote escaping.
 export function settingsSaveCommand(patch: SettingsValues): string {
   const json = JSON.stringify(patch);
   const command = `save_settings "${json.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-  if (new TextEncoder().encode(command).length >= 2048) {
+  if (commandBytes(command) >= MAX_COMMAND_BYTES) {
     throw new Error('Settings payload exceeds the console command limit');
   }
   return command;
+}
+
+// Split between fields in metadata order, so pins are saved before the calibration after them.
+export function settingsSaveCommands(patch: SettingsValues, metadata: SettingsMetadata): string[] {
+  const commands: string[] = [];
+  let chunk: SettingsValues = {};
+  for (const field of metadata.fields) {
+    if (!Object.prototype.hasOwnProperty.call(patch, field.key)) continue;
+    const next = { ...chunk, [field.key]: patch[field.key] };
+    const json = JSON.stringify(next);
+    const escaped = `save_settings "${json.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    if (Object.keys(chunk).length && commandBytes(escaped) >= MAX_COMMAND_BYTES) {
+      commands.push(settingsSaveCommand(chunk));
+      chunk = { [field.key]: patch[field.key] };
+    } else {
+      chunk = next;
+    }
+  }
+  if (Object.keys(chunk).length) commands.push(settingsSaveCommand(chunk));
+  return commands;
 }
 
 type LogListener = (line: string, type: 'info' | 'error' | 'success') => boolean;
