@@ -576,7 +576,7 @@ export component AppWindow inherits Window {
         confirmed => { UiState.boot-notice = ""; }
     }
 
-    // Asked again on the next boot until the stick is calibrated
+    // Shown each boot until calibrated
     if UiState.calibration-prompt && UiState.boot-notice == "": ConfirmDialog {
         title: "Welcome to Pubmote";
         message: "Set up your remote, starting with joystick calibration, then review your settings in the menu.";

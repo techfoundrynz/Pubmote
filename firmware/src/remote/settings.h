@@ -58,38 +58,8 @@ extern "C"
   char *get_wifi_password();
 
 #define DEFAULT_PAIRING_SECRET_CODE -1
-#define MAX_PAIRED_DEVICES 5
-
-  typedef struct {
-    uint8_t mac[ESP_NOW_ETH_ALEN];
-    uint8_t channel;
-    uint32_t secret_code;
-    uint8_t vehicle_type;
-  } PairedDevice;
-
-  typedef struct {
-    uint32_t secret_code;
-    // Selected/default device (for compatibility with existing code paths)
-    uint8_t remote_addr[ESP_NOW_ETH_ALEN];
-    uint8_t channel;
-    // Multi-device support
-    PairedDevice devices[MAX_PAIRED_DEVICES];
-    uint8_t device_count; // number of valid entries in devices
-    int8_t default_index; // -1 if none selected
-  } PairingSettings;
-
   // The assignment baked in at build time
   void input_pins_load_defaults(InputPinSettings *out);
-
-  typedef struct {
-    float accel_x_offset;
-    float accel_y_offset;
-    float accel_z_offset;
-    bool invert_x;
-    bool invert_y;
-    bool invert_z;
-    bool swap_xy;
-  } ImuCalibrationSettings;
 
   uint64_t get_auto_off_ms();
   bool is_pocket_mode_enabled();
@@ -108,6 +78,9 @@ extern "C"
   extern ImuCalibrationSettings imu_calibration;
 
   void save_imu_calibration();
+  void settings_apply_imu_calibration(const ImuCalibrationSettings *imu);
+  // Persists new paired boards and reconnects to the default one.
+  esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, int8_t default_index);
 
   // Returns true if the given mac matches any paired device
   bool is_paired_mac(const uint8_t *mac);

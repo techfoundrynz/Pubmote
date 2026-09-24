@@ -6,9 +6,13 @@ import { Dropdown } from './ui/Dropdown';
 import {
   parseSettings,
   requestSettingsJson,
+  sameSettingValue,
   settingsResultSchema,
-  settingsSaveCommand,
+  settingsSaveCommands,
   settingsValuesSchema,
+  type ListItemField,
+  type ListValue,
+  type SettingsField,
   type SettingsMetadata,
   type SettingsValues,
 } from '../services/settingsProtocol';
@@ -16,6 +20,13 @@ import { createSettingsBackup, mergeSettingsBackup } from '../services/settingsB
 
 const INPUT_CLASSES =
   'w-full rounded-lg border border-gray-600 bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:ring-2 focus:ring-blue-500 disabled:opacity-50';
+
+function listCell(item: ListItemField, value: string | number | undefined) {
+  if (item.secret) return '••••••';
+  if (item.type === 'integer')
+    return item.options.find((option) => option.value === value)?.label ?? String(value);
+  return String(value ?? '');
+}
 
 const SettingsPage: React.FC<unknown> = () => {
   const { deviceInfo, flashProgress, espService } = useDeviceTools();
@@ -89,16 +100,13 @@ const SettingsPage: React.FC<unknown> = () => {
         if (save && metadata && schema) {
           const validated = schema.parse(values);
           const patch = Object.fromEntries(
-            Object.entries(validated).filter(([key, value]) => value !== metadata.values[key]),
+            Object.entries(validated).filter(
+              ([key, value]) => !sameSettingValue(value, metadata.values[key]),
+            ),
           );
-          if (Object.keys(patch).length) {
+          for (const command of settingsSaveCommands(patch, metadata)) {
             const result = settingsResultSchema.parse(
-              await requestSettingsJson(
-                espService,
-                settingsSaveCommand(patch),
-                'settings_result',
-                controller.signal,
-              ),
+              await requestSettingsJson(espService, command, 'settings_result', controller.signal),
             );
             if (!result.ok) throw new Error(result.error || 'Device rejected settings');
           }
@@ -128,6 +136,8 @@ const SettingsPage: React.FC<unknown> = () => {
             summary = `Loaded ${merged.restored} compatible settings. Review the values and press Save to apply.`;
           if (merged.skipped.length)
             summary += ` Skipped unknown or incompatible fields: ${merged.skipped.join(', ')}.`;
+          if (merged.newer)
+            summary += ' This backup is from newer firmware, so some settings may not restore.';
           setRestoreSummary(summary);
         }
         if (save && !controller.signal.aborted) toast.success('Settings saved', 4000);
@@ -171,8 +181,47 @@ const SettingsPage: React.FC<unknown> = () => {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [available, espService]);
 
-  const renderField = (field: SettingsMetadata['fields'][number]) => {
+  const renderField = (field: SettingsField) => {
+    const locked = disabled || field.readOnly;
     switch (field.type) {
+      case 'list': {
+        const rows = (values[field.key] as ListValue | undefined) ?? [];
+        if (!rows.length)
+          return (
+            <p id={`setting-${field.key}`} className="text-sm">
+              None
+            </p>
+          );
+        return (
+          <div className="overflow-x-auto">
+            <table id={`setting-${field.key}`} className="w-full text-sm">
+              <thead>
+                <tr>
+                  {field.items.map((item) => (
+                    <th
+                      key={item.key}
+                      className="pr-3 text-left font-normal text-[var(--color-text-secondary)]"
+                    >
+                      {item.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={index}>
+                    {field.items.map((item) => (
+                      <td key={item.key} className="pr-3">
+                        {listCell(item, row[item.key])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
       case 'integer':
         return (
           <Dropdown
@@ -181,7 +230,7 @@ const SettingsPage: React.FC<unknown> = () => {
               field.options.find((option) => option.value === values[field.key])?.label ||
               'Choose a value'
             }
-            disabled={disabled}
+            disabled={locked}
             value={String(values[field.key])}
             options={field.options.map((option) => ({
               ...option,
@@ -203,11 +252,11 @@ const SettingsPage: React.FC<unknown> = () => {
             min={field.min}
             max={field.max}
             step={1}
-            disabled={disabled}
+            disabled={locked}
             value={
               field.color
                 ? `#${Number(values[field.key]).toString(16).padStart(6, '0')}`
-                : (values[field.key] ?? '')
+                : ((values[field.key] as number | string | undefined) ?? '')
             }
             onChange={(event) => {
               let value: string | number = event.target.value;
@@ -225,8 +274,8 @@ const SettingsPage: React.FC<unknown> = () => {
               id={`setting-${field.key}`}
               type={field.secret && !visible[field.key] ? 'password' : 'text'}
               autoComplete="off"
-              disabled={disabled}
-              value={values[field.key] ?? ''}
+              disabled={locked}
+              value={(values[field.key] as string | undefined) ?? ''}
               onChange={(event) =>
                 setValues((previous) => ({
                   ...previous,
@@ -257,7 +306,7 @@ const SettingsPage: React.FC<unknown> = () => {
 
   const validation = schema?.safeParse(values);
   const changed = metadata?.fields.some(
-    (field) => values[field.key] !== metadata.values[field.key],
+    (field) => !sameSettingValue(values[field.key], metadata.values[field.key]),
   );
   const groups = [...new Set(metadata?.fields.map((field) => field.group) || [])];
 
@@ -327,7 +376,7 @@ const SettingsPage: React.FC<unknown> = () => {
               {metadata?.fields
                 .filter((field) => field.group === group)
                 .map((field) => (
-                  <div key={field.key}>
+                  <div key={field.key} className={field.type === 'list' ? 'sm:col-span-2' : ''}>
                     <label htmlFor={`setting-${field.key}`} className="block text-sm mb-1">
                       {field.label}
                     </label>

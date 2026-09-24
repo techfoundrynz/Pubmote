@@ -5,6 +5,7 @@ import {
   parseSettings,
   settingsValuesSchema,
   settingsSaveCommand,
+  settingsSaveCommands,
   requestSettingsJson,
   type SettingsMetadata,
   type SettingsTransport,
@@ -13,6 +14,7 @@ import {
 const payload = (): SettingsMetadata => ({
   kind: 'settings',
   version: 1,
+  schema: 2,
   warning: '',
   fields: [
     {
@@ -20,6 +22,7 @@ const payload = (): SettingsMetadata => ({
       label: 'New text',
       group: 'Example',
       description: '',
+      readOnly: false,
       type: 'string',
       maxBytes: 4,
       secret: false,
@@ -29,6 +32,7 @@ const payload = (): SettingsMetadata => ({
       label: 'New choice',
       group: 'Example',
       description: '',
+      readOnly: false,
       type: 'integer',
       options: [
         { value: -1, label: 'Off' },
@@ -81,6 +85,77 @@ test('JSON command preserves quotes, slashes, whitespace and Unicode', () => {
   const json = encoded.replace(/\\([\\" ])/g, '$1');
   assert.deepEqual(JSON.parse(json), values);
   assert.throws(() => settingsSaveCommand({ text: 'x'.repeat(2048) }));
+});
+
+const listMetadata = (): SettingsMetadata => ({
+  ...payload(),
+  fields: [
+    ...payload().fields,
+    {
+      key: 'boards',
+      label: 'Boards',
+      group: 'Pairing',
+      description: '',
+      readOnly: true,
+      type: 'list',
+      maxItems: 2,
+      items: [
+        { key: 'mac', label: 'MAC', type: 'string', maxBytes: 17, secret: false },
+        { key: 'code', label: 'Code', type: 'range', min: 0, max: 9, color: false, secret: true },
+      ],
+    },
+  ],
+  values: { ...payload().values, boards: [{ mac: 'AA:BB:CC:DD:EE:FF', code: 1 }] },
+});
+
+test('list settings validate item count, keys and item ranges', () => {
+  const schema = settingsValuesSchema(parseSettings(listMetadata()));
+  const base = listMetadata().values;
+  const board = { mac: 'AA:BB:CC:DD:EE:FF', code: 1 };
+  assert.equal(schema.safeParse({ ...base, boards: [board, board] }).success, true);
+  for (const boards of [
+    [board, board, board],
+    [{ ...board, code: 10 }],
+    [{ mac: board.mac }],
+    [{ ...board, extra: 1 }],
+    [{ ...board, mac: 'x'.repeat(18) }],
+    board,
+  ])
+    assert.equal(schema.safeParse({ ...base, boards }).success, false);
+});
+
+test('fields default to editable when firmware omits readOnly', () => {
+  const raw = JSON.parse(JSON.stringify(payload()));
+  for (const field of raw.fields) delete field.readOnly;
+  assert.equal(parseSettings(raw).fields[0].readOnly, false);
+});
+
+test('large saves split between fields in metadata order and stay under the command limit', () => {
+  const metadata = listMetadata();
+  const patch = { new_text: 'ab', new_choice: 17, boards: [{ mac: 'AA:BB:CC:DD:EE:FF', code: 1 }] };
+  assert.deepEqual(settingsSaveCommands(patch, metadata), [settingsSaveCommand(patch)]);
+  const big: SettingsMetadata = {
+    ...metadata,
+    fields: Array.from({ length: 40 }, (_, i) => ({
+      ...metadata.fields[0],
+      key: `text_${i}`,
+      maxBytes: 64,
+    })),
+    values: {},
+  };
+  const bigPatch = Object.fromEntries(big.fields.map((field) => [field.key, '"'.repeat(60)]));
+  const commands = settingsSaveCommands(bigPatch, big);
+  assert.ok(commands.length > 1);
+  const bytes = (command: string) => new TextEncoder().encode(command).length;
+  for (const command of commands) assert.ok(bytes(command) < 2048 - 32);
+  const keys = commands.flatMap((command) => {
+    const json = command.slice('save_settings "'.length, -1).replace(/\\([\\" ])/g, '$1');
+    return Object.keys(JSON.parse(json));
+  });
+  assert.deepEqual(
+    keys,
+    big.fields.map((field) => field.key),
+  );
 });
 
 type LogListener = Parameters<SettingsTransport['addLogListener']>[0];
@@ -149,7 +224,8 @@ test.skipIf(!process.env.SETTINGS_CONSOLE_TEST_BIN)(
     const metadata = parseSettings(
       JSON.parse(execFileSync(binary, ['metadata'], { encoding: 'utf8' })),
     );
-    assert.equal(metadata.fields.length, 19);
+    assert.equal(metadata.fields.length, 38);
+    assert.equal(metadata.schema, 2);
     const patch = {
       wifi_ssid: '  "é雪" \\ 😀  ',
       wifi_password: 'space\tquote"slash\\newline\n',
@@ -160,6 +236,13 @@ test.skipIf(!process.env.SETTINGS_CONSOLE_TEST_BIN)(
       auto_off_time: 4,
       startup_sound: 2,
       led_mode: 2,
+      stick_x_min: 321,
+      stick_expo: 250,
+      imu_offset_y: -42,
+      paired_boards: [
+        { mac: 'AA:BB:CC:DD:EE:0F', transport: 1, channel: 6, secret: 4294967295, vehicle: 2 },
+      ],
+      default_board: 0,
     };
     settingsValuesSchema(metadata).parse({ ...metadata.values, ...patch });
     const lines = execFileSync(binary, ['command'], {
@@ -173,7 +256,7 @@ test.skipIf(!process.env.SETTINGS_CONSOLE_TEST_BIN)(
     assert.equal(lines[0].id, 't1');
     assert.equal(lines[1].id, 't1');
     const applied = parseSettings(lines[1]);
-    for (const [key, value] of Object.entries(patch)) assert.equal(applied.values[key], value);
+    for (const [key, value] of Object.entries(patch)) assert.deepEqual(applied.values[key], value);
   },
 );
 
@@ -275,6 +358,7 @@ test('numeric metadata validates brightness and colour boundaries', () => {
     label: 'Brightness',
     group: 'Display',
     description: '',
+    readOnly: false,
     type: 'range',
     min: 10,
     max: 255,

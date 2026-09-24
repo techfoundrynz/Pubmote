@@ -1,11 +1,15 @@
 # Settings console protocol (version 1)
 
 `settings` returns one compact JSON line containing `kind: "settings"`,
-`version: 1`, `fields`, `values`, and `warning`. Each field describes its key,
-label, group, description and type. Bounded integers use `type: "range"`, `min`, `max`, and a `color` hint.
-Strings supply `maxBytes` (UTF-8) and
-`secret`; integers supply numeric `options` with labels. GPIO options come
-from the running board's capability masks.
+`version: 1`, `schema`, `fields`, `values`, and `warning`. `version` is the
+protocol; `schema` (`SETTINGS_SCHEMA_VERSION`, currently 2) changes whenever a
+field's meaning, units or shape changes, so backups can be migrated. Each field
+describes its key, label, group, description, type and `readOnly`. Bounded
+integers use `type: "range"`, `min`, `max`, and a `color` hint. Strings supply
+`maxBytes` (UTF-8) and `secret`; integers supply numeric `options` with labels.
+`type: "list"` holds up to `maxItems` flat objects described by `items`, each a
+string, range or integer field (items may be `secret`). GPIO options come from
+the running board's capability masks.
 
 `firmware/src/remote/settings_api.c` owns the descriptors used for both
 metadata and save validation. Add console settings there. The web tool builds
@@ -30,6 +34,18 @@ startup sound, double-press action, and LED behaviour. Their descriptors share
 persistence with `save_device_settings()`. Option labels reuse the on-device
 settings/menu labels; unsupported HBM and LED modes cannot be selected.
 
+Joystick calibration (`stick_*`), IMU calibration (`imu_*`), the paired boards
+(`paired_boards`, a list of MAC, connection, channel, pairing code and vehicle)
+and `default_board` (index, or -1) are included so backups are complete. They are
+`readOnly`: the tool shows them but only a restore changes them; the remote's
+own calibration and pairing screens remain the way to set them. Expo is sent in
+hundredths and IMU offsets in thousandths. A save applies pins, then joystick
+calibration, then IMU calibration, then pairing, so restored calibration
+replaces the reset a pin remap causes. Replacing the paired boards persists them
+and reconnects to the default board, or disconnects when there is none.
+`settings.c` records the schema in NVS at boot; migrations of stored settings
+belong there, before anything is read.
+
 Device preferences apply immediately after successful persistence. Display and
 menu updates run on the Slint UI thread; power, units and input behavior use the
 updated runtime settings. Auto-off changes stop/rearm the timer immediately,
@@ -44,9 +60,12 @@ save_settings "{\"wifi_ssid\":\"My network\",\"js_x_gpio\":-1}"
 
 Use `settingsSaveCommand` in the tool: JSON serialization is followed by escaping
 backslashes and double quotes for ESP-IDF's argument parser. The command is
-limited to 2047 UTF-8 bytes. Values retain whitespace, Unicode and JSON escapes.
-NUL characters, nested values, unknown/duplicate keys and invalid choices are
-rejected. All fields and the combined pin assignment are validated before writes.
+limited to 2047 UTF-8 bytes, so `settingsSaveCommands` splits a large save
+between fields, in metadata order, leaving room for the request id. Values
+retain whitespace, Unicode and JSON escapes. NUL characters, nesting other than
+a list of flat objects, unknown/duplicate keys and invalid choices are rejected.
+All fields, the combined pin assignment and the paired boards are validated
+before writes.
 
 The response is one JSON line with `kind: "settings_result"`, `version: 1`, and
 `ok`. Failure responses include `error`. Both `settings` and `save_settings`
@@ -81,7 +100,12 @@ Wi-Fi credentials. **Restore config backup** reads fresh settings from the devic
 merges compatible backup values by key, and loads a draft for review and saving.
 Settings added since the backup retain their current values. Unknown keys, changed
 types, and values outside current limits/options are skipped and listed in the UI.
-The backup envelope has its own format version; firmware version is informational.
+The backup envelope has its own format version and records the settings
+`schema`; firmware version is informational. On restore, `migrateBackupValues`
+upgrades values one schema at a time (backups without `schema` are schema 1).
+A backup from a newer schema is restored field by field where values still
+validate, and the UI says so. When the schema changes, add the matching step to
+`migrations` in `settingsBackup.ts`.
 Firmware validates the complete patch, including pin conflicts, when Save is pressed.
 
 ## Checks
@@ -119,5 +143,6 @@ Setting `SETTINGS_CONSOLE_TEST_BIN` enables the cross-language test: metadata
 comes from the actual C handler and a tool-generated save command passes through
 the real ESP-IDF argument parser, then the returned values are checked in Zod.
 
-The `Tests` PR workflow runs the C harness, Vitest (including the
-cross-language test), app and test type-checking, full web-tool lint, and the web build.
+The PlatformIO workflow's `host-tests` job runs the C harness and the
+cross-language test. The firmware tool workflow checks formatting, lint, app and
+test types, runs Vitest and builds the web tool.

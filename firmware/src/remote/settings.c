@@ -16,6 +16,8 @@
 #include <colors.h>
 #include <stdio.h>
 
+_Static_assert(PAIRED_MAC_BYTES == ESP_NOW_ETH_ALEN, "Paired device layout is persisted as a blob");
+
 static const char *TAG = "PUBREMOTE-SETTINGS";
 
 // Define the NVS namespace
@@ -596,6 +598,45 @@ void save_imu_calibration() {
   nvs_write_int("imu_swap_xy", imu_calibration.swap_xy ? 1 : 0);
 }
 
+void settings_apply_imu_calibration(const ImuCalibrationSettings *imu) {
+  imu_calibration = *imu;
+  save_imu_calibration();
+}
+
+esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, int8_t default_index) {
+  for (uint8_t i = 0; i < pairing_settings.device_count; ++i) {
+    bool kept = false;
+    for (uint8_t j = 0; j < count && !kept; ++j) {
+      kept = is_same_mac(pairing_settings.devices[i].mac, (uint8_t *)devices[j].mac);
+    }
+    if (!kept) {
+      esp_now_del_peer(pairing_settings.devices[i].mac);
+    }
+  }
+  memset(pairing_settings.devices, 0, sizeof(pairing_settings.devices));
+  memcpy(pairing_settings.devices, devices, count * sizeof(PairedDevice));
+  pairing_settings.device_count = count;
+  if (default_index >= 0) {
+    set_default_device_index(default_index);
+  }
+  else {
+    pairing_settings.default_index = -1;
+    memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
+    pairing_settings.channel = 1;
+    pairing_settings.secret_code = DEFAULT_PAIRING_SECRET_CODE;
+  }
+  esp_err_t err = save_pairing_data();
+  connection_refresh_pairing_state();
+  if (pairing_state == PAIRING_STATE_PAIRED) {
+    connection_switch_comms_mode(settings_get_active_comms_mode());
+    connection_connect_to_default_peer();
+  }
+  else {
+    connection_update_state(CONNECTION_STATE_DISCONNECTED);
+  }
+  return err;
+}
+
 // Function to initialize NVS
 static esp_err_t init_nvs() {
   esp_err_t err = nvs_flash_init();
@@ -620,6 +661,10 @@ esp_err_t settings_init() {
 
   // Temporary value to store read settings
   uint32_t temp_setting_value;
+  // Migrate stored settings here when the schema changes.
+  if (nvs_read_int("settings_schema", &temp_setting_value) != ESP_OK || temp_setting_value != SETTINGS_SCHEMA_VERSION) {
+    nvs_write_int("settings_schema", SETTINGS_SCHEMA_VERSION);
+  }
   device_settings.bl_level =
       nvs_read_int(BL_LEVEL_KEY, &temp_setting_value) == ESP_OK ? (uint8_t)temp_setting_value : BL_LEVEL_DEFAULT;
 
