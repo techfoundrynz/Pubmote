@@ -3,24 +3,20 @@ import { settingsValuesSchema, type SettingsMetadata } from './settingsProtocol'
 
 const backupSchema = z.object({
   format: z.literal('pubmote-settings'),
-  version: z.literal(1),
-  // Backups without a schema are schema 1.
-  schema: z.number().int().positive().default(1),
+  version: z.number().int().positive(),
   values: z.record(z.string(), z.unknown()),
 });
 
 type BackupValues = Record<string, unknown>;
 
-// migrations[n] upgrades values from settings schema n to n + 1.
-const migrations: Record<number, (values: BackupValues) => BackupValues> = {
-  1: (values) => values, // Schema 2 only added fields.
-};
+// migrations[n] upgrades values from settings version n to n + 1.
+const migrations: Record<number, (values: BackupValues) => BackupValues> = {};
 
 export function migrateBackupValues(values: BackupValues, from: number, to: number) {
   let migrated = values;
-  for (let schema = from; schema < to; ++schema) {
-    const step = migrations[schema];
-    if (!step) throw new Error(`No migration from settings schema ${schema}`);
+  for (let version = from; version < to; ++version) {
+    const step = migrations[version];
+    if (!step) throw new Error(`No migration from settings version ${version}`);
     migrated = step(migrated);
   }
   return migrated;
@@ -31,8 +27,7 @@ export function createSettingsBackup(metadata: SettingsMetadata, firmwareVersion
     JSON.stringify(
       {
         format: 'pubmote-settings',
-        version: 1,
-        schema: metadata.schema,
+        version: metadata.version,
         firmwareVersion,
         values: settingsValuesSchema(metadata).parse(metadata.values),
       },
@@ -48,10 +43,10 @@ export function mergeSettingsBackup(metadata: SettingsMetadata, input: unknown) 
   const values = { ...metadata.values };
   const skipped: string[] = [];
   let restored = 0;
-  const newer = backup.schema > metadata.schema;
+  const newer = backup.version > metadata.version;
   const migrated = newer
     ? backup.values
-    : migrateBackupValues(backup.values, backup.schema, metadata.schema);
+    : migrateBackupValues(backup.values, backup.version, metadata.version);
   for (const [key, value] of Object.entries(migrated)) {
     if (!Object.prototype.hasOwnProperty.call(schema.shape, key)) {
       skipped.push(key);

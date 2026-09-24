@@ -64,10 +64,12 @@ const fieldSchema = z.discriminatedUnion('type', [
 const scalarValue = z.union([z.string(), z.number()]);
 const settingValue = z.union([scalarValue, z.array(z.record(z.string(), scalarValue))]);
 
+// Bumped when the message format or any setting's meaning changes.
+export const SETTINGS_VERSION = 1;
+
 export const settingsMetadataSchema = z.object({
   kind: z.literal('settings'),
-  version: z.literal(1),
-  schema: z.number().int().positive(),
+  version: z.literal(SETTINGS_VERSION),
   fields: z
     .array(fieldSchema)
     .nonempty()
@@ -80,7 +82,7 @@ export const settingsMetadataSchema = z.object({
 });
 export const settingsResultSchema = z.object({
   kind: z.literal('settings_result'),
-  version: z.literal(1),
+  version: z.literal(SETTINGS_VERSION),
   ok: z.boolean(),
   error: z.string().optional(),
 });

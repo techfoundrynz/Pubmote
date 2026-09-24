@@ -294,7 +294,7 @@ static const cJSON *metadata_field(const cJSON *metadata, const char *key) {
 static void test_records_and_pairing(void) {
   fail_apply = false;
   cJSON *metadata = settings_describe_json();
-  assert(metadata && cJSON_GetObjectItemCaseSensitive(metadata, "schema")->valueint == SETTINGS_SCHEMA_VERSION);
+  assert(metadata && cJSON_GetObjectItemCaseSensitive(metadata, "version")->valueint == SETTINGS_VERSION);
   assert(cJSON_GetArraySize(cJSON_GetObjectItemCaseSensitive(metadata, "fields")) == 38);
   assert(cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(metadata_field(metadata, "stick_x_min"), "readOnly")));
   assert(cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(metadata_field(metadata, "bl_level"), "readOnly")));

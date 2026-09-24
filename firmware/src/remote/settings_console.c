@@ -1,5 +1,6 @@
 #include "settings_console.h"
 #include "settings_api.h"
+#include "settings_types.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -20,7 +21,7 @@ static int reply_error(const char *message, const char *id) {
   cJSON *reply = cJSON_CreateObject();
   char *text = NULL;
   if (reply && cJSON_AddStringToObject(reply, "kind", "settings_result") &&
-      cJSON_AddNumberToObject(reply, "version", 1) && cJSON_AddBoolToObject(reply, "ok", false) &&
+      cJSON_AddNumberToObject(reply, "version", SETTINGS_VERSION) && cJSON_AddBoolToObject(reply, "ok", false) &&
       cJSON_AddStringToObject(reply, "error", message) && (!id || cJSON_AddStringToObject(reply, "id", id))) {
     text = cJSON_PrintUnformatted(reply);
   }
@@ -30,8 +31,8 @@ static int reply_error(const char *message, const char *id) {
   }
   else {
     // A static frame still reports failure when the JSON allocator is exhausted.
-    printf("{\"kind\":\"settings_result\",\"version\":1,\"ok\":false,\"error\":\"Out of memory\"%s%s%s}\n",
-           id ? ",\"id\":\"" : "", id ? id : "", id ? "\"" : "");
+    printf("{\"kind\":\"settings_result\",\"version\":%d,\"ok\":false,\"error\":\"Out of memory\"%s%s%s}\n",
+           SETTINGS_VERSION, id ? ",\"id\":\"" : "", id ? id : "", id ? "\"" : "");
   }
   cJSON_Delete(reply);
   return -1;
@@ -68,7 +69,7 @@ int console_save_settings(int argc, char **argv) {
   if (settings_apply_json(argv[1], error, sizeof(error)) != 0) {
     return reply_error(error, id);
   }
-  printf("{\"kind\":\"settings_result\",\"version\":1,\"ok\":true%s%s%s}\n", id ? ",\"id\":\"" : "", id ? id : "",
-         id ? "\"" : "");
+  printf("{\"kind\":\"settings_result\",\"version\":%d,\"ok\":true%s%s%s}\n", SETTINGS_VERSION, id ? ",\"id\":\"" : "",
+         id ? id : "", id ? "\"" : "");
   return 0;
 }

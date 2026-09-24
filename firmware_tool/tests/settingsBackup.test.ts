@@ -9,7 +9,6 @@ import { type SettingsMetadata } from '../src/services/settingsProtocol';
 const metadata: SettingsMetadata = {
   kind: 'settings',
   version: 1,
-  schema: 2,
   warning: '',
   fields: [
     {
@@ -114,7 +113,7 @@ describe('settings backups', () => {
     expect(merged.skipped).toHaveLength(3);
   });
 
-  it.each([null, [], {}, { ...backup({}), format: 'other' }, { ...backup({}), version: 99 }])(
+  it.each([null, [], {}, { ...backup({}), format: 'other' }, { ...backup({}), version: 0 }])(
     'rejects malformed or unsupported backup envelopes: %j',
     (input) => {
       expect(() => mergeSettingsBackup(metadata, input)).toThrow();
@@ -130,18 +129,18 @@ describe('settings backups', () => {
     expect(Object.getPrototypeOf(result.values)).toBe(Object.prototype);
   });
 
-  it('records the settings schema and migrates backups from before it was recorded', () => {
-    expect(JSON.parse(createSettingsBackup(metadata)).schema).toBe(2);
+  it('records the settings version and migrates older backups step by step', () => {
+    expect(JSON.parse(createSettingsBackup(metadata)).version).toBe(1);
     const merged = mergeSettingsBackup(metadata, backup({ brightness: 120 }));
     expect(merged).toMatchObject({ restored: 1, newer: false });
     expect(merged.values.brightness).toBe(120);
-    expect(() => migrateBackupValues({}, 1, 3)).toThrow('No migration from settings schema 2');
+    expect(() => migrateBackupValues({}, 1, 2)).toThrow('No migration from settings version 1');
   });
 
   it('flags backups from newer firmware but restores the fields that still validate', () => {
     const merged = mergeSettingsBackup(metadata, {
       ...backup({ brightness: 150, added_later: 1 }),
-      schema: 3,
+      version: 2,
     });
     expect(merged).toMatchObject({ newer: true, restored: 1, skipped: ['added_later'] });
   });

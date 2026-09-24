@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SETTINGS_SCHEMA_VERSION 2
+#define SETTINGS_VERSION 1
 
 #define WIFI_SSID_MAX_BYTES 32
 #define WIFI_PASSWORD_MAX_BYTES 64

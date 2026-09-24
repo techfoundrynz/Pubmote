@@ -14,7 +14,6 @@ import {
 const payload = (): SettingsMetadata => ({
   kind: 'settings',
   version: 1,
-  schema: 2,
   warning: '',
   fields: [
     {
@@ -225,7 +224,6 @@ test.skipIf(!process.env.SETTINGS_CONSOLE_TEST_BIN)(
       JSON.parse(execFileSync(binary, ['metadata'], { encoding: 'utf8' })),
     );
     assert.equal(metadata.fields.length, 38);
-    assert.equal(metadata.schema, 2);
     const patch = {
       wifi_ssid: '  "é雪" \\ 😀  ',
       wifi_password: 'space\tquote"slash\\newline\n',

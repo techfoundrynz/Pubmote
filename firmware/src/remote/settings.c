@@ -666,9 +666,9 @@ esp_err_t settings_init() {
 
   // Temporary value to store read settings
   uint32_t temp_setting_value;
-  // Migrate stored settings here when the schema changes.
-  if (nvs_read_int("settings_schema", &temp_setting_value) != ESP_OK || temp_setting_value != SETTINGS_SCHEMA_VERSION) {
-    nvs_write_int("settings_schema", SETTINGS_SCHEMA_VERSION);
+  // Migrate stored settings here when the settings version changes.
+  if (nvs_read_int("settings_version", &temp_setting_value) != ESP_OK || temp_setting_value != SETTINGS_VERSION) {
+    nvs_write_int("settings_version", SETTINGS_VERSION);
   }
   device_settings.bl_level =
       nvs_read_int(BL_LEVEL_KEY, &temp_setting_value) == ESP_OK ? (uint8_t)temp_setting_value : BL_LEVEL_DEFAULT;

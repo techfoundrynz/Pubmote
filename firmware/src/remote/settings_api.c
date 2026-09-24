@@ -645,8 +645,8 @@ cJSON *settings_describe_json(void) {
   if (!reply) {
     return NULL;
   }
-  if (!cJSON_AddStringToObject(reply, "kind", "settings") || !cJSON_AddNumberToObject(reply, "version", 1) ||
-      !cJSON_AddNumberToObject(reply, "schema", SETTINGS_SCHEMA_VERSION)) {
+  if (!cJSON_AddStringToObject(reply, "kind", "settings") ||
+      !cJSON_AddNumberToObject(reply, "version", SETTINGS_VERSION)) {
     goto fail;
   }
   SettingsRecords live = {calibration_settings, imu_calibration};

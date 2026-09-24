@@ -1,9 +1,9 @@
 # Settings console protocol (version 1)
 
 `settings` returns one compact JSON line containing `kind: "settings"`,
-`version: 1`, `schema`, `fields`, `values`, and `warning`. `version` is the
-protocol; `schema` (`SETTINGS_SCHEMA_VERSION`, currently 2) changes whenever a
-field's meaning, units or shape changes, so backups can be migrated. Each field
+`version`, `fields`, `values`, and `warning`. `version` (`SETTINGS_VERSION`,
+currently 1) is bumped whenever the message format or a setting's meaning, units
+or shape changes; backups record it so they can be migrated. Each field
 describes its key, label, group, description, type and `readOnly`. Bounded
 integers use `type: "range"`, `min`, `max`, and a `color` hint. Strings supply
 `maxBytes` (UTF-8) and `secret`; integers supply numeric `options` with labels.
@@ -43,8 +43,8 @@ hundredths and IMU offsets in thousandths. A save applies pins, then joystick
 calibration, then IMU calibration, then pairing, so restored calibration
 replaces the reset a pin remap causes. Replacing the paired boards persists them
 and reconnects to the default board, or disconnects when there is none.
-`settings.c` records the schema in NVS at boot; migrations of stored settings
-belong there, before anything is read.
+`settings.c` records the settings version in NVS at boot; migrations of stored
+settings belong there, before anything is read.
 
 Device preferences apply immediately after successful persistence. Display and
 menu updates run on the Slint UI thread; power, units and input behavior use the
@@ -67,7 +67,7 @@ a list of flat objects, unknown/duplicate keys and invalid choices are rejected.
 All fields, the combined pin assignment and the paired boards are validated
 before writes.
 
-The response is one JSON line with `kind: "settings_result"`, `version: 1`, and
+The response is one JSON line with `kind: "settings_result"`, `version`, and
 `ok`. Failure responses include `error`. Both `settings` and `save_settings`
 accept an optional final request id (1-32 letters, digits, `_` or `-`), which
 every reply echoes as `id`. The tool always sends one and ignores replies with
@@ -100,12 +100,11 @@ Wi-Fi credentials. **Restore config backup** reads fresh settings from the devic
 merges compatible backup values by key, and loads a draft for review and saving.
 Settings added since the backup retain their current values. Unknown keys, changed
 types, and values outside current limits/options are skipped and listed in the UI.
-The backup envelope has its own format version and records the settings
-`schema`; firmware version is informational. On restore, `migrateBackupValues`
-upgrades values one schema at a time (backups without `schema` are schema 1).
-A backup from a newer schema is restored field by field where values still
-validate, and the UI says so. When the schema changes, add the matching step to
-`migrations` in `settingsBackup.ts`.
+A backup has `format: "pubmote-settings"` and the settings `version` it was
+made with; firmware version is informational. On restore, `migrateBackupValues`
+upgrades values one version at a time. A backup from a newer version is restored
+field by field where values still validate, and the UI says so. When the version
+is bumped, add the matching step to `migrations` in `settingsBackup.ts`.
 Firmware validates the complete patch, including pin conflicts, when Save is pressed.
 
 ## Checks
