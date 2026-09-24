@@ -88,7 +88,7 @@ jobs:
       - name: Install dependencies
         run: corepack enable && pnpm i --frozen-lockfile
 
-      # Checks the tool's settings protocol against the real firmware handler
+      # The tool's settings protocol against the real firmware handler
       - name: Run cross-language settings test
         env:
           SETTINGS_CONSOLE_TEST_BIN: ${{ github.workspace }}/.pio/host-tests/settings_console_test

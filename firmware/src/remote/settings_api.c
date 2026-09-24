@@ -460,7 +460,7 @@ static bool allowed_board_number(const BoardField *field, const cJSON *value) {
 }
 
 static bool parse_board(const cJSON *item, PairedDevice *board) {
-  // Exactly the known keys: a duplicate or unknown key leaves one of them missing.
+  // A duplicate or unknown key leaves a known one missing.
   if (!cJSON_IsObject(item) || cJSON_GetArraySize(item) != (int)BOARD_FIELD_COUNT) {
     return false;
   }
@@ -740,7 +740,7 @@ int settings_apply_json(const char *json, char *error_out, size_t error_size) {
       in_string = !in_string;
     }
     else if (!in_string) {
-      // An object of scalars or arrays of flat objects; bound nesting before cJSON's recursive parser.
+      // Bound nesting (lists of flat objects) before cJSON's recursive parser.
       if (*p == '{' || *p == '[') {
         if (*p != (depth == 1 ? '[' : '{') || ++depth > 3) {
           return settings_error(error_out, error_size, "Unsupported settings nesting");
@@ -860,7 +860,7 @@ int settings_apply_json(const char *json, char *error_out, size_t error_size) {
   if (!error && pins_dirty && input_pins_apply(&pending, pin_error, sizeof(pin_error)) != ESP_OK) {
     error = pin_error[0] ? pin_error : "Failed to apply input pins";
   }
-  // After the pins, so restored calibration replaces the reset a remap causes.
+  // After pins, so restored calibration overrides a remap's reset.
   if (!error) {
     SettingsRecords applied = {calibration_settings, imu_calibration};
     bool calibration_changed = false, imu_changed = false;

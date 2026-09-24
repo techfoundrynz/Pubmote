@@ -141,7 +141,7 @@ export function parseSettings(payload: unknown): SettingsMetadata {
 
 export const sameSettingValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-// Room for the request id appended after the argument.
+// Leaves room for the appended request id.
 const MAX_COMMAND_BYTES = 2048 - 32;
 const commandBytes = (command: string) => new TextEncoder().encode(command).length;
 
@@ -155,7 +155,7 @@ export function settingsSaveCommand(patch: SettingsValues): string {
   return command;
 }
 
-// Split between fields in metadata order, so pins are saved before the calibration after them.
+// Split in metadata order so pins save before calibration.
 export function settingsSaveCommands(patch: SettingsValues, metadata: SettingsMetadata): string[] {
   const commands: string[] = [];
   let chunk: SettingsValues = {};

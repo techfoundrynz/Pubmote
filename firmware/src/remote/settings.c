@@ -661,7 +661,7 @@ esp_err_t settings_init() {
 
   // Temporary value to store read settings
   uint32_t temp_setting_value;
-  // Migrate stored settings here, before they are read, when the schema changes.
+  // Migrate stored settings here when the schema changes.
   if (nvs_read_int("settings_schema", &temp_setting_value) != ESP_OK || temp_setting_value != SETTINGS_SCHEMA_VERSION) {
     nvs_write_int("settings_schema", SETTINGS_SCHEMA_VERSION);
   }

@@ -4,7 +4,7 @@ import { settingsValuesSchema, type SettingsMetadata } from './settingsProtocol'
 const backupSchema = z.object({
   format: z.literal('pubmote-settings'),
   version: z.literal(1),
-  // Backups from before the schema was recorded are schema 1.
+  // Backups without a schema are schema 1.
   schema: z.number().int().positive().default(1),
   values: z.record(z.string(), z.unknown()),
 });

@@ -79,7 +79,7 @@ extern "C"
 
   void save_imu_calibration();
   void settings_apply_imu_calibration(const ImuCalibrationSettings *imu);
-  // Replaces the paired boards, persists them and reconnects to the default board.
+  // Persists new paired boards and reconnects to the default one.
   esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, int8_t default_index);
 
   // Returns true if the given mac matches any paired device
