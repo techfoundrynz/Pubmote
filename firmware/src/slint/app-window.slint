@@ -7,6 +7,7 @@
 // code updated named widgets and registered event callbacks.
 
 import { Theme } from "ui/theme.slint";
+import { PetsScreen, PetCard } from "ui/pets.slint";
 export { Theme }
 import "../../assets/Saira-SemiBold.ttf";
 import "../../assets/JetBrainsMono-Medium.ttf";
@@ -47,10 +48,28 @@ export enum Screen {
     tetris,
     flappy,
     whack,
+    pets,
 }
 
 // Single binding surface for the firmware.
 export global UiState {
+    in property <image> pet-atlas;
+    in property <bool> pet-enabled: false;
+    in property <string> pet-installed-name;
+    in property <[PetCard]> pet-cards;
+    in property <int> pet-selected-index: -1;
+    in property <bool> pet-can-apply: false;
+    in property <string> pets-status;
+    in property <bool> pets-busy: false;
+    in property <bool> pets-online: false;
+    in property <int> pets-page: 0;
+    in property <int> pets-pages: 0;
+    callback open-pets();
+    callback pets-browse(int);
+    callback pet-download(int);
+    callback pet-apply();
+    callback pet-toggle();
+    callback pets-back();
     in-out property <Screen> screen: Screen.splash;
     in-out property <int> fps: 0;
     in property <bool> show-fps: false;
@@ -325,6 +344,7 @@ export component AppWindow inherits Window {
     }
 
     pure function screen-x(s: Screen) -> int {
+        if (s == Screen.pets) { return 1; }
         if (s == Screen.settings) { return 1; }
         if (s == Screen.input-calibration) { return 1; }
         if (s == Screen.pairing) { return 2; }
@@ -429,6 +449,8 @@ export component AppWindow inherits Window {
         lights-on: UiState.lights-on;
         board-state-message: UiState.board-state-message;
         vehicle-type: UiState.vehicle-type;
+        pet-atlas: UiState.pet-atlas;
+        pet-visible: UiState.screen == Screen.stats && UiState.pet-enabled && !root.is-animating;
         swiped-down => { UiState.stats-swiped-down(); }
         secondary-stat-left-clicked => { UiState.secondary-stat-left-clicked(); }
         board-battery-clicked => { UiState.board-battery-clicked(); }
@@ -456,12 +478,36 @@ export component AppWindow inherits Window {
         toggle-hbm => { UiState.menu-toggle-hbm(); }
         toggle-led => { UiState.menu-toggle-led(); }
         settings => { UiState.open-settings(); }
+        pets => { UiState.open-pets(); }
         calibration => { UiState.open-input-calibration(); }
         pairing => { UiState.open-pairing(); }
         about => { UiState.open-about(); }
         imu-calibration => { UiState.open-imu-calibration(); }
         shutdown => { UiState.menu-shutdown(); }
         shutdown-long-press => { UiState.menu-shutdown-long-press(); }
+    }
+
+    if UiState.screen == Screen.pets || root.previous-screen == Screen.pets: PetsScreen {
+        width: 100%;
+        height: 100%;
+        x: (screen-x(Screen.pets) - root.view-x) * self.width;
+        y: (screen-y(Screen.pets) - root.view-y) * self.height;
+        cards: UiState.pet-cards;
+        selected-index: UiState.pet-selected-index;
+        can-apply: UiState.pet-can-apply;
+        atlas: UiState.pet-atlas;
+        installed-name: UiState.pet-installed-name;
+        pet-enabled: UiState.pet-enabled;
+        busy: UiState.pets-busy;
+        online: UiState.pets-online;
+        page: UiState.pets-page;
+        pages: UiState.pets-pages;
+        status: UiState.pets-status;
+        browse(page) => { UiState.pets-browse(page); }
+        download(index) => { UiState.pet-download(index); }
+        apply => { UiState.pet-apply(); }
+        toggle => { UiState.pet-toggle(); }
+        back => { UiState.pets-back(); }
     }
 
     if UiState.screen == Screen.settings || root.previous-screen == Screen.settings: SettingsScreen {

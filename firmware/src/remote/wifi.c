@@ -413,16 +413,17 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
     return err;
   }
 
-  // Wait for connection result with a timeout and abort check if the update screen is exited
+  // Both the updater and pet browser connect to Wi-Fi. Abort only after leaving both.
   extern bool is_update_screen_active(void);
+  extern bool is_pets_screen_active(void);
   EventBits_t bits = 0;
   const int check_interval_ms = 200;
   const int max_wait_ms = 30000; // 30 seconds timeout
   int waited_ms = 0;
 
   while (waited_ms < max_wait_ms) {
-    if (!is_update_screen_active()) {
-      ESP_LOGW(TAG, "WiFi connection aborted: update screen is no longer active");
+    if (!is_update_screen_active() && !is_pets_screen_active()) {
+      ESP_LOGW(TAG, "WiFi connection aborted: no network screen is active");
       s_wifi_state = WIFI_STATE_DISCONNECTED;
       return ESP_ERR_TIMEOUT;
     }

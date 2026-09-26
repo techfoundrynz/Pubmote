@@ -33,6 +33,7 @@
 #include "screens/input_calibration_screen.h"
 #include "screens/menu_screen.h"
 #include "screens/pairing_screen.h"
+#include "screens/pets_screen.h"
 #include "screens/settings_screen.h"
 #include "screens/stats_screen.h"
 #include "screens/tetris_screen.h"
@@ -157,6 +158,10 @@ extern "C" bool is_charge_screen_active() {
 
 extern "C" bool is_update_screen_active() {
   return cached_active_screen.load() == Screen::Update;
+}
+
+extern "C" bool is_pets_screen_active() {
+  return cached_active_screen.load() == Screen::Pets;
 }
 
 extern "C" bool is_tetris_screen_active() {
@@ -363,6 +368,13 @@ extern "C" void ui_dispatch_activate_edge(bool pressed) {
 
 static void connect_callbacks() {
   const auto &state = slint_window->global<UiState>();
+  pets_init();
+  state.on_open_pets(handle_open_pets);
+  state.on_pets_browse(handle_pets_browse);
+  state.on_pet_download(handle_pet_download);
+  state.on_pet_apply(handle_pet_apply);
+  state.on_pet_toggle(handle_pet_toggle);
+  state.on_pets_back(handle_pets_back);
 
   state.set_show_fps(SHOW_FPS);
   state.set_imu_supported(IMU_ENABLED);
@@ -375,6 +387,10 @@ static void connect_callbacks() {
   input_router_set_default(INPUT_ACTION_STICK_UP, nav_focus_previous, input_repeat(750, 500));
 
   state.on_screen_changed([](Screen screen) {
+    if (pets_requires_restart() && screen != Screen::Pets)
+      esp_restart();
+    if (screen == Screen::Pets)
+      setup_pets_properties();
     Screen prev = cached_active_screen.exchange(screen);
     if (prev != screen) {
       // Exit hooks

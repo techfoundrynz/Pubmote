@@ -1,0 +1,24 @@
+// Downloaded Codex atlas: eight 48x52 cells across, nine common animation rows.
+export component Pet inherits Image {
+    in property <image> atlas;
+    in property <bool> running: true;
+    in property <bool> moving: false;
+    in property <int> animation: root.moving ? 1 : 0;
+    property <int> animation-row: max(0, min(8, root.animation));
+    property <int> frame-count: root.animation-row == 1 || root.animation-row == 2 || root.animation-row == 5 ? 8 : root.animation-row == 3 ? 4 : root.animation-row == 4 ? 5 : 6;
+    property <int> frame: 0;
+    changed animation-row => { root.frame = 0; }
+    source: root.atlas;
+    source-clip-x: Math.mod(root.frame, root.frame-count) * 48;
+    source-clip-y: root.animation-row * 52;
+    source-clip-width: 48;
+    source-clip-height: 52;
+    image-rendering: pixelated;
+    image-fit: contain;
+    accessible-role: none;
+    Timer {
+        interval: 260ms;
+        running: root.running && root.atlas.width > 0;
+        triggered => { root.frame = Math.mod(root.frame + 1, root.frame-count); }
+    }
+}

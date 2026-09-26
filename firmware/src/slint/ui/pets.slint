@@ -1,0 +1,166 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { Pet } from "pet.slint";
+
+export struct PetCard { name: string, atlas: image, failed: bool }
+
+component GalleryChevron inherits Rectangle {
+    in property <bool> right;
+    in property <bool> enabled;
+    callback clicked;
+    width: 28px * Theme.scale;
+    height: 48px * Theme.scale;
+    Path {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 8px * Theme.scale;
+        height: 16px * Theme.scale;
+        commands: root.right ? "M 0 0 L 8 8 L 0 16" : "M 8 0 L 0 8 L 8 16";
+        fill: transparent;
+        stroke: !root.enabled ? Theme.track : touch.pressed ? Theme.accent : Theme.text;
+        stroke-width: 2px * Theme.scale;
+    }
+    touch := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+export component PetsScreen inherits Rectangle {
+    in property <[PetCard]> cards;
+    in property <int> selected-index: -1;
+    in property <bool> can-apply;
+    in property <image> atlas;
+    in property <string> installed-name;
+    in property <bool> pet-enabled;
+    in property <bool> busy;
+    in property <bool> online;
+    in property <int> page: 0;
+    in property <int> pages: 0;
+    in property <string> status;
+    callback browse(int);
+    callback download(int);
+    callback apply;
+    callback toggle;
+    callback back;
+    property <int> animation: 0;
+    property <[string]> animation-names: ["Idle", "Run right", "Run left", "Wave", "Jump", "Failed", "Waiting", "Working", "Review"];
+    changed page => { root.animation = 0; }
+    changed busy => { if root.busy { root.animation = 0; } }
+    background: Theme.bg;
+
+    // One large preview with fixed navigation and Apply controls.
+    VerticalLayout {
+        padding-left: Theme.page-padding-horizontal;
+        padding-right: Theme.page-padding-horizontal;
+        padding-top: Theme.page-padding-vertical;
+        padding-bottom: Theme.page-padding-vertical;
+        spacing: 4px * Theme.scale;
+        Text {
+            text: root.page > 0 ? "PETS  \{root.page}/\{root.pages}" : "PETS";
+            color: Theme.accent;
+            font-size: Theme.font-12;
+            horizontal-alignment: center;
+        }
+        Rectangle {
+            vertical-stretch: 1;
+            clip: true;
+            for card in root.cards: Rectangle {
+                width: 100%; height: 100%;
+                Pet {
+                    x: (parent.width - self.width) / 2;
+                    y: 0px;
+                    height: max(0px, parent.height - 28px * Theme.scale);
+                    width: min(parent.width, self.height * 48 / 52);
+                    atlas: card.atlas;
+                    animation: root.animation;
+                    running: !root.busy;
+                }
+                Text {
+                    y: parent.height - 28px * Theme.scale;
+                    width: 100%; height: 14px * Theme.scale;
+                    text: card.name;
+                    color: Theme.text;
+                    font-size: Theme.font-12;
+                    horizontal-alignment: center;
+                    overflow: elide;
+                }
+                Text {
+                    y: parent.height - 14px * Theme.scale;
+                    width: 100%; height: 14px * Theme.scale;
+                    text: root.animation-names[root.animation] + " (tap)";
+                    color: Theme.text-dim;
+                    font-size: Theme.font-10;
+                    horizontal-alignment: center;
+                }
+            }
+            // Keep gestures alive when loading replaces the preview card.
+            TouchArea {
+                enabled: root.online && root.pages > 0 && (!root.busy || root.cards.length == 0);
+                property <length> start-x;
+                property <length> start-y;
+                property <bool> tracking: false;
+                pointer-event(event) => {
+                    if event.kind == PointerEventKind.cancel {
+                        self.tracking = false;
+                    } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                        self.start-x = self.mouse-x;
+                        self.start-y = self.mouse-y;
+                        self.tracking = true;
+                    } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.up && self.tracking {
+                        self.tracking = false;
+                        let dx = self.mouse-x - self.start-x;
+                        let dy = self.mouse-y - self.start-y;
+                        if abs(dx) > 24px * Theme.scale && abs(dx) > abs(dy) {
+                            if dx < 0px && root.page < root.pages { root.browse(root.page + 1); }
+                            else if dx > 0px && root.page > 1 { root.browse(root.page - 1); }
+                        } else if !root.busy && root.cards.length > 0 && abs(dx) <= 8px * Theme.scale && abs(dy) <= 8px * Theme.scale {
+                            root.animation = Math.mod(root.animation + 1, 9);
+                        }
+                    }
+                }
+            }
+            if root.cards.length == 0 && !root.online: VerticalLayout {
+                alignment: center;
+                if root.atlas.width > 0: Pet { atlas: root.atlas; height: 40px * Theme.scale; running: !root.busy; }
+                Text { text: root.installed-name != "" ? root.installed-name : "codex-pets.net"; color: Theme.text-dim; font-size: Theme.font-10; horizontal-alignment: center; overflow: elide; }
+                if root.installed-name != "": AppButton { text: root.pet-enabled ? "Disable pet" : "Enable pet"; size: "small"; enabled: !root.busy; clicked => { root.toggle(); } }
+            }
+            if root.cards.length == 0 && root.online && !root.busy: VerticalLayout {
+                alignment: center;
+                AppButton {
+                    text: "Retry";
+                    size: "small";
+                    variant: "secondary";
+                    clicked => { root.browse(root.page > 0 ? root.page : 1); }
+                }
+            }
+        }
+        if root.status != "": Text {
+            text: root.status;
+            color: Theme.text;
+            font-size: Theme.font-10;
+            wrap: word-wrap;
+            horizontal-alignment: center;
+            height: 26px * Theme.scale;
+            overflow: elide;
+        }
+        HorizontalLayout {
+            spacing: 4px * Theme.scale;
+            AppButton { text: "Exit"; size: "small"; variant: "secondary"; enabled: !root.busy; clicked => { root.back(); } }
+            if !root.online: AppButton { text: "Browse"; size: "small"; enabled: !root.busy; clicked => { root.browse(1); } }
+            if root.online: AppButton { text: "Apply"; size: "small"; enabled: !root.busy && root.can-apply; clicked => { root.apply(); } }
+        }
+    }
+    // Edge controls sit outside the padded content and take their own taps.
+    if root.online && root.pages > 0: GalleryChevron {
+        x: 4px * Theme.scale;
+        y: (root.height - self.height) / 2;
+        enabled: (!root.busy || root.cards.length == 0) && root.page > 1;
+        clicked => { root.browse(root.page - 1); }
+    }
+    if root.online && root.pages > 0: GalleryChevron {
+        x: root.width - self.width - 4px * Theme.scale;
+        y: (root.height - self.height) / 2;
+        right: true;
+        enabled: (!root.busy || root.cards.length == 0) && root.page < root.pages;
+        clicked => { root.browse(root.page + 1); }
+    }
+}
