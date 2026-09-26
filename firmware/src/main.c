@@ -1,5 +1,4 @@
 #include "config.h"
-#include "games/game_store.h"
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -9,6 +8,7 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "games/game_store.h"
 #include "remote/adc.h"
 #include "remote/buzzer.h"
 #include "remote/comms.h"

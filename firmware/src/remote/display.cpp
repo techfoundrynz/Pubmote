@@ -27,8 +27,8 @@
 #include "remoteinputs.h"
 #include "screens/about_screen.h"
 #include "screens/boards_screen.h"
-#include "screens/games_screen.h"
 #include "screens/game_screen.h"
+#include "screens/games_screen.h"
 #include "screens/imu_calibration_screen.h"
 #include "screens/input_calibration_screen.h"
 #include "screens/menu_screen.h"
@@ -281,7 +281,6 @@ extern "C"
   void handle_update_selected(int index);
   void handle_open_games();
   void handle_games_back();
-
 }
 
 #include <algorithm>
