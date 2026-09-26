@@ -7,6 +7,8 @@ import { PageFooter } from "page-footer.slint";
 export component GamesScreen inherits Rectangle {
     in property <string> tetris-best: "0";
     in property <string> flappy-best: "0";
+    in property <int> garage-best: 0;
+    callback play-garage;
     callback play-tetris;
     callback play-flappy;
     callback back;
@@ -33,6 +35,13 @@ export component GamesScreen inherits Rectangle {
                 Rectangle {
                     height: 1px;
                     background: Theme.track;
+                }
+
+                AppButton {
+                    text: "Garage Rider";
+                    right-text: "BEST " + root.garage-best;
+                    variant: "secondary";
+                    clicked => { root.play-garage(); }
                 }
 
                 AppButton {

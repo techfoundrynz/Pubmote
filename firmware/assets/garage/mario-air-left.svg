@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32" shape-rendering="crispEdges">
+  <g transform="translate(24 0) scale(-1 1)">
+    <!-- Shaved head, round clear lenses, and full beard, in a three-quarter riding pose. -->
+    <path fill="#573e37" d="M11 0h5v1h3v2h1v3h1v5h-1v2h-2v2h-7v-1H9v-2H8V4h1V2h2z"/>
+    <path fill="#d9ac87" d="M11 1h5v1h2v2h1v6h-1v2h-7v-1H9V4h1V2h1z"/>
+    <path fill="#f0c8a1" d="M12 1h3v1h2v2h-6V2h1z"/>
+    <path fill="#b37e61" d="M8 7h2v4H8zM19 7h2v3h-2z"/>
+    <path fill="#343031" d="M9 10h2v1h7v-1h2v3h-2v2h-6v-1h-2v-2H9z"/>
+    <path fill="#51413c" d="M11 12h1v2h4v-1h2v-1h1v2h-2v1h-5v-1h-1z"/>
+    <path fill="#302b2b" d="M10 5h3v1h1v3h-1v1h-3V9H9V6h1zM16 5h3v1h1v3h-1v1h-3V9h-1V6h1zM14 6h1v1h-1zM8 6h1v1H8z"/>
+    <path fill="#f1ccaa" d="M10 6h3v3h-3zM16 6h3v3h-3z"/>
+    <path fill="#443738" d="M12 7h1v1h-1zM18 7h1v1h-1z"/>
+    <path fill="#ba8162" d="M14 8h1v2h1v1h-2z"/>
+    <path fill="#302b2b" d="M12 10h2v1h-2zM16 10h2v1h-2z"/>
+    <path fill="#dea385" d="M13 12h4v1h-4z"/>
+    <path fill="#40494d" d="M8 15h10v2h2v4h-3v2H7v-5H5v-2h3z"/>
+    <path fill="#667073" d="M8 15h2v6H8zM10 15h6v1h-6z"/>
+    <path fill="#d9864c" d="M10 17h7v3h-7z"/>
+    <path fill="#635044" d="M11 18h1v1h-1zM13 18h1v1h-1zM15 18h1v1h-1z"/>
+    <path fill="#d9ac87" d="M18 15h3v2h2v2h-3v-2h-2zM5 16h2v3H4v-2h1z"/>
+    <path fill="#222d36" d="M20 16h2v1h-2z"/>
+    <path fill="#4f6174" d="M8 22h8v2h-4v2H8zM15 23h4v3h-3z"/>
+    <path fill="#d9dfd3" d="M6 26h6v1H5v-1zM16 26h5v1h-5z"/>
+    <path fill="#e18d54" d="M2 27h20v2H2z"/>
+    <path fill="#152231" d="M9 25h6v1h2v5h-2v1H9v-1H7v-5h2z"/>
+    <path fill="#89949c" d="M10 27h4v3h-4z"/>
+    <path fill="#d8e4d4" d="M11 27h1v3h-1z"/>
+    <path fill="#b9f884" d="M21 27h2v1h-2z"/>
+  </g>
+</svg>

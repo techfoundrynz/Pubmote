@@ -29,6 +29,7 @@
 #include "screens/about_screen.h"
 #include "screens/boards_screen.h"
 #include "screens/flappy_screen.h"
+#include "screens/garage_screen.h"
 #include "screens/games_screen.h"
 #include "screens/imu_calibration_screen.h"
 #include "screens/input_calibration_screen.h"
@@ -162,6 +163,10 @@ extern "C" bool is_tetris_screen_active() {
   return cached_active_screen.load() == Screen::Tetris;
 }
 
+extern "C" bool is_garage_screen_active() {
+  return cached_active_screen.load() == Screen::Garage;
+}
+
 extern "C" bool is_flappy_screen_active() {
   return cached_active_screen.load() == Screen::Flappy;
 }
@@ -291,6 +296,7 @@ extern "C"
   void handle_open_games();
   void handle_games_tetris();
   void handle_games_flappy();
+  void handle_games_garage();
   void handle_games_back();
   void handle_tetris_tick();
   void handle_tetris_press(int zone);
@@ -388,6 +394,9 @@ static void connect_callbacks() {
       else if (prev == Screen::Tetris) {
         teardown_tetris_properties();
       }
+      else if (prev == Screen::Garage) {
+        teardown_garage_properties();
+      }
       else if (prev == Screen::Flappy) {
         teardown_flappy_properties();
       }
@@ -429,6 +438,9 @@ static void connect_callbacks() {
       else if (screen == Screen::Tetris) {
         setup_tetris_properties();
       }
+      else if (screen == Screen::Garage) {
+        setup_garage_properties();
+      }
       else if (screen == Screen::Flappy) {
         setup_flappy_properties();
       }
@@ -467,6 +479,11 @@ static void connect_callbacks() {
   state.on_open_games([]() { handle_open_games(); });
   state.on_games_tetris([]() { handle_games_tetris(); });
   state.on_games_flappy([]() { handle_games_flappy(); });
+  state.on_games_garage([]() { handle_games_garage(); });
+  state.on_garage_tick([]() { handle_garage_tick(); });
+  state.on_garage_action([]() { handle_garage_action(); });
+  state.on_garage_steer([](int direction) { handle_garage_steer(direction); });
+  state.on_garage_back([]() { handle_garage_back(); });
   state.on_games_back([]() { handle_games_back(); });
   state.on_tetris_tick([]() { handle_tetris_tick(); });
   state.on_tetris_press([](int zone) { handle_tetris_press(zone); });

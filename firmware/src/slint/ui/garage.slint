@@ -1,0 +1,175 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+
+export struct GarageObject { x: float, y: float, w: float, h: float, kind: int }
+
+export component GarageScreen inherits Rectangle {
+    in property <[GarageObject]> objects;
+    in property <float> player-x: 26;
+    in property <float> player-y: 74;
+    in property <int> facing: 1;
+    in property <bool> airborne: false;
+    in property <bool> protected: false;
+    in property <int> game-state: 0;
+    in property <int> level: 1;
+    in property <int> pace: 100;
+    in property <int> lives: 3;
+    in property <int> score: 0;
+    in property <int> best: 0;
+    in property <int> stage-batteries: 0;
+    in property <int> stars: 0;
+    in property <int> total-stars: 0;
+    in property <int> combo: 0;
+    in property <int> lap: 1;
+    in property <int> shield-time: 0;
+    in property <int> magnet-time: 0;
+    in property <int> turbo-time: 0;
+    property <string> trail-name: root.level == 1 ? "PARK HOPS" : root.level == 2 ? "ROOFTOP RUN" : "BOT ALLEY";
+    in property <float> progress: 0;
+    in property <bool> checkpoint: false;
+    in property <bool> has-joystick: false;
+    callback tick();
+    callback action();
+    callback steer(int);
+    callback back();
+    property <length> ux: root.width / 100;
+    property <length> uy: root.height / 100;
+    property <color> sky: root.level == 1 ? #16394b : root.level == 2 ? #303752 : #3b2949;
+    property <color> grass: root.level == 1 ? #98d889 : root.level == 2 ? #62c9bc : #e9b56f;
+    background: root.sky;
+
+    Timer { interval: 33ms; running: root.game-state == 1; triggered => { root.tick(); } }
+    FocusScope {
+        width: 0px; height: 0px;
+        init => { self.focus(); }
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") { root.action(); return accept; }
+            if (event.text == Key.LeftArrow) { root.steer(-1); return accept; }
+            if (event.text == Key.RightArrow) { root.steer(1); return accept; }
+            if (event.text == Key.DownArrow) { root.steer(0); return accept; }
+            if (event.text == Key.UpArrow) { root.action(); return accept; }
+            reject
+        }
+    }
+
+    Rectangle {
+        width: 100%; height: 100%; clip: true;
+        // A small static skyline leaves the scanline renderer's work to the moving foreground.
+        Rectangle { x: 69 * root.ux; y: 23 * root.uy; width: 12 * root.ux; height: 12 * root.uy; background: #f5cd8b; }
+        Rectangle { x: 12 * root.ux; y: 29 * root.uy; width: 18 * root.ux; height: 3 * root.uy; background: #70969a; }
+        Rectangle { x: 18 * root.ux; y: 26 * root.uy; width: 8 * root.ux; height: 3 * root.uy; background: #70969a; }
+        Rectangle { x: 44 * root.ux; y: 34 * root.uy; width: 13 * root.ux; height: 3 * root.uy; background: #70969a; }
+        Rectangle { x: 3 * root.ux; y: 57 * root.uy; width: 21 * root.ux; height: 25 * root.uy; background: #254b54; }
+        Rectangle { x: 28 * root.ux; y: 52 * root.uy; width: 27 * root.ux; height: 30 * root.uy; background: #254b54; }
+        Rectangle { x: 60 * root.ux; y: 60 * root.uy; width: 16 * root.ux; height: 22 * root.uy; background: #254b54; }
+        Rectangle { x: 79 * root.ux; y: 49 * root.uy; width: 22 * root.ux; height: 33 * root.uy; background: #254b54; }
+
+        for o in root.objects: Rectangle {
+            x: o.x * root.ux; y: o.y * root.uy;
+            width: o.w * root.ux; height: o.h * root.uy;
+            if o.kind == 0 || o.kind == 1: Rectangle {
+                background: o.kind == 0 ? #4c4140 : #b0754a;
+                Rectangle { x: 0px; y: 0px; height: 2 * root.uy; width: 100%; background: o.kind == 0 ? root.grass : #f5c18b; }
+                if o.kind == 1: Rectangle { x: 2 * root.ux; y: 4 * root.uy; width: parent.width - 4 * root.ux; height: 1 * root.uy; background: #704935; }
+            }
+            if o.kind == 2: Rectangle {
+                x: 0px; y: 1 * root.uy; width: parent.width; height: parent.height - 1 * root.uy;
+                background: #b9f884;
+                Rectangle { x: parent.width * 0.3; y: -1 * root.uy; width: parent.width * 0.4; height: 1 * root.uy; background: #edf9d7; }
+                Rectangle { x: 1 * root.ux; y: 2 * root.uy; width: 3 * root.ux; height: 1 * root.uy; background: #2a674e; }
+                Rectangle { x: 2 * root.ux; y: 1 * root.uy; width: 1 * root.ux; height: 3 * root.uy; background: #2a674e; }
+            }
+            if o.kind >= 6 && o.kind <= 8: Rectangle {
+                background: o.kind == 6 ? #58d9ed : o.kind == 7 ? #d58aff : #ffbc55;
+                border-width: 1px; border-color: #fff4da;
+                Text { width: 100%; height: 100%; text: o.kind == 6 ? "S" : o.kind == 7 ? "M" : "T"; color: #132735; font-size: Theme.font-10; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            if o.kind == 3: Rectangle {
+                y: 2 * root.uy; width: parent.width; height: 4 * root.uy; background: #e27b63;
+                Rectangle { x: 1 * root.ux; y: 1 * root.uy; width: 2 * root.ux; height: 1 * root.uy; background: #2b2536; }
+                Rectangle { x: 5 * root.ux; y: 1 * root.uy; width: 2 * root.ux; height: 1 * root.uy; background: #2b2536; }
+                Rectangle { x: 1 * root.ux; y: 4 * root.uy; width: 2 * root.ux; height: 1 * root.uy; background: #151e2e; }
+                Rectangle { x: 5 * root.ux; y: 4 * root.uy; width: 2 * root.ux; height: 1 * root.uy; background: #151e2e; }
+                Rectangle { x: -1 * root.ux; y: -1 * root.uy; width: 10 * root.ux; height: 1 * root.uy; background: #efc794; }
+            }
+            if o.kind == 4: Rectangle {
+                background: #e6cba5;
+                Rectangle { x: 3 * root.ux; y: 9 * root.uy; width: parent.width - 6 * root.ux; height: parent.height - 9 * root.uy; background: #182733; }
+                Text { y: 2 * root.uy; width: 100%; text: "GARAGE"; color: #213943; font-size: Theme.font-10; font-weight: 600; horizontal-alignment: center; }
+                Rectangle { y: 0px; width: 100%; height: 2 * root.uy; background: #e88955; }
+            }
+            if o.kind == 5: Rectangle {
+                x: 1 * root.ux; width: 1 * root.ux; height: 100%; background: #e9dec0;
+                Rectangle { width: 8 * root.ux; height: 5 * root.uy; background: root.checkpoint ? #b9f884 : #e9b56f; }
+            }
+        }
+
+        if root.shield-time > 0 || root.turbo-time > 0: Rectangle {
+            x: (root.player-x - 6.5) * root.ux; y: (root.player-y - 15) * root.uy;
+            width: 13 * root.ux; height: 16 * root.uy;
+            border-width: 1px; border-radius: 5 * root.ux;
+            border-color: root.turbo-time > 0 ? #ffbc55 : #58d9ed;
+        }
+        Image {
+            x: (root.player-x - 5.5) * root.ux;
+            y: (root.player-y - 14) * root.uy;
+            width: 11 * root.ux; height: 14 * root.uy;
+            source: root.facing < 0 ? (root.airborne ? @image-url("../../../assets/garage/mario-air-left.svg") : @image-url("../../../assets/garage/mario-left.svg")) : (root.airborne ? @image-url("../../../assets/garage/mario-air.svg") : @image-url("../../../assets/garage/mario.svg"));
+            image-fit: fill;
+            opacity: root.protected && root.game-state == 1 ? 0.6 : 1;
+        }
+    }
+
+    Rectangle {
+        x: 17 * root.ux; y: 7 * root.uy; width: 66 * root.ux; height: 17 * root.uy;
+        background: #132735;
+        Text { y: 1 * root.uy; width: 100%; text: "L" + root.lap + " " + root.level + "/3 " + root.trail-name; font-size: Theme.font-10; color: #f6e9cb; horizontal-alignment: center; }
+        Text { y: 6 * root.uy; width: 100%; text: "HP " + root.lives + "  " + root.pace + "%  " + round(root.progress * 100) + "% HOME"; font-size: Theme.font-10; color: #a5dcb1; horizontal-alignment: center; }
+        Text { y: 11 * root.uy; width: 100%; text: "BAT " + min(root.stage-batteries, 5) + "/5" + (root.combo > 1 ? "   COMBO x" + root.combo : "   " + root.score + " PTS"); font-size: Theme.font-10; color: #f6e9cb; horizontal-alignment: center; }
+        Rectangle { y: parent.height; width: parent.width; height: 1 * root.uy; background: #486168;
+            Rectangle { width: parent.width * root.progress; height: parent.height; background: #b9f884; }
+        }
+    }
+
+    if root.game-state == 1 && (root.shield-time > 0 || root.magnet-time > 0 || root.turbo-time > 0): Text {
+        x: 17 * root.ux; y: 25 * root.uy; width: 66 * root.ux;
+        text: (root.shield-time > 0 ? "S " + root.shield-time + "s  " : "") + (root.magnet-time > 0 ? "M " + root.magnet-time + "s  " : "") + (root.turbo-time > 0 ? "T " + root.turbo-time + "s" : "");
+        color: #fff4da; font-size: Theme.font-10; horizontal-alignment: center;
+    }
+    TouchArea {
+        width: 100%; height: 100%;
+        pointer-event(e) => { if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) { root.action(); } }
+    }
+
+    if root.game-state != 1: Rectangle {
+        width: 100%; height: 100%; background: #101d2be8;
+        VerticalLayout {
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-top: 20 * root.uy;
+            padding-bottom: 25 * root.uy;
+            spacing: 3px * Theme.scale;
+            alignment: center;
+            Text { text: root.game-state == 0 ? "GARAGE RIDER" : root.game-state == 2 ? "BAIL OUT!" : root.game-state == 3 ? "TRAIL CLEAR!" : root.game-state == 4 ? "LAP " + root.lap + " CLEAR!" : "RIDE OVER"; color: #b9f884; font-size: Theme.font-14; font-weight: 600; horizontal-alignment: center; }
+            Text { text: root.game-state == 0 ? "Mario / TheBoardGarage" : root.game-state == 3 ? root.trail-name + "  " + root.stars + "/3 STARS" : root.game-state == 4 ? root.total-stars + "/9 STARS   " + root.score + " PTS" : "TRAIL " + root.level + "   SCORE " + root.score; color: #f6e9cb; font-size: Theme.font-11; horizontal-alignment: center; }
+            Rectangle { height: 3 * root.uy; }
+            Text { text: root.game-state == 0 ? "S: shield  M: magnet  T: turbo" : root.game-state == 2 ? (root.checkpoint ? "Back to the checkpoint." : "Dust off. Ride again.") : root.game-state == 3 ? (root.level == 1 ? "Next: Rooftop Run" : "Next: Bot Alley") : root.game-state == 4 ? "Next lap: faster, more bots!" : "BEST " + root.best; color: #c0ccd2; font-size: Theme.font-10; horizontal-alignment: center; }
+            Text { text: root.game-state == 0 ? "Tap to hop. Each lap gets harder." : root.game-state == 3 ? "Finish / 5 batteries / no bails" : "LIVES " + root.lives + "   BEST " + root.best; color: #c0ccd2; font-size: Theme.font-10; horizontal-alignment: center; }
+            if root.game-state == 0: Text { text: root.has-joystick ? "Stick steers. Down brakes." : "Arrows steer. Stop brakes."; color: #c0ccd2; font-size: Theme.font-10; horizontal-alignment: center; }
+            Text { text: root.game-state == 0 ? "TAP TO RIDE" : root.game-state == 3 ? "TAP FOR NEXT TRAIL" : root.game-state == 2 ? "TAP TO CONTINUE" : root.game-state == 4 ? "TAP FOR HARDER LAP" : "TAP TO RIDE AGAIN"; color: #f6e9cb; font-size: Theme.font-11; font-weight: 600; horizontal-alignment: center; }
+        }
+    }
+
+    if root.game-state == 1: HorizontalLayout {
+        x: 18 * root.ux; y: 79 * root.uy; width: 64 * root.ux; height: 9 * root.uy;
+        spacing: 2 * root.ux;
+        AppButton { height: parent.height; text: "<"; size: "small"; variant: "secondary"; clicked => { root.steer(-1); } }
+        AppButton { height: parent.height; text: "Stop"; size: "small"; variant: "secondary"; clicked => { root.steer(0); } }
+        AppButton { height: parent.height; text: ">"; size: "small"; variant: "secondary"; clicked => { root.steer(1); } }
+    }
+    AppButton {
+        x: 37 * root.ux; y: 89 * root.uy; width: 26 * root.ux; height: 8 * root.uy;
+        text: "Exit"; variant: "secondary"; size: "small";
+        clicked => { root.back(); }
+    }
+}

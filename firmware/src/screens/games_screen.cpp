@@ -4,6 +4,7 @@
 #include "remote/display.h"
 #include "remote/haptic.h"
 #include "screens/flappy_screen.h"
+#include "screens/garage_screen.h"
 #include "screens/tetris_screen.h"
 #include <stdio.h>
 
@@ -31,6 +32,10 @@ extern "C" void handle_games_flappy() {
   go_to(Screen::Flappy);
 }
 
+extern "C" void handle_games_garage() {
+  go_to(Screen::Garage);
+}
+
 extern "C" void handle_games_back() {
   go_to(Screen::About);
 }
@@ -42,6 +47,7 @@ extern "C" void setup_games_properties() {
   }
   const auto &state = window->global<UiState>();
 
+  state.set_garage_best(static_cast<int>(garage_high_score()));
   char buf[16];
   snprintf(buf, sizeof(buf), "%lu", (unsigned long)tetris_high_score());
   state.set_tetris_best(slint::SharedString(buf));
