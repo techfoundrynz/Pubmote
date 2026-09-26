@@ -3,7 +3,6 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_timer.h"
-#include "generated/app-window.h"
 #include "remote/buzzer.h"
 #include "remote/display.h"
 #include "remote/haptic.h"
@@ -11,6 +10,7 @@
 #include "remote/powermanagement.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
+#include "slint_generated/app-window.h"
 #include <memory>
 #include <stdio.h>
 #include <string.h>

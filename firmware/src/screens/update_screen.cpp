@@ -1,4 +1,5 @@
 #include "screens/update_screen.h"
+#include "build_metadata.h"
 #include "config.h"
 #include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
@@ -7,7 +8,6 @@
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 #include "esp_timer.h"
-#include "generated/app-window.h"
 #include "ota/update_client.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
@@ -16,6 +16,7 @@
 #include "remote/settings.h"
 #include "remote/transmitter.h"
 #include "remote/wifi.h"
+#include "slint_generated/app-window.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

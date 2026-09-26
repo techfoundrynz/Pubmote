@@ -1,4 +1,5 @@
 #include "transmitter.h"
+#include "build_metadata.h"
 #include "commands.h"
 #include "comms.h"
 #include "config.h"

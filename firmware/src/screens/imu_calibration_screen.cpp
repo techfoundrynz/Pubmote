@@ -3,10 +3,10 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "generated/app-window.h"
 #include "imu/imu_driver.h"
 #include "remote/display.h"
 #include "remote/settings.h"
+#include "slint_generated/app-window.h"
 #include <stdio.h>
 
 static const char *TAG = "PUBREMOTE-IMU_CALIBRATION_SCREEN";

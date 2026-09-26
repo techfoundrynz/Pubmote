@@ -74,6 +74,12 @@ set(download_directory "${CMAKE_BINARY_DIR}/slint-prebuilt")
 set(staged_dir "${download_directory}/current")
 set(base_url "https://github.com/${SLINT_PREBUILT_REPO}/releases/download/${SLINT_PREBUILT_TAG}")
 file(MAKE_DIRECTORY "${download_directory}")
+# Keep immutable downloads outside build/, so clean builds and other board
+# environments reuse the same release instead of downloading it again.
+string(SHA256 download_key "${base_url}/${archive_name}/${compiler_asset}")
+set(download_cache "${CMAKE_SOURCE_DIR}/.pio/cache/slint/${download_key}")
+file(MAKE_DIRECTORY "${download_cache}")
+file(LOCK "${download_cache}/download.lock" GUARD FILE TIMEOUT 120)
 
 # prebuild_hook.py is a SCons `pre:` script, so it runs BEFORE this CMakeLists does - it
 # cannot discover a version-dependent directory name, it can only agree on a fixed one.
@@ -83,7 +89,7 @@ set(slint_compiler_path "${download_directory}/${compiler_name}")
 # Restage from scratch whenever the release changes, so switching versions cannot leave
 # headers from the old one behind. That mismatch is invisible until it surfaces as
 # missing symbols late in the C++ build.
-set(staged_id "${SLINT_PREBUILT_REPO}@${SLINT_PREBUILT_TAG}:${archive_name}")
+set(staged_id "${SLINT_PREBUILT_REPO}@${SLINT_PREBUILT_TAG}:${archive_name}:${compiler_asset}")
 set(staged_stamp "${staged_dir}/.slint-source")
 if (EXISTS "${staged_stamp}")
     file(READ "${staged_stamp}" staged_id_previous)
@@ -96,23 +102,25 @@ endif()
 
 if (NOT EXISTS "${staged_dir}/lib/libslint_cpp.a")
     set(extract_dir "${download_directory}/extracted")
-    set(archive "${download_directory}/${archive_name}")
+    set(archive "${download_cache}/${archive_name}")
 
-    message(STATUS "Slint: downloading ${archive_name} (${SLINT_PREBUILT_REPO} ${SLINT_PREBUILT_TAG})...")
-    file(DOWNLOAD "${base_url}/${archive_name}" "${archive}"
-         STATUS download_status TLS_VERIFY ON SHOW_PROGRESS)
-    list(GET download_status 0 download_code)
-    if (NOT download_code EQUAL 0)
-        list(GET download_status 1 download_error)
-        file(REMOVE "${archive}")
-        message(FATAL_ERROR
-            "Failed to download ${archive_name} from ${base_url}: ${download_error}\n"
-            "Check SLINT_PREBUILT_REPO / SLINT_PREBUILT_TAG / SLINT_PREBUILT_VERSION.")
+    if (NOT EXISTS "${archive}")
+        message(STATUS "Slint: downloading ${archive_name} (${SLINT_PREBUILT_REPO} ${SLINT_PREBUILT_TAG})...")
+        file(DOWNLOAD "${base_url}/${archive_name}" "${archive}.tmp"
+             STATUS download_status TLS_VERIFY ON SHOW_PROGRESS)
+        list(GET download_status 0 download_code)
+        if (NOT download_code EQUAL 0)
+            list(GET download_status 1 download_error)
+            file(REMOVE "${archive}.tmp")
+            message(FATAL_ERROR
+                "Failed to download ${archive_name} from ${base_url}: ${download_error}\n"
+                "Check SLINT_PREBUILT_REPO / SLINT_PREBUILT_TAG / SLINT_PREBUILT_VERSION.")
+        endif()
+        file(RENAME "${archive}.tmp" "${archive}")
     endif()
 
     file(REMOVE_RECURSE "${extract_dir}")
     file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${extract_dir}")
-    file(REMOVE "${archive}")
 
     # cpack decides the directory name inside the archive, so find it rather than assume
     # it matches the asset name.
@@ -143,15 +151,20 @@ endif()
 # limit that keeps large font sizes inside the flash budget. A stock compiler would
 # silently embed the full charset.
 if (NOT EXISTS "${slint_compiler_path}")
-    message(STATUS "Slint: downloading ${compiler_asset}...")
-    file(DOWNLOAD "${base_url}/${compiler_asset}" "${slint_compiler_path}"
-         STATUS compiler_status TLS_VERIFY ON SHOW_PROGRESS)
-    list(GET compiler_status 0 compiler_code)
-    if (NOT compiler_code EQUAL 0)
-        list(GET compiler_status 1 compiler_error)
-        file(REMOVE "${slint_compiler_path}")
-        message(FATAL_ERROR "Failed to download ${compiler_asset} from ${base_url}: ${compiler_error}")
+    set(cached_compiler "${download_cache}/${compiler_name}")
+    if (NOT EXISTS "${cached_compiler}")
+        message(STATUS "Slint: downloading ${compiler_asset}...")
+        file(DOWNLOAD "${base_url}/${compiler_asset}" "${cached_compiler}.tmp"
+             STATUS compiler_status TLS_VERIFY ON SHOW_PROGRESS)
+        list(GET compiler_status 0 compiler_code)
+        if (NOT compiler_code EQUAL 0)
+            list(GET compiler_status 1 compiler_error)
+            file(REMOVE "${cached_compiler}.tmp")
+            message(FATAL_ERROR "Failed to download ${compiler_asset} from ${base_url}: ${compiler_error}")
+        endif()
+        file(RENAME "${cached_compiler}.tmp" "${cached_compiler}")
     endif()
+    file(COPY_FILE "${cached_compiler}" "${slint_compiler_path}" ONLY_IF_DIFFERENT)
     if (NOT CMAKE_HOST_WIN32)
         file(CHMOD "${slint_compiler_path}" PERMISSIONS
              OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE)

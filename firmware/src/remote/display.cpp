@@ -16,7 +16,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "generated/app-window.h"
 #include "hal/ledc_types.h"
 #include "powermanagement.h"
 #include "remote/color_utils.h"
@@ -41,6 +40,7 @@
 #include "screens/whack_screen.h"
 #include "settings.h"
 #include "slint-esp.h"
+#include "slint_generated/app-window.h"
 #include "stats.h"
 #include "utilities/mem_debug.h"
 

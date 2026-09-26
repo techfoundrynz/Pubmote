@@ -65,6 +65,11 @@ Suggestions for additional hardware targets are welcomed. For new projects, we r
 No Rust toolchain is required. Slint is consumed as a prebuilt release pinned by
 `SLINT_PREBUILT_TAG` in `platformio.ini`, so `pio run` needs nothing but Python and PlatformIO.
 
+For fast development builds, select one board with `pio run -e <environment>`.
+Use `pio run -e <environment> -t package` for release ZIP/BIN/ELF artifacts.
+See [firmware builds](docs/firmware-builds.md) for caching, generated-code debugging,
+and benchmark commands.
+
 ### Slint live preview
 
 The UI uses arc properties that only exist in our Slint fork, so the language server bundled

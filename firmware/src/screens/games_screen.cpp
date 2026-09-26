@@ -1,11 +1,11 @@
 #include "screens/games_screen.h"
 #include "esp_log.h"
-#include "generated/app-window.h"
 #include "remote/display.h"
 #include "remote/haptic.h"
 #include "screens/flappy_screen.h"
 #include "screens/tetris_screen.h"
 #include "screens/whack_screen.h"
+#include "slint_generated/app-window.h"
 #include <stdio.h>
 
 static const char *TAG = "PUBREMOTE-GAMES_SCREEN";

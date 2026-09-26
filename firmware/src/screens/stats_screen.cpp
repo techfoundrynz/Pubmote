@@ -2,7 +2,6 @@
 #include "config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "generated/app-window.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/imu.h"
@@ -14,6 +13,7 @@
 #include "remote/stats.h"
 #include "remote/time.h"
 #include "remote/vehicle_state.h"
+#include "slint_generated/app-window.h"
 #include "utilities/conversion_utils.h"
 #include <atomic>
 #include <math.h>

@@ -1,4 +1,5 @@
 
+#include "build_metadata.h"
 #include "config.h"
 #include "driver/usb_serial_jtag.h"
 #include "esp_console.h"
