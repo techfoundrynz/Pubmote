@@ -16,7 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "generated/app-window.h"
+#include "slint_generated/app-window.h"
 #include "hal/ledc_types.h"
 #include "powermanagement.h"
 #include "remote/color_utils.h"

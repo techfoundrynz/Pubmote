@@ -1,6 +1,6 @@
 #include "screens/settings_screen.h"
 #include "esp_log.h"
-#include "generated/app-window.h"
+#include "slint_generated/app-window.h"
 #include "remote/color_utils.h"
 #include "remote/display.h"
 #include "remote/led.h"

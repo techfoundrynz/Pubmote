@@ -2,7 +2,7 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_timer.h"
-#include "generated/app-window.h"
+#include "slint_generated/app-window.h"
 #include "remote/buzzer.h"
 #include "remote/display.h"
 #include "remote/haptic.h"

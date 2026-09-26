@@ -1,182 +1,146 @@
 Import("env")
+
 from datetime import datetime
 import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 
-major_version, minor_version, patch_version = env.GetProjectOption("custom_firmware_version").split(".")
 
-def generate_build_id():
-    # Get current timestamp
-    timestamp = datetime.now().strftime("%Y%m%d")
+def write_if_changed(path, content):
+    """Keep timestamps stable when generation produces identical bytes."""
+    path = Path(path)
+    if path.exists() and path.read_bytes() == content:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+        output.write(content)
+        temporary = output.name
+    os.replace(temporary, path)
 
-    env_name = env["PIOENV"]
 
-    # Create version string
-    version = f"{major_version}.{minor_version}.{patch_version}"
-    
-    # Combine version and timestamp for hashing
-    content_to_hash = f"{env_name}_{version}_{timestamp}"
+project_dir = Path(env.subst("$PROJECT_DIR"))
+sys.path.insert(0, str(project_dir / "scripts"))
+from slint_codegen import split_resource_declarations
+build_dir = Path(env.subst("$BUILD_DIR")).resolve()
+generated_dir = build_dir / "slint_generated"
+generated_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create a hash of timestamp for shorter unique ID
-    hash_object = hashlib.md5(content_to_hash.encode())
-    build_hash = hash_object.hexdigest()[:8]
-    
-    # Combine timestamp and hash
-    build_id = f"{build_hash}"
-    return build_id
+# Only metadata consumers rebuild when the date or firmware version changes.
+version = env.GetProjectOption("custom_firmware_version")
+major, minor, patch = version.split(".")
+build_id = hashlib.md5(f"{env['PIOENV']}_{version}_{datetime.now():%Y%m%d}".encode()).hexdigest()[:8]
+metadata = (
+    '#pragma once\n'
+    f'#define HW_TYPE "{env["PIOENV"]}"\n'
+    f'#define BUILD_ID "{build_id}"\n'
+    f'#define VERSION_MAJOR {major}\n'
+    f'#define VERSION_MINOR {minor}\n'
+    f'#define VERSION_PATCH {patch}\n'
+)
+write_if_changed(build_dir / "build_metadata.h", metadata.encode())
+env.AppendUnique(CPPPATH=[str(build_dir)])
 
-# Add build ID to environment
-hw_type = env["PIOENV"]
-build_id = generate_build_id()
+# CMake and Slint must agree on the number and names of generated sources.
+cpp_count = int(env.GetProjectOption("custom_slint_cpp_files", "8"))
+if not 1 <= cpp_count <= 32:
+    raise ValueError("custom_slint_cpp_files must be between 1 and 32")
+cmake_args = env.BoardConfig().get("build.cmake_extra_args", "")
+env.BoardConfig().update("build.cmake_extra_args", f"{cmake_args} -DSLINT_CPP_FILES={cpp_count}")
 
-env.Append(BUILD_FLAGS=[f'-D HW_TYPE=\\"{hw_type}\\"'])
-env.Append(BUILD_FLAGS=[f'-D BUILD_ID=\\"{build_id}\\"'])
-env.Append(BUILD_FLAGS=[f'-D VERSION_MAJOR={major_version}'])
-env.Append(BUILD_FLAGS=[f'-D VERSION_MINOR={minor_version}'])
-env.Append(BUILD_FLAGS=[f'-D VERSION_PATCH={patch_version}'])
-# Add slint_cpp prebuilt library to linker flags and include paths for main firmware only (not bootloader)
-if "bootloader" not in env.subst("$BUILD_DIR"):
-    import os
-    import subprocess
-    
-    env_name = env["PIOENV"]
-    slint_prebuilt_bin_dir = os.path.join(".pio", "build", env_name, "slint-prebuilt")
-    compiler_name = "slint-compiler.exe" if os.name == 'nt' else "slint-compiler"
-    slint_compiler_path = os.path.abspath(os.path.join(slint_prebuilt_bin_dir, compiler_name))
-    
-    # 1. Check/create placeholder empty files at SCons configuration time so dependency scanning doesn't fail
-    h_path = "firmware/src/generated/app-window.h"
-    cpp_path = "firmware/src/generated/app-window.cpp"
-    if not os.path.exists(h_path) or not os.path.exists(cpp_path):
-        os.makedirs(os.path.dirname(h_path), exist_ok=True)
-        print("[Slint Compiler] Creating initial placeholder C++ files...")
-        with open(h_path, "w") as f:
-            f.write("// Slint placeholder\n")
-        with open(cpp_path, "w") as f:
-            f.write("// Slint placeholder\n")
-        import time
-        past_time = time.time() - 3600
-        os.utime(h_path, (past_time, past_time))
-        os.utime(cpp_path, (past_time, past_time))
+compiler_name = "slint-compiler.exe" if os.name == "nt" else "slint-compiler"
+compiler = build_dir / "slint-prebuilt" / compiler_name
+output_names = ["app-window.h"] + [f"app-window-{i}.cpp" for i in range(cpp_count)]
+outputs = [generated_dir / name for name in output_names] + [generated_dir / "app-window-resources.h"]
+placeholder = b"// Slint placeholder; generated during the build.\n"
 
-    # 2. Define the compiler execution function (runs in compilation phase, after CMake runs)
-    def compile_slint_files(target, source, env):
-        if os.path.exists(slint_compiler_path):
-            print(f"[Slint Compiler] Compiling app-window.slint using: {slint_compiler_path}")
-            
-            # Dynamically calculate embedded font sizes based on active platform build flags
-            build_flags = env.get("BUILD_FLAGS", [])
-            
-            def get_macro_value(macro):
-                for flag in build_flags:
-                    if isinstance(flag, str):
-                        if flag.startswith(f"-D {macro}=") or flag.startswith(f"-D{macro}="):
-                            return flag.split("=", 1)[1].strip()
-                        elif flag == f"-D {macro}" or flag == f"-D{macro}":
-                            return "1"
-                return None
 
-            lv_hor_res = 240
-            hor_res_str = get_macro_value("HOR_RES")
-            ver_res_str = get_macro_value("VER_RES")
-            if hor_res_str or ver_res_str:
-                try:
-                    h_val = int(hor_res_str) if hor_res_str else 0
-                    v_val = int(ver_res_str) if ver_res_str else 0
-                    if h_val > 0 and v_val > 0:
-                        lv_hor_res = min(h_val, v_val)
-                    else:
-                        lv_hor_res = max(h_val, v_val)
-                except ValueError:
-                    pass
+def is_placeholder(path):
+    return (path.exists() and path.stat().st_size <= len(placeholder) + 1
+            and path.read_bytes().replace(b"\r\n", b"\n") == placeholder)
 
-            scale_font = None
-            scale_font_str = get_macro_value("SCALE_FONT")
-            if scale_font_str:
-                try:
-                    scale_font = float(scale_font_str)
-                except ValueError:
-                    pass
 
-            if scale_font is None:
-                scale_font = lv_hor_res / 240.0
+needs_generation = any(
+    not output.exists() or is_placeholder(output)
+    for output in outputs
+)
+# CMake needs the .cpp paths to exist while configuring. Headers must never be
+# placeholders: the persistent SCons signature database survives a clean and
+# would otherwise treat recreated placeholders as up-to-date derived targets.
+for output in outputs:
+    if output.suffix == ".cpp" and not output.exists():
+        output.write_bytes(placeholder)
+    elif output.suffix == ".h" and is_placeholder(output):
+        output.unlink()
 
-            limit_threshold = 125
-            limit_threshold_str = get_macro_value("LIMIT_GLYPHS_THRESHOLD")
-            if limit_threshold_str:
-                try:
-                    limit_threshold = int(limit_threshold_str)
-                except ValueError:
-                    pass
 
-            limit_chars = get_macro_value("LIMIT_GLYPHS_CHARS")
-            if limit_chars:
-                limit_chars = limit_chars.strip()
-                if limit_chars.startswith('"') and limit_chars.endswith('"'):
-                    limit_chars = limit_chars[1:-1]
-                elif limit_chars.startswith("'") and limit_chars.endswith("'"):
-                    limit_chars = limit_chars[1:-1]
-                limit_chars = limit_chars.replace('\\"', '"').replace("\\'", "'")
-            else:
-                limit_chars = "0123456789., "
+def macro_value(name, default=None):
+    for flag in env.get("BUILD_FLAGS", []):
+        if not isinstance(flag, str):
+            continue
+        compact = flag.replace("-D ", "-D", 1)
+        if compact.startswith(f"-D{name}="):
+            return compact.split("=", 1)[1].strip()
+    return default
 
-            base_sizes = [10, 11, 12, 14, 28, 48, 64]
-            # int(x + 0.5) matches Slint's Math.round (Python round() is banker's rounding)
-            scaled_sizes = sorted(list(set(int(sz * scale_font + 0.5) for sz in base_sizes)))
-            # The compiler embeds the full ~85-glyph charset per size by default, which
-            # would overflow flash for large sizes. We have patched the Slint compiler to only
-            # embed configured characters for font sizes over the configured threshold,
-            # making them highly space-efficient. Sizes larger than the 250 cap fall back to runtime scaling.
-            scaled_sizes = [sz for sz in scaled_sizes if sz <= 250]
-            font_sizes_str = ",".join(str(sz) for sz in scaled_sizes)
 
-            print(f"[Slint Compiler] Detected target parameters: LV_HOR_RES={lv_hor_res}, SCALE_FONT={scale_font}, LIMIT_GLYPHS_THRESHOLD={limit_threshold}, LIMIT_GLYPHS_CHARS='{limit_chars}'")
-            print(f"[Slint Compiler] Embedding font sizes: {font_sizes_str}")
-            os.environ["SLINT_FONT_SIZES"] = font_sizes_str
-            os.environ["SLINT_LIMIT_GLYPHS_THRESHOLD"] = str(limit_threshold)
-            os.environ["SLINT_LIMIT_GLYPHS_CHARS"] = limit_chars
-            args = [
-                slint_compiler_path,
-                "firmware/src/slint/app-window.slint",
-                "-I", "firmware/src/slint",
-                "-I", "firmware/src/slint/ui",
-                "--embed-resources", "embed-for-software-renderer",
-                "-o", "firmware/src/generated/app-window.h",
-                "--cpp-file", "firmware/src/generated/app-window.cpp"
-            ]
-            result = subprocess.run(args, capture_output=True, text=True)
-            if result.returncode == 0:
-                print("[Slint Compiler] Compilation successful!")
-            else:
-                print(f"[Slint Compiler] Compilation failed with exit code: {result.returncode}")
-                print(result.stderr)
-                raise Exception("Slint compilation failed")
-        else:
-            print(f"[Slint Compiler] Warning: Host compiler not found yet at: {slint_compiler_path}")
-            # Ensure placeholders exist so dependency scanning doesn't fail
-            for t in target:
-                t_path = str(t)
-                if not os.path.exists(t_path):
-                    with open(t_path, "w") as f:
-                        f.write("// Slint placeholder\n")
+width = int(macro_value("HOR_RES", "240"))
+height = int(macro_value("VER_RES", "240"))
+scale = float(macro_value("SCALE_FONT", str(min(width, height) / 240.0)))
+font_sizes = sorted({int(size * scale + 0.5) for size in [10, 11, 12, 14, 28, 48, 64]})
+font_settings = {
+    "SLINT_FONT_SIZES": ",".join(str(size) for size in font_sizes if size <= 250),
+    "SLINT_LIMIT_GLYPHS_THRESHOLD": macro_value("LIMIT_GLYPHS_THRESHOLD", "125"),
+    "SLINT_LIMIT_GLYPHS_CHARS": macro_value("LIMIT_GLYPHS_CHARS", "0123456789., ").replace('\\"', '"').replace("\\'", "'").strip("\"'"),
+}
 
-    # Register the compiler action to run when any .slint file changes
-    import glob
-    slint_sources = glob.glob("firmware/src/slint/**/*.slint", recursive=True)
-    env.Command(
-        [h_path, cpp_path],
-        slint_sources,
-        compile_slint_files
-    )
 
-    # This script is a `pre:` extra_script, so it runs before the espidf builder invokes
-    # CMake - nothing under slint-prebuilt/ exists yet on a clean tree and the path cannot
-    # be discovered, only agreed on. firmware/components/slint/CMakeLists.txt stages every
-    # mode (local source / git ref / prebuilt release) into this same fixed directory.
-    slint_prebuilt_dir = os.path.abspath(os.path.join(".pio", "build", env["PIOENV"], "slint-prebuilt", "current"))
-    slint_lib_path = os.path.join(slint_prebuilt_dir, "lib", "libslint_cpp.a")
-    slint_include_dir = os.path.join(slint_prebuilt_dir, "include")
-    slint_include_slint_dir = os.path.join(slint_include_dir, "slint")
-    
-    # Use SCons dynamic variable expansion to only link for the main firmware elf target
-    env.Append(LINKFLAGS=[f"${{'-Wl,--whole-archive {slint_lib_path.replace(os.sep, '/') } -Wl,--no-whole-archive' if 'bootloader' not in str(TARGETS[0]) else ''}}"])
-    env.Append(CPPPATH=[slint_include_dir, slint_include_slint_dir])
+def compile_slint_files(target, source, env):
+    if not compiler.is_file():
+        raise RuntimeError(f"Slint compiler was not staged by CMake: {compiler}")
+    print(f"[Slint Compiler] Compiling app-window.slint into {cpp_count} C++ files")
+    # Generate off to the side, then preserve unchanged outputs. Bare output
+    # filenames keep generated includes independent of the build directory.
+    with tempfile.TemporaryDirectory(dir=generated_dir) as temporary:
+        args = [str(compiler), str(project_dir / "firmware/src/slint/app-window.slint"),
+                "-I", str(project_dir / "firmware/src/slint"),
+                "-I", str(project_dir / "firmware/src/slint/ui"),
+                "--embed-resources", "embed-for-software-renderer", "-o", output_names[0]]
+        for name in output_names[1:]:
+            args.extend(["--cpp-file", name])
+        result = subprocess.run(args, cwd=temporary, env={**os.environ, **font_settings},
+                                capture_output=True, text=True, encoding="utf-8")
+        if result.returncode:
+            raise RuntimeError(f"Slint compilation failed:\n{result.stderr}")
+        public, private = split_resource_declarations((Path(temporary) / output_names[0]).read_text(encoding="utf-8"))
+        write_if_changed(outputs[0], public.encode())
+        write_if_changed(outputs[-1], private.encode())
+        for name, output in zip(output_names[1:], outputs[1:-1]):
+            content = (Path(temporary) / name).read_text(encoding="utf-8")
+            include = '#include "app-window.h"'
+            if content.count(include) != 1:
+                raise RuntimeError(f"Unexpected Slint include layout in {name}")
+            content = content.replace(include, include + '\n#include "app-window-resources.h"', 1)
+            write_if_changed(output, content.encode())
+
+
+# Track assets, compiler upgrades and font settings as well as .slint sources.
+sources = sorted((project_dir / "firmware/src/slint").rglob("*.slint"))
+sources += sorted(path for path in (project_dir / "firmware/assets").rglob("*") if path.is_file())
+generated_nodes = env.Command(
+    [str(path) for path in outputs],
+    [str(path) for path in sources] + [str(compiler), str(project_dir / "prebuild_hook.py"),
+                                     str(project_dir / "scripts/slint_codegen.py"),
+                                     env.Value(json.dumps(font_settings, sort_keys=True))],
+    env.VerboseAction(compile_slint_files, "Generating Slint UI"),
+)
+if needs_generation:
+    env.AlwaysBuild(generated_nodes)
+
+slint_dir = build_dir / "slint-prebuilt" / "current"
+slint_lib = (slint_dir / "lib/libslint_cpp.a").as_posix()
+env.Append(LINKFLAGS=[f"${{'-Wl,--whole-archive {slint_lib} -Wl,--no-whole-archive' if 'bootloader' not in str(TARGETS[0]) else ''}}"])
+env.AppendUnique(CPPPATH=[str(slint_dir / "include"), str(slint_dir / "include/slint")])

@@ -1,6 +1,6 @@
 #include "screens/boards_screen.h"
 #include "esp_log.h"
-#include "generated/app-window.h"
+#include "slint_generated/app-window.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/settings.h"

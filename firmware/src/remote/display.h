@@ -32,7 +32,7 @@ extern "C"
 #endif
 
 #ifdef __cplusplus
-  #include "generated/app-window.h"
+  #include "slint_generated/app-window.h"
   #include <optional>
 
 class SlintWindowPtr {

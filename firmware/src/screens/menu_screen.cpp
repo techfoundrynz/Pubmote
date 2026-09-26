@@ -4,7 +4,7 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "generated/app-window.h"
+#include "slint_generated/app-window.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"

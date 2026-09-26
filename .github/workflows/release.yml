@@ -128,7 +128,7 @@ jobs:
     - name: Build PlatformIO Project
       run: |
           sed -i 's/build_type = debug/build_type = release/g' platformio.ini
-          pio run
+          pio run -t package
       env:
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"release\"
@@ -153,4 +153,3 @@ jobs:
         prerelease: true
         fail_on_unmatched_files: true
         generate_release_notes: true
-        

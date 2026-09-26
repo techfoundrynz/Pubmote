@@ -1,8 +1,22 @@
 Import("env")
 import os
-import time
 import zipfile
 import shutil
+
+# Order application compilation after generation even when the implicit scanner
+# has no header to inspect yet on a clean build.
+env.Depends(
+    env.get("PIOBUILDFILES", []),
+    env.File(os.path.join(env.subst("$BUILD_DIR"), "slint_generated", "app-window.h")),
+)
+
+# The archive is passed through LINKFLAGS for PlatformIO's ESP-IDF integration.
+# Track its contents explicitly so replacing a local/prebuilt Slint library
+# invalidates the ELF instead of silently reusing an old firmware image.
+env.Depends(
+    "$BUILD_DIR/firmware.elf",
+    env.File(os.path.join(env.subst("$BUILD_DIR"), "slint-prebuilt", "current", "lib", "libslint_cpp.a")),
+)
 
 def zip_build_files(source, target, env):
     # Define relevant paths
@@ -22,9 +36,7 @@ def zip_build_files(source, target, env):
 
     # Retrieve build information
     release_variant = "dev"
-    version_major = 0
-    version_minor = 0
-    version_patch = 0
+    version_major, version_minor, version_patch = env.GetProjectOption("custom_firmware_version").split(".")
 
     for flag in build_flags:
         if "RELEASE_VARIANT=" in flag:
@@ -70,5 +82,11 @@ def zip_build_files(source, target, env):
         print(f"Copying firmware.elf to: {env['PIOENV']}-{version_string}.elf")
         shutil.copy(elf_source, elf_dest)
 
-# Add postbuild call
-env.AddPostAction("$BUILD_DIR/firmware.bin", zip_build_files)
+# Packaging is explicit: local edit/build/upload cycles need only firmware.bin.
+env.AddCustomTarget(
+    "package",
+    "$BUILD_DIR/firmware.bin",
+    zip_build_files,
+    title="Package firmware",
+    description="Build firmware and create the versioned release ZIP/BIN/ELF",
+)
