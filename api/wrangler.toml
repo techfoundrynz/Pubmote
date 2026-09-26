@@ -2,5 +2,11 @@ name = "pubmote-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
+# Per Cloudflare location; allow several devices behind the same public IP.
+[[ratelimits]]
+name = "OTA_RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }
+
 [observability]
 enabled = true

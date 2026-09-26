@@ -9,11 +9,17 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt",
-    "format:check": "oxfmt --check"
+    "format:check": "oxfmt --check",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@octokit/graphql": "^9.0.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",
     "typescript": "^5.7.2",
+    "vitest": "^3.2.7",
     "wrangler": "^4.54.0"
   }
 }

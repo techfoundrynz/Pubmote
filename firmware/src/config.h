@@ -12,6 +12,10 @@
 // Log heap and per-task stack use through boot and at runtime. See utilities/mem_debug.h
 #define DEBUG_MEMORY 0
 
+#ifndef API_BASE_URL
+  #define API_BASE_URL "https://api.pubmote.com"
+#endif
+
 // Minimum required VESC receiver API version
 #define MIN_RCV_API_VERSION 1
 

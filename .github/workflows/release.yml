@@ -132,7 +132,6 @@ jobs:
       env:
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"release\"
-            -D RELEASES_AUTH_TOKEN=\"${{ secrets.RELEASES_AUTH_TOKEN }}\"
 
     - name: Create Git Tag
       run: |

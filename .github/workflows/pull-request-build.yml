@@ -110,7 +110,6 @@ jobs:
         env:
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"qa\"
-            -D RELEASES_AUTH_TOKEN=\"${{ secrets.RELEASES_AUTH_TOKEN }}\"
   
       # Create a folder named according to the build and copy the build files into it
       - name: Create build folder and copy files
