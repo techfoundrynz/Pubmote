@@ -1,0 +1,3 @@
+lupa==2.6
+pyserial==3.5
+Pillow==12.3.0

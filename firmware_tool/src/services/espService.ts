@@ -731,9 +731,35 @@ export class ESPService {
         this.bootloaderReady = true;
       }
 
-      if (eraseFlash) {
-        this.log('Erasing flash...');
-        await loader.eraseFlash();
+      // Resolve the filesystem from the supplied (or existing) partition table before erasing.
+      let littlefsAddress: number | undefined;
+      if (firmware.littlefs) {
+        const table = firmware.partitionTable
+          ? new Uint8Array(await firmware.partitionTable.arrayBuffer())
+          : new Uint8Array(await loader.readFlash(0x8000, 0x1000));
+        const view = new DataView(table.buffer, table.byteOffset, table.byteLength);
+        for (let offset = 0; offset + 32 <= table.length; offset += 32) {
+          if (view.getUint16(offset, true) !== 0x50aa) break;
+          const label = new TextDecoder()
+            .decode(table.slice(offset + 12, offset + 28))
+            .replace(/\0.*$/, '');
+          if (table[offset + 2] !== 1 || table[offset + 3] !== 0x83 || label !== 'littlefs')
+            continue;
+          const address = view.getUint32(offset + 4, true);
+          const size = view.getUint32(offset + 8, true);
+          if (
+            firmware.littlefs.size !== size ||
+            address < 0x10000 ||
+            address % 4096 ||
+            size % 4096 ||
+            address + size > 0x1000000
+          ) {
+            throw new Error('LittleFS image does not match the device partition layout');
+          }
+          littlefsAddress = address;
+          break;
+        }
+        if (littlefsAddress === undefined) throw new Error('No LittleFS partition found');
       }
 
       const files: Array<{
@@ -763,6 +789,19 @@ export class ESPService {
           address: 0x10000,
           name: 'Application',
         });
+      }
+
+      if (firmware.littlefs && littlefsAddress !== undefined) {
+        files.push({
+          data: await this.readFileAsString(firmware.littlefs),
+          address: littlefsAddress,
+          name: 'LittleFS filesystem',
+        });
+      }
+
+      if (eraseFlash) {
+        this.log('Erasing flash...');
+        await loader.eraseFlash();
       }
 
       this.log('Writing firmware...');

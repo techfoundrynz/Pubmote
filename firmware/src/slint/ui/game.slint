@@ -1,29 +1,70 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 
+export struct GameLabel { text: string, font: int, color: color, mono: bool, bold: bool, height: float, cells: [color], cell: float, wrap: bool }
 export struct GameDraw {
     kind: int, x: float, y: float, w: float, h: float,
     radius: float, color: color, text: string, font: int,
+    border: float, edge: color, mono: bool, bold: bool, image: image,
+    labels: [GameLabel], spacing: float, pad-bottom: float,
 }
+export struct GamePosition { x: float, y: float, w: float, h: float }
 export component GameScreen inherits Rectangle {
     in property <[GameDraw]> commands;
+    in property <[GamePosition]> positions;
     in property <string> error;
     in property <bool> active;
     callback tick;
     callback event(int, float, float);
     callback back;
     background: #071a2b;
+    pure function pixel(value: length) -> length {
+        return Math.abs(value - Math.round(value / 1px) * 1px) < 0.001px ? Math.round(value / 1px) * 1px : value;
+    }
+    pure function font-size(size: int) -> length {
+        return size == 10 ? Theme.font-10 : size == 11 ? Theme.font-11 : size == 12 ? Theme.font-12 : size == 14 ? Theme.font-14 : size == 28 ? Theme.font-28 : Math.round(size * Theme.font-scale) * 1px;
+    }
     clip: true;
     Timer { interval: 33ms; running: root.active && root.error == ""; triggered => { root.tick(); } }
-    for cmd in root.commands: Rectangle {
-        x: cmd.x * parent.width / 100; y: cmd.y * parent.height / 100;
-        width: cmd.w * parent.width / 100; height: cmd.h * parent.height / 100;
+    for cmd[index] in root.commands: Rectangle {
+        property <GamePosition> pos: root.positions[index];
+        x: root.pixel(self.pos.x * (parent.width / 100)); y: root.pixel(self.pos.y * (parent.height / 100));
+        width: root.pixel(self.pos.w * parent.width / 100); height: root.pixel(self.pos.h * parent.height / 100);
         background: cmd.kind == 0 ? cmd.color : transparent;
         border-radius: cmd.radius * parent.width / 100;
+        border-width: cmd.border * parent.width / 100;
+        border-color: cmd.edge;
+        if cmd.kind == 2: Image { width: 100%; height: 100%; source: cmd.image; colorize: cmd.color; image-fit: fill; }
+        if cmd.kind == 3: VerticalLayout {
+            alignment: center;
+            spacing: cmd.spacing * root.height / 100;
+            padding-bottom: cmd.pad-bottom * root.height / 100;
+            for label in cmd.labels: Text {
+                height: label.height >= 0 ? label.height * root.height / 100 : self.preferred-height;
+                text: label.text; color: label.color;
+                font-family: label.mono ? "JetBrains Mono" : "Saira";
+                font-size: root.font-size(label.font);
+                font-weight: label.bold ? 600 : 400;
+                horizontal-alignment: center; wrap: label.wrap ? word-wrap : no-wrap;
+                if label.cell > 0: Rectangle {
+                    width: label.cell * root.width / 100 * 4; height: self.width;
+                    x: (parent.width - self.width) / 2; y: 0;
+                    for color[i] in label.cells: Rectangle {
+                        x: Math.mod(i, 4) * label.cell * root.width / 100;
+                        y: Math.floor(i / 4) * label.cell * root.width / 100;
+                        width: label.cell * root.width / 100 - 1px; height: self.width;
+                        background: color;
+                    }
+                }
+            }
+        }
         if cmd.kind == 1: Text {
-            width: 100%; height: 100%; text: cmd.text; color: cmd.color;
-            font-size: cmd.font * Theme.scale * 1px;
-            horizontal-alignment: center; vertical-alignment: center;
+            x: 0; y: 0;
+            width: parent.pos.w == 0 ? self.preferred-width : parent.width; height: parent.pos.h == 0 ? self.preferred-height : parent.height; text: cmd.text; color: cmd.color;
+            font-size: root.font-size(cmd.font);
+            font-family: cmd.mono ? "JetBrains Mono" : "Saira";
+            font-weight: cmd.bold ? 600 : 400;
+            horizontal-alignment: parent.pos.w == 0 ? left : center; vertical-alignment: parent.pos.h == 0 ? top : center;
         }
     }
     keys := FocusScope {
@@ -36,7 +77,8 @@ export component GameScreen inherits Rectangle {
     }
     TouchArea {
         enabled: root.active;
-        width: 100%; height: parent.height * 0.86;
+        width: 100%; height: 100%;
+        moved => { root.event(7, self.mouse-x / root.width * 100, self.mouse-y / root.height * 100); }
         pointer-event(e) => {
             if e.button == PointerEventButton.left {
                 if e.kind == PointerEventKind.down {
@@ -52,9 +94,20 @@ export component GameScreen inherits Rectangle {
         Text { x: parent.width * 0.15; width: 70%; height: 100%; text: root.error; color: #ff9b9b;
             font-size: Theme.font-12; wrap: word-wrap; horizontal-alignment: center; vertical-alignment: center; }
     }
-    AppButton {
-        x: (parent.width - self.width) / 2; y: parent.height * 0.86;
-        width: parent.width * 0.3; height: parent.height * 0.09;
+    for cmd[index] in root.commands: Rectangle {
+        // Only Exit participates in this overlay. Empty per-command wrappers
+        // must not mirror every moving sprite's geometry and dirty bounds.
+        x: 0; y: 0; width: 0; height: 0;
+        if cmd.kind == 4 && root.error == "": AppButton {
+            x: root.positions[index].x * root.width / 100; y: root.positions[index].y * root.height / 100;
+            width: root.positions[index].w * root.width / 100; height: root.positions[index].h * root.height / 100;
+            text: "Exit"; variant: "secondary"; size: "small";
+            enabled: root.active; clicked => { root.back(); }
+        }
+    }
+    if root.error != "": AppButton {
+        x: (parent.width - self.width) / 2; y: Math.round(parent.height * 0.96 / 1px) * 1px - self.height;
+        width: Math.round(parent.width * 0.26 / 1px) * 1px; height: Math.round(parent.height * 0.10 / 1px) * 1px;
         text: "Exit"; variant: "secondary"; size: "small";
         enabled: root.active; clicked => { root.back(); }
     }

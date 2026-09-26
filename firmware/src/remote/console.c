@@ -5,12 +5,12 @@
 #include "esp_console.h"
 #include "esp_core_dump.h"
 #include "esp_log.h"
+#include "games/game_store.h"
 #include "linenoise/linenoise.h"
 #include "powermanagement.h"
 #include "remoteinputs.h"
 #include "settings.h"
 #include "settings_console.h"
-#include "games/game_store.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

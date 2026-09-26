@@ -156,6 +156,7 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       const partitionsFile = contents.file('partitions.bin');
       const firmwareFile = contents.file('firmware.bin');
       const elfFile = contents.file('firmware.elf');
+      const littlefsFile = contents.file('littlefs.bin');
 
       if (!bootloaderFile || !partitionsFile || !firmwareFile) {
         throw new Error('Invalid firmware package - missing required files');
@@ -176,7 +177,10 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       const [bootloaderBlob, partitionsBlob, firmwareBlob] = blobs;
       const elfBlob = elfFile ? blobs[3] : null;
 
+      const littlefsBlob = littlefsFile ? await littlefsFile.async('blob') : null;
+
       return {
+        littlefs: littlefsBlob ? new File([littlefsBlob], 'littlefs.bin') : null,
         bootloader: new File([bootloaderBlob], 'bootloader.bin', {
           type: 'application/octet-stream',
         }),
@@ -212,6 +216,7 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
         partitionTable: extractedFiles.partitionTable,
         application: extractedFiles.application,
         elf: extractedFiles.elf,
+        littlefs: extractedFiles.littlefs,
         zip: file,
       });
       onSelectFirmware(extractedFiles);
@@ -356,7 +361,6 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
           </button>
         </div>
       </div>
-
       {fetchError && <div className="p-3 rounded-lg bg-red-900/50 text-red-200">{fetchError}</div>}
 
       <Dialog
@@ -382,6 +386,12 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
             onChange={handleIndividualFileChange('partitionTable')}
           />
 
+          <FileUpload
+            label="Select LittleFS (optional)"
+            icon={<HardDrive className="h-full w-full" />}
+            file={files.littlefs ?? null}
+            onChange={handleIndividualFileChange('littlefs')}
+          />
           <FileUpload
             label="Select Application"
             icon={<Cpu className="h-full w-full" />}

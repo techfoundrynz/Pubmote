@@ -27,7 +27,7 @@ import { ArcGauge } from "ui/arc-gauge.slint";
 import { ConfirmDialog } from "ui/confirm-dialog.slint";
 import { BoardsScreen, PairedBoard } from "ui/boards.slint";
 import { GamesScreen } from "ui/games.slint";
-import { GameScreen, GameDraw } from "ui/game.slint";
+import { GameScreen, GameDraw, GamePosition } from "ui/game.slint";
 
 export enum Screen {
     splash,
@@ -145,6 +145,7 @@ export global UiState {
     in property <bool> button-supported: false;
     in property <[string]> installed-games: [];
     in property <[GameDraw]> game-draw: [];
+    in property <[GamePosition]> game-positions: [];
     in property <string> game-error: "";
     callback open-games();
     callback games-launch(int);
@@ -524,6 +525,7 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.game) - root.view-x) * self.width;
         y: (screen-y(Screen.game) - root.view-y) * self.height;
         commands: UiState.game-draw;
+        positions: UiState.game-positions;
         error: UiState.game-error;
         active: UiState.screen == Screen.game;
         tick => { UiState.game-tick(); }

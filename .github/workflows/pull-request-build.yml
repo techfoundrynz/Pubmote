@@ -106,7 +106,7 @@ jobs:
       - name: Build PlatformIO Project
         run: |
           sed -i 's/build_type = debug/build_type = release/g' platformio.ini
-          pio run -e ${{ needs.check_comment.outputs.build_value }}
+          pio run -t package -e ${{ needs.check_comment.outputs.build_value }}
         env:
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"qa\"
@@ -119,6 +119,7 @@ jobs:
           cp .pio/build/${{ needs.check_comment.outputs.build_value }}/bootloader.bin "$build_folder/"
           cp .pio/build/${{ needs.check_comment.outputs.build_value }}/partitions.bin "$build_folder/"
           cp .pio/build/${{ needs.check_comment.outputs.build_value }}/firmware.bin "$build_folder/"
+          cp .pio/build/${{ needs.check_comment.outputs.build_value }}/littlefs.bin "$build_folder/"
 
       # Upload the ZIP file as an artifact
       - name: Upload build artifacts

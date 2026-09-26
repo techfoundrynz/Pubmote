@@ -2,6 +2,8 @@ Import("env")
 import os
 import zipfile
 import shutil
+import subprocess
+from pathlib import Path
 
 # Order application compilation after generation even when the implicit scanner
 # has no header to inspect yet on a clean build.
@@ -23,12 +25,23 @@ def zip_build_files(source, target, env):
     project_dir = os.getcwd()
     build_dir = os.path.join(project_dir, f".pio{os.sep}build")
 
+    # Always rebuild the filesystem image so packages contain current content.
+    fs_image = Path(env.subst("$BUILD_DIR")) / "littlefs.bin"
+    tool_dir = Path(env.PioPlatform().get_package_dir("tool-mklittlefs"))
+    tool = tool_dir / ("mklittlefs.exe" if os.name == "nt" else "mklittlefs")
+    subprocess.run([
+        env.subst("$PYTHONEXE"), str(Path(project_dir) / "scripts/install_game.py"),
+        "--build-fs", str(fs_image), "--mklittlefs", str(tool),
+        *map(str, sorted((Path(project_dir) / "games").glob("*.lua"))),
+    ], check=True)
+
     # Define list of files to zip
     files_to_zip = [
         "bootloader.bin",
         "partitions.bin",
         "firmware.bin",
-        "firmware.elf"
+        "firmware.elf",
+        "littlefs.bin"
     ]
 
     # Get build flags for parsing

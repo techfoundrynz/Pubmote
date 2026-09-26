@@ -8,6 +8,8 @@ foreach(index RANGE 0 ${slint_last_cpp})
 endforeach()
 
 idf_component_register(SRCS ${app_sources} ${slint_sources} INCLUDE_DIRS "${CMAKE_BINARY_DIR}")
+# Match espressif/lua's private numeric ABI (32-bit integers and floats).
+target_compile_definitions(${COMPONENT_LIB} PRIVATE LUA_32BITS=1)
 # Retain line/function information without enormous generated variable debug
 # tables. Handwritten source files keep their normal debug settings.
 option(SLINT_FULL_DEBUG "Emit full debug information for generated Slint code" OFF)

@@ -6,6 +6,9 @@ on:
     paths:
       - 'firmware/**'
       - 'platformio.ini'
+      - 'postbuild_hook.py'
+      - 'scripts/install_game.py'
+      - 'games/**'
       - 'tests/**'
       - 'firmware_tool/src/services/settingsProtocol.ts'
       - 'firmware_tool/tests/settingsProtocol.test.ts'
@@ -44,7 +47,7 @@ jobs:
         run: pip install --upgrade platformio
 
       - name: Build PlatformIO Project
-        run: pio run -e leafblaster_esp32s3_touch_amoled_143_co5300
+        run: pio run -t package -e leafblaster_esp32s3_touch_amoled_143_co5300
         env:
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"release\"

@@ -136,3 +136,81 @@ test('disconnect clears the ready bootloader state before a later normal connect
   await service.flash(firmware, false, vi.fn());
   expect(mocks.loader.main).toHaveBeenCalledTimes(3);
 });
+
+function gamesFirmware(size = 0x200000): FirmwareFiles {
+  const table = new Uint8Array(32);
+  const view = new DataView(table.buffer);
+  view.setUint16(0, 0x50aa, true);
+  table[2] = 1;
+  table[3] = 0x83;
+  view.setUint32(4, 0xdf0000, true);
+  view.setUint32(8, 0x200000, true);
+  table.set(new TextEncoder().encode('littlefs'), 12);
+  return {
+    ...firmware,
+    partitionTable: { arrayBuffer: async () => table.buffer } as File,
+    littlefs: { name: 'littlefs.bin', size } as File,
+  };
+}
+
+test('bundled games are always flashed to LittleFS without erasing high scores', async () => {
+  const service = device();
+  await service.connect();
+  await service.flash(gamesFirmware(), false, vi.fn());
+  expect(mocks.loader.eraseFlash).not.toHaveBeenCalled();
+  expect(mocks.loader.writeFlash).toHaveBeenCalledWith(
+    expect.objectContaining({
+      fileArray: [
+        { data: 'firmware bytes', address: 0 },
+        { data: 'firmware bytes', address: 0x8000 },
+        { data: 'firmware bytes', address: 0x10000 },
+        { data: 'firmware bytes', address: 0xdf0000 },
+      ],
+      eraseAll: false,
+    }),
+  );
+});
+
+test('a mismatched filesystem image fails before any erase or write', async () => {
+  const service = device();
+  await service.connect();
+  await expect(service.flash(gamesFirmware(123), true, vi.fn())).rejects.toThrow('does not match');
+  expect(mocks.loader.eraseFlash).not.toHaveBeenCalled();
+  expect(mocks.loader.writeFlash).not.toHaveBeenCalled();
+});
+
+test('filesystem-only installs read the existing partition table', async () => {
+  const service = device();
+  await service.connect();
+  const bundle = gamesFirmware();
+  mocks.loader.readFlash.mockResolvedValue(
+    new Uint8Array(await bundle.partitionTable!.arrayBuffer()),
+  );
+  await service.flash(
+    {
+      bootloader: null,
+      partitionTable: null,
+      application: null,
+      elf: null,
+      littlefs: bundle.littlefs,
+    },
+    false,
+    vi.fn(),
+  );
+  expect(mocks.loader.readFlash).toHaveBeenLastCalledWith(0x8000, 0x1000);
+  expect(mocks.loader.writeFlash).toHaveBeenCalledWith(
+    expect.objectContaining({
+      fileArray: [{ data: 'firmware bytes', address: 0xdf0000 }],
+    }),
+  );
+});
+
+test('missing LittleFS partition fails before erasing the device', async () => {
+  const service = device();
+  await service.connect();
+  await expect(
+    service.flash({ ...gamesFirmware(), partitionTable: null }, true, vi.fn()),
+  ).rejects.toThrow('No LittleFS partition');
+  expect(mocks.loader.eraseFlash).not.toHaveBeenCalled();
+  expect(mocks.loader.writeFlash).not.toHaveBeenCalled();
+});
