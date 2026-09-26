@@ -8,7 +8,7 @@ on:
       - 'platformio.ini'
       - 'postbuild_hook.py'
       - 'scripts/install_game.py'
-      - 'games/**'
+      - 'fs/games/**'
       - 'tests/**'
       - 'firmware_tool/src/services/settingsProtocol.ts'
       - 'firmware_tool/tests/settingsProtocol.test.ts'

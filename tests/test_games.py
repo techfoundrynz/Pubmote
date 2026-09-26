@@ -17,7 +17,7 @@ from install_game import validate_package
 class Game(GameHost):
     def __init__(self, name):
         self.saved = []
-        super().__init__(ROOT / 'games' / f'{name}.lua', 123)
+        super().__init__(ROOT / 'fs' / 'games' / f'{name}.lua', 123)
 
     def save_score(self, value):
         self.saved.append(value)
@@ -36,7 +36,7 @@ class Game(GameHost):
 
 class GamesTest(unittest.TestCase):
     def test_shipping_packages_have_valid_metadata_and_size(self):
-        for path in (ROOT / 'games').glob('*.lua'):
+        for path in (ROOT / 'fs' / 'games').glob('*.lua'):
             metadata, data = validate_package(path)
             self.assertEqual(metadata['id'], path.stem)
             self.assertGreater(len(data), 0)
@@ -139,14 +139,14 @@ class GamesTest(unittest.TestCase):
 class PreviewTest(unittest.TestCase):
     def test_idle_and_ignored_events_do_not_request_redraw(self):
         for name in ('flappy', 'whack', 'tetris'):
-            host = GameHost(ROOT / 'games' / f'{name}.lua')
+            host = GameHost(ROOT / 'fs' / 'games' / f'{name}.lua')
             self.assertIs(host.call('update', .033, 0, 0, True), False)
             self.assertIs(host.call('event', 7, 0, 0), False)
             host.call('event', 0, 0, 0)
             self.assertIsNot(host.call('update', .033, 0, 0, True), False)
 
     def test_whack_supports_firmware_requiring_omitted_sprite_tint(self):
-        host = GameHost(ROOT / 'games' / 'whack.lua')
+        host = GameHost(ROOT / 'fs' / 'games' / 'whack.lua')
         host.lua.execute('''
             local sprite = game.sprite
             game.sprite = function(...)
@@ -169,7 +169,7 @@ class PreviewTest(unittest.TestCase):
                 GameHost(path)
 
     def test_drawing_limit_is_enforced(self):
-        host = GameHost(ROOT / 'games' / 'flappy.lua')
+        host = GameHost(ROOT / 'fs' / 'games' / 'flappy.lua')
         for _ in range(512):
             host.rect(0, 0, 1, 1, 0)
         with self.assertRaisesRegex(ValueError, 'Drawing budget'):

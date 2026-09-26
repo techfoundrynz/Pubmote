@@ -32,7 +32,7 @@ def zip_build_files(source, target, env):
     subprocess.run([
         env.subst("$PYTHONEXE"), str(Path(project_dir) / "scripts/install_game.py"),
         "--build-fs", str(fs_image), "--mklittlefs", str(tool),
-        *map(str, sorted((Path(project_dir) / "games").glob("*.lua"))),
+        *map(str, sorted((Path(project_dir) / "fs" / "games").glob("*.lua"))),
     ], check=True)
 
     # Define list of files to zip

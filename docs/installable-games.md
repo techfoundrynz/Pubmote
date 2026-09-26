@@ -1,9 +1,9 @@
 # Installable games
 
-Tetris, Flappy Penguin, and Whack-a-Baguette now live in `games/*.lua`.
+Tetris, Flappy Penguin, and Whack-a-Baguette now live in `fs/games/*.lua`.
 The old per-game C++ handlers and Slint screens have been removed. Firmware
 provides one Lua host and a generic Slint drawing surface; installed packages
-supply gameplay and visuals. The Games menu discovers files in LittleFS.
+supply gameplay and visuals. The Games menu discovers files in `/games` inside LittleFS (`/littlefs/games` in firmware).
 
 ## Develop on a PC
 
@@ -11,7 +11,7 @@ Install Python 3.11 or newer with Tk support (included with the standard Windows
 Python installer), then run from the repository root:
 
 ```sh
-python -m pip install -r games/requirements-dev.txt
+python -m pip install -r fs/games/requirements-dev.txt
 python scripts/play_game.py whack
 python scripts/play_game.py tetris
 python scripts/play_game.py flappy
@@ -59,7 +59,7 @@ Lua package needs installing.
 For initial installs and distribution, build one image containing the games:
 
 ```sh
-python scripts/install_game.py --build-fs .pio/littlefs.bin games/tetris.lua games/flappy.lua games/whack.lua
+python scripts/install_game.py --build-fs .pio/littlefs.bin fs/games/tetris.lua fs/games/flappy.lua fs/games/whack.lua
 ```
 
 This uses PlatformIO's `mklittlefs`, or a tool supplied with `--mklittlefs PATH`.
@@ -84,14 +84,14 @@ Flash firmware that includes the game host once. Subsequent game updates do not
 need a firmware rebuild. Close any serial monitor before running the installer:
 
 ```sh
-python scripts/install_game.py --port COM5 games/tetris.lua games/flappy.lua games/whack.lua
+python scripts/install_game.py --port COM5 fs/games/tetris.lua fs/games/flappy.lua fs/games/whack.lua
 ```
 
 A previously unused LittleFS partition needs explicit formatting. `--format`
 **erases the entire LittleFS partition**, including any non-game files:
 
 ```sh
-python scripts/install_game.py --port COM5 --format games/tetris.lua games/flappy.lua games/whack.lua
+python scripts/install_game.py --port COM5 --format fs/games/tetris.lua fs/games/flappy.lua fs/games/whack.lua
 python scripts/install_game.py --port COM5 --remove whack
 ```
 
@@ -179,8 +179,8 @@ states; final hardware gameplay and performance validation remains necessary.
 ## Web installation and updates
 
 `pio run -t package` builds a shared filesystem image, `littlefs.bin`, and includes
-it in each firmware ZIP. It currently contains `games/*.lua`; the filesystem can
-also hold other content. Nightly, release, and requested PR build bundles include it.
+it in each firmware ZIP. It currently packages `fs/games/*.lua` under `/games`;
+the filesystem can also hold other content. Nightly, release, and requested PR build bundles include it.
 The web tool automatically flashes this image whenever it is present in a ZIP
 or selected under Individual Files. It replaces the entire LittleFS filesystem,
 including custom files and games. Packages without it leave LittleFS unchanged unless

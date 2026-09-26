@@ -312,7 +312,7 @@ def main():
     args = parser.parse_args()
     path = Path(args.game)
     if not path.is_file():
-        path = ROOT / 'games' / f'{args.game}.lua'
+        path = ROOT / 'fs' / 'games' / f'{args.game}.lua'
     if not path.is_file():
         parser.error(f'Game not found: {path}')
     if not 240 <= args.size <= 1200:

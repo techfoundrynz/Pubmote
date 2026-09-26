@@ -37,7 +37,7 @@ def main():
     start = original.index('component WhackScenery')
     end = original.index('export component WhackScreen', start)
     scenery_source = 'export ' + original[start:end]
-    scenery_source = scenery_source.replace('../assets/whack/', (ROOT/'games/assets/whack').as_posix()+'/')
+    scenery_source = scenery_source.replace('../assets/whack/', (ROOT/'fs/games/assets/whack').as_posix()+'/')
     source = work/'original-scenery.slint'
     source.write_text(scenery_source)
     lines = [START, 'local function load_art()', ' local width=game.screen()']
@@ -57,7 +57,7 @@ def main():
         assert total<=256*1024
     lines.append(' end')
     lines.extend(['end', END])
-    path = ROOT / 'games/whack.lua'
+    path = ROOT / 'fs/games/whack.lua'
     source = path.read_text()
     if START in source:
         source = source[:source.index(START)] + '\n'.join(lines) + source[source.index(END) + len(END):]
