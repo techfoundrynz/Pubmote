@@ -107,10 +107,9 @@ static esp_err_t sy6970_init() {
   PPM.setChargeTargetVoltage(4224); // Increased from 4208 to push resting voltage closer to 4.20V
   PPM.setPrechargeCurr(128);
   PPM.setChargerConstantCurr(1024);
-  PPM.enableAutoDetectionDPDM();                              // Enable DPDM auto-detection
-  PPM.enableHVDCP();                                          // Enable HVDCP detection
-  PPM.setHighVoltageRequestedRange(PowersSY6970::REQUEST_9V); // Set high voltage request to 9V
-  PPM.enableMeasure();                                        // ADC must be enabled before reading voltages
+  PPM.enableAutoDetectionDPDM(); // Enable DPDM auto-detection
+  PPM.disableHVDCP();
+  PPM.enableMeasure(); // ADC must be enabled before reading voltages
   PPM.enableCharge();
 
   // Safe IR compensation to NOT trip hardware BATOVP (4.37V limit)
