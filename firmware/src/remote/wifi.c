@@ -139,8 +139,6 @@ esp_err_t wifi_init(void) {
 
   ESP_LOGI(TAG, "Initializing WiFi station mode after ESP-NOW");
 
-  // comms_prepare_wifi() may retain the initialized driver from ESP-NOW.
-
   // Small delay to ensure ESP-NOW cleanup is complete
   vTaskDelay(pdMS_TO_TICKS(100));
 
@@ -207,7 +205,7 @@ esp_err_t wifi_init(void) {
     }
   }
 
-  // Reuse retained ESP-NOW buffers instead of reallocating fragmented SRAM.
+  // Reuse the WiFi driver if retained from ESP-NOW.
   wifi_mode_t existing_mode;
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   esp_err_t wifi_init_ret = esp_wifi_get_mode(&existing_mode);

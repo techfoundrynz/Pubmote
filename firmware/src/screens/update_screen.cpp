@@ -174,8 +174,6 @@ static void confirm_exit_restart() {
 
 static void update_task(void *pvParameters) {
   ESP_LOGI(TAG, "update_task started");
-  // setup_update_properties prepares the radio before allocating this stack:
-  // BLE releases its memory; ESP-NOW retains WiFi buffers for station mode.
   if (!wifi_is_initialized()) {
     ESP_LOGI(TAG, "Initializing Wi-Fi...");
     esp_err_t init_err = wifi_init();
@@ -335,9 +333,7 @@ extern "C" void setup_update_properties() {
   transmitter_deinit();
   esp_task_wdt_reset();
 
-  // Prepare the radio BEFORE creating the update task. BLE must release its
-  // controller memory for the 10KB stack; ESP-NOW retains the WiFi driver so
-  // station startup does not have to reallocate its buffers on a fragmented heap.
+  // Release BLE memory before allocating the task stack; retain ESP-NOW's WiFi buffers.
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   if (comms_is_initialized()) {
     ESP_LOGI(TAG, "Preparing comms for Wi-Fi before update task...");
@@ -365,8 +361,7 @@ extern "C" void setup_update_properties() {
     BaseType_t ret = xTaskCreate(update_task, "update_task", 10240, NULL, 5, (TaskHandle_t *)&update_task_handle);
     if (ret != pdPASS) {
       ESP_LOGE(TAG, "Failed to create update_task! Error: %d", (int)ret);
-      // No worker exists to service Retry. Keep the restart exit available;
-      // rebuilding board comms here would reuse a partially handed-off driver.
+      // Without a worker, recovery requires a restart.
       current_update_step = UPDATE_STEP_STARTUP_ERROR;
       update_status_ui();
     }
