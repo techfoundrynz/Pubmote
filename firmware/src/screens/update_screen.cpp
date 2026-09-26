@@ -236,7 +236,8 @@ static void update_task(void *pvParameters) {
       const char *asset_name = HW_TYPE;
       // Keep the 1.6KB release response off the stack used by HTTPS/TLS.
       std::unique_ptr<github_asset_urls_t, decltype(&free)> result(
-          static_cast<github_asset_urls_t *>(heap_caps_calloc(1, sizeof(github_asset_urls_t), MALLOC_CAP_SPIRAM)), &free);
+          static_cast<github_asset_urls_t *>(heap_caps_calloc(1, sizeof(github_asset_urls_t), MALLOC_CAP_SPIRAM)),
+          &free);
       if (!result) {
         result.reset(static_cast<github_asset_urls_t *>(calloc(1, sizeof(github_asset_urls_t))));
       }
@@ -263,7 +264,8 @@ static void update_task(void *pvParameters) {
       firmware_version_t prerelease_version = parse_version_string(result->prerelease_tag);
       firmware_version_t current_version = {.major = VERSION_MAJOR, .minor = VERSION_MINOR, .patch = VERSION_PATCH};
       bool has_stable_update = result->stable_found && is_version_greater(&stable_version, &current_version);
-      bool has_prerelease_update = result->prerelease_found && is_version_greater(&prerelease_version, &current_version);
+      bool has_prerelease_update =
+          result->prerelease_found && is_version_greater(&prerelease_version, &current_version);
 #endif
 
       available_update_count = 0;
@@ -297,8 +299,7 @@ static void update_task(void *pvParameters) {
     case UPDATE_STEP_IN_PROGRESS: {
       ESP_LOGI(TAG, "Starting OTA update: %s", available_updates[selected_update_index].download_url);
       esp_err_t ret = apply_ota(available_updates[selected_update_index].download_url, simple_progress_callback);
-      ESP_LOGI(TAG, "Updater stack minimum free after OTA: %u bytes",
-               (unsigned)uxTaskGetStackHighWaterMark(NULL));
+      ESP_LOGI(TAG, "Updater stack minimum free after OTA: %u bytes", (unsigned)uxTaskGetStackHighWaterMark(NULL));
       if (ret == ESP_OK) {
         current_update_step = UPDATE_STEP_COMPLETE;
         ESP_LOGI(TAG, "OTA successful");
@@ -378,7 +379,8 @@ extern "C" void setup_update_properties() {
     BaseType_t ret = pdFAIL;
     const TickType_t started = xTaskGetTickCount();
     do {
-      ret = xTaskCreate(update_task, "update_task", UPDATE_TASK_STACK_BYTES, NULL, 5, (TaskHandle_t *)&update_task_handle);
+      ret = xTaskCreate(update_task, "update_task", UPDATE_TASK_STACK_BYTES, NULL, 5,
+                        (TaskHandle_t *)&update_task_handle);
       if (ret == pdPASS)
         break;
       // Self-deleted tasks release their stacks only when the idle task runs.
