@@ -1,363 +1,135 @@
 #include "update_client.h"
 #include "cJSON.h"
+#include "config.h"
 #include "esp_crt_bundle.h"
+#include "esp_heap_caps.h"
 #include "esp_http_client.h"
 #include "esp_ota_ops.h"
 #include <esp_err.h>
 #include <esp_https_ota.h>
 #include <esp_log.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static const char *TAG = "PUBMOTE-OTA";
+#define MANIFEST_CAPACITY 2048
 
-#define GITHUB_API "https://api.github.com"
-#define GITHUB_REPO "techfoundrynz/pubmote"
-#define MAX_HTTP_OUTPUT_BUFFER 8192
-
-// Escaped version of release_query.gql
-static const char *GITHUB_ASSET_QUERY =
-    "{"
-    "\"query\": \"{"
-    "repository(owner: \\\"techfoundrynz\\\", name: \\\"Pubmote\\\") {"
-    "stable: latestRelease {"
-    "name "
-    "tagName "
-    "assets: releaseAssets(first: 50) {"
-    "nodes {"
-    "name "
-    "downloadUrl "
-    "}"
-    "}"
-    "}"
-    "prerelease: releases(first: 2, orderBy: {field: CREATED_AT, direction: DESC}) {"
-    "nodes {"
-    "name "
-    "tagName "
-    "isPrerelease "
-    "assets: releaseAssets(first: 50) {"
-    "nodes {"
-    "name "
-    "downloadUrl "
-    "}"
-    "}"
-    "}"
-    "}"
-    "}"
-    "}\""
-    "}";
-
-// Buffer to store HTTP response
-static char *http_response_buffer = NULL;
-static int http_response_len = 0;
-
-// Helper function to check if asset is a .bin file
-static bool is_bin_file(const char *filename) {
-  if (filename == NULL) {
+// Only accept release assets from our repository as the initial download URL.
+// GitHub redirects are still followed by ESP-IDF with TLS verification enabled.
+static bool valid_asset_url(const char *url) {
+  const char *prefix = "https://github.com/techfoundrynz/";
+  if (!url || strncmp(url, prefix, strlen(prefix)) != 0)
     return false;
-  }
-
-  int len = strlen(filename);
-  if (len < 4) {
+  const char *repo = url + strlen(prefix);
+  if (strncmp(repo, "Pubmote/releases/download/", sizeof("Pubmote/releases/download/") - 1) != 0 &&
+      strncmp(repo, "pubmote/releases/download/", sizeof("pubmote/releases/download/") - 1) != 0)
     return false;
+  size_t length = strlen(url);
+  if (length >= 512 || length < 4 || strcmp(url + length - 4, ".bin") != 0)
+    return false;
+  for (const unsigned char *p = (const unsigned char *)url; *p; ++p) {
+    if (*p <= 32 || *p >= 127 || *p == '?' || *p == '#' || *p == '\\')
+      return false;
   }
-
-  // Check if filename ends with ".bin"
-  return strcmp(filename + len - 4, ".bin") == 0;
+  return true;
 }
 
-// Helper function to match asset name and type
-static bool matches_asset_criteria(const char *filename, const char *asset_name) {
-  if (filename == NULL || asset_name == NULL) {
-    return false;
-  }
+typedef struct {
+  char *data;
+  size_t length;
+  bool overflow;
+} manifest_response_t;
 
-  // Must contain the asset name AND be a .bin file
-  return (strstr(filename, asset_name) != NULL) && is_bin_file(filename);
-}
-
-// HTTP event handler
-static esp_err_t http_event_handler(esp_http_client_event_t *evt) {
-  switch (evt->event_id) {
-  case HTTP_EVENT_ERROR:
-    ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
-    break;
-  case HTTP_EVENT_ON_CONNECTED:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
-    break;
-  case HTTP_EVENT_HEADER_SENT:
-    ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
-    break;
-  case HTTP_EVENT_ON_HEADER:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-    break;
-  case HTTP_EVENT_ON_DATA:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-
-    // Allocate buffer for response if not already allocated (use PSRAM)
-    if (http_response_buffer == NULL) {
-      http_response_buffer = heap_caps_malloc(32768, MALLOC_CAP_SPIRAM);
-      if (http_response_buffer == NULL) {
-        // Fallback to internal memory if PSRAM fails
-        http_response_buffer = malloc(32768);
-      }
-      http_response_len = 0;
-
-      if (http_response_buffer == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate HTTP response buffer");
-        return ESP_ERR_NO_MEM;
-      }
+static esp_err_t manifest_event(esp_http_client_event_t *evt) {
+  manifest_response_t *response = evt->user_data;
+  if (evt->event_id == HTTP_EVENT_ON_DATA) {
+    if (evt->data_len < 0 || (size_t)evt->data_len >= MANIFEST_CAPACITY - response->length) {
+      response->overflow = true;
+      return ESP_FAIL;
     }
-
-    // Copy data to buffer if there's space
-    if (http_response_len + evt->data_len < 32768 - 1) {
-      memcpy(http_response_buffer + http_response_len, evt->data, evt->data_len);
-      http_response_len += evt->data_len;
-      http_response_buffer[http_response_len] = '\0'; // Null terminate
-    }
-    else {
-      ESP_LOGW(TAG, "HTTP response too large, truncating");
-    }
-    break;
-  case HTTP_EVENT_ON_FINISH:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
-    break;
-  case HTTP_EVENT_DISCONNECTED:
-    ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
-    break;
-  case HTTP_EVENT_REDIRECT:
-    ESP_LOGD(TAG, "HTTP_EVENT_REDIRECT");
-    break;
+    memcpy(response->data + response->length, evt->data, evt->data_len);
+    response->length += evt->data_len;
+    response->data[response->length] = '\0';
   }
   return ESP_OK;
 }
 
-/**
- * Fetch asset download URLs for stable, prerelease, and nightly builds
- *
- * @param asset_name The asset name to search for (substring matching)
- * @param result Pointer to structure that will hold all found URLs
- *
- * @return ESP_OK if at least one asset found, ESP_ERR_NOT_FOUND if none found, other error codes on failure
- */
+static bool read_channel(const cJSON *root, const char *name, char *url, size_t url_size, char *tag, size_t tag_size,
+                         bool *found) {
+  const cJSON *channel = cJSON_GetObjectItemCaseSensitive(root, name);
+  if (cJSON_IsNull(channel))
+    return true;
+  if (!cJSON_IsObject(channel))
+    return false;
+  const cJSON *url_json = cJSON_GetObjectItemCaseSensitive(channel, "url");
+  const cJSON *tag_json = cJSON_GetObjectItemCaseSensitive(channel, "tag");
+  if (!cJSON_IsString(url_json) || !cJSON_IsString(tag_json) || !valid_asset_url(url_json->valuestring) ||
+      strlen(url_json->valuestring) >= url_size || !tag_json->valuestring[0] ||
+      strlen(tag_json->valuestring) >= tag_size)
+    return false;
+  strcpy(url, url_json->valuestring);
+  strcpy(tag, tag_json->valuestring);
+  *found = true;
+  return true;
+}
+
 esp_err_t fetch_all_asset_urls(const char *asset_name, github_asset_urls_t *result) {
-  if (asset_name == NULL || result == NULL) {
-    ESP_LOGE(TAG, "Invalid parameters");
+  if (!asset_name || !result)
     return ESP_ERR_INVALID_ARG;
-  }
-
-  // Initialize result structure
-  memset(result, 0, sizeof(github_asset_urls_t));
-
-  ESP_LOGI(TAG, "Searching for .bin asset: '%s' in all release types", asset_name);
-  ESP_LOGI(TAG, "Note: .zip files will be ignored, only .bin files returned");
-
-  const char *graphql_url = "https://api.github.com/graphql";
-
-  // Reset response buffer
-  if (http_response_buffer != NULL) {
-    free(http_response_buffer);
-    http_response_buffer = NULL;
-    http_response_len = 0;
-  }
-
+  memset(result, 0, sizeof(*result));
+  size_t board_len = strlen(asset_name);
+  if (!board_len || board_len > 96 || strspn(asset_name, "abcdefghijklmnopqrstuvwxyz0123456789_") != board_len)
+    return ESP_ERR_INVALID_ARG;
+  char url[sizeof(API_BASE_URL) + 128];
+  snprintf(url, sizeof(url), API_BASE_URL "/ota/v1/releases?board=%s", asset_name);
+  manifest_response_t response = {0};
+  response.data = heap_caps_calloc(1, MANIFEST_CAPACITY, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!response.data)
+    response.data = calloc(1, MANIFEST_CAPACITY);
+  if (!response.data)
+    return ESP_ERR_NO_MEM;
   esp_http_client_config_t config = {
-      .url = graphql_url,
-      .event_handler = http_event_handler,
+      .url = url,
+      .event_handler = manifest_event,
+      .user_data = &response,
       .timeout_ms = 15000,
-      .buffer_size = 4096,
-      .buffer_size_tx = 4096,
-      .method = HTTP_METHOD_POST,
-      .crt_bundle_attach = esp_crt_bundle_attach, // This enables certificate verification
+      .buffer_size = 1024,
+      .buffer_size_tx = 512,
+      .crt_bundle_attach = esp_crt_bundle_attach,
+      .disable_auto_redirect = true,
   };
-
   esp_http_client_handle_t client = esp_http_client_init(&config);
-
+  if (!client) {
+    free(response.data);
+    return ESP_ERR_NO_MEM;
+  }
   esp_http_client_set_header(client, "Accept", "application/json");
-  esp_http_client_set_header(client, "Content-Type", "application/json");
-  esp_http_client_set_header(client, "User-Agent", "ESP32-GitHub-Client");
-#ifdef RELEASES_AUTH_TOKEN
-  esp_http_client_set_header(client, "Authorization", "Bearer " RELEASES_AUTH_TOKEN);
-#endif
-  esp_http_client_set_post_field(client, GITHUB_ASSET_QUERY, strlen(GITHUB_ASSET_QUERY));
-
   esp_err_t err = esp_http_client_perform(client);
-  esp_err_t function_result = ESP_ERR_NOT_FOUND; // Default to not found
-
-  if (err == ESP_OK) {
-    int status_code = esp_http_client_get_status_code(client);
-
-    if (status_code == 200 && http_response_buffer != NULL) {
-      ESP_LOGI(TAG, "GraphQL response: %d bytes", http_response_len);
-
-      cJSON *json = cJSON_Parse(http_response_buffer);
-      if (json != NULL) {
-        cJSON *data = cJSON_GetObjectItem(json, "data");
-        if (data && cJSON_GetObjectItem(data, "repository")) {
-          cJSON *repository = cJSON_GetObjectItem(data, "repository");
-
-          // Search in stable release
-          cJSON *stable = cJSON_GetObjectItem(repository, "stable");
-          if (stable && !cJSON_IsNull(stable)) {
-            cJSON *tag_name = cJSON_GetObjectItem(stable, "tagName");
-            cJSON *assets = cJSON_GetObjectItem(stable, "assets");
-
-            ESP_LOGI(TAG, "Searching in stable release: %s",
-                     cJSON_IsString(tag_name) ? tag_name->valuestring : "unknown");
-
-            if (assets && cJSON_IsString(tag_name)) {
-              cJSON *asset_nodes = cJSON_GetObjectItem(assets, "nodes");
-              if (cJSON_IsArray(asset_nodes)) {
-                int asset_count = cJSON_GetArraySize(asset_nodes);
-
-                for (int i = 0; i < asset_count; i++) {
-                  cJSON *asset = cJSON_GetArrayItem(asset_nodes, i);
-                  cJSON *name = cJSON_GetObjectItem(asset, "name");
-                  cJSON *download_url = cJSON_GetObjectItem(asset, "downloadUrl");
-
-                  if (cJSON_IsString(name) && cJSON_IsString(download_url)) {
-                    if (matches_asset_criteria(name->valuestring, asset_name)) {
-                      ESP_LOGI(TAG, "Found asset in stable: %s", name->valuestring);
-
-                      strncpy(result->stable_url, download_url->valuestring, sizeof(result->stable_url) - 1);
-                      result->stable_url[sizeof(result->stable_url) - 1] = '\0';
-
-                      strncpy(result->stable_tag, tag_name->valuestring, sizeof(result->stable_tag) - 1);
-                      result->stable_tag[sizeof(result->stable_tag) - 1] = '\0';
-
-                      result->stable_found = true;
-                      function_result = ESP_OK;
-                      break; // Take first match
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          // Search in recent releases for prerelease and nightly
-          cJSON *recent_releases = cJSON_GetObjectItem(repository, "prerelease");
-          if (recent_releases) {
-            cJSON *nodes = cJSON_GetObjectItem(recent_releases, "nodes");
-            if (cJSON_IsArray(nodes)) {
-              for (int i = 0; i < cJSON_GetArraySize(nodes); i++) {
-                cJSON *release = cJSON_GetArrayItem(nodes, i);
-                cJSON *tag_name = cJSON_GetObjectItem(release, "tagName");
-                cJSON *assets = cJSON_GetObjectItem(release, "assets");
-
-                if (!cJSON_IsString(tag_name))
-                  continue;
-
-                const char *tag_str = tag_name->valuestring;
-                bool is_nightly = strcmp(tag_str, "nightly") == 0;
-
-                if (assets) {
-                  cJSON *asset_nodes = cJSON_GetObjectItem(assets, "nodes");
-                  if (cJSON_IsArray(asset_nodes)) {
-                    int asset_count = cJSON_GetArraySize(asset_nodes);
-
-                    for (int j = 0; j < asset_count; j++) {
-                      cJSON *asset = cJSON_GetArrayItem(asset_nodes, j);
-                      cJSON *name = cJSON_GetObjectItem(asset, "name");
-                      cJSON *download_url = cJSON_GetObjectItem(asset, "downloadUrl");
-
-                      if (cJSON_IsString(name) && cJSON_IsString(download_url)) {
-                        if (matches_asset_criteria(name->valuestring, asset_name)) {
-
-                          // Categorize the release
-                          if (is_nightly && !result->nightly_found) {
-                            ESP_LOGI(TAG, "Found asset in nightly: %s (%s)", name->valuestring, tag_str);
-
-                            strncpy(result->nightly_url, download_url->valuestring, sizeof(result->nightly_url) - 1);
-                            result->nightly_url[sizeof(result->nightly_url) - 1] = '\0';
-
-                            strncpy(result->nightly_tag, tag_str, sizeof(result->nightly_tag) - 1);
-                            result->nightly_tag[sizeof(result->nightly_tag) - 1] = '\0';
-
-                            result->nightly_found = true;
-                            function_result = ESP_OK;
-                          }
-                          else if (!is_nightly && !result->prerelease_found) {
-                            ESP_LOGI(TAG, "Found asset in prerelease: %s (%s)", name->valuestring, tag_str);
-
-                            strncpy(result->prerelease_url, download_url->valuestring,
-                                    sizeof(result->prerelease_url) - 1);
-                            result->prerelease_url[sizeof(result->prerelease_url) - 1] = '\0';
-
-                            strncpy(result->prerelease_tag, tag_str, sizeof(result->prerelease_tag) - 1);
-                            result->prerelease_tag[sizeof(result->prerelease_tag) - 1] = '\0';
-
-                            result->prerelease_found = true;
-                            function_result = ESP_OK;
-                          }
-
-                          // Break inner loop if we found the asset in this release
-                          break;
-                        }
-                      }
-                    }
-                  }
-                }
-
-                // Break if we found both prerelease and nightly
-                if (result->prerelease_found && result->nightly_found) {
-                  break;
-                }
-              }
-            }
-          }
-        }
-
-        cJSON_Delete(json);
-      }
-      else {
-        ESP_LOGE(TAG, "Failed to parse JSON response");
-        function_result = ESP_ERR_INVALID_RESPONSE;
-      }
-    }
-    else {
-      ESP_LOGE(TAG, "HTTP request failed with status: %d", status_code);
-      function_result = ESP_ERR_HTTP_CONNECT;
-    }
-  }
-  else {
-    ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
-    function_result = err;
-  }
-
-  // Cleanup
+  int status = esp_http_client_get_status_code(client);
+  // Release TLS/HTTP allocations before allocating the JSON tree.
   esp_http_client_cleanup(client);
-  if (http_response_buffer != NULL) {
-    free(http_response_buffer);
-    http_response_buffer = NULL;
+  if (response.overflow || (err == ESP_OK && status != 200))
+    err = ESP_ERR_INVALID_RESPONSE;
+  if (err == ESP_OK) {
+    cJSON *json = cJSON_ParseWithOpts(response.data, NULL, true);
+    if (!cJSON_IsObject(json) ||
+        !read_channel(json, "stable", result->stable_url, sizeof(result->stable_url), result->stable_tag,
+                      sizeof(result->stable_tag), &result->stable_found) ||
+        !read_channel(json, "prerelease", result->prerelease_url, sizeof(result->prerelease_url),
+                      result->prerelease_tag, sizeof(result->prerelease_tag), &result->prerelease_found) ||
+        !read_channel(json, "nightly", result->nightly_url, sizeof(result->nightly_url), result->nightly_tag,
+                      sizeof(result->nightly_tag), &result->nightly_found)) {
+      memset(result, 0, sizeof(*result));
+      err = ESP_ERR_INVALID_RESPONSE;
+    }
+    else if (!result->stable_found && !result->prerelease_found && !result->nightly_found) {
+      err = ESP_ERR_NOT_FOUND;
+    }
+    cJSON_Delete(json);
   }
-
-  // Log results
-  ESP_LOGI(TAG, "=== SEARCH RESULTS FOR '%s' ===", asset_name);
-  if (result->stable_found) {
-    ESP_LOGI(TAG, "Stable: %s -> %s", result->stable_tag, result->stable_url);
-  }
-  else {
-    ESP_LOGI(TAG, "Stable: Not found");
-  }
-
-  if (result->prerelease_found) {
-    ESP_LOGI(TAG, "Prerelease: %s -> %s", result->prerelease_tag, result->prerelease_url);
-  }
-  else {
-    ESP_LOGI(TAG, "Prerelease: Not found");
-  }
-
-  if (result->nightly_found) {
-    ESP_LOGI(TAG, "Nightly: %s -> %s", result->nightly_tag, result->nightly_url);
-  }
-  else {
-    ESP_LOGI(TAG, "Nightly: Not found");
-  }
-
-  if (function_result == ESP_ERR_NOT_FOUND) {
-    ESP_LOGW(TAG, "Asset '%s' not found in any release type", asset_name);
-  }
-
-  return function_result;
+  free(response.data);
+  return err;
 }
 
 /**
@@ -401,6 +173,8 @@ bool is_version_greater(const firmware_version_t *a, const firmware_version_t *b
 typedef void (*ota_progress_callback_t)(const char *status);
 
 esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback) {
+  if (!valid_asset_url(url))
+    return ESP_ERR_INVALID_ARG;
   ESP_LOGI(TAG, "Starting advanced HTTPS OTA update");
   if (progress_callback) {
     progress_callback("Initializing OTA...");
@@ -411,8 +185,8 @@ esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback) 
       .crt_bundle_attach = esp_crt_bundle_attach,
       .timeout_ms = 120000,
       .keep_alive_enable = true,
-      .buffer_size = 8192,
-      .buffer_size_tx = 4096,
+      .buffer_size = 4096,
+      .buffer_size_tx = 1024,
   };
 
   esp_https_ota_config_t ota_config = {
@@ -435,6 +209,7 @@ esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback) 
   err = esp_https_ota_get_img_desc(https_ota_handle, &app_desc);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "esp_https_ota_read_img_desc failed: %s", esp_err_to_name(err));
+    esp_https_ota_abort(https_ota_handle);
     return err;
   }
 
@@ -490,9 +265,11 @@ esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback) 
     progress_callback("Download complete\nValidating...");
   }
 
-  if (esp_https_ota_is_complete_data_received(https_ota_handle) != true) {
+  if (err != ESP_OK || !esp_https_ota_is_complete_data_received(https_ota_handle)) {
     ESP_LOGE(TAG, "Complete data was not received.");
-    err = ESP_FAIL;
+    if (err == ESP_OK)
+      err = ESP_FAIL;
+    esp_https_ota_abort(https_ota_handle);
   }
   else {
     err = esp_https_ota_finish(https_ota_handle);
