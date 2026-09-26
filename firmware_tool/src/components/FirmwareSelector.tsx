@@ -8,7 +8,6 @@ import { cn } from '../utils/cn';
 import JSZip from 'jszip';
 import { useToast } from '../context/ToastContext';
 import { Dialog } from '../components/ui/Dialog';
-import { fetchWithCorsProxy } from '../utils/corsProxy';
 
 interface FileUploadProps {
   label: string;
@@ -277,26 +276,23 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       setIsDownloading(true);
       toastId = toast.info('Downloading firmware package...', 0);
 
-      const response = await fetchWithCorsProxy(url);
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
 
       const blob = await response.blob();
       // Extract filename from URL or default
-      const filename = url.split('/').pop() || 'firmware.zip';
+      const filename = new URL(url).searchParams.get('asset') || 'firmware.zip';
       const file = new File([blob], filename, { type: 'application/zip' });
 
       await handlePackageFileChange(file);
     } catch (err) {
-      console.error(
-        'Failed to download firmware via CORS proxy, falling back to direct download:',
-        err,
-      );
+      console.error('Failed to download firmware package:', err);
       setErrorDialog({
         isOpen: true,
         title: 'Download Failed',
         message: 'Auto-download failed. Opening browser to download manually.',
       });
-      // Fallback to direct download
+      // Open the package endpoint for a manual download
       window.open(url, '_blank');
     } finally {
       if (toastId) toast.dismiss(toastId);
@@ -385,18 +381,17 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
             file={files.partitionTable}
             onChange={handleIndividualFileChange('partitionTable')}
           />
-
-          <FileUpload
-            label="Select LittleFS (optional)"
-            icon={<HardDrive className="h-full w-full" />}
-            file={files.littlefs ?? null}
-            onChange={handleIndividualFileChange('littlefs')}
-          />
           <FileUpload
             label="Select Application"
             icon={<Cpu className="h-full w-full" />}
             file={files.application}
             onChange={handleIndividualFileChange('application')}
+          />
+          <FileUpload
+            label="Select LittleFS"
+            icon={<HardDrive className="h-full w-full" />}
+            file={files.littlefs ?? null}
+            onChange={handleIndividualFileChange('littlefs')}
           />
         </div>
       ) : (
