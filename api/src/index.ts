@@ -8,6 +8,8 @@
  * Usage: https://your-worker.workers.dev/cors?https://github.com/user/repo/file
  */
 
+import { otaResponse, type OtaEnv } from './ota';
+
 // Whitelist patterns for allowed target URLs (GitHub domains only)
 const ALLOWED_URL_PATTERNS = [
   /^https?:\/\/(www\.)?github\.com\/.*/,
@@ -122,9 +124,13 @@ function createForbiddenResponse(reason: string): Response {
  * Main fetch handler
  */
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: OtaEnv): Promise<Response> {
     const url = new URL(request.url);
     const isPreflight = request.method === 'OPTIONS';
+
+    if (url.pathname === '/ota/v1/releases') {
+      return otaResponse(request, env, caches.default);
+    }
 
     // Handle /cors path
     if (url.pathname === '/cors') {
