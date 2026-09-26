@@ -8,6 +8,8 @@
  * Usage: https://your-worker.workers.dev/cors?https://github.com/user/repo/file
  */
 
+import { petsResponse } from './pets';
+
 // Whitelist patterns for allowed target URLs (GitHub domains only)
 const ALLOWED_URL_PATTERNS = [
   /^https?:\/\/(www\.)?github\.com\/.*/,
@@ -125,6 +127,14 @@ export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const isPreflight = request.method === 'OPTIONS';
+
+    if (url.pathname.startsWith('/pets/')) {
+      const cached = request.method === 'GET' ? await caches.default.match(request) : undefined;
+      if (cached) return cached;
+      const response = await petsResponse(request);
+      if (response.ok) await caches.default.put(request, response.clone());
+      return response;
+    }
 
     // Handle /cors path
     if (url.pathname === '/cors') {

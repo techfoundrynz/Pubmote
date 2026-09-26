@@ -4,12 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:pets": "node --test tests/pets.test.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt",
     "format:check": "oxfmt --check"
+  },
+  "dependencies": {
+    "@cf-wasm/photon": "0.4.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",

@@ -18,6 +18,7 @@
 import { Theme } from "theme.slint";
 import { RoundStats } from "round-stats.slint";
 import { SquareStats } from "square-stats.slint";
+import { Pet } from "pet.slint";
 
 export component StatsScreen inherits Rectangle {
     in property <bool> square-mode: Theme.is-square-mode;
@@ -38,6 +39,8 @@ export component StatsScreen inherits Rectangle {
     in property <bool> lights-on: false;
     in property <string> board-state-message: "";
     in property <int> vehicle-type: 0;
+    in property <image> pet-atlas;
+    in property <bool> pet-visible;
     callback secondary-stat-left-clicked();
     callback board-battery-clicked();
 
@@ -47,6 +50,18 @@ export component StatsScreen inherits Rectangle {
     callback swiped-down;
 
     background: Theme.bg;
+
+    // Draw the companion beneath both stats layouts, including their dials.
+    if root.pet-visible && root.pet-atlas.width > 0 && root.board-state-message == "": Pet {
+        width: min(root.width, root.height) * 0.55;
+        height: self.width * 52 / 48;
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        opacity: 0.6;
+        atlas: root.pet-atlas;
+        moving: root.is-connected && root.speed-fraction > 0.01;
+        running: !root.pocket-mode-active;
+    }
 
     // Swipe down detection
     TouchArea {
@@ -73,7 +88,7 @@ export component StatsScreen inherits Rectangle {
         }
     }
 
-    if !root.square-mode : RoundStats {
+    if !root.square-mode: RoundStats {
         width: 100%;
         height: 100%;
         speed: root.speed;
@@ -99,7 +114,7 @@ export component StatsScreen inherits Rectangle {
         board-battery-clicked => { root.board-battery-clicked(); }
     }
 
-    if root.square-mode : SquareStats {
+    if root.square-mode: SquareStats {
         width: 100%;
         height: 100%;
         speed: root.speed;

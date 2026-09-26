@@ -29,6 +29,7 @@ export component MenuScreen inherits Rectangle {
     callback toggle-hbm;
     callback toggle-led;
     callback settings;
+    callback pets;
     callback calibration;
     callback pairing;
     callback about;
@@ -133,6 +134,14 @@ export component MenuScreen inherits Rectangle {
                 height: 1px;
                 background: Theme.track;
             }
+
+            AppButton {
+                text: "Pets";
+                variant: "ghost";
+                right-text: "\u{203a}";
+                clicked => { root.pets(); }
+            }
+            Rectangle { height: 1px; background: Theme.track; }
 
             if root.joystick-supported: VerticalLayout {
                 spacing: 0;
