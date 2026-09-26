@@ -4,9 +4,9 @@
 #include "config.h"
 #include "connection.h"
 #include "esp_log.h"
-#include "slint_generated/app-window.h"
 #include "remote/display.h"
 #include "settings.h"
+#include "slint_generated/app-window.h"
 #include <stdio.h>
 #include <string.h>
 

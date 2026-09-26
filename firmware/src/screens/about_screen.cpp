@@ -5,10 +5,10 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "slint_generated/app-window.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/stats.h"
+#include "slint_generated/app-window.h"
 #include <memory>
 #include <stdio.h>
 #include <string.h>

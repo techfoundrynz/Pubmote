@@ -4,11 +4,11 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "slint_generated/app-window.h"
 #include "remote/display.h"
 #include "remote/input_router.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
+#include "slint_generated/app-window.h"
 #include <algorithm>
 #include <stdio.h>
 #include <string.h>

@@ -2,9 +2,9 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "slint_generated/app-window.h"
 #include "remote/display.h"
 #include "remote/stats.h"
+#include "slint_generated/app-window.h"
 
 static const char *TAG = "PUBREMOTE-CHARGE_SCREEN";
 static TaskHandle_t charge_task_handle = NULL;

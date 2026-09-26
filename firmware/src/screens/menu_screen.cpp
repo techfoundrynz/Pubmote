@@ -4,7 +4,6 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "slint_generated/app-window.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"
@@ -12,6 +11,7 @@
 #include "remote/powermanagement.h"
 #include "remote/settings.h"
 #include "remote/stats.h"
+#include "slint_generated/app-window.h"
 #include <atomic>
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";

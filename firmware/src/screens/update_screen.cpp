@@ -8,7 +8,6 @@
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 #include "esp_timer.h"
-#include "slint_generated/app-window.h"
 #include "ota/update_client.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
@@ -17,6 +16,7 @@
 #include "remote/settings.h"
 #include "remote/transmitter.h"
 #include "remote/wifi.h"
+#include "slint_generated/app-window.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,10 +1,10 @@
 #include "screens/settings_screen.h"
 #include "esp_log.h"
-#include "slint_generated/app-window.h"
 #include "remote/color_utils.h"
 #include "remote/display.h"
 #include "remote/led.h"
 #include "remote/settings.h"
+#include "slint_generated/app-window.h"
 
 static const char *TAG = "PUBREMOTE-SETTINGS_SCREEN";
 
