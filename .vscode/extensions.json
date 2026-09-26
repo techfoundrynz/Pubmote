@@ -2,12 +2,13 @@
     // See http://go.microsoft.com/fwlink/?LinkId=827846
     // for the documentation about the extensions.json format
     "recommendations": [
+        "oxc.oxc-vscode",
         "platformio.platformio-ide",
-        "slint.slint",
-        "oxc.oxc-vscode"
+        "slint.slint"
     ],
     "unwantedRecommendations": [
+        "dbaeumer.vscode-eslint",
         "ms-vscode.cpptools-extension-pack",
-        "dbaeumer.vscode-eslint"
+        "pioarduino.pioarduino-ide"
     ]
 }

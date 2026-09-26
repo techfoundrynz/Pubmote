@@ -160,6 +160,23 @@ static esp_err_t espnow_driver_deinit(void) {
   return ESP_OK;
 }
 
+esp_err_t espnow_prepare_wifi(void) {
+  if (!is_initialized)
+    return ESP_OK;
+  esp_now_unregister_recv_cb();
+  esp_now_unregister_send_cb();
+  esp_err_t err = esp_now_deinit();
+  if (err != ESP_OK)
+    return err;
+  is_initialized = false;
+  // Preserve the driver's internal SRAM buffers. Reallocating them after the
+  // UI has fragmented the heap can fail even with plenty of total free memory.
+  // Restart STA after attaching its IP netif so it receives the start event.
+  err = esp_wifi_stop();
+  ESP_LOGI(TAG, "ESP-NOW stopped; retaining WiFi driver for IP handoff");
+  return err;
+}
+
 static bool espnow_driver_is_initialized(void) {
   return is_initialized;
 }

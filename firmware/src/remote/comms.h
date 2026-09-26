@@ -58,6 +58,8 @@ extern "C"
   // Public APIs
   esp_err_t comms_init(void);
   esp_err_t comms_deinit(void);
+  // Stop the active transport for IP networking, retaining ESP-NOW's WiFi buffers.
+  esp_err_t comms_prepare_wifi(void);
   bool comms_is_initialized(void);
 
   esp_err_t comms_register_recv_cb(comms_recv_cb_t cb);

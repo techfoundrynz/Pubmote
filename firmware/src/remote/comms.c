@@ -4,6 +4,7 @@
 
 extern const CommsDriver espnow_driver;
 extern const CommsDriver ble_driver;
+extern esp_err_t espnow_prepare_wifi(void);
 
 static const CommsDriver *drivers[] = {&espnow_driver, &ble_driver};
 
@@ -39,6 +40,12 @@ esp_err_t comms_deinit(void) {
     return active_driver->deinit();
   }
   return ESP_ERR_INVALID_STATE;
+}
+
+esp_err_t comms_prepare_wifi(void) {
+  if (active_driver == &espnow_driver)
+    return espnow_prepare_wifi();
+  return comms_deinit();
 }
 
 bool comms_is_initialized(void) {

@@ -139,8 +139,7 @@ esp_err_t wifi_init(void) {
 
   ESP_LOGI(TAG, "Initializing WiFi station mode after ESP-NOW");
 
-  // Note: Call esp_now_deinit() before calling this function
-  // Do NOT call esp_wifi_stop() or esp_wifi_deinit() - leave WiFi running
+  // comms_prepare_wifi() may retain the initialized driver from ESP-NOW.
 
   // Small delay to ensure ESP-NOW cleanup is complete
   vTaskDelay(pdMS_TO_TICKS(100));
@@ -208,9 +207,12 @@ esp_err_t wifi_init(void) {
     }
   }
 
-  // WiFi should already be initialized from ESP-NOW
+  // Reuse retained ESP-NOW buffers instead of reallocating fragmented SRAM.
+  wifi_mode_t existing_mode;
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-  esp_err_t wifi_init_ret = esp_wifi_init(&cfg);
+  esp_err_t wifi_init_ret = esp_wifi_get_mode(&existing_mode);
+  if (wifi_init_ret == ESP_ERR_WIFI_NOT_INIT)
+    wifi_init_ret = esp_wifi_init(&cfg);
   if (wifi_init_ret != ESP_OK && wifi_init_ret != ESP_ERR_INVALID_STATE) {
     ESP_LOGE(TAG, "Failed to initialize WiFi: %s (free internal: %u, largest block: %u)",
              esp_err_to_name(wifi_init_ret), heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
