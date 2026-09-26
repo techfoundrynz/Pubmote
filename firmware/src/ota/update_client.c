@@ -1,6 +1,6 @@
 #include "update_client.h"
-#include "config.h"
 #include "cJSON.h"
+#include "config.h"
 #include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
 #include "esp_http_client.h"
@@ -19,14 +19,18 @@ static const char *TAG = "PUBMOTE-OTA";
 // GitHub redirects are still followed by ESP-IDF with TLS verification enabled.
 static bool valid_asset_url(const char *url) {
   const char *prefix = "https://github.com/techfoundrynz/";
-  if (!url || strncmp(url, prefix, strlen(prefix)) != 0) return false;
+  if (!url || strncmp(url, prefix, strlen(prefix)) != 0)
+    return false;
   const char *repo = url + strlen(prefix);
   if (strncmp(repo, "Pubmote/releases/download/", sizeof("Pubmote/releases/download/") - 1) != 0 &&
-      strncmp(repo, "pubmote/releases/download/", sizeof("pubmote/releases/download/") - 1) != 0) return false;
+      strncmp(repo, "pubmote/releases/download/", sizeof("pubmote/releases/download/") - 1) != 0)
+    return false;
   size_t length = strlen(url);
-  if (length >= 512 || length < 4 || strcmp(url + length - 4, ".bin") != 0) return false;
+  if (length >= 512 || length < 4 || strcmp(url + length - 4, ".bin") != 0)
+    return false;
   for (const unsigned char *p = (const unsigned char *)url; *p; ++p) {
-    if (*p <= 32 || *p >= 127 || *p == '?' || *p == '#' || *p == '\\') return false;
+    if (*p <= 32 || *p >= 127 || *p == '?' || *p == '#' || *p == '\\')
+      return false;
   }
   return true;
 }
@@ -51,17 +55,19 @@ static esp_err_t manifest_event(esp_http_client_event_t *evt) {
   return ESP_OK;
 }
 
-static bool read_channel(const cJSON *root, const char *name, char *url, size_t url_size,
-                         char *tag, size_t tag_size, bool *found) {
+static bool read_channel(const cJSON *root, const char *name, char *url, size_t url_size, char *tag, size_t tag_size,
+                         bool *found) {
   const cJSON *channel = cJSON_GetObjectItemCaseSensitive(root, name);
-  if (cJSON_IsNull(channel)) return true;
-  if (!cJSON_IsObject(channel)) return false;
+  if (cJSON_IsNull(channel))
+    return true;
+  if (!cJSON_IsObject(channel))
+    return false;
   const cJSON *url_json = cJSON_GetObjectItemCaseSensitive(channel, "url");
   const cJSON *tag_json = cJSON_GetObjectItemCaseSensitive(channel, "tag");
-  if (!cJSON_IsString(url_json) || !cJSON_IsString(tag_json) ||
-      !valid_asset_url(url_json->valuestring) ||
-      strlen(url_json->valuestring) >= url_size ||
-      !tag_json->valuestring[0] || strlen(tag_json->valuestring) >= tag_size) return false;
+  if (!cJSON_IsString(url_json) || !cJSON_IsString(tag_json) || !valid_asset_url(url_json->valuestring) ||
+      strlen(url_json->valuestring) >= url_size || !tag_json->valuestring[0] ||
+      strlen(tag_json->valuestring) >= tag_size)
+    return false;
   strcpy(url, url_json->valuestring);
   strcpy(tag, tag_json->valuestring);
   *found = true;
@@ -69,7 +75,8 @@ static bool read_channel(const cJSON *root, const char *name, char *url, size_t 
 }
 
 esp_err_t fetch_all_asset_urls(const char *asset_name, github_asset_urls_t *result) {
-  if (!asset_name || !result) return ESP_ERR_INVALID_ARG;
+  if (!asset_name || !result)
+    return ESP_ERR_INVALID_ARG;
   memset(result, 0, sizeof(*result));
   size_t board_len = strlen(asset_name);
   if (!board_len || board_len > 96 || strspn(asset_name, "abcdefghijklmnopqrstuvwxyz0123456789_") != board_len)
@@ -78,8 +85,10 @@ esp_err_t fetch_all_asset_urls(const char *asset_name, github_asset_urls_t *resu
   snprintf(url, sizeof(url), API_BASE_URL "/ota/v1/releases?board=%s", asset_name);
   manifest_response_t response = {0};
   response.data = heap_caps_calloc(1, MANIFEST_CAPACITY, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if (!response.data) response.data = calloc(1, MANIFEST_CAPACITY);
-  if (!response.data) return ESP_ERR_NO_MEM;
+  if (!response.data)
+    response.data = calloc(1, MANIFEST_CAPACITY);
+  if (!response.data)
+    return ESP_ERR_NO_MEM;
   esp_http_client_config_t config = {
       .url = url,
       .event_handler = manifest_event,
@@ -100,19 +109,21 @@ esp_err_t fetch_all_asset_urls(const char *asset_name, github_asset_urls_t *resu
   int status = esp_http_client_get_status_code(client);
   // Release TLS/HTTP allocations before allocating the JSON tree.
   esp_http_client_cleanup(client);
-  if (response.overflow || (err == ESP_OK && status != 200)) err = ESP_ERR_INVALID_RESPONSE;
+  if (response.overflow || (err == ESP_OK && status != 200))
+    err = ESP_ERR_INVALID_RESPONSE;
   if (err == ESP_OK) {
     cJSON *json = cJSON_ParseWithOpts(response.data, NULL, true);
     if (!cJSON_IsObject(json) ||
-        !read_channel(json, "stable", result->stable_url, sizeof(result->stable_url),
-                      result->stable_tag, sizeof(result->stable_tag), &result->stable_found) ||
+        !read_channel(json, "stable", result->stable_url, sizeof(result->stable_url), result->stable_tag,
+                      sizeof(result->stable_tag), &result->stable_found) ||
         !read_channel(json, "prerelease", result->prerelease_url, sizeof(result->prerelease_url),
                       result->prerelease_tag, sizeof(result->prerelease_tag), &result->prerelease_found) ||
-        !read_channel(json, "nightly", result->nightly_url, sizeof(result->nightly_url),
-                      result->nightly_tag, sizeof(result->nightly_tag), &result->nightly_found)) {
+        !read_channel(json, "nightly", result->nightly_url, sizeof(result->nightly_url), result->nightly_tag,
+                      sizeof(result->nightly_tag), &result->nightly_found)) {
       memset(result, 0, sizeof(*result));
       err = ESP_ERR_INVALID_RESPONSE;
-    } else if (!result->stable_found && !result->prerelease_found && !result->nightly_found) {
+    }
+    else if (!result->stable_found && !result->prerelease_found && !result->nightly_found) {
       err = ESP_ERR_NOT_FOUND;
     }
     cJSON_Delete(json);
@@ -162,7 +173,8 @@ bool is_version_greater(const firmware_version_t *a, const firmware_version_t *b
 typedef void (*ota_progress_callback_t)(const char *status);
 
 esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback) {
-  if (!valid_asset_url(url)) return ESP_ERR_INVALID_ARG;
+  if (!valid_asset_url(url))
+    return ESP_ERR_INVALID_ARG;
   ESP_LOGI(TAG, "Starting advanced HTTPS OTA update");
   if (progress_callback) {
     progress_callback("Initializing OTA...");
@@ -255,7 +267,8 @@ esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback) 
 
   if (err != ESP_OK || !esp_https_ota_is_complete_data_received(https_ota_handle)) {
     ESP_LOGE(TAG, "Complete data was not received.");
-    if (err == ESP_OK) err = ESP_FAIL;
+    if (err == ESP_OK)
+      err = ESP_FAIL;
     esp_https_ota_abort(https_ota_handle);
   }
   else {
