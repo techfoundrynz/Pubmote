@@ -34,7 +34,8 @@ enum UpdateStep {
   UPDATE_STEP_IN_PROGRESS,
   UPDATE_STEP_COMPLETE,
   UPDATE_STEP_NO_WIFI,
-  UPDATE_STEP_ERROR
+  UPDATE_STEP_ERROR,
+  UPDATE_STEP_STARTUP_ERROR
 };
 
 enum UpdateType {
@@ -112,6 +113,11 @@ static void update_status_ui() {
     primary_btn_text = "Retry";
     primary_btn_enabled = true;
     break;
+  case UPDATE_STEP_STARTUP_ERROR:
+    snprintf(body_text, sizeof(body_text), "Could not start updater. Exit and restart to retry.");
+    primary_btn_text = "Exit";
+    primary_btn_enabled = true;
+    break;
   case UPDATE_STEP_NO_WIFI:
     snprintf(body_text, sizeof(body_text), "No Wi-Fi credentials. Configure at https://pubmote.com");
     primary_btn_text = "Exit";
@@ -168,9 +174,8 @@ static void confirm_exit_restart() {
 
 static void update_task(void *pvParameters) {
   ESP_LOGI(TAG, "update_task started");
-  // Comms are already torn down by setup_update_properties (it must happen
-  // BEFORE this task is created - the 10KB internal stack doesn't fit while
-  // the BLE controller still holds its memory)
+  // setup_update_properties prepares the radio before allocating this stack:
+  // BLE releases its memory; ESP-NOW retains WiFi buffers for station mode.
   if (!wifi_is_initialized()) {
     ESP_LOGI(TAG, "Initializing Wi-Fi...");
     esp_err_t init_err = wifi_init();
@@ -330,14 +335,20 @@ extern "C" void setup_update_properties() {
   transmitter_deinit();
   esp_task_wdt_reset();
 
-  // Tear the comms driver down BEFORE creating the update task: with the BLE
-  // controller resident there is too little internal RAM left for the task's
-  // 10KB stack (observed on-air: task creation failed at ~24KB free)
+  // Prepare the radio BEFORE creating the update task. BLE must release its
+  // controller memory for the 10KB stack; ESP-NOW retains the WiFi driver so
+  // station startup does not have to reallocate its buffers on a fragmented heap.
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   if (comms_is_initialized()) {
-    ESP_LOGI(TAG, "Deinitializing comms before update task...");
-    comms_deinit();
+    ESP_LOGI(TAG, "Preparing comms for Wi-Fi before update task...");
+    esp_err_t err = comms_prepare_wifi();
     esp_task_wdt_reset();
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Wi-Fi handoff failed: %s", esp_err_to_name(err));
+      current_update_step = UPDATE_STEP_STARTUP_ERROR;
+      update_status_ui();
+      return;
+    }
   }
 
   // Wait a short moment to allow the previous screen's task (e.g., about_task) to finish and free its stack
@@ -354,11 +365,10 @@ extern "C" void setup_update_properties() {
     BaseType_t ret = xTaskCreate(update_task, "update_task", 10240, NULL, 5, (TaskHandle_t *)&update_task_handle);
     if (ret != pdPASS) {
       ESP_LOGE(TAG, "Failed to create update_task! Error: %d", (int)ret);
-      // Restore comms if we failed to start the update task
-      comms_init();
-      receiver_init();
-      transmitter_init();
-      connection_connect_to_default_peer();
+      // No worker exists to service Retry. Keep the restart exit available;
+      // rebuilding board comms here would reuse a partially handed-off driver.
+      current_update_step = UPDATE_STEP_STARTUP_ERROR;
+      update_status_ui();
     }
     else {
       ESP_LOGI(TAG, "update_task created successfully");
@@ -383,6 +393,7 @@ extern "C" void handle_update_primary() {
     break;
   case UPDATE_STEP_NO_UPDATE:
   case UPDATE_STEP_NO_WIFI:
+  case UPDATE_STEP_STARTUP_ERROR:
     confirm_exit_restart();
     break;
   case UPDATE_STEP_COMPLETE:
