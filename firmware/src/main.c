@@ -1,4 +1,5 @@
 #include "config.h"
+#include "games/game_store.h"
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -94,6 +95,7 @@ void app_main(void) {
   MEM_MARK("startup callbacks");
   thumbstick_init();
   MEM_MARK("thumbstick");
+  game_store_mount(); // Never formats an existing filesystem on mount failure.
   display_init();
   MEM_MARK("display_init");
   imu_init();

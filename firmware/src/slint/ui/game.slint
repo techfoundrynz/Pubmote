@@ -1,0 +1,61 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+
+export struct GameDraw {
+    kind: int, x: float, y: float, w: float, h: float,
+    radius: float, color: color, text: string, font: int,
+}
+export component GameScreen inherits Rectangle {
+    in property <[GameDraw]> commands;
+    in property <string> error;
+    in property <bool> active;
+    callback tick;
+    callback event(int, float, float);
+    callback back;
+    background: #071a2b;
+    clip: true;
+    Timer { interval: 33ms; running: root.active && root.error == ""; triggered => { root.tick(); } }
+    for cmd in root.commands: Rectangle {
+        x: cmd.x * parent.width / 100; y: cmd.y * parent.height / 100;
+        width: cmd.w * parent.width / 100; height: cmd.h * parent.height / 100;
+        background: cmd.kind == 0 ? cmd.color : transparent;
+        border-radius: cmd.radius * parent.width / 100;
+        if cmd.kind == 1: Text {
+            width: 100%; height: 100%; text: cmd.text; color: cmd.color;
+            font-size: cmd.font * Theme.scale * 1px;
+            horizontal-alignment: center; vertical-alignment: center;
+        }
+    }
+    keys := FocusScope {
+        enabled: root.active;
+        init => { self.focus(); }
+        key-pressed(e) => {
+            if e.text == Key.Return { root.event(0, 0, 0); return accept; }
+            reject
+        }
+    }
+    TouchArea {
+        enabled: root.active;
+        width: 100%; height: parent.height * 0.86;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left {
+                if e.kind == PointerEventKind.down {
+                    root.event(5, self.mouse-x / root.width * 100, self.mouse-y / root.height * 100);
+                } else if e.kind == PointerEventKind.up {
+                    root.event(6, self.mouse-x / root.width * 100, self.mouse-y / root.height * 100);
+                }
+            }
+        }
+    }
+    if root.error != "": Rectangle {
+        width: 100%; height: parent.height * 0.85; background: #071a2b;
+        Text { x: parent.width * 0.15; width: 70%; height: 100%; text: root.error; color: #ff9b9b;
+            font-size: Theme.font-12; wrap: word-wrap; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    AppButton {
+        x: (parent.width - self.width) / 2; y: parent.height * 0.86;
+        width: parent.width * 0.3; height: parent.height * 0.09;
+        text: "Exit"; variant: "secondary"; size: "small";
+        enabled: root.active; clicked => { root.back(); }
+    }
+}

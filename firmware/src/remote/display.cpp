@@ -27,17 +27,15 @@
 #include "remoteinputs.h"
 #include "screens/about_screen.h"
 #include "screens/boards_screen.h"
-#include "screens/flappy_screen.h"
 #include "screens/games_screen.h"
+#include "screens/game_screen.h"
 #include "screens/imu_calibration_screen.h"
 #include "screens/input_calibration_screen.h"
 #include "screens/menu_screen.h"
 #include "screens/pairing_screen.h"
 #include "screens/settings_screen.h"
 #include "screens/stats_screen.h"
-#include "screens/tetris_screen.h"
 #include "screens/update_screen.h"
-#include "screens/whack_screen.h"
 #include "settings.h"
 #include "slint-esp.h"
 #include "slint_generated/app-window.h"
@@ -157,14 +155,6 @@ extern "C" bool is_charge_screen_active() {
 
 extern "C" bool is_update_screen_active() {
   return cached_active_screen.load() == Screen::Update;
-}
-
-extern "C" bool is_tetris_screen_active() {
-  return cached_active_screen.load() == Screen::Tetris;
-}
-
-extern "C" bool is_flappy_screen_active() {
-  return cached_active_screen.load() == Screen::Flappy;
 }
 
 extern "C" uint8_t display_get_bl_level() {
@@ -290,22 +280,8 @@ extern "C"
   void handle_update_secondary();
   void handle_update_selected(int index);
   void handle_open_games();
-  void handle_games_tetris();
-  void handle_games_flappy();
-  void handle_games_whack();
   void handle_games_back();
-  void handle_tetris_tick();
-  void handle_tetris_press(int zone);
-  void handle_tetris_release();
-  void handle_tetris_rotate();
-  void handle_tetris_gesture(int kind);
-  void handle_tetris_back();
-  void handle_flappy_tick();
-  void handle_flappy_flap();
-  void handle_flappy_back();
-  void handle_whack_tick();
-  void handle_whack_hit();
-  void handle_whack_back();
+
 }
 
 #include <algorithm>
@@ -390,14 +366,8 @@ static void connect_callbacks() {
       else if (prev == Screen::Menu) {
         teardown_menu_properties();
       }
-      else if (prev == Screen::Tetris) {
-        teardown_tetris_properties();
-      }
-      else if (prev == Screen::Flappy) {
-        teardown_flappy_properties();
-      }
-      else if (prev == Screen::Whack) {
-        teardown_whack_properties();
+      else if (prev == Screen::Game) {
+        teardown_game_properties();
       }
 
       if (prev == Screen::About) {
@@ -438,14 +408,8 @@ static void connect_callbacks() {
       else if (screen == Screen::Games) {
         setup_games_properties();
       }
-      else if (screen == Screen::Tetris) {
-        setup_tetris_properties();
-      }
-      else if (screen == Screen::Flappy) {
-        setup_flappy_properties();
-      }
-      else if (screen == Screen::Whack) {
-        setup_whack_properties();
+      else if (screen == Screen::Game) {
+        setup_game_properties();
       }
     }
   });
@@ -480,22 +444,11 @@ static void connect_callbacks() {
   state.on_update_secondary([]() { handle_update_secondary(); });
   state.on_update_selected([](int index) { handle_update_selected(index); });
   state.on_open_games([]() { handle_open_games(); });
-  state.on_games_tetris([]() { handle_games_tetris(); });
-  state.on_games_flappy([]() { handle_games_flappy(); });
-  state.on_games_whack([]() { handle_games_whack(); });
+  state.on_games_launch([](int index) { handle_game_launch(index); });
   state.on_games_back([]() { handle_games_back(); });
-  state.on_tetris_tick([]() { handle_tetris_tick(); });
-  state.on_tetris_press([](int zone) { handle_tetris_press(zone); });
-  state.on_tetris_release([]() { handle_tetris_release(); });
-  state.on_tetris_rotate([]() { handle_tetris_rotate(); });
-  state.on_tetris_gesture([](int kind) { handle_tetris_gesture(kind); });
-  state.on_tetris_back([]() { handle_tetris_back(); });
-  state.on_flappy_tick([]() { handle_flappy_tick(); });
-  state.on_flappy_flap([]() { handle_flappy_flap(); });
-  state.on_flappy_back([]() { handle_flappy_back(); });
-  state.on_whack_tick([]() { handle_whack_tick(); });
-  state.on_whack_hit([]() { handle_whack_hit(); });
-  state.on_whack_back([]() { handle_whack_back(); });
+  state.on_game_tick([]() { handle_game_tick(); });
+  state.on_game_event([](int kind, float x, float y) { handle_game_event(kind, x, y); });
+  state.on_game_back([]() { handle_game_back(); });
 
   const auto &color_slider_gen = slint_window->global<ColorSliderGenerator>();
   color_slider_gen.on_generate_track(generate_color_slider_track);
