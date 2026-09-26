@@ -17,6 +17,7 @@
 #include "remote/transmitter.h"
 #include "remote/wifi.h"
 #include "slint_generated/app-window.h"
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,8 @@
 static const char *TAG = "PUBREMOTE-UPDATE_SCREEN";
 
 #define FORCE_UPDATE 0
+
+static constexpr uint32_t UPDATE_TASK_STACK_BYTES = 8192;
 
 enum UpdateStep {
   UPDATE_STEP_START,
@@ -231,8 +234,20 @@ static void update_task(void *pvParameters) {
     }
     case UPDATE_STEP_CHECKING_UPDATE: {
       const char *asset_name = HW_TYPE;
-      github_asset_urls_t result = {};
-      esp_err_t err = fetch_all_asset_urls(asset_name, &result);
+      // Keep the 1.6KB release response off the stack used by HTTPS/TLS.
+      std::unique_ptr<github_asset_urls_t, decltype(&free)> result(
+          static_cast<github_asset_urls_t *>(heap_caps_calloc(1, sizeof(github_asset_urls_t), MALLOC_CAP_SPIRAM)), &free);
+      if (!result) {
+        result.reset(static_cast<github_asset_urls_t *>(calloc(1, sizeof(github_asset_urls_t))));
+      }
+      if (!result) {
+        ESP_LOGE(TAG, "Could not allocate release response");
+        current_update_step = UPDATE_STEP_ERROR;
+        break;
+      }
+      esp_err_t err = fetch_all_asset_urls(asset_name, result.get());
+      ESP_LOGI(TAG, "Updater stack minimum free after release check: %u bytes",
+               (unsigned)uxTaskGetStackHighWaterMark(NULL));
 
       if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error fetching asset: %s", esp_err_to_name(err));
@@ -241,32 +256,32 @@ static void update_task(void *pvParameters) {
       }
 
 #if FORCE_UPDATE
-      bool has_stable_update = result.stable_found;
-      bool has_prerelease_update = result.prerelease_found;
+      bool has_stable_update = result->stable_found;
+      bool has_prerelease_update = result->prerelease_found;
 #else
-      firmware_version_t stable_version = parse_version_string(result.stable_tag);
-      firmware_version_t prerelease_version = parse_version_string(result.prerelease_tag);
+      firmware_version_t stable_version = parse_version_string(result->stable_tag);
+      firmware_version_t prerelease_version = parse_version_string(result->prerelease_tag);
       firmware_version_t current_version = {.major = VERSION_MAJOR, .minor = VERSION_MINOR, .patch = VERSION_PATCH};
-      bool has_stable_update = result.stable_found && is_version_greater(&stable_version, &current_version);
-      bool has_prerelease_update = result.prerelease_found && is_version_greater(&prerelease_version, &current_version);
+      bool has_stable_update = result->stable_found && is_version_greater(&stable_version, &current_version);
+      bool has_prerelease_update = result->prerelease_found && is_version_greater(&prerelease_version, &current_version);
 #endif
 
       available_update_count = 0;
       if (has_stable_update) {
         ReleaseInfo info = {};
         info.type = UPDATE_TYPE_STABLE;
-        strncpy(info.tag_name, result.stable_tag, sizeof(info.tag_name) - 1);
-        snprintf(info.name, sizeof(info.name), "%s", result.stable_tag);
-        strncpy(info.download_url, result.stable_url, sizeof(info.download_url) - 1);
+        strncpy(info.tag_name, result->stable_tag, sizeof(info.tag_name) - 1);
+        snprintf(info.name, sizeof(info.name), "%s", result->stable_tag);
+        strncpy(info.download_url, result->stable_url, sizeof(info.download_url) - 1);
         available_updates[available_update_count++] = info;
       }
 
       if (has_prerelease_update) {
         ReleaseInfo info = {};
         info.type = UPDATE_TYPE_PRERELEASE;
-        strncpy(info.tag_name, result.prerelease_tag, sizeof(info.tag_name) - 1);
-        snprintf(info.name, sizeof(info.name), "%s (Prerelease)", result.prerelease_tag);
-        strncpy(info.download_url, result.prerelease_url, sizeof(info.download_url) - 1);
+        strncpy(info.tag_name, result->prerelease_tag, sizeof(info.tag_name) - 1);
+        snprintf(info.name, sizeof(info.name), "%s (Prerelease)", result->prerelease_tag);
+        strncpy(info.download_url, result->prerelease_url, sizeof(info.download_url) - 1);
         available_updates[available_update_count++] = info;
       }
 
@@ -282,6 +297,8 @@ static void update_task(void *pvParameters) {
     case UPDATE_STEP_IN_PROGRESS: {
       ESP_LOGI(TAG, "Starting OTA update: %s", available_updates[selected_update_index].download_url);
       esp_err_t ret = apply_ota(available_updates[selected_update_index].download_url, simple_progress_callback);
+      ESP_LOGI(TAG, "Updater stack minimum free after OTA: %u bytes",
+               (unsigned)uxTaskGetStackHighWaterMark(NULL));
       if (ret == ESP_OK) {
         current_update_step = UPDATE_STEP_COMPLETE;
         ESP_LOGI(TAG, "OTA successful");
@@ -347,8 +364,8 @@ extern "C" void setup_update_properties() {
     }
   }
 
-  // Wait a short moment to allow the previous screen's task (e.g., about_task) to finish and free its stack
-  vTaskDelay(pdMS_TO_TICKS(200));
+  // Let idle tasks reclaim the stacks of the workers that just exited.
+  vTaskDelay(pdMS_TO_TICKS(20));
   esp_task_wdt_reset();
   ESP_LOGI(TAG, "Free internal heap after yield: %u, total: %u bytes", heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            esp_get_free_heap_size());
@@ -357,10 +374,21 @@ extern "C" void setup_update_properties() {
   update_status_ui();
 
   if (update_task_handle == NULL) {
-    ESP_LOGI(TAG, "Creating update_task with 10KB stack in internal RAM...");
-    BaseType_t ret = xTaskCreate(update_task, "update_task", 10240, NULL, 5, (TaskHandle_t *)&update_task_handle);
+    ESP_LOGI(TAG, "Creating update_task with 8KB stack in internal RAM...");
+    BaseType_t ret = pdFAIL;
+    const TickType_t started = xTaskGetTickCount();
+    do {
+      ret = xTaskCreate(update_task, "update_task", UPDATE_TASK_STACK_BYTES, NULL, 5, (TaskHandle_t *)&update_task_handle);
+      if (ret == pdPASS)
+        break;
+      // Self-deleted tasks release their stacks only when the idle task runs.
+      vTaskDelay(pdMS_TO_TICKS(20));
+      esp_task_wdt_reset();
+    } while (xTaskGetTickCount() - started < pdMS_TO_TICKS(1500));
     if (ret != pdPASS) {
-      ESP_LOGE(TAG, "Failed to create update_task! Error: %d", (int)ret);
+      ESP_LOGE(TAG, "Failed to create update_task! Error: %d, free internal: %u, largest block: %u", (int)ret,
+               heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+               heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
       // Without a worker, recovery requires a restart.
       current_update_step = UPDATE_STEP_STARTUP_ERROR;
       update_status_ui();

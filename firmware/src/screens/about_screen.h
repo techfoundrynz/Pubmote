@@ -8,6 +8,7 @@ extern "C"
 
   bool is_about_screen_active();
   void setup_about_properties();
+  void teardown_about_properties();
 
 #ifdef __cplusplus
 }
