@@ -169,9 +169,7 @@ esp_err_t espnow_prepare_wifi(void) {
   if (err != ESP_OK)
     return err;
   is_initialized = false;
-  // Preserve the driver's internal SRAM buffers. Reallocating them after the
-  // UI has fragmented the heap can fail even with plenty of total free memory.
-  // Restart STA after attaching its IP netif so it receives the start event.
+  // Keep driver buffers to avoid fragmented-heap allocations; restart after attaching the netif.
   err = esp_wifi_stop();
   ESP_LOGI(TAG, "ESP-NOW stopped; retaining WiFi driver for IP handoff");
   return err;

@@ -49,8 +49,6 @@ extern "C"
    * for applications that always start with ESP-NOW.
    *
    * @note Call comms_prepare_wifi() before switching from an active comms driver.
-   *       It stops ESP-NOW and WiFi while retaining the WiFi driver buffers;
-   *       this function attaches the station netif and starts WiFi again.
    *
    * @return
    *     - ESP_OK: Success

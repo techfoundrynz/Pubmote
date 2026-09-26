@@ -9,12 +9,14 @@
 #include "remote/display.h"
 #include "remote/stats.h"
 #include "slint_generated/app-window.h"
+#include <atomic>
 #include <memory>
 #include <stdio.h>
 #include <string.h>
 
 static const char *TAG = "PUBREMOTE-ABOUT_SCREEN";
-static TaskHandle_t about_task_handle = NULL;
+static std::atomic<bool> about_task_running{false};
+static std::atomic<bool> about_task_should_exit{false};
 
 void update_about_version_info() {
   if (!get_slint_window())
@@ -94,12 +96,15 @@ void update_about_stats() {
 }
 
 static void about_task(void *pvParameters) {
-  while (is_about_screen_active()) {
+  while (!about_task_should_exit.load() && is_about_screen_active()) {
     update_about_stats();
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Reduced battery polling frequency to 1Hz
+    // Keep 1Hz polling, but respond promptly when leaving the screen.
+    for (int i = 0; i < 50 && !about_task_should_exit.load(); ++i) {
+      vTaskDelay(pdMS_TO_TICKS(20));
+    }
   }
   ESP_LOGI(TAG, "About task ended");
-  about_task_handle = NULL;
+  about_task_running.store(false);
   vTaskDelete(NULL);
 }
 
@@ -108,8 +113,23 @@ extern "C" void setup_about_properties() {
   update_about_version_info();
   update_about_stats();
 
-  if (about_task_handle == NULL) {
-    xTaskCreate(about_task, "about_task", 3072, NULL, 2, &about_task_handle);
+  if (!about_task_running.load()) {
+    about_task_should_exit.store(false);
+    about_task_running.store(true);
+    if (xTaskCreate(about_task, "about_task", 3072, NULL, 2, NULL) != pdPASS) {
+      about_task_running.store(false);
+      ESP_LOGE(TAG, "Failed to create About task");
+    }
+  }
+}
+
+extern "C" void teardown_about_properties() {
+  about_task_should_exit.store(true);
+  for (int i = 0; i < 100 && about_task_running.load(); ++i) {
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+  if (about_task_running.load()) {
+    ESP_LOGW(TAG, "About task did not exit in time");
   }
 }
 

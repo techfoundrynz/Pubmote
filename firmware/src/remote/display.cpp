@@ -416,6 +416,10 @@ static void connect_callbacks() {
         teardown_whack_properties();
       }
 
+      if (prev == Screen::About) {
+        teardown_about_properties();
+      }
+
       // Drops the outgoing screen's claims
       input_router_restore_defaults();
 
