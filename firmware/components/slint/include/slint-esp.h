@@ -10,9 +10,8 @@
 // One staging buffer per dirty rectangle. Matches the renderer's DirtyRegion::MAX_COUNT; a
 // smaller value still renders correctly but evicts chunks before they fill.
 #ifndef SLINT_CHUNK_ACCUMULATORS
-#  define SLINT_CHUNK_ACCUMULATORS 3
+  #define SLINT_CHUNK_ACCUMULATORS 3
 #endif
-
 
 /**
  * This data structure configures the Slint platform for use with ESP-IDF, in particular
@@ -47,6 +46,8 @@ struct SlintPlatformConfiguration {
   /// The touch screen handle, if the device is equipped with a touch screen. Set to nullptr
   /// otherwise;
   esp_lcd_touch_handle_t touch_handle = nullptr;
+  /// Called on the event-loop task when an active touch is released.
+  void (*touch_release_callback)() = nullptr;
   slint::platform::SoftwareRenderer::RenderingRotation rotation =
       slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
   /// Swap the 2 bytes of RGB 565 pixels before sending to the display, or turn 24-bit RGB into
