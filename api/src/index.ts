@@ -8,7 +8,7 @@
  * Usage: https://your-worker.workers.dev/cors?https://github.com/user/repo/file
  */
 
-import { otaResponse, type OtaEnv } from './ota';
+import { otaResponse, otaDownloadResponse, type OtaEnv } from './ota';
 
 // Whitelist patterns for allowed target URLs (GitHub domains only)
 const ALLOWED_URL_PATTERNS = [
@@ -37,6 +37,10 @@ function isUrlAllowed(url: string, patterns: RegExp[]): boolean {
  */
 function setupCORSHeaders(headers: Headers, request: Request, isPreflight: boolean): Headers {
   const origin = request.headers.get('Origin');
+  const vary = headers.get('Vary');
+  if (!vary?.split(',').some((value) => ['origin', '*'].includes(value.trim().toLowerCase()))) {
+    headers.append('Vary', 'Origin');
+  }
 
   if (origin) {
     headers.set('Access-Control-Allow-Origin', origin);
@@ -128,8 +132,14 @@ export default {
     const url = new URL(request.url);
     const isPreflight = request.method === 'OPTIONS';
 
-    if (url.pathname === '/ota/v1/releases') {
-      return otaResponse(request, env, caches.default);
+    if (url.pathname === '/ota/v1/releases' || url.pathname === '/ota/v1/download') {
+      const response = await (
+        url.pathname === '/ota/v1/releases' ? otaResponse : otaDownloadResponse
+      )(request, env, caches.default);
+      const headers = new Headers(response.headers);
+      headers.set('Access-Control-Allow-Origin', '*');
+      headers.set('Cache-Control', 'no-store');
+      return new Response(response.body, { status: response.status, headers });
     }
 
     // Handle /cors path
@@ -210,6 +220,11 @@ export default {
         // Build response headers
         const responseHeaders = new Headers(response.headers);
         setupCORSHeaders(responseHeaders, request, false);
+        // Release downloads can be interrupted/resumed by browsers. Do not retain
+        // partial responses or origin-specific headers in downstream caches.
+        if (new URL(targetUrl).pathname.includes('/releases/download/')) {
+          responseHeaders.set('Cache-Control', 'no-store');
+        }
 
         // Expose all response headers to the client
         const exposedHeaders: string[] = [];
@@ -237,9 +252,11 @@ export default {
           }),
           {
             status: 500,
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: setupCORSHeaders(
+              new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }),
+              request,
+              false,
+            ),
           },
         );
       }

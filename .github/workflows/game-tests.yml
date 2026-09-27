@@ -1,0 +1,46 @@
+name: Game tests
+
+on:
+  pull_request:
+    paths:
+      - 'fs/games/**'
+      - 'scripts/*game*.py'
+      - 'tests/test_games.py'
+      - 'fs/games/requirements-dev.txt'
+      - 'firmware/assets/*.ttf'
+      - 'firmware/src/games/**'
+      - 'firmware/src/screens/game_screen.*'
+      - 'firmware/src/slint/ui/game.slint'
+      - 'firmware/src/slint/app-window.slint'
+      - 'firmware/src/slint/ui/theme.slint'
+      - 'firmware/src/slint/ui/app-button.slint'
+      - '.github/workflows/game-tests.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'fs/games/**'
+      - 'scripts/*game*.py'
+      - 'tests/test_games.py'
+      - 'fs/games/requirements-dev.txt'
+      - 'firmware/assets/*.ttf'
+      - 'firmware/src/games/**'
+      - 'firmware/src/screens/game_screen.*'
+      - 'firmware/src/slint/ui/game.slint'
+      - 'firmware/src/slint/app-window.slint'
+      - 'firmware/src/slint/ui/theme.slint'
+      - 'firmware/src/slint/ui/app-button.slint'
+      - '.github/workflows/game-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  games:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r fs/games/requirements-dev.txt
+      - run: python -m unittest discover -s tests -p 'test_games.py'

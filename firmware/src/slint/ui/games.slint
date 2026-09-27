@@ -1,133 +1,31 @@
-// Hidden arcade menu: tap the About version five times
-
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { PageFooter } from "page-footer.slint";
-
-// AppButton whose label scrolls in a loop when it does not fit beside the best score. The label
-// sits over the button without taking touches, so presses and focus behave like any other entry.
-component ScrollingEntry inherits Rectangle {
-    in property <string> text;
-    in property <string> right-text;
-    callback clicked;
-
-    property <length> pad: 12px * Theme.scale;
-    property <length> gap: 8px * Theme.scale;
-    property <length> clip-w: root.width - root.pad * 2 - best-measure.preferred-width - root.gap;
-    property <bool> overflows: label.preferred-width > root.clip-w;
-    // One loop is the label plus a gap, then a second copy lands where the first started.
-    // Rests briefly each time the start lines up again.
-    property <length> loop-w: label.preferred-width + 24px * Theme.scale;
-    property <float> pause-ms: 1200;
-    property <float> scroll-ms: root.loop-w / (30px * Theme.scale) * 1000;
-    property <float> t: root.overflows ? Math.mod(animation-tick() / 1ms, root.pause-ms + root.scroll-ms) : 0;
-    property <length> offset: root.t < root.pause-ms ? 0 : root.loop-w * (root.t - root.pause-ms) / root.scroll-ms;
-
-    height: button.height;
-
-    button := AppButton {
-        width: 100%;
-        text: "";
-        right-text: root.right-text;
-        variant: "secondary";
-        clicked => { root.clicked(); }
-    }
-
-    // Same font as AppButton's right text, only to measure it
-    best-measure := Text {
-        visible: false;
-        text: root.right-text;
-        font-size: Theme.font-11;
-        font-weight: Theme.w-medium;
-    }
-
-    Rectangle {
-        x: root.pad;
-        width: root.clip-w;
-        height: 100%;
-        clip: true;
-
-        label := Text {
-            x: -root.offset;
-            height: parent.height;
-            text: root.text;
-            color: Theme.text;
-            font-size: Theme.font-12;
-            font-weight: Theme.w-semibold;
-            vertical-alignment: center;
-        }
-        if root.overflows: Text {
-            x: root.loop-w - root.offset;
-            height: parent.height;
-            text: root.text;
-            color: Theme.text;
-            font-size: Theme.font-12;
-            font-weight: Theme.w-semibold;
-            vertical-alignment: center;
-        }
-    }
-}
-
 export component GamesScreen inherits Rectangle {
-    in property <string> tetris-best: "0";
-    in property <string> flappy-best: "0";
-    in property <string> whack-best: "0";
-    callback play-tetris;
-    callback play-flappy;
-    callback play-whack;
+    in property <[string]> games;
+    callback launch(int);
     callback back;
-
     background: Theme.bg;
-
     VerticalLayout {
-        Rectangle {
-            VerticalLayout {
+        padding-top: Theme.page-padding-horizontal;
+        Text { text: "ARCADE"; color: Theme.accent; font-size: Theme.font-14; horizontal-alignment: center; }
+        Flickable {
+            viewport-height: games-layout.min-height;
+            games-layout := VerticalLayout {
                 padding-left: Theme.page-padding-horizontal;
                 padding-right: Theme.page-padding-horizontal;
                 spacing: 8px * Theme.scale;
-                alignment: center;
-
-                Text {
-                    text: "ARCADE";
-                    color: Theme.accent;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-semibold;
-                    letter-spacing: 2px;
-                    horizontal-alignment: center;
+                if root.games.length == 0: Text {
+                    text: "No games installed\nInstall games over USB";
+                    color: Theme.text-dim; font-size: Theme.font-12;
+                    horizontal-alignment: center; wrap: word-wrap;
                 }
-
-                Rectangle {
-                    height: 1px;
-                    background: Theme.track;
-                }
-
-                AppButton {
-                    text: "Tetris";
-                    right-text: "BEST " + root.tetris-best;
-                    variant: "secondary";
-                    clicked => { root.play-tetris(); }
-                }
-
-                AppButton {
-                    text: "Flappy Penguin";
-                    right-text: "BEST " + root.flappy-best;
-                    variant: "secondary";
-                    clicked => { root.play-flappy(); }
-                }
-
-                ScrollingEntry {
-                    text: "Whack-a-Baguette";
-                    right-text: "BEST " + root.whack-best;
-                    clicked => { root.play-whack(); }
+                for title[index] in root.games: AppButton {
+                    text: title; variant: "secondary";
+                    clicked => { root.launch(index); }
                 }
             }
         }
-
-        PageFooter {
-            AppButton {
-                text: "Back";
-                clicked => { root.back(); }
-            }
-        }
+        PageFooter { AppButton { text: "Back"; clicked => { root.back(); } } }
     }
 }

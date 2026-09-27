@@ -5,6 +5,7 @@
 #include "esp_console.h"
 #include "esp_core_dump.h"
 #include "esp_log.h"
+#include "games/game_store.h"
 #include "linenoise/linenoise.h"
 #include "powermanagement.h"
 #include "remoteinputs.h"
@@ -287,6 +288,7 @@ static void console_start(void) {
   register_coredump_print_command();
   register_coredump_erase_command();
   register_complete_command();
+  game_store_register_console();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
   esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();

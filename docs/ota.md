@@ -7,11 +7,29 @@ GitHub release assets directly. The Worker uses GitHub's `@octokit/graphql`
 client for request serialization and HTTP/GraphQL error handling. Board names match the exact asset prefix
 `<board>-`, and only `.bin` assets qualify.
 
-Release selection is unchanged: GitHub's latest release is stable; the two
+Release selection: GitHub's latest release is stable; the two
 most recently created releases are searched for the first matching non-nightly
-release and the mutable `nightly` tag. Nightly publishing and firmware version
+prerelease and the mutable `nightly` tag. Nightly publishing and firmware version
 comparison are unchanged. The Worker caches GitHub metadata for 60 seconds
 across all boards, so new releases may take up to a minute to appear.
+
+## Web firmware tool
+
+The web tool uses `GET /ota/v1/releases?format=web` on the same Worker.
+It returns stable, prerelease, and nightly packages with board variants and dates,
+using the same cached GitHub metadata as device OTA. The firmware's compact
+`?board=<HW_TYPE>` response remains compatible with existing devices.
+
+ZIP links point to `GET /ota/v1/download?tag=<tag>&asset=<filename>`.
+The Worker verifies the package against release metadata and streams its public
+GitHub asset. It forwards no client range/cache headers or API token, requires a
+complete upstream 200 response, and sends `Cache-Control: no-store`. All OTA
+responses, including errors, include browser CORS headers. ZIP downloads no longer
+use the generic `/cors` proxy; other web tool features can still use that proxy.
+
+For local web development, set `VITE_API_BASE_URL=http://127.0.0.1:8787` while
+running the Worker locally. Otherwise the tool uses `https://api.pubmote.com`.
+Deploy the Worker changes before deploying the updated web tool.
 
 ## Rollout
 
@@ -56,12 +74,12 @@ before changing the shared TLS configuration. No TLS settings are changed here.
 ## Public endpoint protections
 
 The manifest remains public, matching the public GitHub binaries. Cloudflare's
-`OTA_RATE_LIMITER` binding permits 60 checks per public IP per minute at each
+`OTA_RATE_LIMITER` binding permits 60 checks/downloads per public IP per minute at each
 Cloudflare location. Exceeding it returns 429 with `Retry-After: 60`, before
 cache/GitHub access. This is an approximate local abuse limit, not a global
 quota or device authentication. A limiter failure returns an error.
 
-Only one `board` query parameter is accepted. Asset URLs must be canonical
+The firmware manifest accepts only one `board` query parameter. Asset URLs must be canonical
 HTTPS GitHub URLs in this repository, have no credentials/query/fragment, and
 match the selected asset filename. The serialized manifest must fit the
 firmware's 2 KiB buffer. Firmware also checks the initial download URL against

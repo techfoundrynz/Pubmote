@@ -39,6 +39,7 @@ export interface FirmwareFiles {
   partitionTable: File | null;
   application: File | null;
   elf: File | null;
+  littlefs?: File | null;
 }
 
 export interface CommandInfo {

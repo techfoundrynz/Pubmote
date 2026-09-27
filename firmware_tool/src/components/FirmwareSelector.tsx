@@ -8,7 +8,6 @@ import { cn } from '../utils/cn';
 import JSZip from 'jszip';
 import { useToast } from '../context/ToastContext';
 import { Dialog } from '../components/ui/Dialog';
-import { fetchWithCorsProxy } from '../utils/corsProxy';
 
 interface FileUploadProps {
   label: string;
@@ -156,6 +155,7 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       const partitionsFile = contents.file('partitions.bin');
       const firmwareFile = contents.file('firmware.bin');
       const elfFile = contents.file('firmware.elf');
+      const littlefsFile = contents.file('littlefs.bin');
 
       if (!bootloaderFile || !partitionsFile || !firmwareFile) {
         throw new Error('Invalid firmware package - missing required files');
@@ -176,7 +176,10 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       const [bootloaderBlob, partitionsBlob, firmwareBlob] = blobs;
       const elfBlob = elfFile ? blobs[3] : null;
 
+      const littlefsBlob = littlefsFile ? await littlefsFile.async('blob') : null;
+
       return {
+        littlefs: littlefsBlob ? new File([littlefsBlob], 'littlefs.bin') : null,
         bootloader: new File([bootloaderBlob], 'bootloader.bin', {
           type: 'application/octet-stream',
         }),
@@ -212,6 +215,7 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
         partitionTable: extractedFiles.partitionTable,
         application: extractedFiles.application,
         elf: extractedFiles.elf,
+        littlefs: extractedFiles.littlefs,
         zip: file,
       });
       onSelectFirmware(extractedFiles);
@@ -272,26 +276,23 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
       setIsDownloading(true);
       toastId = toast.info('Downloading firmware package...', 0);
 
-      const response = await fetchWithCorsProxy(url);
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
 
       const blob = await response.blob();
       // Extract filename from URL or default
-      const filename = url.split('/').pop() || 'firmware.zip';
+      const filename = new URL(url).searchParams.get('asset') || 'firmware.zip';
       const file = new File([blob], filename, { type: 'application/zip' });
 
       await handlePackageFileChange(file);
     } catch (err) {
-      console.error(
-        'Failed to download firmware via CORS proxy, falling back to direct download:',
-        err,
-      );
+      console.error('Failed to download firmware package:', err);
       setErrorDialog({
         isOpen: true,
         title: 'Download Failed',
         message: 'Auto-download failed. Opening browser to download manually.',
       });
-      // Fallback to direct download
+      // Open the package endpoint for a manual download
       window.open(url, '_blank');
     } finally {
       if (toastId) toast.dismiss(toastId);
@@ -356,7 +357,6 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
           </button>
         </div>
       </div>
-
       {fetchError && <div className="p-3 rounded-lg bg-red-900/50 text-red-200">{fetchError}</div>}
 
       <Dialog
@@ -381,12 +381,17 @@ export const FirmwareSelector: React.FC<FirmwareSelectorProps> = (props) => {
             file={files.partitionTable}
             onChange={handleIndividualFileChange('partitionTable')}
           />
-
           <FileUpload
             label="Select Application"
             icon={<Cpu className="h-full w-full" />}
             file={files.application}
             onChange={handleIndividualFileChange('application')}
+          />
+          <FileUpload
+            label="Select LittleFS"
+            icon={<HardDrive className="h-full w-full" />}
+            file={files.littlefs ?? null}
+            onChange={handleIndividualFileChange('littlefs')}
           />
         </div>
       ) : (
