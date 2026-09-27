@@ -27,7 +27,10 @@ def zip_build_files(source, target, env):
 
     # Always rebuild the filesystem image so packages contain current content.
     fs_image = Path(env.subst("$BUILD_DIR")) / "littlefs.bin"
-    tool_dir = Path(env.PioPlatform().get_package_dir("tool-mklittlefs"))
+    tool_package = env.PioPlatform().get_package_dir("tool-mklittlefs")
+    if not tool_package:
+        raise RuntimeError("tool-mklittlefs is missing; install the platform_packages declared in platformio.ini")
+    tool_dir = Path(tool_package)
     tool = tool_dir / ("mklittlefs.exe" if os.name == "nt" else "mklittlefs")
     subprocess.run([
         env.subst("$PYTHONEXE"), str(Path(project_dir) / "scripts/install_game.py"),
