@@ -13,9 +13,9 @@
 #include "settings_console.h"
 #include <stdio.h>
 #if TEST_MODE
-#include "display.h"
-#include "esp_timer.h"
-#include <inttypes.h>
+  #include "display.h"
+  #include "esp_timer.h"
+  #include <inttypes.h>
 #endif
 #include <stdlib.h>
 #include <string.h>
@@ -29,8 +29,7 @@ static const char *TAG = "PUBREMOTE-CONSOLE";
 static int get_render_stats(int argc, char **argv) {
   (void)argc;
   (void)argv;
-  printf("render_stats frames=%" PRIu32 " time_us=%" PRIi64 "\n",
-         display_get_frame_count(), esp_timer_get_time());
+  printf("render_stats frames=%" PRIu32 " time_us=%" PRIi64 "\n", display_get_frame_count(), esp_timer_get_time());
   return 0;
 }
 
