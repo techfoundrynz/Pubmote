@@ -59,8 +59,7 @@ static uint32_t g_drawcall_count = 0;
 // Phase timestamps from inside the renderer's prepare_scene. 0=entry, 1=before the item
 // walk, 2=after it, 3=before Scene::new, 4=after.
 
-static inline esp_err_t timed_draw_bitmap(esp_lcd_panel_handle_t p, int x0, int y0, int x1, int y1,
-                                          const void *data) {
+static inline esp_err_t timed_draw_bitmap(esp_lcd_panel_handle_t p, int x0, int y0, int x1, int y1, const void *data) {
   uint64_t d0 = esp_timer_get_time();
   esp_err_t err = esp_lcd_panel_draw_bitmap(p, x0, y0, x1, y1, data);
   g_drawcall_us += esp_timer_get_time() - d0;
@@ -100,7 +99,7 @@ template <typename PixelType> struct EspPlatform : public slint::platform::Platf
 
   EspPlatform(const SlintPlatformConfiguration<PixelType> &config)
       : size(config.size), panel_handle(config.panel_handle), touch_handle(config.touch_handle),
-        byte_swap(config.byte_swap), rotation(config.rotation) {
+        touch_release_callback(config.touch_release_callback), byte_swap(config.byte_swap), rotation(config.rotation) {
     task = xTaskGetCurrentTaskHandle();
     active_platform = this;
     set_rotation_callback = [](void *instance, slint::platform::SoftwareRenderer::RenderingRotation rot) {
@@ -125,6 +124,7 @@ private:
   slint::PhysicalSize size;
   esp_lcd_panel_handle_t panel_handle;
   esp_lcd_touch_handle_t touch_handle;
+  void (*touch_release_callback)();
   bool byte_swap;
   slint::platform::SoftwareRenderer::RenderingRotation rotation;
   class EspWindowAdapter *m_window = nullptr;
@@ -349,6 +349,9 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
           touch_down = true;
         }
         else if (touch_down) {
+          if (touch_release_callback) {
+            touch_release_callback();
+          }
           m_window->window().dispatch_pointer_release_event(slint::LogicalPosition({last_touch_x, last_touch_y}),
                                                             slint::PointerEventButton::Left);
           m_window->window().dispatch_pointer_exit_event();
@@ -461,8 +464,8 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
             q_len++;
           }
           else {
-            ESP_LOGW(TAG, "draw_bitmap failed for chunk %d,%d %dx%d", (int)c.x0, (int)c.y0,
-                     (int)(c.x1 - c.x0), c.lines);
+            ESP_LOGW(TAG, "draw_bitmap failed for chunk %d,%d %dx%d", (int)c.x0, (int)c.y0, (int)(c.x1 - c.x0),
+                     c.lines);
           }
           c.lines = 0;
         };
@@ -539,8 +542,8 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
                 // Use the existing allocation fully for narrow rectangles, keeping
                 // chunk heights even so every panel window stays aligned. The byte
                 // count never exceeds the original full-width chunk capacity.
-                acc[a].capacity_lines = static_cast<int>(
-                    (HOR_RES * slint_chunk_lines / (span_x1 - span_x0)) & ~std::size_t(1));
+                acc[a].capacity_lines =
+                    static_cast<int>((HOR_RES * slint_chunk_lines / (span_x1 - span_x0)) & ~std::size_t(1));
               }
 
               // The staging buffer must not be written while its own transfer is still reading it.

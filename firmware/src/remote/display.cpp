@@ -526,6 +526,7 @@ static void slint_event_loop(void *pvParameters) {
   config.size = slint::PhysicalSize(slint::Size<uint32_t>{(uint32_t)HOR_RES, (uint32_t)VER_RES});
   config.panel_handle = lcd_panel;
   config.touch_handle = touch_handle;
+  config.touch_release_callback = reset_sleep_timer;
   config.byte_swap = false;
 
   // config.buffer1/buffer2 are deliberately left unset: that selects render_by_line
