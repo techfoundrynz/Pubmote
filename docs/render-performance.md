@@ -6,7 +6,13 @@ over QSPI @ 80 MHz, 8 MB octal PSRAM, Slint software renderer via `render_by_lin
 The initial sections record the 2026-08-15 investigation and include hypotheses later corrected by subsequent sessions.
 Read the dated updates before treating an earlier conclusion as current.
 
-**Latest findings (2026-09-27):** the main stats screen reached **34.97 delivered FPS** with the published `mcu-v1.19.2` renderer, up from **28.53 FPS** initially.
+**Latest findings (2026-09-27, second pass):** executing instructions from PSRAM
+reached **54.62 and 57.34 delivered FPS**, against fresh flash-execution baselines
+of **34.43 and 36.26 FPS**, with the same published renderer and `TEST_MODE=1`.
+The user confirmed normal visuals and behavior. See [§18](#18-execute-instructions-from-psram-2026-09-27)
+for the memory cost, measurements, and validation limits.
+
+The preceding renderer investigation reached **34.97 delivered FPS** with the published `mcu-v1.19.2` renderer, up from **28.53 FPS** initially.
 The preceding local build measured 34.91 FPS.
 The successful changes are DMA buffer packing, empty-center arc rejection, scanline membership reuse, and opaque-cover caching.
 Slint changes are published in `mcu-v1.19.2`, and PubRemote builds successfully from the downloaded release.
@@ -1070,3 +1076,89 @@ No panic, error, assertion-failure, or transfer-timeout messages appeared in the
 The device remains in test mode with the published-release firmware installed.
 Firmware SHA-256: `EF22CD81F29BD8564CBFFCFEE61D60E9939305285E5827B83F2866CBAD52DCD1`.
 Evidence: `.pio/fps-check/published-build.log`, `published-lsp-sync.log`, `published-upload.log`, `published-counter.log`, and `published-final.bin`.
+
+## 18. Execute instructions from PSRAM (2026-09-27)
+
+The next investigation uses firmware 0.9.18 and the same published `mcu-v1.19.2`
+renderer. Both sides of each FPS comparison use `TEST_MODE=1`, with the stats
+screen untouched, profiling disabled, and delivered FPS calculated from
+`render_stats` frame and uptime deltas. The normal-use build is separate from
+these test images.
+
+The candidate enables `CONFIG_SPIRAM_FETCH_INSTRUCTIONS` only for
+`pingumote_esp32s3_touch_amoled_132`. ESP-IDF copies the instruction section from
+flash to octal PSRAM at startup. Read-only data remains in flash. This addresses
+the instruction-fetch bottleneck described in section 3 without changing the
+renderer, image quality, dirty regions, update rates, animations, input handling,
+task priorities, or hardware clocks.
+
+The renderer archive remains byte-identical to the published release:
+`9b3f779889a038678172ec38bbb831c44e7167e45c6729bea6e67d31732bde4b`.
+The first 90-second comparison measured **34.429 FPS** from flash and
+**54.622 FPS** from PSRAM. This is a live animation workload, not deterministic
+frame replay; repeated measurements and physical checks are recorded below.
+
+The cost is 2,752,512 bytes (42 MMU pages) of PSRAM reserved for instructions.
+The candidate's first capture reported 5,555,444 bytes free near its start and
+5,554,544 bytes near its end, with a 5,505,024-byte largest free block at both
+points. Game limits remain 256 KiB for Lua and another 256 KiB for textures;
+renderer and other runtime allocations are additional.
+
+The test-only `render_stats` command now also prints heap information on demand.
+It adds no per-frame instrumentation and is absent with `TEST_MODE=0`.
+A full 16 MiB device backup is stored locally at
+`.pio/fps-check/next-device-backup.bin`. Test flashing writes only the active
+application at `0x10000`, preserving settings, OTA selection, and filesystem data.
+
+### Repeated results and validation
+
+| Image | Sample duration | Delivered FPS |
+|---|---:|---:|
+| Flash instructions, first run | 90.069 s | 34.429 |
+| PSRAM instructions, first run | 90.074 s | 54.622 |
+| Flash instructions, repeat | 60.040 s | 36.259 |
+| PSRAM instructions, repeat | 120.046 s | 57.345 |
+
+All four measurements use `TEST_MODE=1`. Each image was rebooted before its
+capture, and the frame counter was sampled after warmup. The paired increases
+are 20.19 and 21.09 FPS. Even the lower candidate result exceeds the higher
+baseline by 18.36 FPS. Variation within each configuration means these are
+observed averages, not a minimum-FPS guarantee or a precise prediction for real
+radio traffic and other screens.
+
+Both candidate runs ended with 5,554,544 bytes of free PSRAM. Endpoint internal
+free heap was 7,387 and 7,271 bytes; the repeated baseline ended at 7,447 bytes.
+The candidate's minimum-ever internal free heap was 5,539 and 5,635 bytes, versus
+6,339 bytes for the repeated baseline. These are sampled heap observations, not
+proof of peak memory behavior in every feature combination.
+
+All four captures had no logged panic, assertion failure, error-level message,
+or transfer timeout. Test and normal-mode firmware builds succeeded, and all
+application flashes passed the uploader's hash verification. No renderer code
+or pixel arithmetic changed, so no new rasterizer test was needed for this
+configuration change. The user reported that the requested animated-display,
+scrolling/navigation, touch, sleep/wake, and available-game checks looked and
+worked normally. Battery endurance, other hardware models, and exhaustive
+radio/OTA scenarios were not measured.
+
+Keep `CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y` in this board's sdkconfig. There is no
+new Slint release or local renderer override. Normal-use source has
+`TEST_MODE=0`; the saved test binaries used for every FPS measurement have it
+enabled. Reverting this optimization requires clearing that one sdkconfig
+option and rebuilding/flashing the application.
+
+Evidence is local and untracked under `.pio/fps-check/`: `next-results.json`,
+`next-*-counter.log`, `next-*-build.log`, `next-*-upload.log`, and the three
+comparison/normal images. The test baseline SHA-256 is
+`9e6fcc0a4932f8d386837495ba1be6d38ab06808db45b367f14420bd929d2f4e`;
+the test candidate is
+`b307c83a4cc7655d175ae8366286ed530b8a8fde3334fea2951a4f036d2450fa`;
+the normal candidate is
+`4f82ba5c6405a9eed105fc628be99a8c5f026597e62badfadcde75553292cf5e`.
+
+The normal candidate is installed, with uploader hash verification. A subsequent
+serial check reported firmware 0.9.18, hardware
+`pingumote_esp32s3_touch_amoled_132`, and build ID `c125468d`. The test-only
+`render_stats` command was absent, confirming `TEST_MODE=0`. The capture had no
+runtime errors; see `next-normal-boot.log`. The final normal-mode image was not
+used to claim a separate FPS measurement.

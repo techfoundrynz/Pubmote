@@ -14,6 +14,7 @@
 #include <stdio.h>
 #if TEST_MODE
   #include "display.h"
+  #include "esp_heap_caps.h"
   #include "esp_timer.h"
   #include <inttypes.h>
 #endif
@@ -30,6 +31,11 @@ static int get_render_stats(int argc, char **argv) {
   (void)argc;
   (void)argv;
   printf("render_stats frames=%" PRIu32 " time_us=%" PRIi64 "\n", display_get_frame_count(), esp_timer_get_time());
+  printf("render_memory internal_free=%u internal_min=%u psram_free=%u psram_largest=%u\n",
+         (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+         (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
+         (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+         (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
   return 0;
 }
 
