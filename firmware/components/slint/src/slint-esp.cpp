@@ -388,6 +388,7 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
           std::size_t x0 = 0, x1 = 0;
           std::size_t y0 = 0;
           int lines = 0;
+          int capacity_lines = 0;
         };
         Accumulator acc[SLINT_CHUNK_ACCUMULATORS];
         // Buffers whose transfer is still outstanding, oldest first. Transfers complete in
@@ -511,7 +512,7 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
                   flush(a);
                 }
               }
-              if (acc[a].lines == slint_chunk_lines) {
+              if (acc[a].lines == acc[a].capacity_lines) {
                 flush(a);
               }
               if (acc[a].lines == 0) {
@@ -534,6 +535,12 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
                 acc[a].x0 = span_x0;
                 acc[a].x1 = span_x1;
                 acc[a].y0 = line_y;
+                // Rows are packed at the dirty span's width, not the panel width.
+                // Use the existing allocation fully for narrow rectangles, keeping
+                // chunk heights even so every panel window stays aligned. The byte
+                // count never exceeds the original full-width chunk capacity.
+                acc[a].capacity_lines = static_cast<int>(
+                    (HOR_RES * slint_chunk_lines / (span_x1 - span_x0)) & ~std::size_t(1));
               }
 
               // The staging buffer must not be written while its own transfer is still reading it.

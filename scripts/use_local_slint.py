@@ -19,6 +19,7 @@ Caveats:
     silently discards what this staged. Re-run it afterwards.
 """
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -34,12 +35,18 @@ DEFAULT_ENV = "pingumote_esp32s3_touch_amoled_132"
 
 def build() -> Path:
     cmd = [
-        "cargo", "+esp", "build", "--release", "-p", "slint-cpp",
+        "cargo", "+esp", "rustc", "--release", "-p", "slint-cpp",
+        "--crate-type", "staticlib",
         "--target", TARGET, "-Zbuild-std=core,alloc",
         "--no-default-features", "--features", FEATURES,
     ]
     print(f"building: {' '.join(cmd)}")
-    if subprocess.run(cmd, cwd=SLINT).returncode != 0:
+    # CMake builds only the static library. Emitting an rlib alongside it prevents
+    # fat LTO, so matching just the release profile and features is not enough.
+    build_env = os.environ.copy()
+    build_env.update(CARGO_INCREMENTAL="false", CARGO_PROFILE_RELEASE_LTO="fat",
+                     CARGO_PROFILE_RELEASE_CODEGEN_UNITS="1")
+    if subprocess.run(cmd, cwd=SLINT, env=build_env).returncode != 0:
         sys.exit("cargo build failed")
     lib = SLINT / "target" / TARGET / "release" / "libslint_cpp.a"
     if not lib.is_file():

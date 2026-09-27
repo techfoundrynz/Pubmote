@@ -12,6 +12,11 @@
 #include "settings.h"
 #include "settings_console.h"
 #include <stdio.h>
+#if TEST_MODE
+#include "display.h"
+#include "esp_timer.h"
+#include <inttypes.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,6 +24,25 @@
 
 static const char *TAG = "PUBREMOTE-CONSOLE";
 #define PROMPT_STR "pubconsole"
+
+#if TEST_MODE
+static int get_render_stats(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
+  printf("render_stats frames=%" PRIu32 " time_us=%" PRIi64 "\n",
+         display_get_frame_count(), esp_timer_get_time());
+  return 0;
+}
+
+static void register_render_stats_command(void) {
+  const esp_console_cmd_t cmd = {
+      .command = "render_stats",
+      .help = "Read the rendered frame counter and uptime in microseconds.",
+      .func = &get_render_stats,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+#endif
 
 static int get_version() {
   printf("version: %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -278,6 +302,9 @@ static void console_start(void) {
   /* Register commands */
   esp_console_register_help_command();
   register_version_command();
+#if TEST_MODE
+  register_render_stats_command();
+#endif
   register_reboot_command();
   register_shutdown_command();
   register_erase_command();
