@@ -130,6 +130,7 @@ jobs:
           sed -i 's/build_type = debug/build_type = release/g' platformio.ini
           pio run -t package
       env:
+          PUBMOTE_GUIDE_TAG: ${{ needs.check_version_update.outputs.version_tag }}
           PLATFORMIO_BUILD_FLAGS: |
             -D RELEASE_VARIANT=\"release\"
 

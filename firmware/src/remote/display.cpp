@@ -16,6 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "guide_qr.h"
 #include "hal/ledc_types.h"
 #include "powermanagement.h"
 #include "remote/color_utils.h"
@@ -558,6 +559,14 @@ static void slint_event_loop(void *pvParameters) {
   ESP_LOGI(TAG, "Creating AppWindow...");
   MEM_MARK("pre AppWindow");
   slint_window = AppWindow::create();
+  // Decode the build's versioned QR once; both guide screens share its pixels.
+  slint::SharedPixelBuffer<slint::Rgb8Pixel> guide_qr(GUIDE_QR_SIZE, GUIDE_QR_SIZE);
+  auto *qr_pixels = guide_qr.begin();
+  for (unsigned i = 0; i < GUIDE_QR_SIZE * GUIDE_QR_SIZE; ++i) {
+    uint8_t color = (GUIDE_QR_BITS[i / 8] & (0x80 >> (i % 8))) ? 0 : 255;
+    qr_pixels[i] = {color, color, color};
+  }
+  slint_window->global<UiState>().set_guide_qr(slint::Image(guide_qr));
   MEM_MARK("post AppWindow");
 
   // Surface unexpected reboots (panic / watchdog / brownout) as a dismissable

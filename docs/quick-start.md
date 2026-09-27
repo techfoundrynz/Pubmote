@@ -1,122 +1,133 @@
-# Pubmote Quick Start Guide
+# Getting started with Pubmote
 
-## First-Time Pubmote Setup
+Use this guide to flash your remote, calibrate its joystick, and pair it with your board.
+You can also [read this guide on pubmote.com](https://pubmote.com/getting-started/).
 
-1. Ensure you have completed the [Hardware Prerequisites](/README.md#hardware-prerequisites)
-2. Flash your Pubmote's ESP32-S3 controller using the included flashing tool at [pubmote.com](https://pubmote.com/)
-3. Configure Pubmote settings:
-    - On the Pubmote, navigate to the main menu by swiping down from the top of the main screen
-    - Select "Settings" and swipe through the options to set your preferences
-    - Select "Save" to apply your settings
+## Before you start
 
-![](configure_pubmote_settings.gif)
+Have your assembled Pubmote, a USB data cable, your board and VESC Express receiver,
+and VESC Tool ready. See the [hardware prerequisites](../README.md#hardware-prerequisites)
+and [Leaf Blaster example build](builds/leaf-blaster.md) if you are still assembling a remote.
 
-4. Calibrate your Pubmote:
-    - On the Pubmote, navigate to the main menu by swiping down from the top of the main screen
-    - Select "Calibration"
-    - Select "Start" and move through the steps, selecting "Next" to continue each step, and "Save" to store your calibration.
-        - For "Move stick to center", allow the joystick to sit steady.
-        - For "Move stick to min/max", move the joystick smoothly to its limits of motion in all directions.
-        - For "Move stick within deadband", move the joystick just slightly off-center. This will set the inner radius the Pubmote treats as no input.
-        - For "Set expo factor", you may leave this at 1.00 or adjust for more or less input to tilt ratio.
-        - For "Invert Y", you may check or uncheck this to flip the direction of the Y axis input.
-        - View the graph for testing and save your calibration.
+## Flash firmware
 
-![](configure_mote_calibration.gif)
+1. Connect the remote to your computer with a USB data cable.
+2. Open the [firmware tool](https://pubmote.com/) in a browser that supports Web Serial, such as desktop Chrome or Edge.
+3. Choose **Connect Device** and select the remote's serial port.
+4. Select the firmware for your exact hardware model and display variant, then flash it. Keep USB connected until the tool reports completion.
+5. Restart the remote if needed. On an uncalibrated remote, the welcome screen shows a QR code for this guide. Choose **Calibrate** to begin or **Later** to dismiss it for this boot.
 
-5. Pair the remote to your VESC Express:
-    
-    1. If you haven't already, install Float Accessories on your VESC Express:
-        - Instructions for this may be found at the bottom of [pubmote.com](https://pubmote.com)
-    2. Configure your VESC Express wifi and bluetooth settings:
-        - Navigate to VESC Express > WiFi > WiFi Mode: Set this to "Access Point"
-        - Navigate to VESC Express > Bluetooth > Bluetooth Mode: Set this to "Enabled" or "Enabled with Scripting" (if needed)
+You can reopen the QR code from **Menu > About > Getting started** at any time.
+The welcome screen stops appearing after you save joystick calibration.
 
-    ![](configure_ve_wifi.png)
-    ![](configure_ve_bluetooth.png)
+## Calibrate and configure the remote
 
-    3. Configure your VESC Express Float Accessories settings:
-        - Navigate to App UI > Settings > Pubmote Enabled
-        - Ensure this is checked
-        - Save and restart as necessary
+Swipe down from the top of the main screen to open the menu.
+Choose **Calibration**, then **Start**. Complete these steps, using **Next** to advance:
 
-    ![](configure_ve_fa_settings.png)
+1. **Move stick to center:** release the joystick and let it rest.
+2. **Move stick to min/max:** move smoothly to the limits in all directions.
+3. **Move stick within deadband:** move slightly around the center to set the region treated as no input.
+4. **Set expo factor:** leave it at 1.00 for a linear response, or adjust the response curve.
+5. **Axis options:** use **Invert X** or **Invert Y**, where available, to reverse an axis.
+6. Check the live input display, then choose **Save** to store calibration.
 
-    4. Launch Pubmote pairing:
-        - On the Pubmote, navigate to the main menu by swiping down from the top of the main screen
-        - Select "Pairing" and start the pairing on the Pubmote
-    5. Launch VESC Express Pubmote pairing:
-        - Navigate to App UI > Config > Pair Pubmote
+Open **Settings**, swipe through the pages, and choose **Save** when finished.
+The images below show an earlier UI; some labels and layouts may differ.
 
-    ![](configure_ve_fa_pairing.png)
-    ![](configure_mote_pairing.gif)
+![Joystick calibration walkthrough](configure_mote_calibration.gif)
 
-    6. Confirm the pairing code on both the Pubmote and VESC Express
-    7. You should now be connected!
+![Remote settings walkthrough](configure_pubmote_settings.gif)
 
-6. Ensure you've completed the package-side setup. For refloat:
-    1. Navigate to Refloat Cfg > Remote
-    2. Ensure Remote Type is set to "UART"
-    3. Ensure Tiltback Angle Limit is above 0 degrees
-    4. Ensure Tiltback Speed is above 0 degrees/second
-    5. Ensure Input Deadband is below 100%, but at least 1%.
-    6. Set Throttle Current Maximum to 0, unless you intend to use remote throttle for fun
-    
-    ![](configure_vesc_refloat.png)
+## Prepare the receiver
 
-7. Go ride!
+These steps describe the VESC Express and Float Accessories setup.
 
-## Usage
+1. Download Float Accessories from the package section of the [firmware tool](https://pubmote.com/).
+2. In VESC Tool, connect to your **VESC Express**. Open **VESC Packages > Load Custom** on desktop, or **Package Store > ... > Install from file** on mobile, and install the `.vescpkg` file (unzip the download first if necessary).
+3. For ESP-NOW, set **VESC Express > WiFi > WiFi Mode** to **Access Point**. Station mode can interfere with the remote connection.
+4. Set **VESC Express > Bluetooth > Bluetooth Mode** to **Enabled**, or **Enabled with Scripting** if your setup needs it.
+5. Under **App UI > Settings**, enable **Pubmote Enabled**. Save and restart as required.
 
-While the homescreen is active, tilting the joystick will apply remote input to your VESC.
+![VESC Express WiFi configuration](configure_ve_wifi.png)
 
-Some common scenarios where a tilt remote may be useful:
-- Going up a hill, raising the nose angle
-- Going down a hill, lowering the nose angle
-- Accelerating quickly, raising the nose angle
-- Decelerating quickly, lowering the nose angle
-- Riding into headwind, lowering the nose angle to require less leaning into the wind
-- Landing drops more level, lowering the nose
-- Bonks or climbs over large objects, to gain clearance on the approach and exit
-- Putting your friends through a Bucking Bronco mini game on your board
-- Nose slides
-- Tail drags
-- Balance recovery
-- And whatever else you might come up with!
+![VESC Express Bluetooth configuration](configure_ve_bluetooth.png)
 
-## Common Issues and Mistakes
+![Float Accessories Pubmote setting](configure_ve_fa_settings.png)
 
-### The Pubmote won't connect / stay connected
+## Pair the remote
 
-1. If VESC Express -> WiFi -> WiFi Mode is set to "Station Mode", it will cause connection failures with Pubmote.
+1. Open **Menu > Pairing** on the remote to view **Paired Boards**.
+2. Choose **Pair New**, then select **ESP-NOW** or **BLE** to match your receiver setup.
+3. For BLE, select your receiver in the discovered-device list. If radio initialization fails, choose **Retry**.
+4. In VESC Tool, open **App UI > Config > Pair Pubmote** on the receiver.
+5. Check the pairing code on the remote against the receiver's pairing prompt and complete confirmation there.
+6. Once paired, return to the main screen and check that board telemetry appears. Use the **Paired Boards** list to select a saved board later.
 
-The fix: It must be set to "Access Point"
+![Float Accessories pairing](configure_ve_fa_pairing.png)
 
-### The Pubmote is connected but not doing anything to the board tilt
+![Remote pairing walkthrough (earlier UI)](configure_mote_pairing.gif)
 
-1. If VESC Controller -> Refloat Cfg -> Remote ->
-      - Remote Type is not set to UART
-      - Tiltback Angle Limit is set to 0 °
-      - Tiltback Speed is set to 0 °/s
-      - Input Deadband is set to a very high %
+## Enable remote input on the board
 
-The fix: Ensure Remote Type of  UART, Tiltback Angle Limit of >0 °, Tiltback Speed of >0 °/s, and a relatively low Input Deadband
+Pairing and board-side input configuration are separate steps. For Refloat, open
+**Refloat Cfg > Remote** in VESC Tool while connected to the **VESC controller**:
 
-### My Float Accessories package isn't connecting to my Refloat/Float package
+- Set **Remote Type** to **UART**.
+- Set **Tiltback Angle Limit** above zero to allow a tilt adjustment.
+- Set **Tiltback Speed** above zero to allow the angle to change.
+- Keep **Input Deadband** below 100% and at least 1%.
+- Leave **Throttle Current Maximum** at **0** unless you intentionally configure remote throttle.
 
-1. If your VESC Express and VESC Controller firmware versions are different, this will prevent communication
-2. If your CAN communication between the VESC Express and VESC Controller is not functioning properly, this will prevent communication
+Save the board configuration. With the board stationary in a controlled setting,
+check that the joystick centers correctly and that the input direction and response
+match your settings before riding.
 
-### Pairing on the remote is stuck on 0000 when trying to pair to controller
+![Refloat remote input configuration](configure_vesc_refloat.png)
 
-The fix: Ensure that...
-1. Both the VESC Express and your VESC are on at least version 6.05, as this is necessary for Float Accessories
-2. Float Accessories is not crashing (check the LispBM Scripting tab in VESC Tool for information)
+## Everyday use
 
-### The direction of the tilt is backwards
+While the main screen is active, the joystick sends remote input to the board.
+The board's configuration determines the resulting tilt or throttle response.
+Swipe down to open the menu. Use **About > Check for updates** to access firmware
+updates, and **About > Getting started** to reopen this guide's QR code.
 
-The fix: Re-run calibration and check "Invert Y"
+## Troubleshooting
 
-### My remote is showing 0% board battery all the time
+### The remote will not connect or stay connected
 
-This is a known incompatibility with versions of Refloat package before 1.1, and all Float package versions. Update to Refloat 1.1 to resolve.
+Check that the intended board is selected in **Paired Boards**, that both devices
+use the same wireless protocol, and that the receiver is powered. For ESP-NOW,
+check that VESC Express WiFi mode is **Access Point**, rather than Station.
+
+### Pairing stays on dashes or 0000
+
+Check that Float Accessories is running and **Pubmote Enabled** is checked.
+Start **Pair Pubmote** on the receiver as well as pairing on the remote. The
+LispBM Scripting tab in VESC Tool can show package errors. Check firmware/package
+compatibility if the handshake never starts.
+
+### Connected, but board tilt does not change
+
+Recheck the Refloat remote settings above, particularly **UART**, nonzero angle
+and speed limits, and input deadband. Confirm that Float Accessories communicates
+with the controller over CAN; pairing to the receiver alone does not establish
+that connection.
+
+### Input direction is reversed or the joystick drifts
+
+Repeat calibration. Use **Invert Y** (or **Invert X**, if available) to change
+direction. Release the stick during the center step and set enough deadband to
+cover small movements around center. Remember to **Save**.
+
+### Board battery always shows 0%
+
+Older board packages may not provide compatible battery telemetry. Check your
+Refloat/Float package version and its telemetry support before treating this as a
+remote battery problem.
+
+### Still stuck?
+
+Include your remote hardware, firmware version and hash from **About**, receiver
+and controller firmware versions, wireless protocol, and the step that fails when
+[opening an issue](https://github.com/techfoundrynz/Pubmote/issues)

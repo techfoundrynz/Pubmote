@@ -24,6 +24,12 @@ const Header: React.FC<HeaderProps> = ({ isConnected, isConnecting, onConnect, o
             <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
               Diagnostic tool and firmware updater
             </p>
+            <a
+              href={`${import.meta.env.BASE_URL}getting-started/`}
+              className="text-sm text-blue-500 underline"
+            >
+              Getting started
+            </a>
           </div>
         </div>
         <div className="flex items-center gap-4">

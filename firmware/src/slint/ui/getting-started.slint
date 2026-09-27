@@ -1,0 +1,63 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { PageFooter } from "page-footer.slint";
+
+export component GettingStartedScreen inherits Rectangle {
+    in property <bool> first-launch: false;
+    in property <image> guide-qr: @image-url("../../../assets/guide-qr.png");
+    callback primary;
+    callback back;
+    background: Theme.bg;
+
+    // Also used as a modal on first launch: consume touches behind the QR.
+    TouchArea { clicked => {} }
+
+    VerticalLayout {
+        padding-top: Theme.page-padding-vertical;
+        spacing: 4px * Theme.scale;
+        Text {
+            text: root.first-launch ? "Welcome to Pubmote" : "Getting started";
+            color: Theme.text;
+            font-size: Theme.font-14;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: "Scan for the setup guide";
+            color: Theme.text-dim;
+            font-size: Theme.font-11;
+            horizontal-alignment: center;
+        }
+        Rectangle {
+            vertical-stretch: 1;
+            Image {
+                source: root.guide-qr;
+                // Include the four-module white quiet zone. Integer sizing keeps
+                // all modules the same width, even on the smallest 240px panel.
+                width: Math.max(1, Math.floor(Math.min(parent.width, parent.height) / self.source.width / 1px)) * self.source.width * 1px;
+                height: self.width;
+                x: Math.round((parent.width - self.width) / 2 / 1px) * 1px;
+                y: Math.round((parent.height - self.height) / 2 / 1px) * 1px;
+                image-rendering: pixelated;
+            }
+        }
+        Text {
+            text: "pubmote.com/getting-started";
+            color: Theme.text-dim;
+            font-size: Theme.font-10;
+            horizontal-alignment: center;
+        }
+        PageFooter {
+            AppButton {
+                text: root.first-launch ? "Later" : "Back";
+                size: "small";
+                variant: "secondary";
+                clicked => { root.back(); }
+            }
+            if root.first-launch: AppButton {
+                text: "Calibrate";
+                size: "small";
+                clicked => { root.primary(); }
+            }
+        }
+    }
+}

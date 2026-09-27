@@ -13,6 +13,12 @@ export function HeaderLinksSelector() {
         <Dropdown
           options={[
             {
+              value: `${import.meta.env.BASE_URL}getting-started/`,
+              tooltip: 'Setup, pairing, and troubleshooting',
+              icon: <Info className="h-4 w-4" />,
+              label: 'Getting started',
+            },
+            {
               value: 'https://github.com/techfoundrynz/Pubmote',
               tooltip: `Pubmote GitHub repository`,
               icon: <SiGithub className="h-4 w-4" />,

@@ -7,6 +7,8 @@ on:
       - 'firmware/**'
       - 'platformio.ini'
       - 'postbuild_hook.py'
+      - 'prebuild_hook.py'
+      - 'scripts/generate_guide_qr.py'
       - 'scripts/install_game.py'
       - 'fs/games/**'
       - 'tests/**'
