@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.16)
+project(dma_accumulator_test CXX)
+
+# Exercise the production accumulator without the ESP-IDF or Slint runtime.
+set(source "${CMAKE_CURRENT_SOURCE_DIR}/../../firmware/components/slint/src/slint-esp.cpp")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${source}")
+file(READ "${source}" production)
+string(FIND "${production}" "        struct Accumulator {" start)
+string(FIND "${production}" "        // How much of the panel Slint asked" end)
+if(start LESS 0 OR end LESS_EQUAL start)
+  message(FATAL_ERROR "Cannot locate the production accumulator; update the extraction boundaries")
+endif()
+math(EXPR length "${end} - ${start}")
+string(SUBSTRING "${production}" ${start} ${length} accumulator)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/accumulator.inc" "${accumulator}")
+
+add_executable(dma_accumulator_test dma_accumulator_test.cpp)
+target_compile_features(dma_accumulator_test PRIVATE cxx_std_20)
+target_compile_definitions(dma_accumulator_test PRIVATE DMA_SOURCE="accumulator.inc")
+target_include_directories(dma_accumulator_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+enable_testing()
+add_test(NAME dma_accumulator COMMAND dma_accumulator_test)
