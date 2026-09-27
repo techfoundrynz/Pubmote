@@ -12,6 +12,11 @@ of **34.43 and 36.26 FPS**, with the same published renderer and `TEST_MODE=1`.
 The user confirmed normal visuals and behavior. See [§18](#18-execute-instructions-from-psram-2026-09-27)
 for the memory cost, measurements, and validation limits.
 
+The follow-up in [§19](#19-follow-up-memory-and-dma-comparisons-2026-09-27)
+retains earlier DMA submission for another **0.71 FPS** with profiling disabled
+(57.27 to 57.98 FPS). Read-only data in PSRAM had negligible benefit and was
+rejected; the proposed 64-byte instruction-cache line is unsupported.
+
 The preceding renderer investigation reached **34.97 delivered FPS** with the published `mcu-v1.19.2` renderer, up from **28.53 FPS** initially.
 The preceding local build measured 34.91 FPS.
 The successful changes are DMA buffer packing, empty-center arc rejection, scanline membership reuse, and opaque-cover caching.
@@ -631,10 +636,11 @@ recovered, combined.
 
 ### Refuted this session
 
-- **Instruction cache line size.** `CONFIG_ESP32S3_INSTRUCTION_CACHE_LINE_32B` -> `64B`, on the
-  theory that a fetch-bound workload with straight-line code would halve its flash transactions.
-  A/B on hardware: 3375ms/60f vs 3367ms/60f (56.2 vs 56.1ms). No effect. Reverted. Note the data
-  cache is already at 64B; only the instruction side was ever 32B.
+- **Instruction cache line-size attempt.** The historical attempt described a change from
+  32B to 64B and measured 3375ms/60f versus 3367ms/60f. Subsequent inspection found that
+  ESP-IDF 5.5's ESP32-S3 Kconfig supports only 16B and 32B instruction-cache lines;
+  64B is a data-cache option. That earlier result is not evidence from a valid 64B
+  instruction-cache configuration. See section 19.
 - **`render_by_line` skipping lines of the dirty region.** Recorded in section 10 as the untested
   next step. Refuted from source: `Scene::recompute_ranges` advances `current_line` past lines
   whose `current_line_ranges` is empty, and a line is only empty when it is outside the region.
@@ -1162,3 +1168,113 @@ serial check reported firmware 0.9.18, hardware
 `render_stats` command was absent, confirming `TEST_MODE=0`. The capture had no
 runtime errors; see `next-normal-boot.log`. The final normal-mode image was not
 used to claim a separate FPS measurement.
+
+## 19. Follow-up memory and DMA comparisons (2026-09-27)
+
+Baseline: commit `6739691`, firmware 0.9.18, published Slint `mcu-v1.19.2`,
+instructions executing from PSRAM. Each candidate changes one thing relative
+to that baseline. Every FPS test uses `TEST_MODE=1`, an untouched stats screen,
+the existing 60 FPS target, and a fresh reboot. Counter readings start around
+20 seconds of device uptime and span 90 seconds. Settings and filesystem
+partitions are preserved; only the application at `0x10000` is flashed.
+
+### Candidates and repeated measurements
+
+The proposed 64-byte instruction-cache line is **unsupported**, not a benchmark
+candidate. ESP-IDF 5.5's
+`components/esp_system/port/soc/esp32s3/Kconfig.cache` exposes only 16-byte and
+32-byte instruction-cache lines. This board already uses 32 bytes. The earlier
+suggestion confused this with the data-cache options; section 11 is corrected.
+
+The viable candidates were measured with identical `SLINT_PERF_LOG=1`
+instrumentation, so frame work and transfer waits could be compared alongside
+delivered FPS. The FPS cap can hide work savings, but the frame-work measurement
+excludes its pacing delay. Rows below are individual live runs, not guarantees
+of minimum FPS or deterministic frame replay.
+
+| Variant | Delivered FPS | Mean frame work | Mean DMA wait |
+|---|---:|---:|---:|
+| Baseline | 56.934 | 14.969 ms | 0.761 ms |
+| Read-only data in PSRAM | 57.024 | 14.938 ms | 0.763 ms |
+| Earlier DMA submission | 57.982 | 14.504 ms | 0.338 ms |
+| Baseline repeat | 57.002 | 14.922 ms | 0.765 ms |
+| Read-only data repeat | 57.153 | 14.887 ms | 0.770 ms |
+| Earlier DMA repeat | 57.931 | 14.428 ms | 0.320 ms |
+
+**Read-only data: reject.** The average difference is only about 0.12 FPS and
+0.033 ms of frame work, with no convincing practical benefit for the memory
+cost. Free PSRAM fell from 5,561,624 to 2,524,776 bytes at the final samples.
+Boot logs confirmed that read-only data really was copied into PSRAM; this was
+not a configuration no-op. Leave `CONFIG_SPIRAM_RODATA` disabled.
+
+**Earlier DMA submission: retain.** Across
+the paired profiled runs, delivered FPS increased by 1.05 and 0.93. Average
+frame work fell about 0.48 ms (3.2%), of which about 0.43 ms was reduced transfer
+waiting. Both configurations retained the same free PSRAM at the measured
+endpoints. The gain is modest because most frame work is still preparation and
+rasterization, and delivered FPS is approaching the configured target.
+
+The scheduling change starts a full buffer immediately when no transfer is
+outstanding. It also submits an accumulated region once the scanline has passed
+its end, instead of retaining it until buffer pressure or the end of the frame.
+The same allocations, pixel data, buffer capacities, ownership checks, completion
+semaphore, bounded waits, and frame-level panel lock remain in place.
+
+### Correctness checks
+
+All six profiled captures had no logged panic, assertion failure, error-level
+message, failed bitmap transfer, or transfer timeout. Builds and application
+upload hash verification succeeded for each measured image.
+
+`tests/dma` extracts the actual production accumulator into a C++20 host harness.
+It checks 32,000 cases against independently constructed expected pixels and
+write counts, while varying dirty rectangles, gaps, byte swapping, and transfer
+completion timing. It also checks allocation/display bounds, DMA ownership, and
+even address windows for the asynchronous AMOLED path. The retained test passed.
+See `tests/dma/README.md` for standalone CMake/CTest commands.
+
+A separate comparison ran the original implementation through the same pixel
+and ownership checks. Both passed those checks. The comparison also found 80
+asynchronous alignment-failure cases in the original implementation and none
+in the candidate, with no new alignment failures across either transfer mode.
+The candidate still had 48 synchronous-mode alignment cases inherited from the
+baseline. The connected AMOLED uses asynchronous DMA. These are host-model
+observations, not proof about every panel or interrupt schedule.
+
+The initial test generator incorrectly supplied more than Slint's maximum of
+three dirty rectangles. It was corrected to generate unions of at most three
+even-aligned rectangles before the reported 32,000-case comparison; no pixel,
+ownership, or asynchronous-alignment assertion was weakened in the retained test.
+
+Evidence and saved images are in `.pio/fps-matrix/`, including the per-run
+`*-result.json`, `*-serial.log`, build/upload logs, image hashes, and the original
+versus candidate host-test logs. The test helper is local and untracked.
+Windows file locks interrupted several managed-dependency refreshes; the exact
+versions from `dependencies.lock` were restored from the local package cache,
+and generated board-specific CMake metadata was regenerated. No dependency
+version or renderer archive was changed for these experiments.
+
+### Profiling-disabled confirmation
+
+A final matched pair kept `TEST_MODE=1` and disabled `SLINT_PERF_LOG` on both
+sides. The baseline delivered **57.269 FPS** over 90.084 seconds; the DMA
+candidate delivered **57.979 FPS** over 90.085 seconds. This confirms a smaller
+**0.710 FPS** delivered gain without continuous diagnostic logging. Both ended
+with 5,627,160 bytes of free PSRAM. Neither capture contained runtime or transfer
+errors. The configured 60 FPS target was unchanged throughout all eight runs.
+
+The normal-use image has `TEST_MODE=0` and `SLINT_PERF_LOG=0`, with read-only data
+still in flash and only the DMA scheduling change retained. It built successfully
+at 107,640 bytes of static RAM and 5,933,211 bytes of application flash. These are
+build-size reports, not peak runtime memory measurements. Its SHA-256 is
+`8ecb522b72a6129795a7bfbec0e8c67628cf01ef970ea1a5e79f0932a9f2ba51`.
+The saved image is `.pio/fps-matrix/dma-normal.bin`; normal operation is not the
+source of the FPS measurements above.
+
+The user confirmed that the final test-mode DMA candidate looked and worked
+normally after checking animation, navigation, touch, and sleep/wake. The
+normal-use image was then flashed to the connected remote with upload hash
+verification. Serial verification reported version `0.9.18`, build ID `c125468d`,
+and confirmed the test-only `render_stats` command was absent, with no captured
+runtime errors. The final upload and serial evidence are
+`.pio/fps-matrix/dma-normal-upload.log` and `dma-normal-boot.log`.
