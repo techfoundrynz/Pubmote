@@ -24,12 +24,12 @@ const repository = {
   prerelease: { nodes: [release('nightly', true), release('v2', true)] },
 };
 function cache() {
-  let stored: Response | undefined;
+  const stored = new Map<string, Response>();
   vi.stubGlobal('caches', {
     default: {
-      match: async () => stored?.clone(),
-      put: async (_: Request, value: Response) => {
-        stored = value.clone();
+      match: async (key: Request) => stored.get(key.url)?.clone(),
+      put: async (key: Request, value: Response) => {
+        stored.set(key.url, value.clone());
       },
     },
   });
@@ -141,19 +141,6 @@ test('OTA error responses are readable by the web tool', async () => {
   expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
 });
 
-test('generic proxy varies CORS responses by origin', async () => {
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-    new Response('ok', { headers: { Vary: 'Accept-Encoding' } }),
-  );
-  const response = await worker.fetch(
-    new Request(`${base}/cors?https://github.com/techfoundrynz/Pubmote`, {
-      headers: { Origin: 'https://pubmote.com' },
-    }),
-    env,
-  );
-  expect(response.headers.get('Vary')).toBe('Accept-Encoding, Origin');
-});
-
 test('stable releases are not also advertised as prereleases', async () => {
   cache();
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -173,4 +160,77 @@ test('stable releases are not also advertised as prereleases', async () => {
   ]);
   const firmware = await worker.fetch(new Request(`${base}/ota/v1/releases?board=test_board`), env);
   expect(((await firmware.json()) as { prerelease: unknown }).prerelease).toBeNull();
+});
+
+test('older firmware discovers and downloads exact-board symbols through the OTA service', async () => {
+  cache();
+  const historical = {
+    tagName: 'v0.9.15',
+    assets: {
+      nodes: [
+        {
+          name: 'test_board_extra-v0.9.15.release.elf',
+          downloadUrl:
+            'https://github.com/techfoundrynz/Pubmote/releases/download/v0.9.15/test_board_extra-v0.9.15.release.elf',
+        },
+        {
+          name: 'test_board-v0.9.15.release.elf',
+          downloadUrl:
+            'https://github.com/techfoundrynz/Pubmote/releases/download/v0.9.15/test_board-v0.9.15.release.elf',
+        },
+      ],
+    },
+  };
+  const bytes = new Uint8Array([127, 69, 76, 70]);
+  const fetchMock = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ data: { repository } }))
+    .mockResolvedValueOnce(Response.json({ data: { repository: { release: historical } } }))
+    .mockResolvedValueOnce(new Response(bytes));
+  const symbols = await worker.fetch(
+    new Request(`${base}/ota/v1/symbols?tag=v0.9.15&board=test_board`),
+    env,
+  );
+  expect(symbols.status).toBe(200);
+  expect(symbols.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  const info = (await symbols.json()) as { name: string; url: string };
+  expect(info.name).toBe('test_board-v0.9.15.release.elf');
+  const download = await worker.fetch(
+    new Request(info.url, { headers: { Range: 'bytes=10-' } }),
+    env,
+  );
+  expect(download.status).toBe(200);
+  expect(download.headers.get('Content-Type')).toBe('application/octet-stream');
+  expect(new Uint8Array(await download.arrayBuffer())).toEqual(bytes);
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(fetchMock.mock.calls[2]).toEqual([
+    historical.assets.nodes[1].downloadUrl,
+    {
+      redirect: 'follow',
+      headers: { Accept: 'application/octet-stream' },
+    },
+  ]);
+});
+
+test('missing historical symbols fail without substituting another version', async () => {
+  cache();
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ data: { repository } }))
+    .mockResolvedValueOnce(Response.json({ data: { repository: { release: null } } }));
+  const response = await worker.fetch(
+    new Request(`${base}/ota/v1/symbols?tag=v0.1&board=test_board`),
+    env,
+  );
+  expect(response.status).toBe(404);
+  expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+});
+
+test('the generic CORS proxy is removed', async () => {
+  const fetchMock = vi.spyOn(globalThis, 'fetch');
+  const response = await worker.fetch(
+    new Request(`${base}/cors?https://github.com/techfoundrynz/Pubmote`),
+    env,
+  );
+  expect(response.status).toBe(404);
+  expect(fetchMock).not.toHaveBeenCalled();
 });

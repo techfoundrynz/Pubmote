@@ -47,15 +47,3 @@ export interface CommandInfo {
   help: string;
   hint?: string;
 }
-
-export interface GitHubRelease {
-  name: string;
-  tag_name: string;
-  published_at: string;
-  prerelease: boolean;
-  assets: Array<{
-    name: string;
-    browser_download_url: string;
-    url: string;
-  }>;
-}

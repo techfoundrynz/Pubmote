@@ -20,16 +20,20 @@ It returns stable, prerelease, and nightly packages with board variants and date
 using the same cached GitHub metadata as device OTA. The firmware's compact
 `?board=<HW_TYPE>` response remains compatible with existing devices.
 
-ZIP links point to `GET /ota/v1/download?tag=<tag>&asset=<filename>`.
+ZIP and ELF links point to `GET /ota/v1/download?tag=<tag>&asset=<filename>`.
 The Worker verifies the package against release metadata and streams its public
 GitHub asset. It forwards no client range/cache headers or API token, requires a
 complete upstream 200 response, and sends `Cache-Control: no-store`. All OTA
-responses, including errors, include browser CORS headers. ZIP downloads no longer
-use the generic `/cors` proxy; other web tool features can still use that proxy.
+responses, including errors, include browser CORS headers. The generic `/cors` proxy has been removed.
+
+Debug symbols are discovered through `GET /ota/v1/symbols?tag=<tag>&board=<board>`.
+The service looks up older release tags when needed and caches their metadata for
+60 seconds. Board matching is exact, and missing symbols never fall back to an
+unrelated firmware version. Update checks also use the shared release service.
 
 For local web development, set `VITE_API_BASE_URL=http://127.0.0.1:8787` while
 running the Worker locally. Otherwise the tool uses `https://api.pubmote.com`.
-Deploy the Worker changes before deploying the updated web tool.
+Deploy the Worker and web tool together; older cached web pages using `/cors` must be refreshed.
 
 ## Rollout
 

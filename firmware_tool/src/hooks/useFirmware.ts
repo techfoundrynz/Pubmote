@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FirmwareVersion } from '../types';
+import { fetchFirmwareReleases } from '../utils/ota';
 
 export function useFirmware() {
   const [versions, setVersions] = useState<FirmwareVersion[]>([]);
@@ -10,13 +11,7 @@ export function useFirmware() {
     const controller = new AbortController();
     async function loadFirmware() {
       try {
-        const base = import.meta.env.VITE_API_BASE_URL || 'https://api.pubmote.com';
-        const response = await fetch(`${base}/ota/v1/releases?format=web`, {
-          signal: controller.signal,
-          cache: 'no-store',
-        });
-        if (!response.ok) throw new Error(`Failed to fetch releases: HTTP ${response.status}`);
-        const releases: FirmwareVersion[] = await response.json();
+        const releases = await fetchFirmwareReleases(controller.signal);
         if (!controller.signal.aborted) setVersions(releases);
       } catch (err) {
         if (!controller.signal.aborted)

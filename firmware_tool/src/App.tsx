@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import Header from './components/Header';
 import { ESPService } from './services/espService';
 import { TerminalService } from './services/terminal';
-import { DeviceInfoData, FlashProgress as FlashProgressType, GitHubRelease } from './types';
+import { DeviceInfoData, FlashProgress as FlashProgressType, ReleaseType } from './types';
 import SettingsPage from './components/SettingsPage';
 import FirmwarePage from './components/FirmwarePage';
 import DeviceInfoPage from './components/DeviceInfoPage';
@@ -10,7 +10,7 @@ import { DeviceToolsProvider } from './context/DeviceToolsContext';
 import { DeviceInfo } from './components/DeviceInfo';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { Dialog } from './components/ui/Dialog';
-import { fetchWithCorsProxy } from './utils/corsProxy';
+import { fetchFirmwareReleases, otaUrl } from './utils/ota';
 
 // Helper function to compare semantic versions
 const compareVersions = (v1: string, v2: string): number => {
@@ -105,16 +105,11 @@ const AppContent = () => {
 
   const checkForUpdates = async () => {
     try {
-      const response = await fetchWithCorsProxy(
-        'https://api.github.com/repos/techfoundrynz/pubmote/releases',
-      );
-      if (!response.ok) return;
-
-      const releases: GitHubRelease[] = await response.json();
+      const releases = await fetchFirmwareReleases();
       if (releases && releases.length > 0) {
         // Filter out nightly builds (releases with "nightly" in tag_name)
         const nonNightlyReleases = releases.filter(
-          (release) => !release.tag_name.toLowerCase().includes('nightly'),
+          (release) => release.releaseType !== ReleaseType.Nightly,
         );
 
         if (nonNightlyReleases.length === 0) return;
@@ -122,8 +117,8 @@ const AppContent = () => {
         // Find the latest version by comparing all non-nightly releases
         let latestRelease = nonNightlyReleases[0];
         for (const release of nonNightlyReleases) {
-          const currentVersion = release.tag_name.replace(/^v/, '');
-          const latestVersionStr = latestRelease.tag_name.replace(/^v/, '');
+          const currentVersion = release.version.replace(/^v/, '');
+          const latestVersionStr = latestRelease.version.replace(/^v/, '');
 
           if (compareVersions(currentVersion, latestVersionStr) > 0) {
             latestRelease = release;
@@ -131,7 +126,7 @@ const AppContent = () => {
         }
 
         // Extract version from tag_name (e.g., "v1.2.3" -> "1.2.3")
-        const version = latestRelease.tag_name.replace(/^v/, '');
+        const version = latestRelease.version.replace(/^v/, '');
         setLatestVersion(version);
       }
     } catch (error) {
@@ -226,46 +221,21 @@ const AppContent = () => {
     }
 
     try {
-      const response = await fetchWithCorsProxy(
-        'https://api.github.com/repos/techfoundrynz/pubmote/releases',
-      );
-      if (!response.ok) throw new Error(`GitHub API Error: ${response.statusText}`);
-
-      const releases: GitHubRelease[] = await response.json();
-
-      // 1. Try to find precise tag match
-      let release = releases.find((r) => r.tag_name === version || r.name === version);
-
-      if (!release) {
-        release = releases.find((r) => r.tag_name === `v${version}` || r.name === `v${version}`);
-      }
-
-      if (!release) {
-        release = releases[0];
-        toast.warning(
-          `Release '${version}' not found. Using latest release '${release.tag_name}'.`,
-        );
-      }
-
-      // 3. Find ELF asset - match against hardware name
-      const elfAsset = release.assets.find(
-        (asset) => asset.name.endsWith('.elf') && asset.name.includes(hardware),
-      );
-
-      if (!elfAsset) {
-        throw new Error(
-          `No ELF file found for hardware '${hardware}' in release '${release.tag_name}'`,
-        );
-      }
-
-      // 4. Download via CORS Proxy
-      const originalUrl = elfAsset.browser_download_url;
+      const tag = /^\d/.test(version) ? `v${version}` : version;
+      const symbolsUrl = otaUrl('/ota/v1/symbols');
+      symbolsUrl.searchParams.set('tag', tag);
+      symbolsUrl.searchParams.set('board', hardware);
+      const response = await fetch(symbolsUrl, { cache: 'no-store' });
+      if (!response.ok)
+        throw new Error(`Matching debug symbols unavailable: HTTP ${response.status}`);
+      const elfAsset: { name: string; url: string; githubUrl: string } = await response.json();
+      const downloadUrl = elfAsset.url;
 
       try {
         const toastId = toast.info(`Downloading ${elfAsset.name}...`, 0);
 
         try {
-          const fileRes = await fetchWithCorsProxy(originalUrl);
+          const fileRes = await fetch(downloadUrl, { cache: 'no-store' });
           if (!fileRes.ok) throw new Error(`Download failed: ${fileRes.statusText}`);
 
           const blob = await fileRes.blob();
@@ -276,14 +246,14 @@ const AppContent = () => {
           toast.dismiss(toastId);
         }
       } catch (downloadError) {
-        console.warn('CORS proxy download failed:', downloadError);
+        console.warn('Debug symbol download failed:', downloadError);
         if (isManual) {
           setErrorDialog({
             isOpen: true,
             title: 'Download Failed',
             message: 'Auto-download failed. Opening browser to download manually.',
           });
-          window.open(originalUrl, '_blank');
+          window.open(elfAsset.githubUrl, '_blank');
         }
       }
     } catch (error) {

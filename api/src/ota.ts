@@ -172,6 +172,52 @@ export async function otaResponse(
   }
 }
 
+async function getReleaseByTag(
+  tag: string,
+  origin: string,
+  env: OtaEnv,
+  cache: Pick<Cache, 'match' | 'put'>,
+): Promise<Release | null> {
+  const repository = await getRepository(origin, env, cache);
+  const current = [repository.stable, ...repository.prerelease.nodes].find(
+    (r) => r?.tagName === tag,
+  );
+  if (current) return current;
+  // Devices may still run an older release whose symbols are absent from the latest channels.
+  const key = new Request(`${origin}/ota/internal/tag/${encodeURIComponent(tag)}`);
+  const cached = await cache.match(key);
+  if (cached) return cached.json<Release | null>();
+  const result = await graphql<{ repository: { release: Release | null } | null }>(
+    `
+      query ($tag: String!) {
+        repository(owner: "techfoundrynz", name: "Pubmote") {
+          release(tagName: $tag) {
+            tagName
+            assets: releaseAssets(first: 50) {
+              nodes {
+                name
+                downloadUrl
+              }
+            }
+          }
+        }
+      }
+    `,
+    {
+      tag,
+      headers: { authorization: `Bearer ${env.RELEASES_AUTH_TOKEN}`, 'user-agent': 'Pubmote-OTA' },
+      request: { fetch, signal: AbortSignal.timeout(10000) },
+    },
+  );
+  if (!result.repository) throw new Error('GitHub repository unavailable');
+  const release = result.repository.release;
+  await cache.put(
+    key,
+    Response.json(release, { headers: { 'Cache-Control': 'public, max-age=60' } }),
+  );
+  return release;
+}
+
 export async function otaDownloadResponse(
   request: Request,
   env: OtaEnv,
@@ -185,8 +231,9 @@ export async function otaDownloadResponse(
   if (
     url.searchParams.size !== 2 ||
     !tag ||
+    !/^[a-zA-Z0-9_.-]{1,31}$/.test(tag) ||
     !name ||
-    !/^[a-z0-9_]{1,96}-[a-zA-Z0-9_.-]+\.zip$/.test(name)
+    !/^[a-z0-9_]{1,96}-[a-zA-Z0-9_.-]+\.(zip|elf)$/.test(name)
   ) {
     return Response.json({ error: 'Invalid package' }, { status: 400 });
   }
@@ -197,16 +244,13 @@ export async function otaDownloadResponse(
     if (!(await env.OTA_RATE_LIMITER.limit({ key: `ota:${ip}` })).success) {
       return new Response('Too many downloads', { status: 429, headers: { 'Retry-After': '60' } });
     }
-    const repository = await getRepository(url.origin, env, cache);
-    const release = [repository.stable, ...repository.prerelease.nodes].find(
-      (r) => r?.tagName === tag,
-    );
+    const release = await getReleaseByTag(tag, url.origin, env, cache);
     const asset = release?.assets.nodes.find((a) => a.name === name);
     if (!release || !asset) return new Response('Package not found', { status: 404 });
     const selected = selectAsset(
       { ...release, assets: { nodes: [asset] } },
       name.split('-')[0],
-      '.zip',
+      name.endsWith('.elf') ? '.elf' : '.zip',
     );
     if (!selected) return new Response('Package not found', { status: 404 });
     // Forward neither browser range/cache headers nor our GitHub API credential.
@@ -219,7 +263,7 @@ export async function otaDownloadResponse(
       return new Response('Unable to download complete package', { status: 502 });
     }
     const headers = new Headers({
-      'Content-Type': 'application/zip',
+      'Content-Type': name.endsWith('.elf') ? 'application/octet-stream' : 'application/zip',
       'Content-Disposition': `attachment; filename="${name}"`,
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
@@ -227,5 +271,43 @@ export async function otaDownloadResponse(
     return new Response(upstream.body, { headers });
   } catch {
     return Response.json({ error: 'Unable to download package' }, { status: 502 });
+  }
+}
+
+export async function otaSymbolsResponse(
+  request: Request,
+  env: OtaEnv,
+  cache: Pick<Cache, 'match' | 'put'>,
+): Promise<Response> {
+  if (request.method !== 'GET')
+    return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET' } });
+  const url = new URL(request.url);
+  const tag = url.searchParams.get('tag');
+  const board = url.searchParams.get('board');
+  if (
+    url.searchParams.size !== 2 ||
+    !tag ||
+    !/^[a-zA-Z0-9_.-]{1,31}$/.test(tag) ||
+    !board ||
+    !/^[a-z0-9_]{1,96}$/.test(board)
+  ) {
+    return Response.json({ error: 'Invalid symbol request' }, { status: 400 });
+  }
+  if (!env.RELEASES_AUTH_TOKEN)
+    return new Response('OTA service is not configured', { status: 503 });
+  try {
+    const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
+    if (!(await env.OTA_RATE_LIMITER.limit({ key: `ota:${ip}` })).success)
+      return new Response('Too many requests', { status: 429, headers: { 'Retry-After': '60' } });
+    const release = await getReleaseByTag(tag, url.origin, env, cache);
+    const asset = selectAsset(release, board, '.elf');
+    if (!asset) return new Response('Matching debug symbols not found', { status: 404 });
+    const name = decodeURIComponent(new URL(asset.url).pathname.split('/').pop()!);
+    const download = new URL('/ota/v1/download', url.origin);
+    download.searchParams.set('tag', tag);
+    download.searchParams.set('asset', name);
+    return Response.json({ name, url: download.href, githubUrl: asset.url });
+  } catch {
+    return new Response('Unable to find debug symbols', { status: 502 });
   }
 }
