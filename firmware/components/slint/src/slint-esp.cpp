@@ -482,6 +482,16 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
                 t_first_line = esp_timer_get_time();
               }
               line_callbacks++;
+              // A skipped row ends a contiguous region. Submit it before
+              // rasterising later regions when the transfer queue is idle.
+              if (q_len == 0) {
+                for (int i = 0; i < SLINT_CHUNK_ACCUMULATORS; i++) {
+                  if (acc[i].lines > 0 && acc[i].y0 + acc[i].lines < line_y) {
+                    flush(i);
+                    break;
+                  }
+                }
+              }
 
               // The dirty region already arrives rounded out to even coordinates, so the window
               // needs no widening here and no pixel is ever invented.
@@ -558,6 +568,11 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
               render_fn(std::span<PixelType>{row, width});
 
               acc[a].lines++;
+              // Start a full buffer while later rows are still being rendered.
+              // Preserve the existing wait before reusing any DMA-owned buffer.
+              if (acc[a].lines == acc[a].capacity_lines && q_len == 0) {
+                flush(a);
+              }
             });
 
         for (int a = 0; a < SLINT_CHUNK_ACCUMULATORS; a++) {
