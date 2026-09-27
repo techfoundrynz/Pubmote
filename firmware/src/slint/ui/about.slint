@@ -13,6 +13,7 @@ import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { PageFooter } from "page-footer.slint";
 import { Pager } from "pager.slint";
+import { GettingStartedScreen } from "getting-started.slint";
 
 // One line of the diagnostics page. A header carries only a label and titles the group
 // below it; everything else is a label on the left and its value on the right.
@@ -47,6 +48,7 @@ component StatRow inherits HorizontalLayout {
 export component AboutScreen inherits Rectangle {
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
     in property <[StatEntry]> stats: [];
+    in property <image> guide-qr;
     callback check-updates;
     callback back;
     callback secret;
@@ -54,6 +56,7 @@ export component AboutScreen inherits Rectangle {
 
     property <int> current-page: 0;
     property <int> version-taps: 0;
+    property <bool> show-guide: false;
 
     function count-version-tap() {
         root.version-taps += 1;
@@ -130,6 +133,12 @@ export component AboutScreen inherits Rectangle {
                         text: "Check for updates";
                         clicked => { root.check-updates(); }
                     }
+                    AppButton {
+                        variant: "outline";
+                        size: "small";
+                        text: "Getting started";
+                        clicked => { root.show-guide = true; }
+                    }
                 }
             }
             // Page 2: battery and memory. Scrolls vertically - the section list grows past
@@ -174,5 +183,11 @@ export component AboutScreen inherits Rectangle {
                 clicked => { root.back(); }
             }
         }
+    }
+    if root.show-guide: GettingStartedScreen {
+        guide-qr: root.guide-qr;
+        width: 100%;
+        height: 100%;
+        back => { root.show-guide = false; }
     }
 }

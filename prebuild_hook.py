@@ -42,6 +42,24 @@ metadata = (
     f'#define VERSION_PATCH {patch}\n'
 )
 write_if_changed(build_dir / "build_metadata.h", metadata.encode())
+
+# Releases supply their actual tag, including custom tags. Other builds use an
+# immutable commit rather than the moving `nightly` tag.
+guide_ref = os.environ.get("PUBMOTE_GUIDE_TAG", "")
+if not guide_ref:
+    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=project_dir,
+                            capture_output=True, text=True)
+    guide_ref = result.stdout.strip() if result.returncode == 0 else ""
+
+# Isolate the host-only encoder from the user's Python packages. Like the Slint
+# compiler, it is downloaded once and reused across board builds.
+qr_dependencies = project_dir / ".pio" / "guide-deps" / "qrcode-8.2"
+if not (qr_dependencies / "qrcode" / "__init__.py").is_file():
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
+                           "--target", str(qr_dependencies), "qrcode==8.2"])
+sys.path.insert(0, str(qr_dependencies))
+from generate_guide_qr import generate_header
+write_if_changed(build_dir / "guide_qr.h", generate_header(guide_ref))
 env.AppendUnique(CPPPATH=[str(build_dir)])
 
 # CMake and Slint must agree on the number and names of generated sources.

@@ -51,11 +51,11 @@ Suggestions for additional hardware targets are welcomed. For new projects, we r
 ## Setup and Usage
 
 - Not sure where to get started with a Pubmote build? Check out an example build like the [Leaf Blaster](/docs/builds/leaf-blaster.md)!
-- For instructions on first-time setup, pairing, and usage, see the [quick start guide](/docs/quick-start.md).
+- For first-time setup, pairing, and usage, read the [getting-started guide](docs/quick-start.md) or [view it on pubmote.com](https://pubmote.com/getting-started/). The remote also links to it by QR code on first launch and under **About > Getting started**.
 
 ## Issues
 
-[Create an issue](https://github.com/techfoundrynz/Pubmote/) on GitHub or post in the Pubmote channel within the PubWheel Discord server
+[Create an issue](https://github.com/techfoundrynz/Pubmote/) on GitHub.
 
 ## For Developers
 

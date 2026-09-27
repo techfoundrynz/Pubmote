@@ -25,6 +25,7 @@ import { ColorSliderGenerator } from "ui/color-slider.slint";
 export { ColorSliderGenerator }
 import { ArcGauge } from "ui/arc-gauge.slint";
 import { ConfirmDialog } from "ui/confirm-dialog.slint";
+import { GettingStartedScreen } from "ui/getting-started.slint";
 import { BoardsScreen, PairedBoard } from "ui/boards.slint";
 import { GamesScreen } from "ui/games.slint";
 import { GameScreen, GameDraw, GamePosition } from "ui/game.slint";
@@ -138,6 +139,7 @@ export global UiState {
     in-out property <bool> invert-y: false;
 
     // --- About (ui_AboutScreen) ---
+    in-out property <image> guide-qr: @image-url("../../assets/guide-qr.png");
     in property <string> version-info: "Version: unknown\nType: unknown\nHash: unknown";
     in property <[StatEntry]> about-stats: [];
 
@@ -504,6 +506,7 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.about) - root.view-x) * self.width;
         y: (screen-y(Screen.about) - root.view-y) * self.height;
         version-info: UiState.version-info;
+        guide-qr: UiState.guide-qr;
         stats: UiState.about-stats;
         check-updates => { UiState.about-check-updates(); }
         back => { UiState.about-back(); }
@@ -620,15 +623,15 @@ export component AppWindow inherits Window {
     }
 
     // Shown each boot until calibrated
-    if UiState.calibration-prompt && UiState.boot-notice == "": ConfirmDialog {
-        title: "Welcome to Pubmote";
-        message: "Set up your remote, starting with joystick calibration, then review your settings in the menu.";
-        confirm-text: "Get started";
-        cancel-text: "Later";
-        confirmed => {
+    if UiState.calibration-prompt && UiState.boot-notice == "": GettingStartedScreen {
+        width: 100%;
+        height: 100%;
+        first-launch: true;
+        guide-qr: UiState.guide-qr;
+        primary => {
             UiState.calibration-prompt = false;
             UiState.screen = Screen.input-calibration;
         }
-        cancelled => { UiState.calibration-prompt = false; }
+        back => { UiState.calibration-prompt = false; }
     }
 }
