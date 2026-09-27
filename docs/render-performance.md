@@ -3,8 +3,15 @@
 Target hardware: `pingumote_esp32s3_touch_amoled_132` — ESP32-S3 @ 240 MHz, 466×466 CO5300 AMOLED
 over QSPI @ 80 MHz, 8 MB octal PSRAM, Slint software renderer via `render_by_line`.
 
-All numbers below were measured on hardware over serial (`SLINT_PERF_LOG=1`), device untouched,
-2026-08-15.
+The initial sections record the 2026-08-15 investigation and include hypotheses later corrected by subsequent sessions.
+Read the dated updates before treating an earlier conclusion as current.
+
+**Latest findings (2026-09-27):** the main stats screen reached **34.97 delivered FPS** with the published `mcu-v1.19.2` renderer, up from **28.53 FPS** initially.
+The preceding local build measured 34.91 FPS.
+The successful changes are DMA buffer packing, empty-center arc rejection, scanline membership reuse, and opaque-cover caching.
+Slint changes are published in `mcu-v1.19.2`, and PubRemote builds successfully from the downloaded release.
+The published-release firmware is installed and measured with continuous profiling disabled.
+See [§17](#17-stats-screen-fps-results-and-release-2026-09-27) for controlled measurements, build discoveries, tests, limitations, and release status.
 
 ---
 
@@ -780,3 +787,286 @@ flash by checking that `firmware.elf` is newer than the staged `.a`.
 
 The headers and `slint-compiler` still come from the release, so this is only valid while the C++
 API and the .slint language are unchanged - cut a real release for those.
+
+
+## 15. Pack narrow chunks into the existing DMA allocation (2026-09-27)
+
+Measured on the connected `pingumote_esp32s3_touch_amoled_132`, firmware 0.9.15,
+Slint `mcu-v1.19.1`, `TEST_MODE=1`, main stats screen. No clocks, telemetry rates,
+UI features, framebuffer format, or DMA allocations changed.
+
+The flush path packed each row at the dirty rectangle's width but always flushed
+at the full-screen chunk height (14 rows on this target). Narrow rectangles thus
+left most of the 13,048-byte buffer unused. Each accumulator now calculates its
+row capacity from that same allocation and its span width, rounded down to an
+even number. Full-width chunks retain their existing height. The DMA ownership
+waits, draw-window alignment, and rendering callbacks are unchanged.
+
+Both builds used temporary `SLINT_PERF_LOG=1`, with the first two 60-frame batches
+excluded. Baseline: 18 batches; candidate: 19 batches. The device was untouched
+on the same screen during each capture.
+
+| Metric | Baseline | Packed chunks |
+|---|---:|---:|
+| Mean render-frame duration | 33.32 ms | 31.47 ms |
+| Reciprocal of render-frame duration | 30.01 fps | 31.78 fps |
+| Delivered FPS, from serial timestamps between batches | 28.53 | 29.92 |
+| Draw calls/frame (mean of logged integer counts) | 18.22 | 6.42 |
+| Draw-call CPU time/frame | 1.505 ms | 0.668 ms |
+| Dirty area | 16.17% | 15.78% |
+
+The observed delivered-FPS gain is about 4.8%. These are live test-mode samples,
+not a deterministic replay; slightly different dirty areas and renderer timings
+mean the whole frame-time difference cannot be attributed solely to batching.
+The reduction in display transactions is the directly attributable improvement.
+
+Validation: release build succeeded; exhaustive even-width/even-height arithmetic
+checks covered square and rectangular dimensions including rotated widths, and
+confirmed allocation bounds and even chunk heights. The user checked the stats
+screen, menu scrolling, and return navigation and reported normal visuals and
+touch response. Captures reported no transfer timeouts. Full-screen timing and
+other physical hardware models were not separately benchmarked. Temporary timing
+logging was removed for the final firmware. Local capture logs and the original
+firmware backup are under `.pio/fps-check/` (untracked).
+
+
+## 16. Initial further experiments (2026-09-27)
+
+**Superseded in part:** the later controlled investigation fixed the local static-library build.
+The arc and scanline optimizations now show measurable gains.
+See [§17](#17-stats-screen-fps-results-and-release-2026-09-27) for current recommendations.
+
+Continued on the same device and main stats screen with test mode enabled, using
+40-50 second serial captures and excluding the first two 60-frame batches.
+Delivered FPS includes scheduling time between frames. The accepted packed-chunk
+baseline from section 15 was 29.92 FPS.
+
+| Candidate | Delivered FPS | Result |
+|---|---:|---|
+| Skip rebuilding unchanged scanline item lists, local renderer with release-style LTO/codegen settings | 27.02 | Slower overall |
+| Same scanline change, default local build settings | 25.88 | Slower overall |
+| Above plus conservative rejection of arc spans inside the hollow center | 29.85 | No net gain over the shipped renderer |
+| Shipped renderer, enable switch tables only in generated UI C++ | 30.05 | Within live-run variation |
+| Above plus `-Os` for generated UI C++ | 29.62 | Smaller image, no FPS gain |
+
+All candidates were rejected at this stage. The scanline and arc changes passed 25 software
+renderer unit tests and both climbing/stalling arc partial-vs-full pixel tests.
+The broader `partial_renderer` integration suite could not link because its Skia
+library requires MSVC symbols unavailable in this environment. Host test builds
+also exhausted disk space; stale rebuildable `.rlib`/`.rmeta` files in the verified
+Slint `target/release/deps` directory were removed before retrying.
+
+The local renderer builds increased scene preparation time even though that code
+was unchanged, so these measurements do not isolate the scanline change's own
+cost. The empty-center check reduced rasterization time, but that benefit did not
+outweigh the local build's preparation cost. A future investigation should compare
+against an unmodified renderer built with the identical toolchain before drawing
+conclusions about that optimization alone.
+
+Switch-table flags were verified in `compile_commands.json` on exactly the eight
+generated UI files, with no IRAM functions among them. This scoped use follows
+[Espressif's memory guidance](https://docs.espressif.com/projects/esp-idf/en/v5.4.2/esp32s3/api-guides/memory-types.html).
+The `-Os` variant saved about 271 KB of flash and left static RAM unchanged, but
+was rejected because the task requires an FPS improvement without regressions.
+
+Restored the original renderer archive, generated-UI compiler options, and local
+Slint source files; removed temporary perf logging. The exact backed-up firmware
+from section 15 was flashed back to the device, keeping test mode enabled. The
+accepted chunk-packing improvement remains. Logs, summaries, and an experimental
+renderer patch are retained locally under `.pio/fps-check/` (untracked).
+
+
+## 17. Stats-screen FPS results and release (2026-09-27)
+
+### Result
+
+The installed published-release build delivered **34.97 FPS over 90.13 seconds**, closely matching the 34.91 FPS local candidate.
+That is an observed 22.6% gain over the original profiled baseline; it is not a guaranteed 35 FPS minimum.
+The figures below retain the local-build experiments to isolate the changes.
+
+The locally built candidate delivered **34.91 FPS over 90.17 seconds with continuous profiling disabled**.
+The original profiled baseline delivered **28.53 FPS**; the observed end-to-end improvement is **22.4%**.
+The best comparable profiled candidate delivered **34.57 FPS**, a **21.2%** improvement over that baseline.
+The target was 35 delivered FPS: this is close, but neither run establishes a sustained 35 FPS minimum.
+The final counter increased from 269 to 3,417 frames between device timestamps 13,882,201 and 104,047,731 microseconds.
+The baseline and final measurements use different instrumentation, so the profiled comparison is the cleaner estimate of optimization benefit.
+The investigation initially left changes uncommitted.
+At the user's subsequent request, the Slint changes were committed as `a9970a043d1bf7e843d9af1b85595467954fc3ca` and tagged `mcu-v1.19.2`.
+PubRemote now selects that published-release tag.
+All release jobs passed, and the normal PlatformIO download and firmware build succeeded.
+
+Measurements used the connected Pingumote ESP32-S3 AMOLED 1.32-inch remote, firmware 0.9.15, on the main stats screen with `TEST_MODE=1`.
+Resolution remains 466×466, RGB565BE, with the existing 80 MHz QSPI clock.
+No telemetry updates, animations, visual quality, input features, task priorities, or watchdog behavior were removed or reduced.
+
+### What actually helped
+
+| Change | Before → after delivered FPS | Recommendation |
+|---|---:|---|
+| Pack narrow dirty rows into the full existing DMA buffer capacity | 28.53 → 29.92 | Keep |
+| Reject arc spans wholly inside the empty dial center | 27.18 → 30.86, controlled local builds | Keep |
+| Restore original generated C++ optimization after detecting stale cached flags | 30.86 → 32.43 | Keep original `-O2` settings |
+| Reuse active scanline item membership until an item starts or ends | 32.43 → 33.89 | Keep |
+| Cache opaque-cover decisions until membership or dirty x-ranges change | 33.89 → 34.57 | Keep, with the included pixel tests |
+
+The rows are sequential experiments with different baselines; their gains must not be added together.
+The arc comparison used identical local Rust settings and identical cached C++ flags on both sides.
+The later scanline and cover comparisons used the original C++ flags.
+
+DMA packing reduced logged draw calls from 18.22 to 6.42 per frame and draw-call CPU time from 1.505 to 0.668 ms.
+It uses the same allocations, pixel data, transfer waits, and panel alignment.
+Narrow rectangles can occupy more rows per transfer without exceeding the existing byte capacity.
+
+The arc check rejects only spans safely inside the hole and outside both round-cap bounds.
+A one-pixel margin preserves fractional coverage and antialiasing.
+It avoids square roots and later rasterization work for these invisible spans.
+
+Scanline reuse retains the existing item order until the next item's top or bottom boundary.
+Dirty-region skips still update membership when necessary.
+Opaque-cover caching also expires at dirty-range boundaries and resets every frame.
+Neither optimization introduces a heap cache or another framebuffer.
+
+### Controlled measurements
+
+FPS is calculated from actual frame batches divided by elapsed device uptime.
+The reciprocal of CPU frame time excludes scheduling gaps and overstates delivered FPS.
+The first two 60-frame batches were excluded from each roughly 60-second capture.
+
+| Local renderer variant | Retained batches | Mean frame work | Delivered FPS |
+|---|---:|---:|---:|
+| Unmodified renderer, corrected static-only build, cached C++ `-Os` flags | 22 | 34.826 ms | 27.18 |
+| Empty-center rejection, otherwise identical | 25 | 30.432 ms | 30.86 |
+| Above with original C++ `-O2` flags restored | 26 | 28.858 ms | 32.43 |
+| Above with Rust core optimization level 3 | 26 | 29.119 ms | 32.24 |
+| Arc rejection plus scanline membership reuse | 27 | 27.538 ms | 33.89 |
+| Above plus opaque-cover cache | 28 | 26.949 ms | 34.57 |
+| Above plus angular-wedge rejection | 27 | 28.268 ms | 33.03 |
+
+These are live test-mode samples, not deterministic replay or randomized repeated trials.
+Changing frame cadence also changes sampled animation values and dirty regions.
+The small cover-cache gain has less certainty than the larger arc and transfer gains.
+The measurements establish the best observed combination, not a guarantee of 35 FPS on every screen or frame.
+
+### Rejected experiments and build discoveries
+
+- Angular-wedge rejection passed correctness tests but reduced measured FPS to 33.03; removed.
+- Rust core optimization level 3 added about 59 KB of flash and was slightly slower; removed.
+- Generated C++ switch tables measured 30.05 FPS against the earlier 29.92 baseline, within live-run variation; removed.
+- Adding generated C++ `-Os` measured 29.62 FPS and saved about 271 KB of flash; removed because it did not improve FPS.
+- Early local renderer builds measured 25.88–29.85 FPS and initially obscured useful renderer changes.
+
+The local helper previously emitted multiple Rust library formats with `cargo build`.
+Matching LTO flags alone did not reproduce the release's static-only optimization.
+The helper now uses `cargo rustc --crate-type staticlib`, fat LTO, one codegen unit, and disabled incremental compilation.
+This matches the release archive's two-object structure, though local toolchain output is not asserted to be byte-identical to the release.
+
+Restoring a CMake file with its old timestamp initially left stale `-Os` flags in generated compile commands.
+CMake was explicitly regenerated, and effective generated UI commands were checked for the original `-O2` flags.
+Changing the staged archive also requires forcing a relink; the helper removes only the generated firmware ELF and BIN for this purpose.
+
+### Validation and limits
+
+- Release firmware builds succeeded and flashed application images passed the uploader's data-hash verification.
+- All 26 software-renderer unit tests passed for the retained changes.
+- Both climbing and stalling arc partial-repaint comparisons passed.
+- A new independent line-rendering versus full-frame-rendering test passed across all four rotations and moving, clipped, translucent, and conditional rectangles.
+- Deterministic randomized scene tests checked active membership against geometry across skipped dirty bands.
+- Fractional arc tests checked more than 100,000 culled spans against full-width rendering, including round caps and translucent colors.
+- DMA capacity arithmetic was checked across even dimensions and rotations.
+- Rust formatting checks passed.
+- The user confirmed normal visuals, menu scrolling, return navigation, and touch after the first DMA improvement.
+- A final physical check of the additional renderer changes was requested after the final measurement; response pending.
+
+The broad `partial_renderer` integration suite could not link because its Skia library needs MSVC symbols unavailable locally.
+The targeted independent coverage test and arc tests did run successfully.
+An exploratory full-versus-clipped fractional arc test exposed an existing one-step RGB565 rounding discrepancy, also reproduced with culling disabled.
+The retained regression test validates culling decisions directly and does not hide a newly introduced pixel difference.
+
+Other hardware models, battery endurance, real radio traffic, and every settings/sleep transition were not benchmarked.
+No observed functional regression is not a proof that all possible behavior is unchanged.
+
+### Implications and files to keep
+
+Keep the DMA packing in `firmware/components/slint/src/slint-esp.cpp` and the `mcu-v1.19.2` pin in `platformio.ini`.
+The three Slint renderer changes and their tests are committed on `feat/mcu-minimal` in `techfoundrynz/slint`.
+The standalone patch was removed after committing; the tagged source is the source of truth.
+The corrected `scripts/use_local_slint.py` remains available for future local renderer experiments.
+
+No panic, error, or transfer-timeout messages were found in the final candidate captures.
+
+The locally built candidate uses 107,428 bytes of static RAM and 5,917,023 bytes of application flash according to PlatformIO.
+This is static allocation reporting, not peak runtime heap usage.
+DMA allocation sizes are unchanged.
+There is a small amount of additional bookkeeping: accumulator capacities, one scene boundary, and three optional cover indices on the rendering stack.
+
+A read-only `render_stats` console command is available only in test mode.
+It reads the existing frame counter and microsecond uptime; it adds no continuous frame-loop sampling or screen overlay.
+Its command registration has a small test-mode code and memory cost.
+It can be retained for repeatable measurements or removed separately when the investigation is finished.
+Continuous `SLINT_PERF_LOG` and the FPS overlay are disabled in the final build.
+The user's original test-mode setting remains enabled.
+
+The initial measurement used a locally staged renderer.
+The subsequent `mcu-v1.19.2` release contains these changes, and `platformio.ini` selects that tag.
+Normal builds now download its library, headers, and compiler without the local Slint checkout.
+The local helper remains an optional development tool; it is not part of the normal build.
+
+### Reproduce or revert
+
+Normal builds use the published release selected by `platformio.ini`:
+
+```powershell
+& C:/Users/slims/.platformio/penv/Scripts/python.exe -m platformio run -e pingumote_esp32s3_touch_amoled_132
+& C:/Users/slims/.platformio/penv/Scripts/python.exe scripts/sync_slint_lsp.py
+```
+
+No local Slint checkout or Rust toolchain is required for that path.
+For renderer development, use the source at `mcu-v1.19.2` and explicitly run `scripts/use_local_slint.py` before the firmware build.
+The earlier local measurements used `+esp`, rustc 1.95.0-nightly, LLVM 21.1.3.
+The local helper expects `C:/Repos/slint` and the staged release headers/compiler.
+It is not invoked by a normal firmware build.
+
+For normal-operation FPS, send `render_stats` twice, with the screen unchanged, and calculate:
+`(frames_after - frames_before) * 1,000,000 / (time_us_after - time_us_before)`.
+A frame-counter reading is approximate to one in-flight frame at each endpoint.
+Long intervals make that uncertainty negligible.
+
+Local backups and evidence are under `.pio/fps-check/` and are not committed:
+
+- `original.bin`: original firmware backup.
+- `packed-final.bin`: previously user-validated DMA-only firmware.
+- `cover-final.bin`: best renderer combination with continuous profiling disabled.
+- `release-renderer.a`: shipped renderer archive, available for rollback and relinking.
+- `controlled-results.json`, the named serial logs, build logs, and test logs: measurement evidence.
+
+Flashing only the application at offset `0x10000` preserves settings and filesystem partitions.
+To revert only the renderer, restore the released archive and force a firmware relink, keeping the DMA packing if desired.
+The staged release archive SHA-256 is `E3A53D3AEF6AE2F72F8847277DCE46B32C6C7CC934259AEBA77EE7D17AEE39B1`.
+
+Locally built candidate firmware SHA-256: `ED7D3CCE2F519ACFA333199F9DC2AC53CD8A90F8828DBE8BF2EC3428585DE63D`.
+Locally built candidate renderer archive SHA-256: `AABCF7300510F1E785D945AF19C1F6F0B9C2E07D0F01B2BC1E800B0530B58B74`.
+
+### Published-release switchover
+
+At the user's request, the retained Slint implementation and tests were committed and pushed to `techfoundrynz/slint`, branch `feat/mcu-minimal`.
+Commit: [`a9970a043`](https://github.com/techfoundrynz/slint/commit/a9970a043d1bf7e843d9af1b85595467954fc3ca).
+Release tag: [`mcu-v1.19.2`](https://github.com/techfoundrynz/slint/releases/tag/mcu-v1.19.2).
+The package's internal Slint version remains `1.19.0`; the MCU release tag and crate version are separate.
+PubRemote's release pin is changed in `platformio.ini`; PubRemote changes remain uncommitted.
+The unrelated local Android `.gradle` directory was excluded from the Slint commit.
+
+The ESP32 CI package was built successfully, with library SHA-256 `9b3f779889a038678172ec38bbb831c44e7167e45c6729bea6e67d31732bde4b`.
+It differs from the earlier local build, so the previous FPS measurement is not automatically attributed to the published package.
+All four build jobs and the release publication job passed.
+The normal PlatformIO build downloaded and staged the release; `.slint-source` names `techfoundrynz/slint@mcu-v1.19.2`.
+The staged library hash matches the CI package above and differs from the previous local override.
+The firmware build passed with 107,428 bytes static RAM and 5,932,011 bytes application flash.
+The editor language server was downloaded from the same release and configured in `.vscode/settings.json`.
+Reload the VS Code window to activate it; the old binary remains while the existing editor process holds it open.
+The application was flashed successfully with uploader hash verification, preserving settings and filesystem partitions.
+With profiling disabled, the frame counter increased from 274 to 3,426 between uptime readings 13,870,105 and 104,003,253 microseconds.
+That is **34.9705 delivered FPS**, closely matching the earlier local build; this single live run does not establish a meaningful additional speedup.
+No panic, error, assertion-failure, or transfer-timeout messages appeared in the capture.
+The device remains in test mode with the published-release firmware installed.
+Firmware SHA-256: `EF22CD81F29BD8564CBFFCFEE61D60E9939305285E5827B83F2866CBAD52DCD1`.
+Evidence: `.pio/fps-check/published-build.log`, `published-lsp-sync.log`, `published-upload.log`, `published-counter.log`, and `published-final.bin`.

@@ -9,6 +9,7 @@ extern "C"
 {
 #endif
 
+  uint32_t display_get_frame_count(void);
   void display_init();
   void display_deinit();
   uint8_t display_get_bl_level();

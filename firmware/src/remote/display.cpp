@@ -121,6 +121,10 @@ AppWindow *get_slint_window() {
 static std::atomic<Screen> cached_active_screen(Screen::Splash);
 static std::atomic<bool> ui_platform_ready(false);
 
+extern "C" uint32_t display_get_frame_count(void) {
+  return slint_esp_frame_counter;
+}
+
 extern "C" bool is_stats_screen_active() {
   return cached_active_screen.load() == Screen::Stats;
 }
