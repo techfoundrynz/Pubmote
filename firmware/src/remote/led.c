@@ -238,7 +238,8 @@ static void no_effect() {
 
 static esp_timer_handle_t led_startup_off_timer = NULL;
 
-static void startup_effect_stop() {
+static void startup_effect_stop(void *arg) {
+  (void)arg;
   led_apply_mode();
 
   if (led_startup_off_timer != NULL) {

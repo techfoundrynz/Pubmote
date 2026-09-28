@@ -115,8 +115,10 @@ Firmware validates the complete patch, including pin conflicts, when Save is pre
   Type-check the TypeScript tests with `pnpm --filter @pubmote/firmware-tool test:typecheck`.
 - Firmware: `pio run -e pingumote_esp32s3_touch_amoled_132`.
 - Host C tests use the actual cJSON and ESP-IDF console parser with device I/O
-  stubbed out. Set `IDF_PATH` to an ESP-IDF checkout with its cJSON submodule,
-  then build with a native C compiler (on Windows, use a Developer Command Prompt):
+  stubbed out. Set `IDF_PATH` to an ESP-IDF checkout and build the firmware once
+  to fetch managed cJSON (or pass `-DCJSON_DIR=/path/to/cjson`). Older IDF checkouts
+  with bundled cJSON are also supported. Build with a native C compiler
+  (on Windows, use a Developer Command Prompt):
 
   ```sh
   cmake -S tests -B .pio/host-tests -DIDF_PATH="$IDF_PATH"

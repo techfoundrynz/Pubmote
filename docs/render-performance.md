@@ -1278,3 +1278,120 @@ verification. Serial verification reported version `0.9.18`, build ID `c125468d`
 and confirmed the test-only `render_stats` command was absent, with no captured
 runtime errors. The final upload and serial evidence are
 `.pio/fps-matrix/dma-normal-upload.log` and `dma-normal-boot.log`.
+
+## 20. ESP-IDF 6.1 migration
+
+PlatformIO `espressif32@7.1.3` supplies ESP-IDF 6.1 and GCC 15.2. The upgrade
+retains Slint `mcu-v1.19.2`, the DMA scheduling optimization, the 60 FPS target,
+and instruction fetch from PSRAM. Read-only data remains in flash. Delivered
+performance stayed within 1% of the IDF 5.5 baseline; this is not another FPS gain.
+
+### Newlib versus Picolibc
+
+Keeping Newlib on IDF 6.1 increased frame-preparation time and left almost no
+minimum free internal heap in the animation benchmark. Increasing the internal
+allocation reserve from 32 KB to 48 KB did not fix it and was rejected. Picolibc
+with Newlib compatibility enabled recovered performance and memory headroom.
+
+Each run used the connected Pingumote, `TEST_MODE=1`, the same animated scene,
+and a 90-second counter interval after startup. Profiling is explicitly listed.
+The firmware version changed from 0.9.18 to 0.10.0 during the migration.
+
+| Build | Profiling | FPS | Minimum free internal heap (bytes) |
+| --- | --- | ---: | ---: |
+| IDF 5.5, retained DMA baseline | off | 57.994 | 5,619 |
+| IDF 6.1, Newlib | off | 55.725 | 80 |
+| IDF 5.5, retained DMA baseline | on | 57.935 | 5,115 |
+| IDF 6.1, Newlib | on | 55.546 | 112 |
+| IDF 6.1, Newlib, 48 KB internal reserve (rejected) | on | 54.923 | 16 |
+| IDF 6.1, Picolibc | on | 57.529 | 4,920 |
+| IDF 6.1, Picolibc | off | 57.857 | 4,976 |
+| IDF 6.1, Picolibc, 16 MB config and IDF 6.1 bootloader | off | 57.476 | 4,976 |
+
+The profiling-off candidates differ from the baseline by -0.137 to -0.518 FPS
+(-0.24% to -0.89%). Test images and serial, build, upload, and measurement logs
+are local under `.pio/idf-upgrade/`.
+
+### Memory clocks and cache decisions
+
+Comparing the installed 5.5 and 6.1 ESP32-S3 PSRAM/cache Kconfig files found no
+new option names. The flash configuration added a derived mode-value symbol,
+not a faster bus mode. The upgrade does not make the previously rejected
+memory-clock settings stable.
+
+The following decisions apply to the connected Pingumote. Other boards retain
+their own hardware mode and cache settings: Avaspark uses quad PSRAM, and all
+four other board profiles retain 32-byte data-cache lines.
+
+- Keep CPU at 240 MHz, PSRAM at 80 MHz, and flash at 80 MHz DIO.
+- Octal PSRAM already uses **DDR**. `CONFIG_ESPTOOLPY_FLASH_SAMPLE_MODE_STR`
+  describes the separate flash device, not the PSRAM bus. Quad PSRAM uses STR.
+- Octal PSRAM at 120 MHz is **still experimental in IDF 6.1**, with documented
+  temperature-dependent random crashes. Temperature-based retuning is also
+  experimental. The supported 120 MHz quad mode does not make octal mode safe,
+  and untested boards' memory clocks were left unchanged.
+- A 120 MHz flash clock cannot be combined with the retained 80 MHz octal PSRAM
+  clock. See the [IDF 6.1 memory configuration guide](https://docs.espressif.com/projects/esp-idf/en/v6.1/esp32s3/api-guides/flash_psram_config.html)
+  for supported combinations and DDR limitations.
+- Keep 32 KB instruction cache with 32-byte lines, and 32 KB data cache with
+  64-byte lines. IDF 6.1 still has no 64-byte instruction-cache line option.
+  Increasing data cache to 64 KB would remove 32 KB from the internal heap;
+  the measured memory headroom does not justify that tradeoff.
+- Keep `CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y`, `CONFIG_SPIRAM_RODATA` disabled,
+  the 512-byte always-internal allocation threshold, and 32 KB internal reserve.
+  The XiP helper enables RODATA too, so it is not an additional instruction-fetch
+  optimization; the earlier RODATA experiment regressed performance.
+- Retain assertions, PSRAM memory tests, watchdogs, and the 60 FPS target.
+  No safety checks were disabled to obtain a benchmark gain.
+- Correct SDK flash size to 16 MB to match the existing PlatformIO override
+  and partition table. The previous 2 MB value produced a build warning.
+
+### Preserve local driver patches during component updates
+
+The SH8601 driver is also used for CO5300 with panel-specific initialization.
+Its address-window cache, cache invalidation on reset, transfer-error
+propagation, and sleep callback must survive upstream component refreshes.
+Replacing the driver with an unpatched upstream copy removes the caching and
+sleep support even if compilation issues are fixed.
+
+IDF 6 also requires `GPIO_NUM_NC` for the QSPI macro's unused DC pin. The
+CST816S I2C initializer omits two zero-valued callback members so implicit
+zero-initialization supplies them without violating C++ designator ordering.
+Both components explicitly depend on `esp_driver_gpio`.
+
+### Validation and limits
+
+The migration passed host settings-console and sleep tests, 32,000 DMA
+pixel/ownership/alignment cases, and the application-source clang-format check.
+On the device, console/version and settings-JSON checks passed, an incorrect
+SHA-256 game upload was rejected, and a valid upload, removal, and abort passed.
+
+The IDF 6.1 bootloader and normal firmware were flashed with hash verification.
+Five software reboots passed, each reporting IDF 6.1.0, 16 MB flash, a successful
+PSRAM memory test, and no test-only `render_stats` command (`TEST_MODE=0`). A
+following three-minute soak had no unexpected reboot or new runtime diagnostic,
+and the console remained responsive. These are not power-cycle or temperature
+qualification tests. All five board configs were regenerated, built, and audited
+against their own previous hardware, cache, allocation, assertion, and core-dump
+settings, retaining Picolibc and the corrected flash size.
+
+The migration's final normal image passed another reboot/memory-test check and
+30-second soak. It uses 105,132 bytes of static RAM and 5,993,671 bytes of
+application flash. The saved image is `.pio/idf-upgrade/idf61-final-normal.bin`,
+SHA-256 `4e19decd7efeaf689144c4841763ed7524d54d06f472e88a15171ef2afffc5a2`.
+Serial evidence is `final-normal.log` and `final-normal-result.json` in the same
+directory. The earlier five-reboot/three-minute run is recorded in
+`normal-stability.log` and `normal-stability-result.json`.
+
+Two startup diagnostics were also present in the IDF 5.5 baseline: a settings
+write failure and an already-installed GPIO ISR service. They were recorded
+separately from new runtime errors. The upgrade captures showed no panic,
+assertion, watchdog timeout, or failed display transfer, but were not free of
+all error-level messages.
+
+Subsequent component refreshes required reapplying the local SH8601 and CST816S
+patches. Pingumote and Avaspark builds then passed; those refreshed sources have
+not been flashed or benchmarked, so the measurements above describe the earlier
+validated images. Only Pingumote received hardware checks. Builds do not verify
+other boards' physical behavior, and serial checks do not establish the absence
+of visible artifacts.

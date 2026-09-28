@@ -4,8 +4,8 @@
 #include "esp_timer.h"
 #include "games/game_store.h"
 #include "mbedtls/base64.h"
-#include "mbedtls/sha256.h"
 #include "miniz.h"
+#include "psa/crypto.h"
 #include "remote/buzzer.h"
 #include "remote/display.h"
 #include "remote/haptic.h"
@@ -529,7 +529,13 @@ extern "C" void setup_game_properties(void) {
   else {
     // NVS keys are limited to 15 bytes; don't alias IDs sharing a prefix.
     unsigned char digest[32];
-    mbedtls_sha256((const unsigned char *)active.id, strlen(active.id), digest, 0);
+    size_t digest_size = 0;
+    if (psa_hash_compute(PSA_ALG_SHA_256, (const unsigned char *)active.id, strlen(active.id), digest, sizeof(digest),
+                         &digest_size) != PSA_SUCCESS ||
+        digest_size != sizeof(digest)) {
+      stop_vm("Could not compute game score key");
+      return;
+    }
     score_key[0] = 'g';
     for (int i = 0; i < 7; ++i)
       snprintf(score_key + 1 + i * 2, 3, "%02x", digest[i]);

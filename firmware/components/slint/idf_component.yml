@@ -1,7 +1,7 @@
 dependencies:
   esp_lcd_touch:
     public: true
-    version: '>=1.0.4'
+    version: '1.2.1'
   idf: '>=5.1'
 description: Slint — declarative GUI toolkit
 discussion: https://github.com/slint-ui/slint/discussions

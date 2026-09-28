@@ -5,7 +5,7 @@
 #include "esp_littlefs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "mbedtls/sha256.h"
+#include "psa/crypto.h"
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,13 +130,13 @@ int game_store_list(game_info_t *games, int capacity) {
 static FILE *upload;
 static char upload_id[24], expected_hash[65];
 static size_t expected_size, written;
-static mbedtls_sha256_context hash;
+static psa_hash_operation_t hash = PSA_HASH_OPERATION_INIT;
 static void abort_upload(void) {
   if (upload)
     fclose(upload);
   upload = NULL;
   unlink(ROOT "/.upload");
-  mbedtls_sha256_free(&hash);
+  psa_hash_abort(&hash);
 }
 static int hex_digit(char c) {
   if (c >= '0' && c <= '9')
@@ -172,9 +172,9 @@ static int game_command(int argc, char **argv) {
             strcpy(expected_hash, argv[4]);
             expected_size = size;
             written = 0;
-            mbedtls_sha256_init(&hash);
-            mbedtls_sha256_starts(&hash, 0);
-            ok = true;
+            ok = psa_hash_setup(&hash, PSA_ALG_SHA_256) == PSA_SUCCESS;
+            if (!ok)
+              abort_upload();
           }
         }
         else
@@ -198,20 +198,22 @@ static int game_command(int argc, char **argv) {
       if (ok) {
         ok = fwrite(bytes, 1, chars / 2, upload) == chars / 2;
         if (ok) {
-          mbedtls_sha256_update(&hash, bytes, chars / 2);
-          written += chars / 2;
+          ok = psa_hash_update(&hash, bytes, chars / 2) == PSA_SUCCESS;
+          if (ok)
+            written += chars / 2;
         }
       }
       if (!ok)
         abort_upload();
     }
     else if (argc == 2 && !strcmp(argv[1], "commit") && upload && written == expected_size) {
-      unsigned char digest[32];
+      unsigned char digest[32] = {0};
       char hex[65];
-      mbedtls_sha256_finish(&hash, digest);
+      size_t digest_size = 0;
+      ok = psa_hash_finish(&hash, digest, sizeof(digest), &digest_size) == PSA_SUCCESS && digest_size == sizeof(digest);
       for (int i = 0; i < 32; i++)
         snprintf(hex + i * 2, 3, "%02x", digest[i]);
-      ok = !strcmp(hex, expected_hash) && fflush(upload) == 0;
+      ok = ok && !strcmp(hex, expected_hash) && fflush(upload) == 0;
       int close_result = fclose(upload);
       upload = NULL;
       ok = ok && close_result == 0;

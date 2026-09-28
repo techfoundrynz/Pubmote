@@ -49,7 +49,9 @@ static void register_render_stats_command(void) {
 }
 #endif
 
-static int get_version() {
+static int get_version(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   printf("version: %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
   printf("variant: %s\n", RELEASE_VARIANT);
   printf("hardware: %s\n", HW_TYPE);
@@ -69,7 +71,9 @@ static void register_version_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
-static int reboot_command() {
+static int reboot_command(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   ESP_LOGI(TAG, "Rebooting...");
   esp_restart();
   return 0;
@@ -85,7 +89,9 @@ static void register_reboot_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
-static int shutdown_command() {
+static int shutdown_command(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   enter_sleep();
   return 0;
 }
@@ -100,7 +106,9 @@ static void register_shutdown_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
-static int erase_command() {
+static int erase_command(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   ESP_LOGI(TAG, "Erasing flash memory...");
   esp_err_t err = reset_all_settings();
   if (err != ESP_OK) {
@@ -140,7 +148,9 @@ static void register_save_settings_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
-static int crash_command() {
+static int crash_command(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   printf("Forcing a crash for testing backtrace decoding...\n");
   int *ptr = NULL;
   *ptr = 42; // Dereference NULL pointer to cause a crash
@@ -169,7 +179,9 @@ static esp_err_t check_and_validate_coredump() {
   return ESP_OK;
 }
 
-static int coredump_info_command() {
+static int coredump_info_command(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   if (check_and_validate_coredump() != ESP_OK) {
     printf("coredump: none\n");
     return 0;
@@ -201,7 +213,9 @@ static void register_coredump_info_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
-static int coredump_print_command() {
+static int coredump_print_command(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   if (check_and_validate_coredump() != ESP_OK) {
     printf("coredump: none\n");
     return 0;
@@ -239,7 +253,9 @@ static void register_coredump_print_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
-static int coredump_erase_command() {
+static int coredump_erase_command(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
   esp_err_t err = esp_core_dump_image_erase();
   if (err == ESP_OK) {
     printf("Core dump erased successfully\n");

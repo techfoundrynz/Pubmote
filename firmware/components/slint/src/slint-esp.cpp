@@ -5,6 +5,9 @@
 #include "esp_attr.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "slint-platform.h"
 #include <cstring>
 #include <deque>
