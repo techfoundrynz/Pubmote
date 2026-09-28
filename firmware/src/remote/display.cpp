@@ -443,6 +443,7 @@ static void connect_callbacks() {
   state.on_input_calibration_secondary([]() { handle_input_calibration_secondary(); });
   state.on_about_check_updates([]() { handle_about_check_updates(); });
   state.on_about_back([]() { handle_about_back(); });
+  state.on_about_refresh([]() { update_about_stats(); });
   state.on_update_primary([]() { handle_update_primary(); });
   state.on_update_secondary([]() { handle_update_secondary(); });
   state.on_update_selected([](int index) { handle_update_selected(index); });
@@ -611,6 +612,7 @@ static void slint_event_loop(void *pvParameters) {
 
   ESP_LOGI(TAG, "Slint event loop exited");
   wdt_feed_timer.stop();
+  teardown_about_properties();
   // Released here rather than by whoever asked us to quit: AppWindow owns slint::Timers and
   // those may only be destroyed on this thread.
   slint_window.reset();

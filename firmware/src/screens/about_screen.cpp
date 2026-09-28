@@ -3,20 +3,18 @@
 #include "config.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/stats.h"
 #include "slint_generated/app-window.h"
-#include <atomic>
 #include <memory>
 #include <stdio.h>
-#include <string.h>
+#include <string_view>
 
 static const char *TAG = "PUBREMOTE-ABOUT_SCREEN";
-static std::atomic<bool> about_task_running{false};
-static std::atomic<bool> about_task_should_exit{false};
+// Accessed only from the Slint event loop. The UI retains the outgoing model
+// during its exit animation after our reference is released.
+static std::shared_ptr<slint::VectorModel<StatEntry>> stats_model;
 
 void update_about_version_info() {
   if (!get_slint_window())
@@ -27,10 +25,8 @@ void update_about_version_info() {
            VERSION_MINOR, VERSION_PATCH, RELEASE_VARIANT, HW_TYPE, BUILD_ID);
 
   slint::SharedString version_info(formattedString);
-  slint::invoke_from_event_loop([=]() { get_slint_window()->global<UiState>().set_version_info(version_info); });
+  get_slint_window()->global<UiState>().set_version_info(version_info);
 }
-
-static char last_stats_signature[512] = {0};
 
 static void add_row(std::shared_ptr<slint::VectorModel<StatEntry>> &model, const char *label, const char *value) {
   StatEntry entry;
@@ -48,10 +44,17 @@ static void add_header(std::shared_ptr<slint::VectorModel<StatEntry>> &model, co
   model->push_back(entry);
 }
 
-// Rebuilt whole rather than diffed per row: the list is short, and a signature check keeps
-// the event loop out of it unless something actually changed.
-void update_about_stats() {
-  if (!get_slint_window())
+static void update_row(size_t index, const char *value) {
+  auto entry = stats_model->row_data(index).value();
+  if (std::string_view(entry.value) != value) {
+    entry.value = value;
+    stats_model->set_row_data(index, entry);
+  }
+}
+
+// Entry and the one-second UI timer both run on the Slint event loop.
+extern "C" void update_about_stats() {
+  if (!get_slint_window() || !is_about_screen_active())
     return;
 
   char voltage[16], level[16], internal_free[16], min_ever[16], largest[16], psram[16], current[16];
@@ -66,71 +69,55 @@ void update_about_stats() {
   const char *state = charge_state_to_string(remoteStats.chargeState);
   bool show_current = remoteStats.chargeState != CHARGE_STATE_NOT_CHARGING && remoteStats.chargeCurrent > 0;
 
-  char signature[512];
-  snprintf(signature, sizeof(signature), "%s|%s|%s|%s|%d|%s|%s|%s|%s", voltage, level, state, current,
-           (int)show_current, internal_free, min_ever, largest, psram);
-  if (strcmp(signature, last_stats_signature) == 0) {
+  if (!stats_model) {
+    stats_model = std::make_shared<slint::VectorModel<StatEntry>>();
+    add_header(stats_model, "BATTERY");
+    add_row(stats_model, "Voltage", voltage);
+    add_row(stats_model, "Level", level);
+    add_row(stats_model, "State", state);
+    if (show_current)
+      add_row(stats_model, "Current", current);
+    add_header(stats_model, "MEMORY");
+    add_row(stats_model, "Internal free", internal_free);
+    add_row(stats_model, "Min ever", min_ever);
+    add_row(stats_model, "Largest block", largest);
+    add_row(stats_model, "PSRAM free", psram);
+    get_slint_window()->global<UiState>().set_about_stats(stats_model);
     return;
   }
-  snprintf(last_stats_signature, sizeof(last_stats_signature), "%s", signature);
 
-  auto model = std::make_shared<slint::VectorModel<StatEntry>>();
-  add_header(model, "BATTERY");
-  add_row(model, "Voltage", voltage);
-  add_row(model, "Level", level);
-  add_row(model, "State", state);
-  if (show_current) {
-    add_row(model, "Current", current);
+  // Preserve the model and row instances; only charge-current visibility changes
+  // the list structure. Memory counters can change on every refresh.
+  bool had_current = stats_model->row_count() == 10;
+  if (show_current && !had_current) {
+    StatEntry entry;
+    entry.label = "Current";
+    entry.value = current;
+    entry.is_header = false;
+    stats_model->insert(4, entry);
   }
-  add_header(model, "MEMORY");
-  add_row(model, "Internal free", internal_free);
-  add_row(model, "Min ever", min_ever);
-  add_row(model, "Largest block", largest);
-  add_row(model, "PSRAM free", psram);
-
-  slint::invoke_from_event_loop([=]() {
-    if (get_slint_window()) {
-      get_slint_window()->global<UiState>().set_about_stats(model);
-    }
-  });
-}
-
-static void about_task(void *pvParameters) {
-  while (!about_task_should_exit.load() && is_about_screen_active()) {
-    update_about_stats();
-    // Keep 1Hz polling, but respond promptly when leaving the screen.
-    for (int i = 0; i < 50 && !about_task_should_exit.load(); ++i) {
-      vTaskDelay(pdMS_TO_TICKS(20));
-    }
+  else if (!show_current && had_current) {
+    stats_model->erase(4);
   }
-  ESP_LOGI(TAG, "About task ended");
-  about_task_running.store(false);
-  vTaskDelete(NULL);
+  update_row(1, voltage);
+  update_row(2, level);
+  update_row(3, state);
+  if (show_current)
+    update_row(4, current);
+  size_t memory_start = show_current ? 6 : 5;
+  update_row(memory_start, internal_free);
+  update_row(memory_start + 1, min_ever);
+  update_row(memory_start + 2, largest);
+  update_row(memory_start + 3, psram);
 }
 
 extern "C" void setup_about_properties() {
-  last_stats_signature[0] = '\0'; // Force update on screen entry
   update_about_version_info();
   update_about_stats();
-
-  if (!about_task_running.load()) {
-    about_task_should_exit.store(false);
-    about_task_running.store(true);
-    if (xTaskCreate(about_task, "about_task", 3072, NULL, 2, NULL) != pdPASS) {
-      about_task_running.store(false);
-      ESP_LOGE(TAG, "Failed to create About task");
-    }
-  }
 }
 
 extern "C" void teardown_about_properties() {
-  about_task_should_exit.store(true);
-  for (int i = 0; i < 100 && about_task_running.load(); ++i) {
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-  if (about_task_running.load()) {
-    ESP_LOGW(TAG, "About task did not exit in time");
-  }
+  stats_model.reset();
 }
 
 // Slint event handlers

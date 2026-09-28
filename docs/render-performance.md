@@ -3,10 +3,21 @@
 Target hardware: `pingumote_esp32s3_touch_amoled_132` — ESP32-S3 @ 240 MHz, 466×466 CO5300 AMOLED
 over QSPI @ 80 MHz, 8 MB octal PSRAM, Slint software renderer via `render_by_line`.
 
+This document records historical measurements, retained changes, rejected experiments,
+and validation limits. Results are summarized here without requiring local benchmark
+logs or saved firmware images. Slint internals and renderer tests refer to the
+[external Slint fork](https://github.com/techfoundrynz/slint/tree/mcu-v1.19.2),
+not files in this repository. Build outputs are generated locally.
+
+**Current decision:** retain three 14-row DMA buffers on Pingumote. The smaller-buffer
+sweep was stopped after reported UI artifacting; its FPS results do not establish
+visual correctness. See [the buffer results](#smaller-dma-buffers-interrupted-visual-validation)
+and [the IDF 6.1 findings](#20-esp-idf-61-migration) for the latest measurements.
+
 The initial sections record the 2026-08-15 investigation and include hypotheses later corrected by subsequent sessions.
 Read the dated updates before treating an earlier conclusion as current.
 
-**Latest findings (2026-09-27, second pass):** executing instructions from PSRAM
+**Earlier instruction-fetch findings (2026-09-27, second pass):** executing instructions from PSRAM
 reached **54.62 and 57.34 delivered FPS**, against fresh flash-execution baselines
 of **34.43 and 36.26 FPS**, with the same published renderer and `TEST_MODE=1`.
 The user confirmed normal visuals and behavior. See [§18](#18-execute-instructions-from-psram-2026-09-27)
@@ -108,23 +119,22 @@ Two variants, smaller first.
 > Shipped, then blanked the screen after pairing. See §14 for the coordinate-space bug and the
 > fix; the sketch below is left as written.
 
-`render_item_children` (`internal/core/item_rendering.rs:205-232`) always recurses into children;
+`render_item_children` always recurses into children;
 only *drawing* is filtered by `filter_item`. Items scrolled out of the Flickable viewport are still
 walked. Measured headroom: 33 of 71 visited items are not drawn.
 
 Sketch:
-1. Add `subtree_rect: LogicalRect` to `PartialRenderingCachedData`
-   (`internal/core/partial_renderer.rs:159-169`), computed post-order as the union of an item's own
+1. Add `subtree_rect: LogicalRect` to `PartialRenderingCachedData`, computed post-order as the union of an item's own
    **geometry** and its children's `subtree_rect`s.
 2. Add `PartialRenderer::filter_subtree(&ItemRc) -> bool` testing that rect, transformed to screen
    space, against the dirty region.
 3. In `render_item_children`, when `do_draw` is false **and** `filter_subtree` is false, skip the
-   recursion at line 231.
+   recursion for that subtree.
 4. Keep the existing unconditional-descend cases exactly as they are: `clips_children`, `BoxShadow`,
    `Transform`, `Opacity`, `Layer`.
 
 **Traps, both found by adversarial review:**
-- Six item types deliberately zero their size in `bounding_rect` — `Empty` (`items.rs:306-314`),
+- Six item types deliberately zero their size in `bounding_rect` — `Empty`,
   `TouchArea`, `FocusScope`, the swipe handlers, `DragArea`/`DropArea`. Union over `bounding_rect`
   would under-cover and prune visible content. Use `geometry`.
 - The subtree rect must include the fork's arc invalidation slack (`Path::arc_dirty_rect`,
@@ -192,7 +202,7 @@ Each was implemented or configured and measured on hardware.
 
 - **Arc invalidation slack** — the big correctness fix. Invalidation granted 1 logical px while the
   renderer paints up to **2.8 px** (ring) and **5 px** (round cap) outside the exact geometry:
-  `software/lib.rs:2443-2447` truncates the arc centre and both radii into `i16`, anti-aliasing
+  the software renderer truncates the arc centre and both radii into `i16`, anti-aliasing
   reaches half a pixel past every span end, and caps are discs on the same truncated centre line.
   `ARC_BAND_SLACK` is now 6, floor pinned at 5 by `bounds_cover_what_the_renderer_actually_paints`.
   This defeated four previous attempts and stayed invisible to five test suites because every
@@ -288,8 +298,7 @@ Replace "rebuild the scene every frame" with "keep the scene, patch what changed
 - Give each item a slot holding the `SceneItem`s it emitted last frame, plus the transform and clip
   they were emitted under.
 - On property mutation, mark that slot stale and push the item's **old** screen rect to a dirty list.
-  Slint already has the hook: `PartialRenderingCachedData.tracker`
-  (`internal/core/partial_renderer.rs:159-169`) is a per-item `PropertyTracker`.
+  Slint already has the hook: `PartialRenderingCachedData.tracker` is a per-item `PropertyTracker`.
 - A frame becomes: drain the dirty list, re-emit only stale slots, splice into the retained scene,
   rasterise the union of old and new rects.
 
@@ -297,17 +306,15 @@ Cost goes from `O(items)` to `O(changed items)`. A telemetry update touching thr
 costing a 71-item walk.
 
 **The known trap, and it already sank one attempt.** Geometry changes do *not* dirty the rendering
-tracker: `filter_item` reads geometry under `evaluate_no_tracking` (`partial_renderer.rs:674`) and
-`render()` receives `size` as a plain argument (`item_rendering.rs:205-224`). An earlier attempt to
+tracker: `filter_item` reads geometry under `evaluate_no_tracking` and
+`render()` receives `size` as a plain argument. An earlier attempt to
 gate work on that tracker broke menu scrolling. A retained list needs its **own** tracker over the
 geometry expression, and two further hazards apply:
 
 - Clearing the geometry tracker mid-frame while the redraw tracker is cleared at end-of-frame
-  desynchronises them. `mark_dependencies_dirty` short-circuits on an already-dirty dependent
-  (`properties.rs:826-843`), so once they diverge, later mutations stop reaching `request_redraw()`
+  desynchronises them. `mark_dependencies_dirty` short-circuits on an already-dirty dependent, so once they diverge, later mutations stop reaching `request_redraw()`
   and the UI freezes mid-fling. Clear both at the same point.
-- `compute_dirty_regions` returns `SkipChildren` when a clip goes empty
-  (`partial_renderer.rs:539-541, 572`). A tracker whose dependency set is rebuilt per walk ends up
+- `compute_dirty_regions` returns `SkipChildren` when a clip goes empty. A tracker whose dependency set is rebuilt per walk ends up
   with an **incomplete** set for pruned subtrees while still being marked clean.
 
 ### 9.2 Translation-only fast path — the scroll case
@@ -327,15 +334,14 @@ Without 9.1 this is not implementable — there is nothing cached to offset.
 
 `compute_dirty_regions` and `render_component_items` visit the same tree, evaluate the same geometry,
 and run back to back. `filter_item` even re-reads `item_rc.geometry()` that
-`CachedItemBoundingBoxAndTransform::new` computed moments earlier (`partial_renderer.rs:670-694`).
+`CachedItemBoundingBoxAndTransform::new` computed moments earlier.
 
 Either merge them into one pass that computes the dirty region and emits scene items together,
 deferring the emit decision until the region is known; or keep two passes but have the second consume
 the first's cached geometry rather than re-deriving it. The second is much smaller and worth doing on
 its own.
 
-**Trap:** six item types deliberately zero their size in `bounding_rect` — `Empty`
-(`items.rs:306-314`), `TouchArea`, `FocusScope`, the swipe handlers, `DragArea`/`DropArea`. Anything
+**Trap:** six item types deliberately zero their size in `bounding_rect` — `Empty`, `TouchArea`, `FocusScope`, the swipe handlers, `DragArea`/`DropArea`. Anything
 consuming a cached rect must not confuse `bounding_rect` with `geometry`.
 
 ### 9.4 Shrink the walk's code footprint
@@ -361,7 +367,7 @@ whole problem, so make the hot path small and contiguous.
 
 **Est. 0.5–1 ms.**
 
-`PrepareScene { ..Default::default() }` (`software/lib.rs:1542`) allocates `items`, `vectors` and
+`PrepareScene { ..Default::default() }` allocates `items`, `vectors` and
 `state_stack` fresh every frame, climbing the capacity ladder with a malloc/free/memcpy at each step
 — roughly 14–16 heap operations and ~6 KB of realloc copies per frame, at 1–3 µs per ESP-IDF malloc.
 Hold them in `SoftwareRenderer` as `RefCell`s, `mem::take` at frame start, `clear()` (which keeps
@@ -483,7 +489,7 @@ Symptom: an arc whose value climbs shows gaps - segments that were never painted
 repair themselves when the arc later sweeps back over them. Worse as the frame rate drops.
 Present on both dials.
 
-**Status: `ARC_NO_NARROWING = true` in `items/path.rs`.** Every arc change invalidates the whole
+**Historical status: `ARC_NO_NARROWING = true` in the Slint fork.** Every arc change invalidates the whole
 element. That is always correct and costs a lot: **100% dirty every frame, ~62ms, 16fps**, against
 29.5-39.8ms (25-34fps) with narrowing. Turning it back on is a one-line change.
 
@@ -595,7 +601,7 @@ never drops a rect).
 
 ### Prior hypotheses (superseded)
 
-Diagnostic switches in the fork: `ARC_NO_NARROWING` in `items/path.rs`, and the phase marks behind
+Diagnostic switches in the fork: `ARC_NO_NARROWING` in the Slint fork, and the phase marks behind
 `slint_esp_phase_mark`. `mcu-v1.18.11` remains the clean shipping point; the cap fix is
 `mcu-v1.18.28`.
 
@@ -683,7 +689,7 @@ never wrong.
 
 Two things that had defeated ten previous hypotheses:
 
-1. **Reproduce on the host.** `api/rs/slint/tests/arc_partial_repaint.rs` renders a dial screen
+1. **Reproduce on the host.** The Slint fork’s `arc_partial_repaint` integration test renders a dial screen
    twice in lockstep - once through the partial renderer reusing its buffer, once with a full
    repaint - both via `render_by_line` because that is the path the firmware runs, and diffs the
    buffers every frame. Iteration went from a ~10 minute release-and-flash cycle to 4 seconds.
@@ -704,7 +710,7 @@ replicating its neighbour. That removed the missing segments and immediately pro
 artifact trailing every area that updated: a replicated row is not what the renderer drew, and at
 the edge of a dirty band it lies outside the region, so nothing ever repaints it.
 
-The fix is `even_aligned` in `software/lib.rs`, which rounds the dirty region out to even
+The fix is `even_aligned` in the Slint software renderer, which rounds the dirty region out to even
 coordinates **before the scene is rendered**, so the renderer genuinely paints the added row and
 column. It is applied after the rotation, because the alignment the panel needs is on the
 coordinates the draw window is expressed in. A previous partial attempt snapped x only, and did
@@ -776,7 +782,7 @@ prune check rather than after. A wrong prune now requires the subtree to need re
 reason the dirty region does not reflect: when a child moves or grows, its old rect lies inside
 the cached bounds and inside the dirty region, so the parent is walked and the bounds refresh.
 
-**A host test is not enough here.** `api/rs/slint/tests/conditional_screen_swap.rs` models
+**A host test is not enough here.** The Slint fork’s `conditional_screen_swap` integration test models
 exactly this - conditional children destroyed and re-created, sliding, diffed against a full
 repaint - and it **passed with the bug present**, both through `render()` and through
 `render_by_line`, with and without nested subtrees. The device found it; the test did not. Treat
@@ -799,7 +805,6 @@ flash by checking that `firmware.elf` is newer than the staged `.a`.
 
 The headers and `slint-compiler` still come from the release, so this is only valid while the C++
 API and the .slint language are unchanged - cut a real release for those.
-
 
 ## 15. Pack narrow chunks into the existing DMA allocation (2026-09-27)
 
@@ -838,9 +843,7 @@ confirmed allocation bounds and even chunk heights. The user checked the stats
 screen, menu scrolling, and return navigation and reported normal visuals and
 touch response. Captures reported no transfer timeouts. Full-screen timing and
 other physical hardware models were not separately benchmarked. Temporary timing
-logging was removed for the final firmware. Local capture logs and the original
-firmware backup are under `.pio/fps-check/` (untracked).
-
+logging was removed for the final firmware.
 
 ## 16. Initial further experiments (2026-09-27)
 
@@ -884,9 +887,7 @@ was rejected because the task requires an FPS improvement without regressions.
 Restored the original renderer archive, generated-UI compiler options, and local
 Slint source files; removed temporary perf logging. The exact backed-up firmware
 from section 15 was flashed back to the device, keeping test mode enabled. The
-accepted chunk-packing improvement remains. Logs, summaries, and an experimental
-renderer patch are retained locally under `.pio/fps-check/` (untracked).
-
+accepted chunk-packing improvement remains.
 
 ## 17. Stats-screen FPS results and release (2026-09-27)
 
@@ -1028,35 +1029,26 @@ The local helper remains an optional development tool; it is not part of the nor
 Normal builds use the published release selected by `platformio.ini`:
 
 ```powershell
-& C:/Users/slims/.platformio/penv/Scripts/python.exe -m platformio run -e pingumote_esp32s3_touch_amoled_132
-& C:/Users/slims/.platformio/penv/Scripts/python.exe scripts/sync_slint_lsp.py
+python -m platformio run -e pingumote_esp32s3_touch_amoled_132
+python scripts/sync_slint_lsp.py
 ```
 
-No local Slint checkout or Rust toolchain is required for that path.
+Run these commands from the repository root with PlatformIO installed in the active
+Python environment. No local Slint checkout or Rust toolchain is required for that path.
 For renderer development, use the source at `mcu-v1.19.2` and explicitly run `scripts/use_local_slint.py` before the firmware build.
 The earlier local measurements used `+esp`, rustc 1.95.0-nightly, LLVM 21.1.3.
-The local helper expects `C:/Repos/slint` and the staged release headers/compiler.
+The optional local helper requires a separate Slint source checkout; set its
+`SLINT` path to that checkout before use. It also requires staged release headers/compiler.
 It is not invoked by a normal firmware build.
 
-For normal-operation FPS, send `render_stats` twice, with the screen unchanged, and calculate:
+For FPS measurement, build with `TEST_MODE=1` and `SLINT_PERF_LOG=0`,
+then send `render_stats` twice, with the screen unchanged, and calculate:
 `(frames_after - frames_before) * 1,000,000 / (time_us_after - time_us_before)`.
 A frame-counter reading is approximate to one in-flight frame at each endpoint.
 Long intervals make that uncertainty negligible.
 
-Local backups and evidence are under `.pio/fps-check/` and are not committed:
-
-- `original.bin`: original firmware backup.
-- `packed-final.bin`: previously user-validated DMA-only firmware.
-- `cover-final.bin`: best renderer combination with continuous profiling disabled.
-- `release-renderer.a`: shipped renderer archive, available for rollback and relinking.
-- `controlled-results.json`, the named serial logs, build logs, and test logs: measurement evidence.
-
 Flashing only the application at offset `0x10000` preserves settings and filesystem partitions.
 To revert only the renderer, restore the released archive and force a firmware relink, keeping the DMA packing if desired.
-The staged release archive SHA-256 is `E3A53D3AEF6AE2F72F8847277DCE46B32C6C7CC934259AEBA77EE7D17AEE39B1`.
-
-Locally built candidate firmware SHA-256: `ED7D3CCE2F519ACFA333199F9DC2AC53CD8A90F8828DBE8BF2EC3428585DE63D`.
-Locally built candidate renderer archive SHA-256: `AABCF7300510F1E785D945AF19C1F6F0B9C2E07D0F01B2BC1E800B0530B58B74`.
 
 ### Published-release switchover
 
@@ -1064,8 +1056,7 @@ At the user's request, the retained Slint implementation and tests were committe
 Commit: [`a9970a043`](https://github.com/techfoundrynz/slint/commit/a9970a043d1bf7e843d9af1b85595467954fc3ca).
 Release tag: [`mcu-v1.19.2`](https://github.com/techfoundrynz/slint/releases/tag/mcu-v1.19.2).
 The package's internal Slint version remains `1.19.0`; the MCU release tag and crate version are separate.
-PubRemote's release pin is changed in `platformio.ini`; PubRemote changes remain uncommitted.
-The unrelated local Android `.gradle` directory was excluded from the Slint commit.
+PubRemote's release pin is changed in `platformio.ini`; the selected release is downloaded during normal builds.
 
 The ESP32 CI package was built successfully, with library SHA-256 `9b3f779889a038678172ec38bbb831c44e7167e45c6729bea6e67d31732bde4b`.
 It differs from the earlier local build, so the previous FPS measurement is not automatically attributed to the published package.
@@ -1073,15 +1064,12 @@ All four build jobs and the release publication job passed.
 The normal PlatformIO build downloaded and staged the release; `.slint-source` names `techfoundrynz/slint@mcu-v1.19.2`.
 The staged library hash matches the CI package above and differs from the previous local override.
 The firmware build passed with 107,428 bytes static RAM and 5,932,011 bytes application flash.
-The editor language server was downloaded from the same release and configured in `.vscode/settings.json`.
-Reload the VS Code window to activate it; the old binary remains while the existing editor process holds it open.
+The editor language server was downloaded from the same release using the repository’s sync script.
 The application was flashed successfully with uploader hash verification, preserving settings and filesystem partitions.
 With profiling disabled, the frame counter increased from 274 to 3,426 between uptime readings 13,870,105 and 104,003,253 microseconds.
 That is **34.9705 delivered FPS**, closely matching the earlier local build; this single live run does not establish a meaningful additional speedup.
 No panic, error, assertion-failure, or transfer-timeout messages appeared in the capture.
 The device remains in test mode with the published-release firmware installed.
-Firmware SHA-256: `EF22CD81F29BD8564CBFFCFEE61D60E9939305285E5827B83F2866CBAD52DCD1`.
-Evidence: `.pio/fps-check/published-build.log`, `published-lsp-sync.log`, `published-upload.log`, `published-counter.log`, and `published-final.bin`.
 
 ## 18. Execute instructions from PSRAM (2026-09-27)
 
@@ -1112,8 +1100,7 @@ renderer and other runtime allocations are additional.
 
 The test-only `render_stats` command now also prints heap information on demand.
 It adds no per-frame instrumentation and is absent with `TEST_MODE=0`.
-A full 16 MiB device backup is stored locally at
-`.pio/fps-check/next-device-backup.bin`. Test flashing writes only the active
+A full 16 MiB device backup was taken before testing. Test flashing wrote only the active
 application at `0x10000`, preserving settings, OTA selection, and filesystem data.
 
 ### Repeated results and validation
@@ -1153,20 +1140,11 @@ new Slint release or local renderer override. Normal-use source has
 enabled. Reverting this optimization requires clearing that one sdkconfig
 option and rebuilding/flashing the application.
 
-Evidence is local and untracked under `.pio/fps-check/`: `next-results.json`,
-`next-*-counter.log`, `next-*-build.log`, `next-*-upload.log`, and the three
-comparison/normal images. The test baseline SHA-256 is
-`9e6fcc0a4932f8d386837495ba1be6d38ab06808db45b367f14420bd929d2f4e`;
-the test candidate is
-`b307c83a4cc7655d175ae8366286ed530b8a8fde3334fea2951a4f036d2450fa`;
-the normal candidate is
-`4f82ba5c6405a9eed105fc628be99a8c5f026597e62badfadcde75553292cf5e`.
-
 The normal candidate is installed, with uploader hash verification. A subsequent
 serial check reported firmware 0.9.18, hardware
 `pingumote_esp32s3_touch_amoled_132`, and build ID `c125468d`. The test-only
 `render_stats` command was absent, confirming `TEST_MODE=0`. The capture had no
-runtime errors; see `next-normal-boot.log`. The final normal-mode image was not
+runtime errors. The final normal-mode image was not
 used to claim a separate FPS measurement.
 
 ## 19. Follow-up memory and DMA comparisons (2026-09-27)
@@ -1181,8 +1159,7 @@ partitions are preserved; only the application at `0x10000` is flashed.
 ### Candidates and repeated measurements
 
 The proposed 64-byte instruction-cache line is **unsupported**, not a benchmark
-candidate. ESP-IDF 5.5's
-`components/esp_system/port/soc/esp32s3/Kconfig.cache` exposes only 16-byte and
+candidate. ESP-IDF 5.5 exposes only 16-byte and
 32-byte instruction-cache lines. This board already uses 32 bytes. The earlier
 suggestion confused this with the data-cache options; section 11 is corrected.
 
@@ -1246,9 +1223,6 @@ three dirty rectangles. It was corrected to generate unions of at most three
 even-aligned rectangles before the reported 32,000-case comparison; no pixel,
 ownership, or asynchronous-alignment assertion was weakened in the retained test.
 
-Evidence and saved images are in `.pio/fps-matrix/`, including the per-run
-`*-result.json`, `*-serial.log`, build/upload logs, image hashes, and the original
-versus candidate host-test logs. The test helper is local and untracked.
 Windows file locks interrupted several managed-dependency refreshes; the exact
 versions from `dependencies.lock` were restored from the local package cache,
 and generated board-specific CMake metadata was regenerated. No dependency
@@ -1266,18 +1240,15 @@ errors. The configured 60 FPS target was unchanged throughout all eight runs.
 The normal-use image has `TEST_MODE=0` and `SLINT_PERF_LOG=0`, with read-only data
 still in flash and only the DMA scheduling change retained. It built successfully
 at 107,640 bytes of static RAM and 5,933,211 bytes of application flash. These are
-build-size reports, not peak runtime memory measurements. Its SHA-256 is
-`8ecb522b72a6129795a7bfbec0e8c67628cf01ef970ea1a5e79f0932a9f2ba51`.
-The saved image is `.pio/fps-matrix/dma-normal.bin`; normal operation is not the
-source of the FPS measurements above.
+build-size reports, not peak runtime memory measurements.
+Normal operation is not the source of the FPS measurements above.
 
 The user confirmed that the final test-mode DMA candidate looked and worked
 normally after checking animation, navigation, touch, and sleep/wake. The
 normal-use image was then flashed to the connected remote with upload hash
 verification. Serial verification reported version `0.9.18`, build ID `c125468d`,
 and confirmed the test-only `render_stats` command was absent, with no captured
-runtime errors. The final upload and serial evidence are
-`.pio/fps-matrix/dma-normal-upload.log` and `dma-normal-boot.log`.
+runtime errors.
 
 ## 20. ESP-IDF 6.1 migration
 
@@ -1309,8 +1280,7 @@ The firmware version changed from 0.9.18 to 0.10.0 during the migration.
 | IDF 6.1, Picolibc, 16 MB config and IDF 6.1 bootloader | off | 57.476 | 4,976 |
 
 The profiling-off candidates differ from the baseline by -0.137 to -0.518 FPS
-(-0.24% to -0.89%). Test images and serial, build, upload, and measurement logs
-are local under `.pio/idf-upgrade/`.
+(-0.24% to -0.89%).
 
 ### Memory clocks and cache decisions
 
@@ -1377,11 +1347,7 @@ settings, retaining Picolibc and the corrected flash size.
 
 The migration's final normal image passed another reboot/memory-test check and
 30-second soak. It uses 105,132 bytes of static RAM and 5,993,671 bytes of
-application flash. The saved image is `.pio/idf-upgrade/idf61-final-normal.bin`,
-SHA-256 `4e19decd7efeaf689144c4841763ed7524d54d06f472e88a15171ef2afffc5a2`.
-Serial evidence is `final-normal.log` and `final-normal-result.json` in the same
-directory. The earlier five-reboot/three-minute run is recorded in
-`normal-stability.log` and `normal-stability-result.json`.
+application flash.
 
 Two startup diagnostics were also present in the IDF 5.5 baseline: a settings
 write failure and an already-installed GPIO ISR service. They were recorded
@@ -1390,8 +1356,304 @@ assertion, watchdog timeout, or failed display transfer, but were not free of
 all error-level messages.
 
 Subsequent component refreshes required reapplying the local SH8601 and CST816S
-patches. Pingumote and Avaspark builds then passed; those refreshed sources have
-not been flashed or benchmarked, so the measurements above describe the earlier
-validated images. Only Pingumote received hardware checks. Builds do not verify
+patches. All five board builds then passed. The measurements above describe the
+earlier validated images; the refreshed sources were flashed during the follow-up
+checks below. Only Pingumote received hardware checks. Builds do not verify
 other boards' physical behavior, and serial checks do not establish the absence
 of visible artifacts.
+
+### Follow-up runtime regressions
+
+OTA release discovery exposed a TLS chain compatibility issue missed by the
+initial boot and rendering checks. The server supplied a cross-signed Google
+root whose older GlobalSign issuer was absent from the IDF 6.1 bundle, while the
+Google root itself remained trusted. All five configs now enable
+`CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY` and its selected trusted
+certificate callback. Certificate and hostname verification remain enabled.
+The flashed Pingumote successfully fetched and parsed the release list; no newer
+eligible release was available, so a full OTA image download was not exercised.
+The earlier heap measurements predate this TLS change.
+
+Game exit also exposed a change in the meaning of the internal RAM reserve.
+IDF 5.5 excluded `MALLOC_CAP_DEFAULT` from the reserved pool; IDF 6.1 includes it,
+allowing small ordinary allocations to consume the reserve before spilling to
+PSRAM. A captured exit had only 311 bytes of internal RAM free, with a largest
+block of 28 bytes and over 5 MB of free PSRAM. Refreshing the games list then
+aborted when Picolibc could not allocate a file mutex. About task creation and
+Wi-Fi event-group allocation also failed under the same memory pressure.
+
+The project-local startup wrapper in `firmware/src/utilities/internal_ram_reserve.c` restores
+the IDF 5.5 protected-pool capabilities and priorities without modifying the
+installed SDK. Two captured game exits completed successfully with this fix,
+and the user confirmed the crash was resolved. The configured reserve remains
+32 KiB on all boards, and the ordinary-allocation threshold remains 512 bytes.
+Internal headroom remains tight: the game capture retained a roughly 1 KiB
+contiguous block, so these checks do not establish an unrestricted memory budget.
+Recheck this wrapper when upgrading IDF again.
+
+Follow-up 90-second Pingumote runs used `TEST_MODE=1`, target 60 FPS, and profiling
+off. These include the refreshed components and TLS fix, so comparison with the
+earlier migration measurements is not an isolated reserve-only comparison.
+
+| Protected reserve candidate | FPS | Decision |
+| --- | ---: | --- |
+| 32 KiB, IDF 5.5 priorities | 55.56 | Retained; game exits verified |
+| 48 KiB, IDF 5.5 priorities | 55.21 | Rejected; no useful measured headroom gain |
+| 32 KiB, all capabilities at lowest priority | 52.72 | Rejected; higher headroom but too much FPS loss |
+| 16 KiB, all capabilities at lowest priority | 53.03 | Rejected; FPS still lower |
+
+The retained result is below the earlier 57.48–57.86 FPS migration results;
+performance parity is not established.
+
+The retained normal image (`TEST_MODE=0`, memory/frame profiling off) passed
+three software reboots, PSRAM startup checks, absence of the test-only FPS
+command, and a 60-second soak with a responsive console and no new runtime
+diagnostic. The two pre-existing startup diagnostics listed above remain.
+All five retained normal-mode board builds passed.
+
+### About memory comparison against pre-upgrade firmware
+
+A controlled Pingumote run compared pre-upgrade commit `86db6e5` (IDF 5.5)
+with the current IDF 6.1 branch, including the refreshed components, TLS fix,
+and protected internal reserve. Both used `TEST_MODE=0`, `DEBUG_MEMORY=0`,
+the same saved settings, and identical temporary console navigation/memory
+instrumentation. The About memory page was visible in both images. These are
+whole-branch comparisons, not isolated SDK-only measurements or FPS benchmarks.
+
+The table reports medians in bytes. About phases each contain 20 samples;
+Stats has six and Menu four. No About optimization was applied.
+
+| Screen/phase | IDF 5.5 internal free | IDF 6.1 internal free | IDF 5.5 largest block | IDF 6.1 largest block |
+| --- | ---: | ---: | ---: | ---: |
+| Stats | 13,903 | 12,773 | 7,680 | 7,680 |
+| Menu | 31,753 | 30,209 | 10,240 | 9,728 |
+| About, first entry | 2,347 | 1,767 | 1,920 | 1,344 |
+| About, re-entry | 2,399 | 5,879* | 1,920 | 1,600* |
+| About, after game exit | 2,547 | 2,597* | 2,048 | 1,344* |
+
+*IDF 6.1 logged `Failed to create About task` on re-entry and after game exit;
+the old firmware did not. Those readings therefore do not represent equivalent
+functionality: the missing 3,072-byte-stack task no longer polls the statistics.
+Its missing allocation also makes the higher re-entry free-memory result
+misleading. Neither run crashed, but the new task failures are a regression.
+
+The first-entry comparison shows that very low About internal memory already
+existed before the upgrade, with 580 fewer free bytes and a 576-byte smaller
+largest block on the upgraded branch. First-entry PSRAM medians were 5,552,918
+and 5,551,080 bytes respectively, a difference of only 1,838 bytes. Plenty of
+PSRAM does not guarantee that internal-only task allocations can succeed.
+These single navigation runs establish the observed failure and tight headroom;
+they are not long-duration leak or fragmentation tests.
+
+Temporary instrumentation and the forced memory-page selection were removed from the
+working source after building the comparison images. The allocation failure
+was subsequently resolved by the About changes described below.
+
+The IDF 6.1 bootloader and normal firmware were restored with flash hash
+verification. One software reboot, the PSRAM startup test, absence of the
+temporary console commands, and a 30-second soak passed with no new startup
+diagnostics. This startup check preceded the About fix below.
+
+### About allocation reduction
+
+About now uses a one-second Slint timer, active only on that screen, instead of
+creating a FreeRTOS task with a 3,072-byte internal stack. Entry, refresh, model
+updates, and cleanup run on the UI thread. Shutdown releases the model reference
+on that thread too; the UI retains the outgoing model through the exit animation.
+The timer is owned by AppWindow and disappears with it.
+
+The statistics model is built once per visit. Subsequent refreshes change only
+values that differ, and insert/remove the current row when its visibility changes.
+This removes the whole-model replacement and cross-thread closure on each refresh,
+along with the 512-byte signature buffer. Pingumote's normal build uses 104,636
+bytes of static RAM versus 105,148 before this change, a 512-byte reduction.
+
+The same normal-mode memory sequence, with the diagnostics page visible, produced
+these median byte counts on IDF 6.1:
+
+| Phase | Before: internal free | Optimized: internal free | Before: largest block | Optimized: largest block |
+| --- | ---: | ---: | ---: | ---: |
+| Stats | 12,773 | 13,081 | 7,680 | 7,168 |
+| Menu | 30,209 | 30,961 | 9,728 | 12,288 |
+| About, first entry | 1,767 | 2,475 | 1,344 | 1,600 |
+| About, re-entry | 5,879* | 2,127 | 1,600* | 1,600 |
+| About, after game exit | 2,597* | 2,187 | 1,344* | 1,472 |
+
+*Before the optimization, About's refresh task failed to start in these phases.
+The optimized readings include functioning refreshes, so these rows are not
+comparisons of equivalent behavior. Removing an internal stack does not translate
+directly to the same increase in free internal memory: allocation placement and
+fragmentation also change. Internal headroom remains tight.
+
+The completed repeat captured 32 timer callbacks on each of the three About
+visits and zero on other screens, with no new runtime diagnostics or crash.
+The first attempt also refreshed successfully, but its capture stopped on one
+incomplete serial response; the harness was updated to retry incomplete samples.
+Temporary navigation, refresh logging, and forced diagnostics-page selection were
+removed from the retained firmware. This resolves the previously observed About
+refresh-task allocation failure without changing the internal reserve or moving
+rendering buffers to slower memory.
+
+Matched 90-second FPS runs used `TEST_MODE=1`, target 60 FPS, and profiling off:
+55.65 FPS for the saved pre-optimization control and 55.95 FPS for the optimized
+candidate. No performance loss was observed in this pair; the small difference
+is not evidence of a repeatable speedup.
+The memory measurements above used normal mode, not TEST_MODE emulated statistics.
+
+All five normal-mode board builds passed. The subsequent reserve cleanup removes redundant
+IDF-version checks in both CMake and `internal_ram_reserve.c`, retaining the
+`CONFIG_SPIRAM_USE_MALLOC` guard. Its final Pingumote rebuild passed and the ELF
+still contains `__wrap_esp_psram_extram_reserve_dma_pool`.
+
+The final normal image was flashed with hash verification and passed a software
+reboot, PSRAM startup test, absence of the test-only counter, and a 30-second soak
+with no new runtime diagnostics. The two known startup diagnostics remain.
+Only Pingumote received hardware checks; automated navigation and serial checks
+do not establish visual artifact absence or full touch/sleep/wake coverage.
+
+### Font metadata placement: flash versus PSRAM
+
+The generated `const` font tables used Slint's non-constexpr `make_slice` helper,
+so 47,808 bytes of glyph metadata occupied internal DRAM. The project codegen
+step now rewrites only the generated `BitmapGlyph`, `BitmapGlyphs`, and
+`BitmapFont` resource definitions to use a constexpr slice helper and `constinit`.
+Font pixels, glyph metrics, character coverage, and runtime UI slice expressions
+are unchanged. Static resource arrays always supply non-null addresses, including
+empty arrays. Unsupported slice expressions fail code generation, and nonconstant
+initializers fail compilation instead of silently consuming internal RAM again.
+No installed Slint headers or SDK files are modified.
+
+Flash is the retained implementation. The experimental PSRAM variant copied
+the 24 glyph arrays (47,520 bytes) from their flash originals into PSRAM during
+font initialization, retaining the small glyph-set descriptors in internal RAM.
+The copies lived for the firmware lifetime, with a flash fallback on allocation
+failure. Both captured boots allocated all 24 copies without fallback. The
+experimental copy path, startup logging, and environment switch were removed
+before committing; they offered no measured benefit over flash.
+
+Matched 90-second Pingumote runs used `TEST_MODE=1`, target 60 FPS, profiling off,
+and the retained About allocation fix:
+
+| Font metadata placement | FPS | Decision |
+| --- | ---: | --- |
+| Original internal RAM | 55.67 | Control |
+| Flash | 56.01 | Default: no observed FPS penalty, no PSRAM copy allocation |
+| PSRAM glyph copies | 55.97 | Tested and discarded; no measured advantage over flash |
+
+These single runs show no measured regression; differences of a few tenths of
+an FPS do not establish a repeatable speedup. Neither candidate produced a new
+runtime diagnostic.
+
+The final normal flash build uses 56,668 bytes of static RAM versus 104,636 for
+the prior About-optimized normal build: 47,968 bytes saved. ELF symbol inspection
+confirmed zero internal-DRAM bytes for the 47,808 bytes of glyph-set symbols;
+they now reside in flash-mapped addresses. The additional saving comes from other
+constant font metadata handled by the same scoped transformation.
+
+Normal-mode runs (`TEST_MODE=0`) used identical temporary navigation commands and
+made About's memory page visible. Medians in bytes:
+
+| Phase | Flash internal free | PSRAM internal free | Flash largest block | PSRAM largest block |
+| --- | ---: | ---: | ---: | ---: |
+| Stats | 60,987 | 60,741 | 31,744 | 31,744 |
+| Menu | 60,933 | 60,945 | 31,744 | 31,744 |
+| About, first entry | 51,001 | 51,223 | 31,744 | 31,744 |
+| About, re-entry | 47,157 | 48,139 | 31,744 | 31,744 |
+| About, after game exit | 42,861 | 42,591 | 31,744 | 31,744 |
+
+For comparison, the prior About-optimized run had 2,475 bytes free on first
+entry and 2,187 after game exit. Both font candidates completed all three About
+visits and the game-exit sequence with no new runtime diagnostics. First-entry
+free PSRAM was 5,618,772 bytes for flash and 5,505,040 for the PSRAM candidate;
+this total heap difference includes image/allocation layout, not just the
+47,520-byte glyph copies.
+
+Nine code-generation tests pass, covering scope, runtime expression preservation,
+and rejection of unsupported resource definitions and slice expressions. All five
+normal flash-placement board builds passed. Only Pingumote
+received hardware checks; these captures do not establish visual artifact absence
+or full touch/sleep/wake coverage. Temporary diagnostics were removed from source.
+
+The selected flash build is restored on the remote with `TEST_MODE=0`. Flash hash
+verification, one software reboot, PSRAM startup test, absence of test commands,
+and a 30-second soak passed with a responsive console and no new diagnostics.
+The two previously documented startup diagnostics remain.
+
+Commit preparation removed the unused PSRAM experiment and tightened validation
+for unrecognized generated font definitions. Comparing all eight generated C++
+files (30 font resources) confirmed identical flash output to the benchmarked
+implementation. All nine code-generation tests and C/C++ formatting checks pass.
+A fresh Pingumote 0.10.1 build also passed after fixing Slint's CMake dependency
+on the managed touch component: its manifest supplies that dependency when the
+component manager is enabled; the local name is retained only when disabled.
+
+### DMA buffer size and count sweep
+
+A Pingumote sweep after the font-table memory reduction tested all configurations
+with `TEST_MODE=1`, target 60 FPS, profiling off, a roughly 20-second startup
+warm-up, and one 90-second counter measurement per image. The new control was
+measured in the same session; gains below are relative to that control.
+
+| Buffers x full-width rows | FPS | FPS change | Extra DMA RAM |
+| --- | ---: | ---: | ---: |
+| 3 x 14 | 56.37 | +0.00 | 0 bytes |
+| 3 x 18 | 56.69 | +0.32 | 11,184 bytes |
+| 3 x 20 | 56.33 | -0.04 | 16,776 bytes |
+| 3 x 24 | 56.48 | +0.11 | 27,960 bytes |
+| 4 x 14 | 55.87 | -0.50 | 13,048 bytes |
+| 5 x 14 | 55.90 | -0.47 | 26,096 bytes |
+
+The largest measured increase was only 0.32 FPS (0.57%) with three 18-row
+buffers, at an extra 11,184 bytes of internal DMA RAM. Larger rows showed no
+consistent improvement; four and five buffers were slightly slower. These
+single-run differences do not establish repeatable small gains. Retain three
+14-row buffers on Pingumote (`VER_RES / 30`, rounded down to an even number).
+No experimental buffer setting was retained in source.
+
+All six images built, booted, and completed their timed runs without new runtime
+diagnostics. Known settings-write and duplicate GPIO ISR startup messages remain.
+The first harness attempt stopped after the valid control capture because a
+startup allocation log line was missing; its log-presence requirement was
+relaxed, saved image hashes were verified, and the remaining five runs completed.
+The experiment did not include manual artifact/touch checks or normal-mode game
+stress tests for the larger configurations.
+
+The original normal firmware was restored with flash hash verification. One
+software reboot, the PSRAM startup memory test, absence of the TEST_MODE counter,
+and a 30-second soak passed with a responsive console and no new diagnostics.
+
+### Smaller DMA buffers: interrupted visual validation
+
+The smaller-buffer sweep used the same TEST_MODE=1, profiling-off, target-60
+configuration, roughly 20-second warm-up, and 90-second samples. A fresh control
+was measured in this session. Completed timings were:
+
+| Buffers x full-width rows | FPS | FPS change | DMA RAM saved |
+| --- | ---: | ---: | ---: |
+| 3 x 14 | 55.90 | +0.00 | 0 bytes |
+| 3 x 6 | 56.35 | +0.45 | 22,368 bytes |
+| 3 x 8 | 57.18 | +1.28 | 16,776 bytes |
+| 3 x 10 | 56.89 | +0.99 | 11,184 bytes |
+| 3 x 12 | 56.12 | +0.22 | 5,592 bytes |
+
+The initial 3 x 8 capture measured 57.16 FPS but logged an I2C read failure
+(ESP_ERR_INVALID_RESPONSE) on the first startup after flashing. Its subsequent
+reboot was clean, and the retry listed above completed without that error. The
+cause of the initial error was not established. Other completed captures had no
+new runtime diagnostics, excluding the existing settings-write and GPIO ISR
+startup messages.
+
+The user reported UI artifacting while the 1 x 14 image was running. Its capture
+was stopped immediately; it has no completed 90-second result. The 2 x 14 image
+was built but not tested, and planned confirmation runs were cancelled. The
+report does not establish which earlier configurations, if any, also artifacted.
+FPS and clean serial logs do not demonstrate visual correctness. None of these
+smaller-buffer configurations is validated for adoption; retain 3 x 14.
+
+All seven candidate builds passed. Original source settings and the normal
+workspace build were restored.
+
+After the visual report, original normal firmware was restored with flash hash
+verification. One reboot, the PSRAM startup test, absence of the test counter,
+and a 30-second soak passed without new runtime diagnostics. Visual recovery
+has not been independently confirmed.
