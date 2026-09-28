@@ -272,18 +272,18 @@ static void update_task(void *pvParameters) {
       if (has_stable_update) {
         ReleaseInfo info = {};
         info.type = UPDATE_TYPE_STABLE;
-        strncpy(info.tag_name, result->stable_tag, sizeof(info.tag_name) - 1);
+        strlcpy(info.tag_name, result->stable_tag, sizeof(info.tag_name));
         snprintf(info.name, sizeof(info.name), "%s", result->stable_tag);
-        strncpy(info.download_url, result->stable_url, sizeof(info.download_url) - 1);
+        strlcpy(info.download_url, result->stable_url, sizeof(info.download_url));
         available_updates[available_update_count++] = info;
       }
 
       if (has_prerelease_update) {
         ReleaseInfo info = {};
         info.type = UPDATE_TYPE_PRERELEASE;
-        strncpy(info.tag_name, result->prerelease_tag, sizeof(info.tag_name) - 1);
+        strlcpy(info.tag_name, result->prerelease_tag, sizeof(info.tag_name));
         snprintf(info.name, sizeof(info.name), "%s (Prerelease)", result->prerelease_tag);
-        strncpy(info.download_url, result->prerelease_url, sizeof(info.download_url) - 1);
+        strlcpy(info.download_url, result->prerelease_url, sizeof(info.download_url));
         available_updates[available_update_count++] = info;
       }
 

@@ -8,6 +8,11 @@ foreach(index RANGE 0 ${slint_last_cpp})
 endforeach()
 
 idf_component_register(SRCS ${app_sources} ${slint_sources} INCLUDE_DIRS "${CMAKE_BINARY_DIR}")
+if(CONFIG_SPIRAM_USE_MALLOC)
+    # IDF 6 allows ordinary malloc() to consume the DMA/internal reserve.
+    # Keep the pre-upgrade protected pool for task stacks and libc locks.
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_psram_extram_reserve_dma_pool")
+endif()
 # Match espressif/lua's private numeric ABI (32-bit integers and floats).
 target_compile_definitions(${COMPONENT_LIB} PRIVATE LUA_32BITS=1)
 # Retain line/function information without enormous generated variable debug

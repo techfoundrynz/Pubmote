@@ -1,8 +1,7 @@
 #include "haptic_driver_drv2605.hpp"
+#include "SensorDRV2605.hpp"
 #include "esp_err.h"
 #include "esp_log.h"
-#define CONFIG_SENSORLIB_ESP_IDF_NEW_API
-#include "SensorDRV2605.hpp"
 #include "remote/i2c.h"
 #include <driver/gpio.h>
 #include <memory>

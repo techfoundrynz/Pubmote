@@ -1,5 +1,6 @@
 #include "display_driver_sh8601.h"
 #include "config.h"
+#include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

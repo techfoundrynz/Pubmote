@@ -2,13 +2,14 @@
 
 #if IMU_QMI8658
 
+  // SensorLib's QMI8658 header uses NAN and round without including math.h.
+  #include <cmath>
+
+  #include "SensorQMI8658.hpp"
   #include "esp_err.h"
   #include "esp_log.h"
-  #include "imu_driver_qmi8658.hpp"
-  #include <cmath>
-  #define CONFIG_SENSORLIB_ESP_IDF_NEW_API
-  #include "SensorQMI8658.hpp"
   #include "imu/imu_datatypes.h"
+  #include "imu_driver_qmi8658.hpp"
   #include "remote/i2c.h"
   #include <driver/gpio.h>
 

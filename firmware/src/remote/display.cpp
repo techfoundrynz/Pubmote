@@ -737,10 +737,12 @@ static esp_err_t app_lcd_init(void) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #if DISP_GC9A01
-  esp_lcd_panel_io_spi_config_t io_config = GC9A01_PANEL_IO_SPI_CONFIG(DISP_CS, DISP_DC, on_lcd_color_trans_done, NULL);
+  esp_lcd_panel_io_spi_config_t io_config =
+      GC9A01_PANEL_IO_SPI_CONFIG((gpio_num_t)DISP_CS, (gpio_num_t)DISP_DC, on_lcd_color_trans_done, NULL);
   io_config.trans_queue_depth = 20;
 #elif DISP_SH8601 || DISP_CO5300
-  esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(DISP_CS, on_lcd_color_trans_done, NULL);
+  esp_lcd_panel_io_spi_config_t io_config =
+      SH8601_PANEL_IO_QSPI_CONFIG((gpio_num_t)DISP_CS, on_lcd_color_trans_done, NULL);
   io_config.pclk_hz = LCD_PIXEL_CLOCK_HZ;
   io_config.trans_queue_depth = 20;
 #endif
@@ -769,9 +771,9 @@ static esp_err_t app_lcd_init(void) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
   const esp_lcd_panel_dev_config_t panel_config = {
-      .reset_gpio_num = DISP_RST,
       .rgb_ele_order = RGB_ELE_ORDER,
       .bits_per_pixel = 16,
+      .reset_gpio_num = (gpio_num_t)DISP_RST,
       .vendor_config = &vendor_config,
   };
 #pragma GCC diagnostic pop
@@ -846,7 +848,7 @@ static esp_err_t app_touch_init(void) {
   #endif
 
   tp_io_config.scl_speed_hz = I2C_SCL_FREQ_HZ;
-  ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c_v2(i2c_get_bus_handle(), &tp_io_config, &tp_io_handle));
+  ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(i2c_get_bus_handle(), &tp_io_config, &tp_io_handle));
 
   const esp_lcd_touch_config_t tp_cfg = {
       .x_max = HOR_RES,

@@ -2,8 +2,12 @@ cmake_minimum_required(VERSION 3.16)
 project(firmware_host_tests C)
 
 set(IDF_PATH "$ENV{IDF_PATH}" CACHE PATH "ESP-IDF source directory")
-if(NOT EXISTS "${IDF_PATH}/components/json/cJSON/cJSON.c")
-  message(FATAL_ERROR "Set IDF_PATH to an ESP-IDF checkout (including its cJSON submodule)")
+set(CJSON_DIR "${CMAKE_SOURCE_DIR}/../managed_components/espressif__cjson/cJSON" CACHE PATH "cJSON source directory")
+if(NOT EXISTS "${CJSON_DIR}/cJSON.c" AND EXISTS "${IDF_PATH}/components/json/cJSON/cJSON.c")
+  set(CJSON_DIR "${IDF_PATH}/components/json/cJSON")
+endif()
+if(NOT EXISTS "${CJSON_DIR}/cJSON.c" OR NOT EXISTS "${IDF_PATH}/components/console/split_argv.c")
+  message(FATAL_ERROR "Set IDF_PATH to ESP-IDF and CJSON_DIR to cJSON (or build firmware first to fetch it)")
 endif()
 
 # Stage the sources beside empty shadow/ headers; quoted includes search their own directory first.
@@ -18,10 +22,10 @@ endforeach()
 
 add_executable(settings_console_test
   settings_console_test.c
-  "${IDF_PATH}/components/json/cJSON/cJSON.c"
+  "${CJSON_DIR}/cJSON.c"
   "${IDF_PATH}/components/console/split_argv.c"
 )
-target_include_directories(settings_console_test PRIVATE "${STAGED}" "${FIRMWARE_REMOTE}" "${IDF_PATH}/components/json/cJSON")
+target_include_directories(settings_console_test PRIVATE "${STAGED}" "${FIRMWARE_REMOTE}" "${CJSON_DIR}")
 set_target_properties(settings_console_test PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED YES)
 if(MSVC)
   target_compile_definitions(settings_console_test PRIVATE _CRT_SECURE_NO_WARNINGS)

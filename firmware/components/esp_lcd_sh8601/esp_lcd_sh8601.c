@@ -307,7 +307,7 @@ static esp_err_t panel_sh8601_draw_bitmap(esp_lcd_panel_t *panel, int x_start, i
     // and waits for its completion callback, so a swallowed error here would leave it waiting
     // for a callback that can never arrive.
     size_t len = (x_end - x_start) * (y_end - y_start) * sh8601->fb_bits_per_pixel / 8;
-    ESP_RETURN_ON_ERROR(tx_color(sh8601, io, LCD_CMD_RAMWR, color_data, len), TAG, "send color failed");
+    ESP_RETURN_ON_ERROR(tx_color(sh8601, io, LCD_CMD_RAMWR, color_data, len), TAG, "send color data failed");
 
     return ESP_OK;
 }
