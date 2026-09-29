@@ -24,7 +24,7 @@ def write_if_changed(path, content):
 
 project_dir = Path(env.subst("$PROJECT_DIR"))
 sys.path.insert(0, str(project_dir / "scripts"))
-from slint_codegen import split_resource_declarations
+from slint_codegen import split_resource_declarations, prepare_font_resources
 build_dir = Path(env.subst("$BUILD_DIR")).resolve()
 generated_dir = build_dir / "slint_generated"
 generated_dir.mkdir(parents=True, exist_ok=True)
@@ -124,6 +124,7 @@ def compile_slint_files(target, source, env):
             if content.count(include) != 1:
                 raise RuntimeError(f"Unexpected Slint include layout in {name}")
             content = content.replace(include, include + '\n#include "app-window-resources.h"', 1)
+            content = prepare_font_resources(content)
             write_if_changed(output, content.encode())
 
 

@@ -236,6 +236,7 @@ export global UiState {
     // About
     callback about-check-updates();
     callback about-back();
+    callback about-refresh();
     // IMU Calibration
     callback open-imu-calibration();
     callback imu-calibration-back();
@@ -255,6 +256,12 @@ export component AppWindow inherits Window {
     background: Theme.bg;
     title: "PubRemote";
     default-font-family: "Saira";
+
+    Timer {
+        interval: 1000ms;
+        running: UiState.screen == Screen.about;
+        triggered => { UiState.about-refresh(); }
+    }
 
     property <Screen> active-screen: UiState.screen;
     property <Screen> previous-screen: Screen.splash;

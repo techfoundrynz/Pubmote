@@ -1,10 +1,18 @@
 # Copyright © SixtyFPS GmbH <info@slint.dev>
 # SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0
 
+# The component manager supplies the namespaced touch dependency from the manifest.
+# Only use the local component name when dependency management is disabled.
+set(slint_requires esp_lcd esp_timer)
+idf_build_get_property(idf_component_manager IDF_COMPONENT_MANAGER)
+if(NOT idf_component_manager)
+    list(APPEND slint_requires esp_lcd_touch)
+endif()
+
 idf_component_register(
     SRCS "src/slint-esp.cpp"
     INCLUDE_DIRS "include"
-    REQUIRES "esp_lcd" "esp_lcd_touch" "esp_timer")
+    REQUIRES ${slint_requires})
 
 # Slint is always consumed as a prebuilt release - this project never builds it from
 # source, so no Rust toolchain is required. The release pins the library, the generated
