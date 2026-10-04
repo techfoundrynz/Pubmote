@@ -1,4 +1,4 @@
-import { Box, Tag, Cpu, Wifi } from 'lucide-react';
+import { Box, Tag, Cpu, Wifi, Download } from 'lucide-react';
 import { Badge } from './ui/Badge';
 import { DeviceInfoData, FlashProgress } from '../types';
 
@@ -13,6 +13,8 @@ interface Props {
   onClearCoredump: () => Promise<void>;
   onLoadElf: (file: File) => Promise<void>;
   onDownloadElf: (isManual?: boolean) => Promise<void>;
+  onDownloadDiagnostics: () => Promise<void>;
+  downloadingDiagnostics: boolean;
   isElfLoaded?: boolean;
   updateAvailable?: boolean;
   flashProgress?: FlashProgress;
@@ -27,6 +29,8 @@ export function DeviceInfo({
   onClearCoredump,
   onLoadElf,
   onDownloadElf,
+  onDownloadDiagnostics,
+  downloadingDiagnostics,
   isElfLoaded,
   updateAvailable = false,
   flashProgress,
@@ -98,6 +102,22 @@ export function DeviceInfo({
           </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-[var(--color-bg-tertiary)] px-3 py-2 text-sm disabled:opacity-50"
+        disabled={
+          !deviceInfo.connected ||
+          downloadingDiagnostics ||
+          ['connecting', 'erasing', 'flashing', 'verifying'].includes(
+            flashProgress?.status ?? 'idle',
+          )
+        }
+        onClick={() => void onDownloadDiagnostics()}
+      >
+        <Download className="h-4 w-4" />
+        {downloadingDiagnostics ? 'Collecting diagnostics…' : 'Download device diagnostics'}
+      </button>
 
       <Terminal
         terminal={terminal}

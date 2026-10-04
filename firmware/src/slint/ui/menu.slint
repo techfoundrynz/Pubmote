@@ -39,6 +39,7 @@ export component MenuScreen inherits Page {
     callback calibration;
     callback pairing;
     callback about;
+    callback wifi;
     callback imu-calibration;
     callback shutdown;
     callback shutdown-long-press;
@@ -115,6 +116,13 @@ export component MenuScreen inherits Page {
                 icon: Icons.bluetooth;
                 right-text: "\u{203a}";
                 clicked => { root.pairing(); }
+            }
+
+            MenuButton {
+                text: "Wi-Fi";
+                icon: Icons.radio;
+                right-text: "\u{203a}";
+                clicked => { root.wifi(); }
             }
 
             MenuButton {

@@ -9,6 +9,11 @@ export component AppButton inherits Rectangle {
     in property <string> variant: "primary"; // "primary", "secondary", "outline", "ghost"
     in property <string> button-color: "standard";  // "standard", "success", "danger"
     in property <bool> enabled: true;
+    in property <length> label-font-size: Theme.font-12;
+    in property <length> horizontal-padding: 12px * Theme.scale;
+    in property <duration> hold-duration: 800ms;
+    in property <bool> strong-press-feedback: false;
+    out property <bool> hold-active: touch.pressed && root.was-long-pressed;
     callback clicked;
     callback long-clicked;
     property <bool> was-long-pressed: false;
@@ -24,10 +29,11 @@ export component AppButton inherits Rectangle {
     
     // Always have a 2px border to prevent layout shifts on focus
     border-width: 2px;
-    border-color: f-scope.has-focus ? #ffffff : (root.variant == "outline" ? Theme.text : transparent);
+    border-color: f-scope.has-focus || (root.strong-press-feedback && touch.pressed) ? Theme.text : (root.variant == "outline" ? Theme.text : transparent);
 
     // Background color based on variant and state
     background: !root.enabled ? Theme.track :
+        root.strong-press-feedback && touch.pressed ? root.get-base-color().mix(Theme.text, 0.2) :
         root.variant == "outline" ? (touch.pressed ? #ffffff20 : transparent) :
         root.variant == "secondary" ? (touch.pressed ? Theme.track.darker(0.2) : Theme.track) :
         // No desaturate() in this Slint version; mixing toward the gray track desaturates
@@ -51,11 +57,12 @@ export component AppButton inherits Rectangle {
     HorizontalLayout {
         width: 100%;
         height: 100%;
-        padding-left: 12px * Theme.scale;
-        padding-right: 12px * Theme.scale;
+        padding-left: root.horizontal-padding;
+        padding-right: root.horizontal-padding;
         alignment: (root.variant == "ghost" || root.right-text != "") ? LayoutAlignment.space-between : LayoutAlignment.center;
 
         HorizontalLayout {
+            min-width: 0px;
             spacing: 8px * Theme.scale;
 
             if root.icon != "": Text {
@@ -68,13 +75,16 @@ export component AppButton inherits Rectangle {
 
             Text {
                 text: root.text;
+                min-width: 0px;
+                overflow: elide;
                 color: !root.enabled ? Theme.text-dim :
+                    root.strong-press-feedback && touch.pressed ? Theme.primary-button-text :
                     root.variant == "outline" ? Theme.text :
                     root.variant == "secondary" ? Theme.text :
                     root.variant == "ghost" ? Theme.text :
                     // default/primary
                     Theme.primary-button-text;
-                font-size: Theme.font-12;
+                font-size: root.label-font-size;
                 font-weight: Theme.w-semibold;
                 vertical-alignment: center;
             }
@@ -113,10 +123,11 @@ export component AppButton inherits Rectangle {
     }
 
     long-press-timer := Timer {
-        interval: 800ms;
+        interval: root.hold-duration;
         running: false;
         triggered => {
             self.running = false;
+            if (!touch.pressed) { return; }
             root.was-long-pressed = true;
             root.long-clicked();
         }

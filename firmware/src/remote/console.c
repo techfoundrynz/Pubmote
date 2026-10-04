@@ -1,16 +1,20 @@
 
 #include "build_metadata.h"
+#include "cJSON.h"
 #include "config.h"
 #include "driver/usb_serial_jtag.h"
 #include "esp_console.h"
 #include "esp_core_dump.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "games/game_store.h"
 #include "linenoise/linenoise.h"
 #include "powermanagement.h"
 #include "remoteinputs.h"
 #include "settings.h"
 #include "settings_console.h"
+#include "utilities/diagnostic_log.h"
 #include <stdio.h>
 #if TEST_MODE
   #include "display.h"
@@ -25,6 +29,53 @@
 
 static const char *TAG = "PUBREMOTE-CONSOLE";
 #define PROMPT_STR "pubconsole"
+
+static int diagnostics_command(int argc, char **argv) {
+  if (argc == 2 && strcmp(argv[1], "clear") == 0) {
+    bool cleared = diagnostic_log_clear();
+    printf("{\"kind\":\"diagnostics_clear\",\"ok\":%s}\n", cleared ? "true" : "false");
+    return cleared ? 0 : 1;
+  }
+  if (argc != 1) {
+    puts("{\"kind\":\"diagnostics\",\"ok\":false,\"error\":\"Usage: diagnostics [clear]\"}");
+    return 1;
+  }
+  diagnostic_snapshot_t snapshot;
+  bool captured = diagnostic_log_snapshot(&snapshot);
+  cJSON *reply = cJSON_CreateObject();
+  bool ok =
+      reply && cJSON_AddStringToObject(reply, "kind", "diagnostics") && cJSON_AddNumberToObject(reply, "version", 1) &&
+      cJSON_AddBoolToObject(reply, "ok", true) && cJSON_AddBoolToObject(reply, "capture_available", captured) &&
+      cJSON_AddStringToObject(reply, "build_id", BUILD_ID) && cJSON_AddStringToObject(reply, "hardware", HW_TYPE) &&
+      cJSON_AddNumberToObject(reply, "uptime_ms", (double)esp_timer_get_time() / 1000) &&
+      cJSON_AddNumberToObject(reply, "internal_free", heap_caps_get_free_size(MALLOC_CAP_INTERNAL)) &&
+      cJSON_AddNumberToObject(reply, "internal_min", heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL)) &&
+      cJSON_AddNumberToObject(reply, "internal_largest", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)) &&
+      cJSON_AddNumberToObject(reply, "psram_free", heap_caps_get_free_size(MALLOC_CAP_SPIRAM)) &&
+      cJSON_AddNumberToObject(reply, "overwritten", snapshot.overwritten) &&
+      cJSON_AddNumberToObject(reply, "truncated", snapshot.truncated) &&
+      cJSON_AddNumberToObject(reply, "dropped", snapshot.dropped) &&
+      cJSON_AddStringToObject(reply, "log", captured ? snapshot.text : "");
+  char *text = ok ? cJSON_PrintUnformatted(reply) : NULL;
+  bool printed = text != NULL;
+  if (text)
+    puts(text);
+  else
+    puts("{\"kind\":\"diagnostics\",\"ok\":false,\"error\":\"Out of memory\"}");
+  cJSON_free(text);
+  cJSON_Delete(reply);
+  diagnostic_log_snapshot_free(&snapshot);
+  return printed ? 0 : 1;
+}
+
+static void register_diagnostics_command(void) {
+  const esp_console_cmd_t cmd = {
+      .command = "diagnostics",
+      .help = "Read recent radio/OTA logs and memory metrics as JSON, or clear the capture.",
+      .func = diagnostics_command,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
 
 #if TEST_MODE
 static int get_render_stats(int argc, char **argv) {
@@ -323,6 +374,7 @@ static void console_start(void) {
   /* Register commands */
   esp_console_register_help_command();
   register_version_command();
+  register_diagnostics_command();
 #if TEST_MODE
   register_render_stats_command();
 #endif

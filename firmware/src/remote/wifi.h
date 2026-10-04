@@ -58,7 +58,10 @@ extern "C"
   esp_err_t wifi_init(void);
 
   /**
-   * @brief Scan for available WiFi networks and return list
+   * @brief Scan up to 40 AP records and return one entry per visible SSID
+   *
+   * Keeps the strongest RSSI and marks a network protected if any of its
+   * records is secured. Connecting takes priority over an optional scan.
    *
    * @param[out] networks Pointer to array of network info structures (caller must free)
    * @param[out] network_count Number of networks found
@@ -67,6 +70,7 @@ extern "C"
    *     - ESP_OK: Success
    *     - ESP_ERR_INVALID_ARG: Invalid parameters
    *     - ESP_ERR_NO_MEM: Memory allocation failed
+   *     - ESP_ERR_INVALID_STATE: A scan/join is already active, or a join cancelled the scan
    *     - Other ESP_ERR_* codes from WiFi scan functions
    */
   esp_err_t wifi_scan_networks(wifi_network_info_t **networks, uint16_t *network_count);
@@ -79,7 +83,7 @@ extern "C"
   void wifi_free_network_list(wifi_network_info_t *networks);
 
   /**
-   * @brief Connect to WiFi network with SSID and password
+   * @brief Connect for the updater; leaving its screen cancels the attempt
    *
    * This function stores credentials for automatic reconnection and attempts
    * to connect to the specified network.
@@ -95,6 +99,10 @@ extern "C"
    *     - Other ESP_ERR_* codes from WiFi functions
    */
   esp_err_t wifi_connect_to_network(const char *ssid, const char *password);
+  typedef bool (*wifi_cancel_fn)(void *context);
+  // Worker-friendly variant. A true callback result aborts within 200ms.
+  esp_err_t wifi_connect_to_network_cancellable(const char *ssid, const char *password,
+                                               wifi_cancel_fn cancelled, void *context);
 
   /**
    * @brief Disconnect from WiFi network

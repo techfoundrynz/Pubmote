@@ -122,7 +122,7 @@ static void update_status_ui() {
     primary_btn_enabled = true;
     break;
   case UPDATE_STEP_NO_WIFI:
-    snprintf(body_text, sizeof(body_text), "No Wi-Fi credentials. Configure at https://pubmote.com");
+    snprintf(body_text, sizeof(body_text), "No Wi-Fi network saved. Configure one in Menu > Wi-Fi.");
     primary_btn_text = "Exit";
     primary_btn_enabled = true;
     break;
@@ -197,7 +197,7 @@ static void update_task(void *pvParameters) {
   ESP_LOGI(TAG, "Read Wi-Fi credentials. SSID: %s", wifi_ssid ? wifi_ssid : "NULL");
   int64_t last_rssi_log_time = 0;
 
-  if (wifi_ssid == NULL || strlen(wifi_ssid) == 0 || wifi_password == NULL || strlen(wifi_password) == 0) {
+  if (wifi_ssid == NULL || strlen(wifi_ssid) == 0) {
     ESP_LOGW(TAG, "No Wi-Fi credentials found or read failed!");
     current_update_step = UPDATE_STEP_NO_WIFI;
   }

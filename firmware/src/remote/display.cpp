@@ -36,6 +36,7 @@
 #include "screens/settings_screen.h"
 #include "screens/stats_screen.h"
 #include "screens/update_screen.h"
+#include "screens/wifi_screen.h"
 #include "settings.h"
 #include "slint-esp.h"
 #include "slint_generated/app-window.h"
@@ -357,6 +358,9 @@ static void connect_callbacks() {
     Screen prev = cached_active_screen.exchange(screen);
     if (prev != screen) {
       // Exit hooks
+      if (prev == Screen::Wifi) {
+        teardown_wifi_properties();
+      }
       if (prev == Screen::Stats) {
         teardown_stats_properties();
       }
@@ -381,6 +385,9 @@ static void connect_callbacks() {
       input_router_restore_defaults();
 
       // Enter hooks
+      if (screen == Screen::Wifi) {
+        setup_wifi_properties();
+      }
       if (screen == Screen::Stats) {
         setup_stats_properties();
       }
@@ -428,6 +435,7 @@ static void connect_callbacks() {
   state.on_open_input_calibration([]() { handle_open_input_calibration(); });
   state.on_open_pairing([]() { handle_open_pairing(); });
   state.on_open_about([]() { handle_open_about(); });
+  state.on_open_wifi([]() { get_slint_window()->global<UiState>().set_screen(Screen::Wifi); });
   state.on_open_imu_calibration([]() { handle_open_imu_calibration(); });
   state.on_imu_calibration_back([]() { handle_imu_calibration_back(); });
   state.on_imu_calibration_primary([]() { handle_imu_calibration_primary(); });
