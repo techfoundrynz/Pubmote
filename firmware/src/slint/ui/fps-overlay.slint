@@ -31,7 +31,7 @@ export component FpsOverlay inherits Rectangle {
             // glyphs, so a hardcoded 24px renders from a scaled fallback.
             font-size: Theme.font-14;
             font-weight: Theme.w-medium;
-            font-family: "JetBrains Mono";
+            font-family: Theme.font-mono;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -40,7 +40,7 @@ export component FpsOverlay inherits Rectangle {
             text: "p\{root.prepare-ms} r\{root.render-ms} f\{root.flush-ms}";
             color: #FFFFFF;
             font-size: Theme.font-10;
-            font-family: "JetBrains Mono";
+            font-family: Theme.font-mono;
             horizontal-alignment: center;
         }
 
@@ -48,7 +48,7 @@ export component FpsOverlay inherits Rectangle {
             text: "dirty \{root.dirty-pct}%";
             color: #FFFFFF;
             font-size: Theme.font-10;
-            font-family: "JetBrains Mono";
+            font-family: Theme.font-mono;
             horizontal-alignment: center;
         }
     }

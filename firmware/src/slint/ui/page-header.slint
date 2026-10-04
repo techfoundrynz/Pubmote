@@ -4,6 +4,7 @@ import { Icons } from "icons.slint";
 export component PageHeader inherits Rectangle {
     in property <string> text;
     in property <string> subtitle: "";
+    in property <bool> subtitle-show-tail: false;
     in property <brush> text-color: Theme.accent;
     in property <bool> show-back: false;
     callback back;
@@ -28,11 +29,23 @@ export component PageHeader inherits Rectangle {
             horizontal-alignment: center;
         }
 
-        if root.subtitle != "": Text {
-            text: root.subtitle;
-            color: Theme.text-dim;
-            font-size: Theme.font-12;
-            horizontal-alignment: center;
+        if root.subtitle != "": HorizontalLayout {
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            Rectangle {
+                min-width: 0px;
+                height: subtitle-text.preferred-height;
+                clip: true;
+                subtitle-text := Text {
+                    text: root.subtitle;
+                    width: root.subtitle-show-tail ? Math.max(parent.width, self.preferred-width) : parent.width;
+                    x: root.subtitle-show-tail ? parent.width - self.width : 0px;
+                    overflow: elide;
+                    color: Theme.text-dim;
+                    font-size: Theme.font-12;
+                    horizontal-alignment: center;
+                }
+            }
         }
     }
 

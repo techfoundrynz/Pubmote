@@ -59,4 +59,9 @@ export global Theme {
 
     out property <int> w-semibold: 600;
     out property <int> w-medium: 500;
+
+    // Embedded bitmap fonts match by EXACT family name; anything else silently
+    // falls back by nearest weight
+    out property <string> font-default: "Saira Thin SemiBold";
+    out property <string> font-mono: "JetBrains Mono Medium";
 }
