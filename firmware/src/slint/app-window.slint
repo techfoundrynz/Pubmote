@@ -257,7 +257,9 @@ export component AppWindow inherits Window {
     height: Theme.panel-height;
     background: Theme.bg;
     title: "PubRemote";
-    default-font-family: "Saira";
+    // Must match the TTF's family name exactly, or the compiler embeds the
+    // host system font as the default instead
+    default-font-family: "Saira Thin SemiBold";
 
     Timer {
         interval: 1000ms;
