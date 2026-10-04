@@ -1,9 +1,17 @@
 import { Theme } from "theme.slint";
 
-export component PageFooter inherits HorizontalLayout {
-    padding-left: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.35;
-    padding-right: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.35;
-    padding-bottom: Theme.page-padding-vertical;
-    spacing: round(10px / 1px * Theme.scale) * 1px;
-    @children
+export component PageFooter inherits Rectangle {
+    vertical-stretch: 0;
+    // Sized by content, never below the standard strip
+    height: Math.max(Theme.footer-height, content.min-height);
+    background: Theme.bg;
+
+    content := HorizontalLayout {
+        padding-left: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.5;
+        padding-right: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.5;
+        padding-top: 4px * Theme.scale;
+        padding-bottom: Theme.page-padding-vertical;
+        spacing: round(10px / 1px * Theme.scale) * 1px;
+        @children
+    }
 }

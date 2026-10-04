@@ -1,6 +1,6 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
-import { PageFooter } from "page-footer.slint";
+import { Page } from "page.slint";
 
 export struct PairedBoard {
     mac: string,
@@ -9,42 +9,35 @@ export struct PairedBoard {
     is-ble: bool,
 }
 
-export component BoardsScreen inherits Rectangle {
+export component BoardsScreen inherits Page {
     in property <[PairedBoard]> boards: [];
     callback select-board(int);
     callback delete-board(int);
     callback pair-new;
-    callback back;
 
     property <int> delete-mode-index: -1;
 
-    background: Theme.bg;
+    title: "PAIRED BOARDS";
+    show-back: true;
 
     VerticalLayout {
-        // Header (15% of screen height)
+        // List body
         Rectangle {
-            vertical-stretch: 15;
-            Text {
-                text: "Paired Boards";
-                color: Theme.text;
-                font-size: Theme.font-14;
-                font-weight: Theme.w-semibold;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-        }
-
-        // List body (60% of screen height)
-        Rectangle {
-            vertical-stretch: 60;
-
             if root.boards.length == 0: VerticalLayout {
                 alignment: center;
+                padding-left: Theme.page-padding-horizontal;
+                padding-right: Theme.page-padding-horizontal;
+                spacing: 12px * Theme.scale;
                 Text {
                     text: "No boards paired";
                     color: Theme.text-dim;
                     font-size: Theme.font-12;
                     horizontal-alignment: center;
+                }
+
+                AppButton {
+                    variant: "outline";                    text: "Pair New";
+                    clicked => { root.pair-new(); }
                 }
             }
 
@@ -53,14 +46,14 @@ export component BoardsScreen inherits Rectangle {
                 boards-layout := VerticalLayout {
                     // Padding must live on the layout (not the parent
                     // Rectangle) to actually constrain the rows on screen
+                    padding-top: Theme.seam-size;
                     padding-left: Theme.page-padding-horizontal;
                     padding-right: Theme.page-padding-horizontal;
+                    padding-bottom: Theme.scroll-padding-bottom;
                     spacing: 8px * Theme.scale;
                     alignment: start;
 
-                    for board in root.boards: AppButton {
-                        height: 38px * Theme.scale;
-                        text: board.mac;
+                    for board in root.boards: AppButton {                        text: board.mac;
                         right-text: root.delete-mode-index == board.index ? "Delete"
                             : (board.is-ble ? "BLE" : "ESP-NOW") + (board.is-active ? " ✓" : "");
                         variant: root.delete-mode-index == board.index ? "outline" : (board.is-active ? "primary" : "secondary");
@@ -78,22 +71,12 @@ export component BoardsScreen inherits Rectangle {
                             root.delete-mode-index = board.index;
                         }
                     }
+
+                    AppButton {
+                        variant: "outline";                        text: "Pair New";
+                        clicked => { root.pair-new(); }
+                    }
                 }
-            }
-        }
-
-        // Footer (25% of screen height)
-        PageFooter {
-            vertical-stretch: 25;
-            AppButton {
-                text: "Back";
-                variant: "secondary";
-                clicked => { root.back(); }
-            }
-
-            AppButton {
-                text: "Pair New";
-                clicked => { root.pair-new(); }
             }
         }
     }

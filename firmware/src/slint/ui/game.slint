@@ -42,7 +42,7 @@ export component GameScreen inherits Rectangle {
             for label in cmd.labels: Text {
                 height: label.height >= 0 ? label.height * root.height / 100 : self.preferred-height;
                 text: label.text; color: label.color;
-                font-family: label.mono ? "JetBrains Mono" : "Saira";
+                font-family: label.mono ? Theme.font-mono : Theme.font-default;
                 font-size: root.font-size(label.font);
                 font-weight: label.bold ? 600 : 400;
                 horizontal-alignment: center; wrap: label.wrap ? word-wrap : no-wrap;
@@ -62,7 +62,7 @@ export component GameScreen inherits Rectangle {
             x: 0; y: 0;
             width: parent.pos.w == 0 ? self.preferred-width : parent.width; height: parent.pos.h == 0 ? self.preferred-height : parent.height; text: cmd.text; color: cmd.color;
             font-size: root.font-size(cmd.font);
-            font-family: cmd.mono ? "JetBrains Mono" : "Saira";
+            font-family: cmd.mono ? Theme.font-mono : Theme.font-default;
             font-weight: cmd.bold ? 600 : 400;
             horizontal-alignment: parent.pos.w == 0 ? left : center; vertical-alignment: parent.pos.h == 0 ? top : center;
         }
@@ -101,14 +101,14 @@ export component GameScreen inherits Rectangle {
         if cmd.kind == 4 && root.error == "": AppButton {
             x: root.positions[index].x * root.width / 100; y: root.positions[index].y * root.height / 100;
             width: root.positions[index].w * root.width / 100; height: root.positions[index].h * root.height / 100;
-            text: "Exit"; variant: "secondary"; size: "small";
+            text: "Exit"; variant: "secondary";
             enabled: root.active; clicked => { root.back(); }
         }
     }
     if root.error != "": AppButton {
         x: (parent.width - self.width) / 2; y: Math.round(parent.height * 0.96 / 1px) * 1px - self.height;
         width: Math.round(parent.width * 0.26 / 1px) * 1px; height: Math.round(parent.height * 0.10 / 1px) * 1px;
-        text: "Exit"; variant: "secondary"; size: "small";
+        text: "Exit"; variant: "secondary";
         enabled: root.active; clicked => { root.back(); }
     }
 }

@@ -4,13 +4,14 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { PageFooter } from "page-footer.slint";
+import { Page } from "page.slint";
 
 export struct DiscoveredDevice {
     name: string,
     index: int,
 }
 
-export component PairingScreen inherits Rectangle {
+export component PairingScreen inherits Page {
     in property <string> pairing-code: "----";
     in property <string> action-text: "Cancel";
     in property <string> pairing-status: "Searching for board...";
@@ -20,12 +21,13 @@ export component PairingScreen inherits Rectangle {
     callback action;
     callback select-device(int);
     callback retry-scan;
-    background: Theme.bg;
+
+    title: root.is-ble-scan ? "SELECT BLE" : "PAIRING";
+    footer-inset: footer.height;
 
     VerticalLayout {
-        // ui_PairingBody (75%)
+        // ui_PairingBody
         Rectangle {
-            vertical-stretch: 75;
             padding-left: Theme.page-padding-horizontal;
             padding-right: Theme.page-padding-horizontal;
             padding-top: Theme.page-padding-vertical;
@@ -60,18 +62,9 @@ export component PairingScreen inherits Rectangle {
 
             if root.is-ble-scan: VerticalLayout {
                 alignment: start;
-                padding-top: Theme.page-padding-vertical;
                 padding-left: Theme.page-padding-horizontal;
                 padding-right: Theme.page-padding-horizontal;
                 spacing: 8px * Theme.scale;
-
-                Text {
-                    text: "Select BLE Device";
-                    color: Theme.text;
-                    font-size: Theme.font-14;
-                    font-weight: Theme.w-semibold;
-                    horizontal-alignment: center;
-                }
 
                 if root.scan-error != "": VerticalLayout {
                     alignment: center;
@@ -86,7 +79,6 @@ export component PairingScreen inherits Rectangle {
 
                     AppButton {
                         variant: "outline";
-                        height: 32px * Theme.scale;
                         text: "Retry";
                         clicked => { root.retry-scan(); }
                     }
@@ -105,10 +97,11 @@ export component PairingScreen inherits Rectangle {
                 if root.scan-error == "" && root.discovered-devices.length > 0: Flickable {
                     viewport-height: devices-layout.min-height;
                     devices-layout := VerticalLayout {
+                        padding-top: Theme.seam-size;
+                        padding-bottom: Theme.scroll-padding-bottom;
                         spacing: 6px * Theme.scale;
                         alignment: start;
                         for device in root.discovered-devices: AppButton {
-                            height: 32px * Theme.scale;
                             text: device.name;
                             variant: "secondary";
                             clicked => { root.select-device(device.index); }
@@ -119,7 +112,7 @@ export component PairingScreen inherits Rectangle {
         }
 
         // ui_PairingFooter (25%)
-        PageFooter {
+        footer := PageFooter {
             AppButton {
                 text: root.action-text;
                 clicked => { root.action(); }

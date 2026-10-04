@@ -1,7 +1,7 @@
 import { Theme } from "theme.slint";
 
 export component CalibrationTrack inherits Rectangle {
-    in property <length> dial-size: Math.round((90px * Theme.scale) / 1px) * 1px;
+    in property <length> dial-size: Math.round((64px * Theme.scale) / 1px) * 1px;
     in property <color> crosshair-color: #333333;
 
     width: root.dial-size;

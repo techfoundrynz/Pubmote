@@ -10,6 +10,7 @@ import { Theme } from "ui/theme.slint";
 export { Theme }
 import "../../assets/Saira-SemiBold.ttf";
 import "../../assets/JetBrainsMono-Medium.ttf";
+import "../../assets/lucide-icons.ttf";
 import { SplashScreen } from "ui/splash.slint";
 import { StatsScreen } from "ui/stats.slint";
 import { MenuScreen } from "ui/menu.slint";
@@ -28,6 +29,7 @@ import { ConfirmDialog } from "ui/confirm-dialog.slint";
 import { BoardsScreen, PairedBoard } from "ui/boards.slint";
 import { GamesScreen } from "ui/games.slint";
 import { GameScreen, GameDraw, GamePosition } from "ui/game.slint";
+import { EdgeFade } from "ui/edge-fade.slint";
 
 export enum Screen {
     splash,
@@ -255,7 +257,9 @@ export component AppWindow inherits Window {
     height: Theme.panel-height;
     background: Theme.bg;
     title: "PubRemote";
-    default-font-family: "Saira";
+    // Must match the TTF's family name exactly, or the compiler embeds the
+    // host system font as the default instead
+    default-font-family: "Saira Thin SemiBold";
 
     Timer {
         interval: 1000ms;
@@ -276,15 +280,23 @@ export component AppWindow inherits Window {
     // Y= 1:  [splash/charge] (X=0)
     // Y= 0:  [stats] (X=0)
     // Y=-1:  [menu] (X=0)  ->  [settings/calibration/pairing/about] (X=1)  ->  [update] (X=2)
+    // Live stats->menu drag, as a fraction of the screen height (0 .. -1).
+    // Held at its last value after a committing release until the screen
+    // change from C++ lands, so the view does not bounce in between.
+    property <float> view-drag: 0.0;
+    property <bool> view-dragging: false;
+    // Scaled to the remaining distance on drag release so the snap keeps the
+    // finger's apparent velocity instead of restarting a full-length animation
+    property <duration> snap-duration: 250ms;
     property <float> view-x: screen-x(root.active-screen);
-    property <float> view-y: screen-y(root.active-screen);
+    property <float> view-y: screen-y(root.active-screen) + root.view-drag;
     animate view-x, view-y {
-        duration: (
+        duration: (root.view-dragging ||
             root.active-screen == Screen.splash ||
             root.active-screen == Screen.charge ||
             root.previous-screen == Screen.splash ||
-            root.previous-screen == Screen.charge) ? 0ms : 250ms;
-        easing: ease-in-out;
+            root.previous-screen == Screen.charge) ? 0ms : root.snap-duration;
+        easing: ease-out;
     }
 
     pure function screen-x(s: Screen) -> int {
@@ -307,6 +319,12 @@ export component AppWindow inherits Window {
     }
 
     changed active-screen => {
+        root.view-dragging = false;
+        if (root.view-drag == 0) {
+            // Not a drag commit; use the full-length transition
+            root.snap-duration = 250ms;
+        }
+        root.view-drag = 0;
         if (self.active-screen == Screen.stats) {
             UiState.scroll-offset-y = 0;
         }
@@ -369,7 +387,8 @@ export component AppWindow inherits Window {
         width: 100%;
         height: 100%;
         x: (screen-x(Screen.stats) - root.view-x) * self.width;
-        y: (screen-y(Screen.stats) - root.view-y) * self.height;
+        // Pinned while the menu slides over it (sheet style) instead of panning away
+        y: Math.min(0.0, screen-y(Screen.stats) - root.view-y) * self.height;
         speed: UiState.speed;
         speed-unit: UiState.speed-unit;
         speed-fraction: UiState.speed-fraction;
@@ -390,12 +409,33 @@ export component AppWindow inherits Window {
         lights-on: UiState.lights-on;
         board-state-message: UiState.board-state-message;
         vehicle-type: UiState.vehicle-type;
-        swiped-down => { UiState.stats-swiped-down(); }
+        menu-drag(d) => {
+            if (root.active-screen == Screen.stats) {
+                root.view-dragging = true;
+                root.view-drag = -Math.max(0.0, Math.min(1.0, d / self.height));
+            }
+        }
+        menu-drag-end(d) => {
+            root.view-dragging = false;
+            if (root.active-screen == Screen.stats && d > 40px) {
+                root.snap-duration = (1.0 + root.view-drag) * 250ms;
+                UiState.stats-swiped-down();
+            } else {
+                root.snap-duration = -root.view-drag * 250ms;
+                root.view-drag = 0;
+            }
+        }
+        menu-drag-cancel => {
+            root.view-dragging = false;
+            root.snap-duration = -root.view-drag * 250ms;
+            root.view-drag = 0;
+        }
         secondary-stat-left-clicked => { UiState.secondary-stat-left-clicked(); }
         board-battery-clicked => { UiState.board-battery-clicked(); }
     }
 
-    if UiState.screen == Screen.menu || root.previous-screen == Screen.menu: MenuScreen {
+    if UiState.screen == Screen.menu || root.previous-screen == Screen.menu
+        || root.view-dragging || root.view-drag != 0: MenuScreen {
         width: 100%;
         height: 100%;
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
@@ -423,6 +463,11 @@ export component AppWindow inherits Window {
         imu-calibration => { UiState.open-imu-calibration(); }
         shutdown => { UiState.menu-shutdown(); }
         shutdown-long-press => { UiState.menu-shutdown-long-press(); }
+    }
+
+    // Sheet edge under the menu while it slides over stats
+    if root.view-dragging || root.view-drag != 0: EdgeFade {
+        y: (screen-y(Screen.menu) + 1 - root.view-y) * root.height;
     }
 
     if UiState.screen == Screen.settings || root.previous-screen == Screen.settings: SettingsScreen {

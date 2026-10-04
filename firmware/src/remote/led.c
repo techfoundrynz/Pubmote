@@ -358,13 +358,13 @@ void led_apply_mode() {
 const char *led_mode_label(LedModeOptions mode) {
   switch (mode) {
   case LED_MODE_OFF:
-    return "OFF";
+    return "Off";
   case LED_MODE_SOLID:
-    return "SOLID";
+    return "Solid";
   case LED_MODE_ALERTS:
-    return "ALERTS";
+    return "Alerts";
   default:
-    return "OFF";
+    return "Off";
   }
 }
 

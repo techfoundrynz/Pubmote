@@ -1,11 +1,12 @@
 import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
 
 // Common touch button component with variant and size options.
 export component AppButton inherits Rectangle {
     in property <string> text;
+    in property <string> icon: "";    // Lucide glyph from Icons, shown left of the label
     in property <string> right-text: "";
     in property <string> variant: "primary"; // "primary", "secondary", "outline", "ghost"
-    in property <string> size: "medium";     // "medium", "small"
     in property <string> button-color: "standard";  // "standard", "success", "danger"
     in property <bool> enabled: true;
     callback clicked;
@@ -18,9 +19,8 @@ export component AppButton inherits Rectangle {
         return Theme.accent;
     }
 
-    // Height based on size
-    height: root.size == "small" ? 30px * Theme.scale : 38px * Theme.scale;
-    border-radius: 8px * Theme.scale;
+    height: 30px * Theme.scale;
+    border-radius: 12px * Theme.scale;
     
     // Always have a 2px border to prevent layout shifts on focus
     border-width: 2px;
@@ -30,7 +30,8 @@ export component AppButton inherits Rectangle {
     background: !root.enabled ? Theme.track :
         root.variant == "outline" ? (touch.pressed ? #ffffff20 : transparent) :
         root.variant == "secondary" ? (touch.pressed ? Theme.track.darker(0.2) : Theme.track) :
-        root.variant == "ghost" ? (touch.pressed ? root.get-base-color().transparentize(0.7) : transparent) :
+        // No desaturate() in this Slint version; mixing toward the gray track desaturates
+        root.variant == "ghost" ? root.get-base-color().mix(Theme.track, 0.8).mix(Theme.bg, touch.pressed ? 0.4 : 0.2) :
         // default/primary
         (touch.pressed ? root.get-base-color().darker(0.2) : root.get-base-color());
 
@@ -54,17 +55,29 @@ export component AppButton inherits Rectangle {
         padding-right: 12px * Theme.scale;
         alignment: (root.variant == "ghost" || root.right-text != "") ? LayoutAlignment.space-between : LayoutAlignment.center;
 
-        Text {
-            text: root.text;
-            color: !root.enabled ? Theme.text-dim :
-                root.variant == "outline" ? Theme.text :
-                root.variant == "secondary" ? Theme.text :
-                root.variant == "ghost" ? Theme.text :
-                // default/primary
-                Theme.primary-button-text;
-            font-size: root.size == "small" ? Theme.font-10 : Theme.font-12;
-            font-weight: Theme.w-semibold;
-            vertical-alignment: center;
+        HorizontalLayout {
+            spacing: 8px * Theme.scale;
+
+            if root.icon != "": Text {
+                text: root.icon;
+                font-family: Icons.font-family;
+                color: !root.enabled ? Theme.text-dim : Theme.accent;
+                font-size: Theme.font-14;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: root.text;
+                color: !root.enabled ? Theme.text-dim :
+                    root.variant == "outline" ? Theme.text :
+                    root.variant == "secondary" ? Theme.text :
+                    root.variant == "ghost" ? Theme.text :
+                    // default/primary
+                    Theme.primary-button-text;
+                font-size: Theme.font-12;
+                font-weight: Theme.w-semibold;
+                vertical-alignment: center;
+            }
         }
 
         if root.right-text != "" : Text {
@@ -74,7 +87,7 @@ export component AppButton inherits Rectangle {
                 root.variant == "outline" ? Theme.text-dim :
                 root.variant == "secondary" ? Theme.text-dim :
                 Theme.primary-button-text.transparentize(0.3);
-            font-size: root.size == "small" ? Theme.font-10 : Theme.font-11;
+            font-size: Theme.font-11;
             font-weight: Theme.w-medium;
             vertical-alignment: center;
         }

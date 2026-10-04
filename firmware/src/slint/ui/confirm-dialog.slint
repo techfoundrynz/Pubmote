@@ -64,16 +64,12 @@ export component ConfirmDialog inherits Rectangle {
                 if root.show-cancel: AppButton {
                     text: root.cancel-text;
                     variant: root.cancel-variant;
-                    button-color: root.cancel-button-color;
-                    size: "small";
-                    clicked => { root.cancelled(); }
+                    button-color: root.cancel-button-color;                    clicked => { root.cancelled(); }
                 }
                 AppButton {
                     text: root.confirm-text;
                     variant: root.confirm-button-variant;
-                    button-color: root.confirm-variant;
-                    size: "small";
-                    clicked => { root.confirmed(); }
+                    button-color: root.confirm-variant;                    clicked => { root.confirmed(); }
                 }
             }
         }

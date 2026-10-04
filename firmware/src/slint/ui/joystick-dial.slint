@@ -4,7 +4,7 @@ import { CalibrationTrack } from "calibration-track.slint";
 export component JoystickDial inherits Rectangle {
     in property <float> joystick-x: 0.0;
     in property <float> joystick-y: 0.0;
-    in property <length> dial-size: Math.round((90px * Theme.scale) / 1px) * 1px;
+    in property <length> dial-size: Math.round((64px * Theme.scale) / 1px) * 1px;
 
     width: root.dial-size;
     height: root.dial-size;

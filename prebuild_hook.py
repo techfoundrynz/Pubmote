@@ -91,10 +91,22 @@ width = int(macro_value("HOR_RES", "240"))
 height = int(macro_value("VER_RES", "240"))
 scale = float(macro_value("SCALE_FONT", str(min(width, height) / 240.0)))
 font_sizes = sorted({int(size * scale + 0.5) for size in [10, 11, 12, 14, 28, 48, 64]})
+
+# Per-family glyph plan. Families are rasterized only at the listed sizes; a
+# size may carry an explicit charset after ':', and '@own' skips fallback-font
+# glyphs. The large sizes only ever show the pairing code and speed readouts;
+# JetBrains and the icon font never render large at all.
+_digits = "0123456789.,- "
+_small_sizes = "/".join(str(int(size * scale + 0.5)) for size in [10, 11, 12, 14, 28])
+_font_plan = (
+    f"Saira Thin SemiBold={_small_sizes}/{int(48 * scale + 0.5)}:{_digits}/{int(64 * scale + 0.5)}:{_digits};"
+    f"JetBrains Mono Medium={_small_sizes};"
+    f"lucide=@own/{int(14 * scale + 0.5)}"
+)
+
 font_settings = {
     "SLINT_FONT_SIZES": ",".join(str(size) for size in font_sizes if size <= 250),
-    "SLINT_LIMIT_GLYPHS_THRESHOLD": macro_value("LIMIT_GLYPHS_THRESHOLD", "125"),
-    "SLINT_LIMIT_GLYPHS_CHARS": macro_value("LIMIT_GLYPHS_CHARS", "0123456789., ").replace('\\"', '"').replace("\\'", "'").strip("\"'"),
+    "SLINT_FONT_PLAN": macro_value("FONT_PLAN", _font_plan).replace('\\"', '"').replace("\\'", "'").strip("\"'"),
 }
 
 
