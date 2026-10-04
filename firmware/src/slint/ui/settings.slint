@@ -10,37 +10,27 @@
 // SettingsScreen — restored to horizontal pages with snapping and artifact-free rendering
 
 import { Theme } from "theme.slint";
-import { AppButton } from "app-button.slint";
 import { ComboBox } from "combo-box.slint";
 import { AppSwitch } from "app-switch.slint";
 import { AppSlider } from "app-slider.slint";
 import { ColorSlider } from "color-slider.slint";
-import { PageFooter } from "page-footer.slint";
-import { Pager } from "pager.slint";
+import { PagedPage } from "paged-page.slint";
 
-// One settings page: a control slot with a caption below it.
+// One settings page: a centered control slot. Its caption shows in the
+// page header's subtitle, keyed by pager position.
 component SettingPage inherits Rectangle {
-    in property <string> caption;
     background: Theme.bg;
 
     VerticalLayout {
         alignment: center;
-        spacing: round(20px / 1px * Theme.scale) * 1px;
         padding-left: round(20px / 1px * Theme.scale) * 1px;
         padding-right: round(20px / 1px * Theme.scale) * 1px;
-
-        Text {
-            text: root.caption;
-            color: Theme.text;
-            font-size: Theme.font-14;
-            horizontal-alignment: center;
-        }
 
         @children
     }
 }
 
-export component SettingsScreen inherits Rectangle {
+export component SettingsScreen inherits PagedPage {
     in-out property <float> brightness: 128;
     in-out property <int> double-press-index: 0;
     in-out property <int> rotation-index: 0;
@@ -60,97 +50,88 @@ export component SettingsScreen inherits Rectangle {
     in-out property <float> theme-l: 50;
 
     callback save;
-    background: Theme.bg;
 
-    property <int> current-page: 0;
-    property <int> total-pages: 8;
+    // Order must match the SettingPage order below
+    property <[string]> page-captions: [
+        "Screen brightness",
+        "Double-press action",
+        "Screen rotation",
+        "Auto-off time",
+        "Temp units",
+        "Distance units",
+        "Startup sound",
+        "Theme color",
+    ];
 
-    VerticalLayout {
-        Pager {
-            current-page <=> root.current-page;
-            total-pages: root.total-pages;
+    title: "SETTINGS";
+    subtitle: root.page-captions[root.current-page];
+    show-back: true;
+    back => { root.save(); }
+    total-pages: 8;
 
-            SettingPage {
-                width: root.width;
-                caption: "Screen brightness";
-                AppSlider {
-                    minimum: 10;
-                    maximum: 255;
-                    value <=> root.brightness;
-                }
-            }
-
-            SettingPage {
-                width: root.width;
-                caption: "Double-press action";
-                ComboBox {
-                    model: root.double-press-options;
-                    current-index <=> root.double-press-index;
-                }
-            }
-
-            SettingPage {
-                width: root.width;
-                caption: "Screen rotation";
-                ComboBox {
-                    model: root.rotation-options;
-                    current-index <=> root.rotation-index;
-                }
-            }
-
-            SettingPage {
-                width: root.width;
-                caption: "Auto-off time";
-                ComboBox {
-                    model: root.auto-off-options;
-                    current-index <=> root.auto-off-index;
-                }
-            }
-
-            SettingPage {
-                width: root.width;
-                caption: "Temp units";
-                ComboBox {
-                    model: root.temp-units-options;
-                    current-index <=> root.temp-units-index;
-                }
-            }
-
-            SettingPage {
-                width: root.width;
-                caption: "Distance units";
-                ComboBox {
-                    model: root.distance-units-options;
-                    current-index <=> root.distance-units-index;
-                }
-            }
-
-            SettingPage {
-                width: root.width;
-                caption: "Startup sound";
-                ComboBox {
-                    model: root.startup-sound-options;
-                    current-index <=> root.startup-sound-index;
-                }
-            }
-
-            SettingPage {
-                width: root.width;
-                caption: "Theme color";
-                ColorSlider {
-                    hue <=> root.theme-h;
-                    sat <=> root.theme-s;
-                    lit <=> root.theme-l;
-                }
-            }
+    SettingPage {
+        width: root.width;
+        AppSlider {
+            minimum: 10;
+            maximum: 255;
+            value <=> root.brightness;
         }
+    }
 
-        // Footer
-        PageFooter {
-            AppButton {
-                text: "Save";
-                clicked => { root.save(); }
-            }
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.double-press-options;
+            current-index <=> root.double-press-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.rotation-options;
+            current-index <=> root.rotation-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.auto-off-options;
+            current-index <=> root.auto-off-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.temp-units-options;
+            current-index <=> root.temp-units-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.distance-units-options;
+            current-index <=> root.distance-units-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.startup-sound-options;
+            current-index <=> root.startup-sound-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ColorSlider {
+            hue <=> root.theme-h;
+            sat <=> root.theme-s;
+            lit <=> root.theme-l;
         }
     }
 }

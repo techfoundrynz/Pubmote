@@ -1,19 +1,18 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
-import { PageFooter } from "page-footer.slint";
-export component GamesScreen inherits Rectangle {
+import { Page } from "page.slint";
+export component GamesScreen inherits Page {
     in property <[string]> games;
     callback launch(int);
-    callback back;
-    background: Theme.bg;
+    title: "ARCADE";
+    show-back: true;
     VerticalLayout {
-        padding-top: Theme.page-padding-horizontal;
-        Text { text: "ARCADE"; color: Theme.accent; font-size: Theme.font-14; horizontal-alignment: center; }
-        Flickable {
-            viewport-height: games-layout.min-height;
+        Flickable {            viewport-height: games-layout.min-height;
             games-layout := VerticalLayout {
+                padding-top: Theme.seam-size;
                 padding-left: Theme.page-padding-horizontal;
                 padding-right: Theme.page-padding-horizontal;
+                padding-bottom: Theme.scroll-padding-bottom;
                 spacing: 8px * Theme.scale;
                 if root.games.length == 0: Text {
                     text: "No games installed\nInstall games over USB";
@@ -26,6 +25,5 @@ export component GamesScreen inherits Rectangle {
                 }
             }
         }
-        PageFooter { AppButton { text: "Back"; clicked => { root.back(); } } }
     }
 }

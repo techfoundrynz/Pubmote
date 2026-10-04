@@ -7,8 +7,16 @@
 
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
+import { Page } from "page.slint";
+import { Icons } from "icons.slint";
 
-export component MenuScreen inherits Rectangle {
+// Menu rows stay taller than the standard button
+component MenuButton inherits AppButton {
+    height: 38px * Theme.scale;
+    variant: "ghost";
+}
+
+export component MenuScreen inherits Page {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
     in property <string> connect-label: "Connect";
     in property <bool> pocket-mode-active: false;
@@ -23,7 +31,6 @@ export component MenuScreen inherits Rectangle {
     in-out property <int> scroll-offset-y: 0;
     in property <bool> imu-supported: false;
     in property <bool> joystick-supported: false;
-    callback back;
     callback connect;
     callback pocket-mode;
     callback toggle-hbm;
@@ -36,7 +43,8 @@ export component MenuScreen inherits Rectangle {
     callback shutdown;
     callback shutdown-long-press;
 
-    background: Theme.bg;
+    title: "MENU";
+    show-back: true;
 
     flick := Flickable {
         viewport-height: menu-layout.min-height;
@@ -47,150 +55,78 @@ export component MenuScreen inherits Rectangle {
             root.scroll-offset-y = -self.viewport-y / 1px;
         }
         menu-layout := VerticalLayout {
+            padding-top: Theme.seam-size;
             padding-left: Theme.page-padding-horizontal;
             padding-right: Theme.page-padding-horizontal;
-            padding-top: Theme.page-padding-vertical;
-            padding-bottom: Theme.page-padding-vertical;
+            padding-bottom: Theme.scroll-padding-bottom;
             spacing: 6px * Theme.scale;
 
-            AppButton {
-                text: "Back";
-                variant: "ghost";
+            if root.show-connect: MenuButton {
+                text: root.connect-label;
+                icon: Icons.radio;
                 right-text: "";
-                clicked => { root.back(); }
+                clicked => { root.connect(); }
             }
 
-            Rectangle {
-                height: 1px;
-                background: Theme.track;
-            }
-
-            if root.show-connect: VerticalLayout {
-                spacing: 6px * Theme.scale;
-                AppButton {
-                    text: root.connect-label;
-                    variant: "ghost";
-                    right-text: "";
-                    clicked => { root.connect(); }
-                }
-
-                Rectangle {
-                    height: 1px;
-                    background: Theme.track;
-                }
-            }
-
-            AppButton {
-                text: "Pocket Mode";
-                right-text: root.pocket-mode-active ? "ON" : "OFF";
-                variant: "ghost";
+            MenuButton {
+                text: "Pocket mode";
+                icon: Icons.lock;
+                right-text: root.pocket-mode-active ? "On" : "Off";
                 clicked => { root.pocket-mode(); }
             }
 
-            Rectangle {
-                height: 1px;
-                background: Theme.track;
+            if root.hbm-mode-supported: MenuButton {
+                text: "HBM mode";
+                icon: Icons.sun;
+                right-text: root.hbm-mode-label;
+                clicked => { root.toggle-hbm(); }
             }
 
-            if root.hbm-mode-supported: VerticalLayout {
-                spacing: 6px * Theme.scale;
-                AppButton {
-                    text: "HBM Mode";
-                    right-text: root.hbm-mode-label;
-                    variant: "ghost";
-                    clicked => { root.toggle-hbm(); }
-                }
-
-                Rectangle {
-                    height: 1px;
-                    background: Theme.track;
-                }
+            if root.led-mode-supported: MenuButton {
+                text: "LED mode";
+                icon: Icons.lightbulb;
+                right-text: root.led-mode-label;
+                clicked => { root.toggle-led(); }
             }
 
-            if root.led-mode-supported: VerticalLayout {
-                spacing: 6px * Theme.scale;
-                AppButton {
-                    text: "LED Mode";
-                    right-text: root.led-mode-label;
-                    variant: "ghost";
-                    clicked => { root.toggle-led(); }
-                }
-
-                Rectangle {
-                    height: 1px;
-                    background: Theme.track;
-                }
-            }
-
-            AppButton {
+            MenuButton {
                 text: "Settings";
-                variant: "ghost";
+                icon: Icons.settings;
                 right-text: "\u{203a}";
                 clicked => { root.settings(); }
             }
 
-            Rectangle {
-                height: 1px;
-                background: Theme.track;
+            if root.joystick-supported: MenuButton {
+                text: "Inputs";
+                icon: Icons.joystick;
+                right-text: "\u{203a}";
+                clicked => { root.calibration(); }
             }
 
-            if root.joystick-supported: VerticalLayout {
-                spacing: 0;
-                AppButton {
-                    text: "Inputs";
-                    variant: "ghost";
-                    right-text: "\u{203a}";
-                    clicked => { root.calibration(); }
-                }
-
-                Rectangle {
-                    height: 1px;
-                    background: Theme.track;
-                }
+            if root.imu-supported: MenuButton {
+                text: "IMU";
+                icon: Icons.axis-3d;
+                right-text: "\u{203a}";
+                clicked => { root.imu-calibration(); }
             }
 
-            if root.imu-supported: VerticalLayout {
-                spacing: 0;
-                AppButton {
-                    text: "IMU";
-                    variant: "ghost";
-                    right-text: "\u{203a}";
-                    clicked => { root.imu-calibration(); }
-                }
-
-                Rectangle {
-                    height: 1px;
-                    background: Theme.track;
-                }
-            }
-
-            AppButton {
+            MenuButton {
                 text: "Pairing";
-                variant: "ghost";
+                icon: Icons.bluetooth;
                 right-text: "\u{203a}";
                 clicked => { root.pairing(); }
             }
 
-            Rectangle {
-                height: 1px;
-                background: Theme.track;
-            }
-
-            AppButton {
+            MenuButton {
                 text: "About";
-                variant: "ghost";
+                icon: Icons.info;
                 right-text: "\u{203a}";
                 clicked => { root.about(); }
             }
 
-            Rectangle {
-                height: 1px;
-                background: Theme.track;
-            }
-
-            AppButton {
+            MenuButton {
                 text: root.shutdown-text;
-                variant: "ghost";
+                icon: Icons.power;
                 right-text: "";
                 clicked => { root.shutdown(); }
                 long-clicked => { root.shutdown-long-press(); }

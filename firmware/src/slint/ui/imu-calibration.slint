@@ -1,9 +1,10 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { PageFooter } from "page-footer.slint";
+import { Page } from "page.slint";
 import { SpiritLevel } from "spirit-level.slint";
 
-export component ImuCalibrationScreen inherits Rectangle {
+export component ImuCalibrationScreen inherits Page {
     in property <float> accel-x: 0.0;
     in property <float> accel-y: 0.0;
     in property <float> accel-z: 0.0;
@@ -24,26 +25,27 @@ export component ImuCalibrationScreen inherits Rectangle {
     in property <string> primary-button-text: "Next";
     in property <bool> show-axis-controls: false;
 
-    callback back;   // Acts as Cancel
+    // Inherited back callback acts as Cancel
     callback primary; // Acts as Next/Calibrate/Save
     callback calibrate-level;
     callback toggle-invert-x;
     callback toggle-invert-y;
     callback toggle-swap-xy;
 
-    background: Theme.bg;
+    title: "IMU";
+    show-back: true;
+    footer-inset: footer.height;
 
     VerticalLayout {
-        padding-top: Theme.page-padding-vertical;
-
         flick := Flickable {
             vertical-stretch: 1;
             viewport-height: body-layout.min-height;
 
             body-layout := VerticalLayout {
+                padding-top: Theme.seam-size;
                 padding-left: Theme.page-padding-horizontal;
                 padding-right: Theme.page-padding-horizontal;
-                padding-bottom: Theme.page-padding-vertical;
+                padding-bottom: Theme.scroll-padding-bottom;
                 alignment: center;
                 spacing: 12px * Theme.scale;
 
@@ -113,16 +115,12 @@ export component ImuCalibrationScreen inherits Rectangle {
                             alignment: center;
 
                             AppButton {
-                                text: root.imu-invert-x ? "Inv X: On" : "Inv X: Off";
-                                size: "small";
-                                variant: root.imu-invert-x ? "primary" : "secondary";
+                                text: root.imu-invert-x ? "Inv X: On" : "Inv X: Off";                                variant: root.imu-invert-x ? "primary" : "secondary";
                                 clicked => { root.toggle-invert-x(); }
                             }
 
                             AppButton {
-                                text: root.imu-invert-y ? "Inv Y: On" : "Inv Y: Off";
-                                size: "small";
-                                variant: root.imu-invert-y ? "primary" : "secondary";
+                                text: root.imu-invert-y ? "Inv Y: On" : "Inv Y: Off";                                variant: root.imu-invert-y ? "primary" : "secondary";
                                 clicked => { root.toggle-invert-y(); }
                             }
                         }
@@ -131,9 +129,7 @@ export component ImuCalibrationScreen inherits Rectangle {
                             alignment: center;
 
                             AppButton {
-                                text: root.imu-swap-xy ? "Swap XY: On" : "Swap XY: Off";
-                                size: "small";
-                                variant: root.imu-swap-xy ? "primary" : "secondary";
+                                text: root.imu-swap-xy ? "Swap XY: On" : "Swap XY: Off";                                variant: root.imu-swap-xy ? "primary" : "secondary";
                                 clicked => { root.toggle-swap-xy(); }
                             }
                         }
@@ -154,13 +150,7 @@ export component ImuCalibrationScreen inherits Rectangle {
         }
 
         // Save and Cancel buttons / PageFooter - naturally sized
-        PageFooter {
-            AppButton {
-                text: "Cancel";
-                variant: "secondary";
-                clicked => { root.back(); }
-            }
-
+        footer := PageFooter {
             AppButton {
                 text: root.primary-button-text;
                 clicked => { root.primary(); }

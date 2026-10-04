@@ -26,15 +26,6 @@ export component ColorSlider inherits Rectangle {
         spacing: round(15px / 1px * Theme.scale) * 1px;
         alignment: center;
         
-        Text {
-            text: root.mode == 0 ? "Mode: Hue (Hold to cycle)" : (root.mode == 1 ? "Mode: Saturation (Hold to cycle)" : "Mode: Lightness (Hold to cycle)");
-            color: Theme.text;
-            font-size: Theme.font-14;
-            horizontal-alignment: center;
-            overflow: elide;
-            width: 100%;
-        }
-        
         Rectangle {
             height: round(24px / 1px * Theme.scale) * 1px;
             width: 100%;
@@ -110,8 +101,17 @@ export component ColorSlider inherits Rectangle {
                 }
             }
         }
+
+        Text {
+            text: root.mode == 0 ? "Mode: Hue (Hold to cycle)" : (root.mode == 1 ? "Mode: Saturation (Hold to cycle)" : "Mode: Lightness (Hold to cycle)");
+            color: Theme.text;
+            font-size: Theme.font-14;
+            horizontal-alignment: center;
+            overflow: elide;
+            width: 100%;
+        }
     }
-    
+
     long-press-timer := Timer {
         interval: 500ms;
         running: false;

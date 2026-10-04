@@ -202,13 +202,13 @@ extern "C" bool display_supports_hbm() {
 extern "C" const char *hbm_mode_label(HbmModeOptions mode) {
   switch (mode) {
   case HBM_MODE_OFF:
-    return "OFF";
+    return "Off";
   case HBM_MODE_ON:
-    return "ON";
+    return "On";
   case HBM_MODE_RAISED:
-    return "RAISED";
+    return "Raised";
   default:
-    return "OFF";
+    return "Off";
   }
 }
 

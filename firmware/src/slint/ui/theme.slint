@@ -18,8 +18,16 @@ export global Theme {
     in-out property <bool> is-square-mode: false;
 
     // Standard page paddings
+    out property <length> header-height: 46px * root.scale;
+    // Fixed so Page can place the footer seam fade; equals the footer's natural
+    // height (button 30 + padding 4 + 18)
+    out property <length> footer-height: 52px * root.scale;
+    out property <length> seam-size: 12px * root.scale;
     out property <length> page-padding-horizontal: (root.is-square-mode ? 24px : 36px) * root.scale;
     out property <length> page-padding-vertical: (root.is-square-mode ? 12px : 18px) * root.scale;
+    // Bottom padding for scrollable bodies: lets the last row scroll clear of
+    // the narrowing chord at the bottom of round panels
+    out property <length> scroll-padding-bottom: root.is-square-mode ? root.page-padding-vertical : root.panel-height * 0.25;
 
     // Palette (hex values taken verbatim from the SquareLine screens).
     in-out property <color> bg: #000000;
@@ -28,6 +36,7 @@ export global Theme {
     in-out property <color> accent: #2196f3;        // lv_palette BLUE
     in-out property <color> primary-button-text: #ffffff;
     out property <color> track: #414141;         // 0x414141 arc track / borders
+    out property <color> shadow: #000000BF;      // elevation drop shadows
 
     // Status colors
     out property <color> color-caution: #ffc145;
