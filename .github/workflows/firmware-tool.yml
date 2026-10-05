@@ -12,6 +12,8 @@ on:
       - .oxlintrc.json
       - .oxfmtrc.json
       - .github/workflows/firmware-tool.yml
+      - .github/actions/publish-pages/**
+      - scripts/publish_pages.py
   pull_request:
     branches:
       - master
@@ -22,17 +24,22 @@ on:
       - .oxlintrc.json
       - .oxfmtrc.json
       - .github/workflows/firmware-tool.yml
+      - .github/actions/publish-pages/**
+      - scripts/publish_pages.py
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
 
@@ -58,14 +65,46 @@ jobs:
         working-directory: ./firmware_tool
         run: pnpm build
 
-      - name: GH Pages deploy
+      - name: Upload firmware tool site
         if: github.event_name == 'push' && github.repository == 'techfoundrynz/Pubmote'
-        uses: Cecilapp/GitHub-Pages-deploy@3.2.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/upload-artifact@v4
         with:
-          email: contactsimonwilson@gmail.com
-          # Where static files are.
-          build_dir: ./firmware_tool/dist
-          # Which branch to push files.
-          cname: pubmote.com
+          name: firmware-tool-site
+          path: firmware_tool/dist
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.repository == 'techfoundrynz/Pubmote'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.url }}
+    concurrency:
+      group: pubmote-pages
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check this is still the current production revision
+        id: current
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const head = await github.rest.repos.getCommit({...context.repo, ref: 'master'});
+            core.setOutput('deploy', head.data.sha === context.sha);
+      - uses: actions/download-artifact@v4
+        if: steps.current.outputs.deploy == 'true'
+        with:
+          name: firmware-tool-site
+          path: .pio/firmware-tool-site
+      - name: Publish site while preserving simulator previews
+        id: pages
+        if: steps.current.outputs.deploy == 'true'
+        uses: ./.github/actions/publish-pages
+        with:
+          source: .pio/firmware-tool-site

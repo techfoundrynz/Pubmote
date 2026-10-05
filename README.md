@@ -71,6 +71,14 @@ See [firmware builds](docs/firmware-builds.md) for caching, generated-code debug
 and benchmark commands.
 See [device diagnostics](docs/device-diagnostics.md) for exporting recent radio/OTA logs and memory metrics.
 
+For desktop development, run `pio run -e simulator -t simulate` on Windows or macOS.
+This opens the real Slint UI with simulated device services and a telemetry control
+window. The simulator requires Rust and a desktop linker; see
+[desktop simulator](docs/simulator.md) for setup, panel sizes, and simulation limits.
+UI PRs also get a browser simulator and a visual comparison report at
+`https://pubmote.com/simulator/pr-<number>/`. Tags/releases get permanent previews
+at `https://pubmote.com/simulator/releases/<tag>/`.
+
 See [Wi-Fi menu and keyboard](docs/wifi-menu.md) for on-device network setup and text entry.
 
 ### Slint live preview
