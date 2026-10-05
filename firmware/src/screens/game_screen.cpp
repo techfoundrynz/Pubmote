@@ -608,16 +608,11 @@ static void start_game(char *source, size_t length) {
   // Discard source/initialization temporaries before the frame budget applies.
   // Whack releases its compressed texture constants after decoding them.
   lua_gc(vm, LUA_GCCOLLECT);
-  input_router_claim(
-      INPUT_ACTION_STICK_UP, []() { key(1); }, INPUT_ONCE);
-  input_router_claim(
-      INPUT_ACTION_STICK_DOWN, []() { key(2); }, game_repeat);
-  input_router_claim(
-      INPUT_ACTION_STICK_LEFT, []() { key(3); }, game_repeat);
-  input_router_claim(
-      INPUT_ACTION_STICK_RIGHT, []() { key(4); }, game_repeat);
-  input_router_claim(
-      INPUT_ACTION_DOUBLE_PRESS, []() { handle_game_back(); }, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_UP, []() { key(1); }, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_DOWN, []() { key(2); }, game_repeat);
+  input_router_claim(INPUT_ACTION_STICK_LEFT, []() { key(3); }, game_repeat);
+  input_router_claim(INPUT_ACTION_STICK_RIGHT, []() { key(4); }, game_repeat);
+  input_router_claim(INPUT_ACTION_DOUBLE_PRESS, []() { handle_game_back(); }, INPUT_ONCE);
   last_tick = esp_timer_get_time();
   render();
 }

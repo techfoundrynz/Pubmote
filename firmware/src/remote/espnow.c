@@ -13,6 +13,7 @@
 
 static const char *TAG = "PUBREMOTE-ESPNOW-DRV";
 static bool is_initialized = false;
+static bool shutting_down = false;
 static comms_recv_cb_t registered_recv_cb = NULL;
 static comms_send_cb_t registered_send_cb = NULL;
 
@@ -29,6 +30,8 @@ static void on_espnow_sent(const esp_now_send_info_t *tx_info, esp_now_send_stat
 }
 
 static esp_err_t espnow_driver_init(void) {
+  if (is_initialized && shutting_down)
+    return ESP_ERR_INVALID_STATE;
   if (is_initialized) {
     return ESP_OK;
   }
@@ -155,6 +158,9 @@ static esp_err_t espnow_driver_deinit(void) {
   if (!is_initialized) {
     return ESP_OK;
   }
+  // Remain visible to comms_deinit(), but refuse init's fast path until every
+  // teardown step succeeds. ESP-NOW may already be gone when Wi-Fi stop fails.
+  shutting_down = true;
   esp_now_unregister_recv_cb();
   esp_now_unregister_send_cb();
 
@@ -187,12 +193,15 @@ static esp_err_t espnow_driver_deinit(void) {
 
   ESP_LOGI(TAG, "ESP-NOW deinitialized");
   is_initialized = false;
+  shutting_down = false;
   return ESP_OK;
 }
 
 esp_err_t espnow_prepare_wifi(void) {
   if (!is_initialized)
     return ESP_OK;
+  if (shutting_down)
+    return espnow_driver_deinit();
   esp_now_unregister_recv_cb();
   esp_now_unregister_send_cb();
   esp_err_t err = esp_now_deinit();

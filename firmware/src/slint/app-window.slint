@@ -370,6 +370,7 @@ export component AppWindow inherits Window {
     property <bool> watch-confirm-dialog: UiState.show-confirm-dialog;
     changed watch-confirm-dialog => {
         if (!self.watch-confirm-dialog) {
+            // Reset every shared option on close, including single-button alerts.
             UiState.confirm-dialog-title = "";
             UiState.confirm-dialog-message = "";
             UiState.confirm-dialog-confirm-text = "Confirm";

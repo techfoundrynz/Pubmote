@@ -155,8 +155,7 @@ extern "C" void handle_menu_pocket_mode() {
   else {
     device_settings.pocket_mode = POCKET_MODE_DISABLED;
   }
-  ui_operation_start(
-      "Saving settings...", []() { return save_device_settings(); }, []() { setup_menu_properties(); });
+  ui_operation_start("Saving settings...", []() { return save_device_settings(); }, []() { setup_menu_properties(); });
 }
 
 extern "C" void handle_menu_toggle_hbm() {

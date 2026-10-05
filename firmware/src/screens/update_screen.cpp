@@ -58,6 +58,21 @@ struct ReleaseInfo {
 static std::atomic<UpdateStep> current_update_step{UPDATE_STEP_START};
 static std::atomic<bool> active{false}, running{false}, owned{false}, leaving{false};
 static std::atomic<unsigned> generation{0};
+enum class OtaPhase {
+  Idle,
+  Downloading,
+  Cancelled,
+  Committing
+};
+static std::atomic<OtaPhase> ota_phase{OtaPhase::Idle};
+static bool ota_begin_commit(void *) {
+  OtaPhase expected = OtaPhase::Downloading;
+  return ota_phase.compare_exchange_strong(expected, OtaPhase::Committing);
+}
+static bool ota_request_cancel() {
+  OtaPhase expected = OtaPhase::Downloading;
+  return ota_phase.compare_exchange_strong(expected, OtaPhase::Cancelled) || expected != OtaPhase::Committing;
+}
 static Screen destination = Screen::About;
 static void restore_radio();
 static ReleaseInfo available_updates[3]; // Stable, Prerelease, Nightly
@@ -301,7 +316,13 @@ static void update_task(void *pvParameters) {
     }
     case UPDATE_STEP_IN_PROGRESS: {
       ESP_LOGI(TAG, "Starting OTA update: %s", available_updates[selected_update_index].download_url);
-      esp_err_t ret = apply_ota(available_updates[selected_update_index].download_url, simple_progress_callback);
+      const ota_control_t control = {
+          [](void *) { return !active.load() || ota_phase == OtaPhase::Cancelled; },
+          ota_begin_commit,
+          nullptr,
+      };
+      esp_err_t ret =
+          apply_ota(available_updates[selected_update_index].download_url, simple_progress_callback, &control);
       ESP_LOGI(TAG, "Updater stack minimum free after OTA: %u bytes", (unsigned)uxTaskGetStackHighWaterMark(NULL));
       if (ret == ESP_OK) {
         current_update_step = UPDATE_STEP_COMPLETE;
@@ -311,6 +332,7 @@ static void update_task(void *pvParameters) {
         ESP_LOGE(TAG, "OTA failed: %s", esp_err_to_name(ret));
         current_update_step = UPDATE_STEP_ERROR;
       }
+      ota_phase = OtaPhase::Idle;
       break;
     }
     default:
@@ -373,6 +395,11 @@ extern "C" void setup_update_properties() {
   }
 }
 extern "C" bool update_screen_prepare_exit(int target) {
+  // Cancellation and finalization compete for the same state. Once validation
+  // starts, keep this page until boot selection finishes rather than accepting
+  // a Back action that can no longer abort the installed image.
+  if (!ota_request_cancel())
+    return true;
   if (!owned) {
     active = false;
     return false;
@@ -401,6 +428,7 @@ extern "C" void handle_update_primary() {
     break;
   case UPDATE_STEP_UPDATE_AVAILABLE:
     ESP_LOGI(TAG, "Transitioning to UPDATE_STEP_IN_PROGRESS");
+    ota_phase = OtaPhase::Downloading;
     current_update_step = UPDATE_STEP_IN_PROGRESS;
     break;
   case UPDATE_STEP_NO_WIFI:

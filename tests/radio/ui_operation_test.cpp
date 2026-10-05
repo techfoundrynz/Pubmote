@@ -146,8 +146,7 @@ int main() {
   dismiss_overlay();
   assert(completions == 1 && !ui_processing_active() && window.state.error.empty());
 
-  assert(ui_operation_start(
-      "Saving...", []() { return ESP_ERR_TIMEOUT; }, [&]() { assert(false); }));
+  assert(ui_operation_start("Saving...", []() { return ESP_ERR_TIMEOUT; }, [&]() { assert(false); }));
   paint_then_dispatch();
   run_worker();
   run_ui();

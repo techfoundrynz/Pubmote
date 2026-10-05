@@ -5,8 +5,9 @@
 #include "esp_heap_caps.h"
 #include "esp_http_client.h"
 #include "esp_ota_ops.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <esp_err.h>
-#include <esp_https_ota.h>
 #include <esp_log.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -170,119 +171,154 @@ bool is_version_greater(const firmware_version_t *a, const firmware_version_t *b
   return a->patch > b->patch;
 }
 
-typedef void (*ota_progress_callback_t)(const char *status);
+static bool ota_cancelled(const ota_control_t *control) {
+  return control && control->cancelled && control->cancelled(control->context);
+}
 
-esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback) {
+esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback, const ota_control_t *control) {
   if (!valid_asset_url(url))
     return ESP_ERR_INVALID_ARG;
-  ESP_LOGI(TAG, "Starting advanced HTTPS OTA update");
-  if (progress_callback) {
-    progress_callback("Initializing OTA...");
-  }
-
+  if (ota_cancelled(control))
+    return ESP_ERR_INVALID_STATE;
   esp_http_client_config_t config = {
       .url = url,
       .crt_bundle_attach = esp_crt_bundle_attach,
-      .timeout_ms = 120000,
-      .keep_alive_enable = true,
+      .timeout_ms = 5000,
       .buffer_size = 4096,
       .buffer_size_tx = 1024,
+      .disable_auto_redirect = true,
   };
-
-  esp_https_ota_config_t ota_config = {
-      .http_config = &config,
-  };
-
-  esp_https_ota_handle_t https_ota_handle = NULL;
-  esp_err_t err = esp_https_ota_begin(&ota_config, &https_ota_handle);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "ESP HTTPS OTA Begin failed: %s", esp_err_to_name(err));
-    return err;
-  }
-
-  if (progress_callback) {
-    progress_callback("Connected to server...");
-  }
-
-  // Get and validate new firmware info
-  esp_app_desc_t app_desc;
-  err = esp_https_ota_get_img_desc(https_ota_handle, &app_desc);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "esp_https_ota_read_img_desc failed: %s", esp_err_to_name(err));
-    esp_https_ota_abort(https_ota_handle);
-    return err;
-  }
-
-  ESP_LOGI(TAG, "New firmware info:");
-  ESP_LOGI(TAG, "Project name: %s", app_desc.project_name);
-  ESP_LOGI(TAG, "Version: %s", app_desc.version);
-  ESP_LOGI(TAG, "Compiled: %s %s", app_desc.date, app_desc.time);
-  ESP_LOGI(TAG, "ESP-IDF: %s", app_desc.idf_ver);
-
-  // Download and flash firmware with progress
-  int image_size = esp_https_ota_get_image_size(https_ota_handle);
-  ESP_LOGI(TAG, "Image size: %d bytes", image_size);
-
-  if (progress_callback) {
-    progress_callback("Starting download...");
-  }
-
-  int last_reported_progress = -1; // Track to avoid spamming callback
-
-  while (1) {
-    err = esp_https_ota_perform(https_ota_handle);
-    if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
+  esp_http_client_handle_t client = esp_http_client_init(&config);
+  if (!client)
+    return ESP_ERR_NO_MEM;
+  esp_err_t err = ESP_FAIL;
+  esp_ota_handle_t handle = 0;
+  bool started = false;
+  char *buffer = NULL;
+  const esp_partition_t *partition = NULL;
+  int64_t image_size = 0;
+  size_t downloaded = 0;
+  int last_reported_progress = -1;
+  if (progress_callback)
+    progress_callback("Connecting to server...");
+  // Stream explicitly instead of using the HTTPS OTA header reader, which
+  // retries socket timeouts internally without exposing a cancellation point.
+  for (int redirects = 0; redirects <= 10; ++redirects) {
+    if (ota_cancelled(control)) {
+      err = ESP_ERR_INVALID_STATE;
+      goto done;
+    }
+    err = esp_http_client_open(client, 0);
+    if (err != ESP_OK)
+      goto done;
+    if (ota_cancelled(control)) {
+      err = ESP_ERR_INVALID_STATE;
+      goto done;
+    }
+    image_size = esp_http_client_fetch_headers(client);
+    if (ota_cancelled(control)) {
+      err = ESP_ERR_INVALID_STATE;
+      goto done;
+    }
+    if (image_size < 0) {
+      err = ESP_FAIL;
+      goto done;
+    }
+    int status = esp_http_client_get_status_code(client);
+    if (status == 200)
       break;
+    if (redirects == 10 || (status != 301 && status != 302 && status != 303 && status != 307 && status != 308)) {
+      err = ESP_ERR_INVALID_RESPONSE;
+      goto done;
     }
-
-    // Show download progress
-    int data_read = esp_https_ota_get_image_len_read(https_ota_handle);
-    int progress = 0;
-    if (image_size > 0) {
-      progress = (data_read * 100) / image_size;
-      ESP_LOGI(TAG, "Downloading update... %d%% (%d/%d bytes)", progress, data_read, image_size);
+    err = esp_http_client_set_redirection(client);
+    if (err != ESP_OK)
+      goto done;
+    // Keep certificate verification on every redirect and refuse HTTPS downgrade.
+    if (esp_http_client_get_transport_type(client) != HTTP_TRANSPORT_OVER_SSL) {
+      err = ESP_ERR_INVALID_RESPONSE;
+      goto done;
     }
-    else {
-      ESP_LOGI(TAG, "Downloaded: %d bytes", data_read);
+    esp_http_client_close(client);
+  }
+  partition = esp_ota_get_next_update_partition(NULL);
+  if (!partition || image_size > partition->size) {
+    err = ESP_ERR_INVALID_SIZE;
+    goto done;
+  }
+  buffer = malloc(4096);
+  if (!buffer) {
+    err = ESP_ERR_NO_MEM;
+    goto done;
+  }
+  if (ota_cancelled(control)) {
+    err = ESP_ERR_INVALID_STATE;
+    goto done;
+  }
+  err = esp_ota_begin(partition, OTA_WITH_SEQUENTIAL_WRITES, &handle);
+  if (err != ESP_OK)
+    goto done;
+  started = true;
+  while (true) {
+    if (ota_cancelled(control)) {
+      err = ESP_ERR_INVALID_STATE;
+      goto done;
     }
-
-    // Call progress callback (only if progress changed to avoid spam)
+    int count = esp_http_client_read(client, buffer, 4096);
+    if (ota_cancelled(control)) {
+      err = ESP_ERR_INVALID_STATE;
+      goto done;
+    }
+    if (count <= 0) {
+      if (count == 0 && esp_http_client_is_complete_data_received(client))
+        break;
+      // A stalled or truncated response fails instead of indefinitely retrying.
+      err = count == -ESP_ERR_HTTP_EAGAIN ? ESP_ERR_TIMEOUT : ESP_FAIL;
+      goto done;
+    }
+    if ((size_t)count > partition->size - downloaded) {
+      err = ESP_ERR_INVALID_SIZE;
+      goto done;
+    }
+    err = esp_ota_write(handle, buffer, count);
+    if (err != ESP_OK)
+      goto done;
+    downloaded += count;
+    int progress = image_size > 0 ? (int)(downloaded * 100 / image_size) : 0;
     if (progress_callback && progress != last_reported_progress) {
-      char status_update[100];
-      int data_read_kb = data_read / 1024;
-      int image_size_kb = image_size / 1024;
-      snprintf(status_update, sizeof(status_update), "Downloading...\n%d%%\n%d/%d KB", progress, data_read_kb,
-               image_size_kb);
-      progress_callback(status_update);
+      char text[100];
+      snprintf(text, sizeof(text), "Downloading...\n%d%%\n%u/%u KB", progress, (unsigned)(downloaded / 1024),
+               (unsigned)(image_size / 1024));
+      progress_callback(text);
       last_reported_progress = progress;
     }
-
-    // Small delay to avoid flooding logs
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
-
-  if (progress_callback) {
+  if (!downloaded || (image_size > 0 && downloaded != (size_t)image_size)) {
+    err = ESP_ERR_INVALID_RESPONSE;
+    goto done;
+  }
+  // Free TLS before validating the image. The page atomically arbitrates Back
+  // against this final commit, so cancellation cannot race boot selection.
+  esp_http_client_cleanup(client);
+  client = NULL;
+  if (ota_cancelled(control) || (control && control->begin_commit && !control->begin_commit(control->context))) {
+    err = ESP_ERR_INVALID_STATE;
+    goto done;
+  }
+  if (progress_callback)
     progress_callback("Download complete\nValidating...");
-  }
-
-  if (err != ESP_OK || !esp_https_ota_is_complete_data_received(https_ota_handle)) {
-    ESP_LOGE(TAG, "Complete data was not received.");
-    if (err == ESP_OK)
-      err = ESP_FAIL;
-    esp_https_ota_abort(https_ota_handle);
-  }
-  else {
-    err = esp_https_ota_finish(https_ota_handle);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "OTA upgrade successful");
-      return ESP_OK;
-    }
-    else {
-      if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
-        ESP_LOGE(TAG, "Image validation failed - image is corrupted");
-      }
-      ESP_LOGE(TAG, "ESP HTTPS OTA upgrade failed: %s", esp_err_to_name(err));
-    }
-  }
+  err = esp_ota_end(handle);
+  started = false; // esp_ota_end releases the handle even on validation failure.
+  if (err == ESP_OK)
+    err = esp_ota_set_boot_partition(partition);
+done:
+  if (started)
+    esp_ota_abort(handle);
+  if (client)
+    esp_http_client_cleanup(client);
+  free(buffer);
+  if (err != ESP_OK)
+    ESP_LOGE(TAG, "OTA stopped: %s", esp_err_to_name(err));
   return err;
 }

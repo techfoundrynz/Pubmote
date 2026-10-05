@@ -82,6 +82,5 @@ bool ui_operation_start(const char *message, std::function<esp_err_t()> work, st
   return true;
 }
 void ui_restart() {
-  ui_operation_start(
-      "Restarting...", []() { return ESP_OK; }, []() { esp_restart(); });
+  ui_operation_start("Restarting...", []() { return ESP_OK; }, []() { esp_restart(); });
 }

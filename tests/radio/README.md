@@ -23,6 +23,13 @@ peer connection, preserved transport and disconnect intent, failed preparation,
 retained Wi-Fi driver cleanup, failed worker startup, and retry after failed
 restoration. They also assert that live IP Wi-Fi prevents board-radio startup.
 
+ESP-NOW tests cover failed deinitialization and Wi-Fi teardown, rejection of
+initialization while teardown is incomplete, cleanup/restart retries, and IP
+handoff after a failed teardown. OTA tests cover cancellation before and during
+downloads (including the final read), commit/cancellation arbitration, bounded
+read timeouts, redirects and HTTPS downgrade rejection, truncated/oversized
+responses, image/write failures, and cleanup without boot selection on failure.
+
 The processing-overlay harness compiles the complete production UI operation
 runner against fake timers, UI events, and worker requests. It verifies that
 feedback appears before work starts, duplicate operations are rejected, work and

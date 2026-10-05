@@ -15,6 +15,9 @@ If the updater has no saved network, **Set up Wi-Fi** opens this page directly.
 Back then returns to the updater using the newly saved credentials. Leaving the
 updater also restores board communication without rebooting; installing firmware
 still requires the updater's **Reboot** action.
+Back cancels a download before image validation and boot selection. A stalled
+socket uses a five-second timeout; restoration follows download cleanup. During
+the final validation/boot-selection step, Back waits for that step to finish.
 
 Radio preparation and restoration show the shared animated processing overlay.
 It stays visible for at least 500 ms and blocks repeated taps until completion.

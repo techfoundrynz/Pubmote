@@ -37,12 +37,12 @@
 #include "screens/stats_screen.h"
 #include "screens/update_screen.h"
 #include "screens/wifi_screen.h"
-#include "utilities/ui_operation.h"
 #include "settings.h"
 #include "slint-esp.h"
 #include "slint_generated/app-window.h"
 #include "stats.h"
 #include "utilities/mem_debug.h"
+#include "utilities/ui_operation.h"
 
 #if TP_CST816S
   #include "esp_lcd_touch_cst816s.h"

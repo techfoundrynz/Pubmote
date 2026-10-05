@@ -101,8 +101,8 @@ extern "C"
   esp_err_t wifi_connect_to_network(const char *ssid, const char *password);
   typedef bool (*wifi_cancel_fn)(void *context);
   // Worker-friendly variant. A true callback result aborts within 200ms.
-  esp_err_t wifi_connect_to_network_cancellable(const char *ssid, const char *password,
-                                               wifi_cancel_fn cancelled, void *context);
+  esp_err_t wifi_connect_to_network_cancellable(const char *ssid, const char *password, wifi_cancel_fn cancelled,
+                                                void *context);
 
   /**
    * @brief Disconnect from WiFi network
