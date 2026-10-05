@@ -22,13 +22,25 @@ on:
         
 concurrency:
   group: ${{ github.workflow }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+  queue: max
         
 # Required to create a GitHub release and tag
 permissions:
   contents: write
         
 jobs:
+  # Tags and releases created with GITHUB_TOKEN do not trigger other workflows.
+  # Call the simulator build explicitly so automated releases get previews too.
+  simulator-release:
+    needs: [check_version_update, build_and_release]
+    if: needs.check_version_update.outputs.should_continue == 'true'
+    uses: ./.github/workflows/simulator.yml
+    permissions:
+      contents: read
+    with:
+      tag: ${{ needs.check_version_update.outputs.version_tag }}
+
   # Ensure a version update has happened
   # Extract a version tag for the deployment
   check_version_update:

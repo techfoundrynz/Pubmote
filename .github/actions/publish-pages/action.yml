@@ -1,0 +1,48 @@
+name: Publish Pages while preserving simulator previews
+description: Assemble persistent site content, then deploy the complete Pages site.
+inputs:
+  source:
+    description: Built static content
+    required: false
+  destination:
+    description: Preview subdirectory; omit for firmware tool root deployment
+    required: false
+  remove:
+    description: Remove the destination (closed PR)
+    default: 'false'
+  immutable:
+    description: Refuse to replace release content with different metadata
+    default: 'false'
+outputs:
+  url:
+    description: Pages deployment URL
+    value: ${{ steps.deployment.outputs.page_url }}
+runs:
+  using: composite
+  steps:
+    - name: Configure Pages
+      uses: actions/configure-pages@v5
+      with:
+        enablement: true
+    - name: Assemble persistent site
+      id: assemble
+      shell: bash
+      env:
+        SITE_SOURCE: ${{ inputs.source }}
+        SITE_DESTINATION: ${{ inputs.destination }}
+        SITE_REMOVE: ${{ inputs.remove }}
+        SITE_IMMUTABLE: ${{ inputs.immutable }}
+      run: |
+        args=()
+        if [ -n "$SITE_SOURCE" ]; then args+=(--source "$SITE_SOURCE"); fi
+        if [ -n "$SITE_DESTINATION" ]; then args+=(--destination "$SITE_DESTINATION"); fi
+        if [ "$SITE_REMOVE" = true ]; then args+=(--remove); fi
+        if [ "$SITE_IMMUTABLE" = true ]; then args+=(--immutable); fi
+        python3 scripts/publish_pages.py "${args[@]}"
+    - name: Upload complete Pages site
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ${{ steps.assemble.outputs.site }}
+    - name: Deploy Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

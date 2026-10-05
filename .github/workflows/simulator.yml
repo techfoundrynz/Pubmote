@@ -1,0 +1,140 @@
+name: Simulator previews
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'firmware/src/slint/**'
+      - 'firmware/assets/**'
+      - 'simulator/**'
+      - 'scripts/simulator*.py'
+      - 'scripts/package_simulator_preview.py'
+      - 'scripts/sync_slint_lsp.py'
+      - 'scripts/slint_fonts.py'
+      - 'prebuild_hook.py'
+      - 'tests/*simulator*'
+      - 'tests/test_pages_publish.py'
+      - 'tests/test_slint_fonts.py'
+      - 'platformio.ini'
+      - '.github/workflows/simulator*.yml'
+      - '.github/actions/publish-pages/**'
+      - '.github/scripts/simulator_publish.cjs'
+      - 'scripts/publish_pages.py'
+  push:
+    tags: ['**']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag containing simulator support (omit for an artifact-only manual build)
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  visual-and-browser-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      SIMULATOR_TAG: ${{ inputs.tag || github.event.release.tag_name || '' }}
+    steps:
+      - name: Check out exact preview revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name || github.event.pull_request.head.sha || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install rendering and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libwayland-dev
+          python -m pip install -r simulator/requirements-test.txt
+          python -m playwright install --with-deps chromium
+      - name: Cache Rust builds and WASM tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .pio/simulator/target
+            .pio/wasm-tools
+            .pio/wasm-cli-target
+          key: simulator-${{ runner.os }}-${{ hashFiles('platformio.ini', 'scripts/simulator.py', 'simulator/Cargo.lock') }}
+          restore-keys: simulator-${{ runner.os }}-
+      - name: Fetch pinned MCU font compiler
+        run: python scripts/slint_fonts.py --fetch-compiler
+      - name: Check report, embedded fonts and publication logic
+        run: |
+          python tests/test_simulator_visuals.py
+          python tests/test_slint_fonts.py
+          python tests/test_pages_publish.py
+          node --test tests/simulator_publish_test.cjs
+      - name: Select comparison base
+        id: base
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          base="$PR_BASE"
+          if [ -z "$base" ]; then
+            base=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          fi
+          if [ -n "$base" ]; then
+            base_sha=$(git rev-parse "$base^{commit}")
+            git worktree add --detach .pio/simulator-base "$base_sha"
+            echo "sha=$base_sha" >> "$GITHUB_OUTPUT"
+            echo "SIMULATOR_BASE_SHA=$base_sha" >> "$GITHUB_ENV"
+          fi
+      - name: Native simulator interaction tests
+        run: python scripts/simulator.py test
+      - name: Render and compare 51 scenarios
+        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+        shell: bash
+        run: |
+          args=()
+          if [ -n "$BASE_SHA" ]; then args+=(--base-root .pio/simulator-base); fi
+          python scripts/simulator_visuals.py "${args[@]}"
+      - name: Build browser simulator
+        run: python scripts/simulator.py web-build
+      - name: Browser interaction tests
+        run: python tests/simulator_browser_test.py --dist .pio/simulator/web-dist --output .pio/simulator/browser-tests
+      - name: Package tested preview
+        run: python scripts/package_simulator_preview.py
+      - name: Upload hosted-preview payload
+        id: preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-preview
+          path: .pio/simulator/web-dist
+          if-no-files-found: error
+          retention-days: 14
+      - name: Link downloadable report
+        env:
+          ARTIFACT_URL: ${{ steps.preview.outputs.artifact-url }}
+        run: echo "[Download simulator and visual report]($ARTIFACT_URL). The Pages publisher adds the hosted link after deployment." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload diagnostic screenshots and render logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-test-results
+          path: |
+            .pio/visual-report
+            .pio/simulator/browser-tests
+          if-no-files-found: ignore
+          retention-days: 14
