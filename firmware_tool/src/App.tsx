@@ -33,6 +33,7 @@ const AppContent = () => {
   const espService = useRef<ESPService>(new ESPService(terminal)).current;
   const { toast } = useToast();
   const [isConnecting, setIsConnecting] = useState(false);
+  const [downloadingDiagnostics, setDownloadingDiagnostics] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [flashProgress, setFlashProgress] = useState<FlashProgressType>({
     status: 'idle',
@@ -171,6 +172,28 @@ const AppContent = () => {
     espService.disconnect();
     setDeviceInfo({ connected: false });
     toast.info('Device disconnected');
+  };
+
+  const handleDownloadDiagnostics = async () => {
+    setDownloadingDiagnostics(true);
+    try {
+      const report = await espService.getDiagnostics();
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `pubmote-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (!report.capture_available)
+        toast.info('Memory metrics downloaded; recent device logs are unavailable.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to download diagnostics');
+    } finally {
+      setDownloadingDiagnostics(false);
+    }
   };
 
   const handleViewCoredump = async () => {
@@ -327,6 +350,8 @@ const AppContent = () => {
                 onSendCommand={handleSendTerminalCommand}
                 terminal={terminal}
                 onViewCoredump={handleViewCoredump}
+                onDownloadDiagnostics={handleDownloadDiagnostics}
+                downloadingDiagnostics={downloadingDiagnostics}
                 onClearCoredump={handleClearCoredump}
                 onLoadElf={handleLoadElf}
                 onDownloadElf={(isManual) => handleDownloadElf(undefined, undefined, isManual)}

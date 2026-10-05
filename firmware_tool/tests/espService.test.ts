@@ -29,6 +29,44 @@ function monitorChunks(service: ESPService, chunks: Uint8Array[]) {
   return rawRead;
 }
 
+describe('diagnostic export transport', () => {
+  test('collects a fragmented full-size capture without interpreting log contents as reboot events', async () => {
+    const service = new ESPService();
+    const onReboot = vi.fn();
+    service.onReboot = onReboot;
+    const report = {
+      kind: 'diagnostics',
+      version: 1,
+      ok: true,
+      capture_available: true,
+      build_id: 'abc123',
+      hardware: 'test_board',
+      uptime_ms: 100,
+      internal_free: 12000,
+      internal_min: 10000,
+      internal_largest: 8000,
+      psram_free: 100000,
+      overwritten: 2,
+      truncated: 1,
+      dropped: 3,
+      log: 'rst: Backtrace: pubconsole>\n' + 'x'.repeat(16000),
+    };
+    const write = vi.fn(async (_data: Uint8Array) => {
+      const frame = JSON.stringify(report) + '\n';
+      for (let offset = 0; offset < frame.length; offset += 127) {
+        await (service as unknown as { processEspLog(data: string): Promise<void> }).processEspLog(
+          frame.slice(offset, offset + 127),
+        );
+      }
+      await emit(service, 'pubconsole>');
+    });
+    Object.assign(service, { espLoader: { transport: { write } } });
+    expect(await service.getDiagnostics()).toEqual(report);
+    expect(new TextDecoder().decode(write.mock.calls[0][0] as Uint8Array)).toBe('diagnostics\n');
+    expect(onReboot).not.toHaveBeenCalled();
+  });
+});
+
 describe('serial JSON frames', () => {
   test('preserves fragmented Unicode and does not mistake values for crash logs', async () => {
     const service = new ESPService();

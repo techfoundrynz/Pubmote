@@ -31,13 +31,16 @@ esp_err_t imu_driver_deinit() {
   return ESP_ERR_NOT_SUPPORTED;
 }
 
-void imu_driver_get_data(imu_data_t *data) {
+void imu_driver_get_raw_data(imu_data_t *data) {
 #if IMU_QMI8658
   qmi8658_get_data(data);
 #elif IMU_BHI260
   // bhi260_get_data(data);
 #endif
+}
 
+void imu_driver_get_data(imu_data_t *data) {
+  imu_driver_get_raw_data(data);
   // Apply calibration offsets
   data->accel_x -= imu_calibration.accel_x_offset;
   data->accel_y -= imu_calibration.accel_y_offset;

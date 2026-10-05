@@ -1,5 +1,6 @@
 #pragma once
 
+#include "esp_err.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -37,7 +38,8 @@ extern "C"
   bool receiver_lock_channel();
   void receiver_unlock_channel();
   void receiver_init();
-  void receiver_deinit();
+  esp_err_t receiver_start(void);
+  esp_err_t receiver_deinit(void);
 
 #ifdef __cplusplus
 }

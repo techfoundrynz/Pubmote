@@ -26,11 +26,19 @@ extern "C"
   } firmware_version_t;
 
   typedef void (*ota_progress_callback_t)(const char *status);
+  typedef struct {
+    bool (*cancelled)(void *context);
+    // Atomically claim finalization against cancellation. Once accepted, the
+    // caller must defer cancellation until finish returns.
+    bool (*begin_commit)(void *context);
+    void *context;
+  } ota_control_t;
 
   esp_err_t fetch_all_asset_urls(const char *asset_name, github_asset_urls_t *result);
   firmware_version_t parse_version_string(const char *version_str);
   bool is_version_greater(const firmware_version_t *a, const firmware_version_t *b);
-  esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback);
+  // Cancellation aborts the image without changing the boot partition.
+  esp_err_t apply_ota(const char *url, ota_progress_callback_t progress_callback, const ota_control_t *control);
 
 #ifdef __cplusplus
 }

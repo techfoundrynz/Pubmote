@@ -1,0 +1,71 @@
+import { Theme } from "theme.slint";
+import { Page } from "page.slint";
+import { AppButton } from "app-button.slint";
+import { Keyboard } from "keyboard.slint";
+
+export struct WifiNetwork { ssid: string, detail: string }
+export component WifiScreen inherits Rectangle {
+    in property <[WifiNetwork]> networks;
+    in property <string> status;
+    in property <string> saved;
+    in property <bool> busy;
+    in property <bool> editing;
+    in property <[string]> keys;
+    in property <string> value;
+    in property <string> masked-value;
+    in property <string> heading;
+    in property <string> mode-label;
+    in property <bool> secret;
+    in-out property <bool> revealed;
+    callback back;
+    callback scan;
+    callback select(int);
+    callback connect-saved;
+    callback forget;
+    callback manual;
+    callback key(int);
+    callback mode;
+    callback done;
+    callback cancel;
+    if !root.editing: Page {
+        title: "WI-FI";
+        show-back: true;
+        back => { root.back(); }
+        Flickable {
+            viewport-height: content.min-height;
+            content := VerticalLayout {
+                padding-left: Theme.page-padding-horizontal;
+                padding-right: Theme.page-padding-horizontal;
+                padding-top: Theme.seam-size;
+                padding-bottom: Theme.scroll-padding-bottom;
+                spacing: 6px * Theme.scale;
+                Text { text: root.status; color: Theme.text-dim; font-size: Theme.font-11; wrap: word-wrap; }
+                if root.saved != "": AppButton { text: root.saved; right-text: "Saved"; enabled: !root.busy; variant: "ghost"; clicked => { root.connect-saved(); } }
+                if root.saved != "": AppButton { text: "Forget saved network"; variant: "ghost"; enabled: !root.busy; clicked => { root.forget(); } }
+                AppButton { text: root.busy ? "Please wait..." : "Scan networks"; enabled: !root.busy; clicked => { root.scan(); } }
+                for network[idx] in root.networks: AppButton {
+                    text: network.ssid;
+                    right-text: network.detail;
+                    height: 38px * Theme.scale;
+                    variant: "ghost";
+                    enabled: !root.busy;
+                    clicked => { root.select(idx); }
+                }
+                AppButton { text: "Other network"; variant: "secondary"; enabled: !root.busy; clicked => { root.manual(); } }
+            }
+        }
+    }
+    if root.editing: Keyboard {
+        keys: root.keys;
+        value: root.value;
+        masked-value: root.masked-value;
+        heading: root.heading;
+        mode-label: root.mode-label;
+        secret: root.secret;
+        revealed <=> root.revealed;
+        key(index) => { root.key(index); }
+        mode => { root.mode(); }
+        done => { root.done(); }
+        cancel => { root.cancel(); }
+    }
+}

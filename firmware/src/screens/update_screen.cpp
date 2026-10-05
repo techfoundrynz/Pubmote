@@ -6,21 +6,21 @@
 #include "esp_https_ota.h"
 #include "esp_log.h"
 #include "esp_system.h"
-#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "ota/update_client.h"
-#include "remote/comms.h"
-#include "remote/connection.h"
 #include "remote/display.h"
-#include "remote/receiver.h"
+#include "remote/radio_session.h"
 #include "remote/settings.h"
-#include "remote/transmitter.h"
 #include "remote/wifi.h"
+#include "screens/wifi_screen.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
+#include <atomic>
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 
 static const char *TAG = "PUBREMOTE-UPDATE_SCREEN";
 
@@ -29,6 +29,7 @@ static const char *TAG = "PUBREMOTE-UPDATE_SCREEN";
 static constexpr uint32_t UPDATE_TASK_STACK_BYTES = 8192;
 
 enum UpdateStep {
+  UPDATE_STEP_PREPARING,
   UPDATE_STEP_START,
   UPDATE_STEP_CONNECTING,
   UPDATE_STEP_CHECKING_UPDATE,
@@ -54,22 +55,45 @@ struct ReleaseInfo {
   char download_url[256];
 };
 
-static volatile UpdateStep current_update_step = UPDATE_STEP_START;
-static volatile TaskHandle_t update_task_handle = NULL;
+static std::atomic<UpdateStep> current_update_step{UPDATE_STEP_START};
+static std::atomic<bool> active{false}, running{false}, owned{false}, leaving{false};
+static std::atomic<unsigned> generation{0};
+enum class OtaPhase {
+  Idle,
+  Downloading,
+  Cancelled,
+  Committing
+};
+static std::atomic<OtaPhase> ota_phase{OtaPhase::Idle};
+static bool ota_begin_commit(void *) {
+  OtaPhase expected = OtaPhase::Downloading;
+  return ota_phase.compare_exchange_strong(expected, OtaPhase::Committing);
+}
+static bool ota_request_cancel() {
+  OtaPhase expected = OtaPhase::Downloading;
+  return ota_phase.compare_exchange_strong(expected, OtaPhase::Cancelled) || expected != OtaPhase::Committing;
+}
+static Screen destination = Screen::About;
+static void restore_radio();
 static ReleaseInfo available_updates[3]; // Stable, Prerelease, Nightly
 static int available_update_count = 0;
 static int selected_update_index = 0;
 
 static void update_status_ui() {
-  if (!get_slint_window())
+  if (!get_slint_window() || !active)
     return;
+  const unsigned token = generation.load();
 
   char body_text[256] = {0};
   bool show_dropdown = false;
   const char *primary_btn_text = "Next";
   bool primary_btn_enabled = true;
 
-  switch (current_update_step) {
+  switch (current_update_step.load()) {
+  case UPDATE_STEP_PREPARING:
+    snprintf(body_text, sizeof(body_text), "Preparing Wi-Fi...");
+    primary_btn_enabled = false;
+    break;
   case UPDATE_STEP_START: {
     char *wifi_ssid = get_wifi_ssid();
     snprintf(body_text, sizeof(body_text), "Click next to connect to %s", wifi_ssid ? wifi_ssid : "configured Wi-Fi");
@@ -117,13 +141,13 @@ static void update_status_ui() {
     primary_btn_enabled = true;
     break;
   case UPDATE_STEP_STARTUP_ERROR:
-    snprintf(body_text, sizeof(body_text), "Could not start updater. Exit and restart to retry.");
+    snprintf(body_text, sizeof(body_text), "Could not start updater. Exit to restore the board connection.");
     primary_btn_text = "Exit";
     primary_btn_enabled = true;
     break;
   case UPDATE_STEP_NO_WIFI:
-    snprintf(body_text, sizeof(body_text), "No Wi-Fi credentials. Configure at https://pubmote.com");
-    primary_btn_text = "Exit";
+    snprintf(body_text, sizeof(body_text), "No Wi-Fi network saved. Set one up on this remote to check for updates.");
+    primary_btn_text = "Set up Wi-Fi";
     primary_btn_enabled = true;
     break;
   }
@@ -131,6 +155,8 @@ static void update_status_ui() {
   slint::SharedString body(body_text);
   slint::SharedString primary_text(primary_btn_text);
   slint::invoke_from_event_loop([=]() {
+    if (!active || token != generation)
+      return;
     const auto &state = get_slint_window()->global<UiState>();
     state.set_update_body(body);
     state.set_update_show_dropdown(show_dropdown);
@@ -148,69 +174,60 @@ static void update_status_ui() {
 }
 
 static void simple_progress_callback(const char *status) {
+  if (!active)
+    return;
+  const unsigned token = generation.load();
   slint::SharedString body(status);
-  slint::invoke_from_event_loop([=]() { get_slint_window()->global<UiState>().set_update_body(body); });
-}
-
-static void confirm_exit_restart() {
-  slint::invoke_from_event_loop([]() {
-    if (!get_slint_window())
-      return;
-    const auto &state = get_slint_window()->global<UiState>();
-
-    state.on_confirm_dialog_accepted([]() {
-      slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_show_confirm_dialog(false); });
-      ESP_LOGI(TAG, "Restarting to restore the board connection");
-      esp_restart();
-    });
-
-    state.on_confirm_dialog_rejected([]() {
-      slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_show_confirm_dialog(false); });
-    });
-
-    state.set_confirm_dialog_title("Restart Required");
-    state.set_confirm_dialog_message("The remote restarts when leaving the updater so it can reconnect to your board.");
-    state.set_confirm_dialog_confirm_text("Restart");
-    state.set_show_confirm_dialog(true);
+  slint::invoke_from_event_loop([=]() {
+    if (active && token == generation)
+      get_slint_window()->global<UiState>().set_update_body(body);
   });
 }
 
+static void restored(esp_err_t result, void *) {
+  slint::invoke_from_event_loop([result]() {
+    ui_processing_end([result]() {
+      leaving = false;
+      if (result == ESP_OK) {
+        owned = false;
+        get_slint_window()->global<UiState>().set_screen(destination);
+      }
+      else {
+        get_slint_window()->global<UiState>().set_update_body("Could not restore board radio. Back retries.");
+      }
+    });
+  });
+}
+static void restore_radio() {
+  esp_err_t result = radio_session_end(restored, nullptr);
+  if (result != ESP_OK)
+    restored(result, nullptr);
+}
 static void update_task(void *pvParameters) {
   ESP_LOGI(TAG, "update_task started");
-  if (!wifi_is_initialized()) {
-    ESP_LOGI(TAG, "Initializing Wi-Fi...");
-    esp_err_t init_err = wifi_init();
-    if (init_err != ESP_OK) {
-      ESP_LOGE(TAG, "Wi-Fi init failed: %s. Free internal heap: %u, largest block: %u", esp_err_to_name(init_err),
-               heap_caps_get_free_size(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
-      current_update_step = UPDATE_STEP_ERROR;
-    }
-    else {
-      ESP_LOGI(TAG, "Wi-Fi initialized successfully");
-    }
-  }
-
-  UpdateStep last_step = current_update_step;
+  UpdateStep last_step = current_update_step.load();
   ESP_LOGI(TAG, "Reading Wi-Fi credentials from NVS...");
-  char *wifi_ssid = get_wifi_ssid();
-  char *wifi_password = get_wifi_password();
+  std::string ssid = get_wifi_ssid() ? get_wifi_ssid() : "";
+  std::string password = get_wifi_password() ? get_wifi_password() : "";
+  const char *wifi_ssid = ssid.c_str();
+  const char *wifi_password = password.c_str();
   ESP_LOGI(TAG, "Read Wi-Fi credentials. SSID: %s", wifi_ssid ? wifi_ssid : "NULL");
   int64_t last_rssi_log_time = 0;
 
-  if (wifi_ssid == NULL || strlen(wifi_ssid) == 0 || wifi_password == NULL || strlen(wifi_password) == 0) {
+  if (wifi_ssid == NULL || strlen(wifi_ssid) == 0) {
     ESP_LOGW(TAG, "No Wi-Fi credentials found or read failed!");
     current_update_step = UPDATE_STEP_NO_WIFI;
   }
 
   update_status_ui();
-  while (is_update_screen_active()) {
+  while (active) {
     if (current_update_step != last_step) {
-      last_step = current_update_step;
-      ESP_LOGI(TAG, "Update step changed: %d", current_update_step);
+      last_step = current_update_step.load();
+      ESP_LOGI(TAG, "Update step changed: %d", static_cast<int>(current_update_step.load()));
       update_status_ui();
     }
 
-    switch (current_update_step) {
+    switch (current_update_step.load()) {
     case UPDATE_STEP_START:
       break;
     case UPDATE_STEP_CONNECTING: {
@@ -220,7 +237,8 @@ static void update_task(void *pvParameters) {
         wifi_err = wifi_init();
       }
       if (wifi_err == ESP_OK && wifi_get_connection_state() != WIFI_STATE_CONNECTED) {
-        wifi_err = wifi_connect_to_network(wifi_ssid, wifi_password);
+        wifi_err = wifi_connect_to_network_cancellable(
+            wifi_ssid, wifi_password, [](void *) { return !active.load(); }, nullptr);
       }
       if (wifi_get_connection_state() != WIFI_STATE_CONNECTED || wifi_err != ESP_OK) {
         current_update_step = UPDATE_STEP_ERROR;
@@ -298,7 +316,13 @@ static void update_task(void *pvParameters) {
     }
     case UPDATE_STEP_IN_PROGRESS: {
       ESP_LOGI(TAG, "Starting OTA update: %s", available_updates[selected_update_index].download_url);
-      esp_err_t ret = apply_ota(available_updates[selected_update_index].download_url, simple_progress_callback);
+      const ota_control_t control = {
+          [](void *) { return !active.load() || ota_phase == OtaPhase::Cancelled; },
+          ota_begin_commit,
+          nullptr,
+      };
+      esp_err_t ret =
+          apply_ota(available_updates[selected_update_index].download_url, simple_progress_callback, &control);
       ESP_LOGI(TAG, "Updater stack minimum free after OTA: %u bytes", (unsigned)uxTaskGetStackHighWaterMark(NULL));
       if (ret == ESP_OK) {
         current_update_step = UPDATE_STEP_COMPLETE;
@@ -308,6 +332,7 @@ static void update_task(void *pvParameters) {
         ESP_LOGE(TAG, "OTA failed: %s", esp_err_to_name(ret));
         current_update_step = UPDATE_STEP_ERROR;
       }
+      ota_phase = OtaPhase::Idle;
       break;
     }
     default:
@@ -325,105 +350,98 @@ static void update_task(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(100));
   }
 
-  // Cleanup Wi-Fi / ESP-NOW
-  if (wifi_is_initialized()) {
-    wifi_uninit();
-  }
-
-  // Leaving always reboots - see confirm_exit_restart(). This covers the exits
-  // that never went through the buttons (a screen change from elsewhere).
-  ESP_LOGI(TAG, "Update task ended - rebooting to restore comms");
-  update_task_handle = NULL;
-  vTaskDelay(pdMS_TO_TICKS(250)); // let the log flush
-  esp_restart();
+  running = false;
+  restore_radio();
+  vTaskDelete(nullptr);
 }
-
-extern "C" void setup_update_properties() {
-  ESP_LOGI(TAG, "setup_update_properties called. Free internal heap: %u, total: %u bytes",
-           heap_caps_get_free_size(MALLOC_CAP_INTERNAL), esp_get_free_heap_size());
-
-  esp_task_wdt_reset();
-
-  // Deinit receiver and transmitter to free up internal SRAM stack space (approx 7.5KB)
-  ESP_LOGI(TAG, "Stopping receiver and transmitter to free internal RAM...");
-  receiver_deinit();
-  esp_task_wdt_reset();
-  transmitter_deinit();
-  esp_task_wdt_reset();
-
-  // Release BLE memory before allocating the task stack; retain ESP-NOW's WiFi buffers.
-  connection_update_state(CONNECTION_STATE_DISCONNECTED);
-  if (comms_is_initialized()) {
-    ESP_LOGI(TAG, "Preparing comms for Wi-Fi before update task...");
-    esp_err_t err = comms_prepare_wifi();
-    esp_task_wdt_reset();
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Wi-Fi handoff failed: %s", esp_err_to_name(err));
-      current_update_step = UPDATE_STEP_STARTUP_ERROR;
-      update_status_ui();
+static void prepared(esp_err_t result, void *) {
+  slint::invoke_from_event_loop([]() { ui_processing_end(); });
+  if (!active) {
+    running = false;
+    restore_radio();
+    return;
+  }
+  if (result == ESP_OK) {
+    current_update_step = UPDATE_STEP_START;
+    if (xTaskCreate(update_task, "update-task", UPDATE_TASK_STACK_BYTES, nullptr, 5, nullptr) == pdPASS)
       return;
-    }
   }
-
-  // Let idle tasks reclaim the stacks of the workers that just exited.
-  vTaskDelay(pdMS_TO_TICKS(20));
-  esp_task_wdt_reset();
-  ESP_LOGI(TAG, "Free internal heap after yield: %u, total: %u bytes", heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-           esp_get_free_heap_size());
-
-  current_update_step = UPDATE_STEP_START;
+  running = false;
+  current_update_step = UPDATE_STEP_STARTUP_ERROR;
   update_status_ui();
-
-  if (update_task_handle == NULL) {
-    ESP_LOGI(TAG, "Creating update_task with 8KB stack in internal RAM...");
-    BaseType_t ret = pdFAIL;
-    const TickType_t started = xTaskGetTickCount();
-    do {
-      ret = xTaskCreate(update_task, "update_task", UPDATE_TASK_STACK_BYTES, NULL, 5,
-                        (TaskHandle_t *)&update_task_handle);
-      if (ret == pdPASS)
-        break;
-      // Self-deleted tasks release their stacks only when the idle task runs.
-      vTaskDelay(pdMS_TO_TICKS(20));
-      esp_task_wdt_reset();
-    } while (xTaskGetTickCount() - started < pdMS_TO_TICKS(1500));
-    if (ret != pdPASS) {
-      ESP_LOGE(TAG, "Failed to create update_task! Error: %d, free internal: %u, largest block: %u", (int)ret,
-               heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
-               heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
-      // Without a worker, recovery requires a restart.
-      current_update_step = UPDATE_STEP_STARTUP_ERROR;
-      update_status_ui();
-    }
-    else {
-      ESP_LOGI(TAG, "update_task created successfully");
-    }
+}
+extern "C" void setup_update_properties() {
+  ++generation;
+  active = true;
+  leaving = false;
+  available_update_count = 0;
+  selected_update_index = 0;
+  const char *ssid = get_wifi_ssid();
+  if (!ssid || !*ssid) {
+    current_update_step = UPDATE_STEP_NO_WIFI;
+    update_status_ui();
+    return;
   }
-  else {
-    ESP_LOGW(TAG, "update_task is already running!");
+  current_update_step = UPDATE_STEP_PREPARING;
+  update_status_ui();
+  ui_processing_begin("Preparing Wi-Fi...");
+  owned = running = true;
+  esp_err_t result = radio_session_begin(prepared, nullptr);
+  if (result != ESP_OK) {
+    ui_processing_end();
+    owned = running = false;
+    current_update_step = UPDATE_STEP_STARTUP_ERROR;
+    update_status_ui();
   }
+}
+extern "C" bool update_screen_prepare_exit(int target) {
+  // Cancellation and finalization compete for the same state. Once validation
+  // starts, keep this page until boot selection finishes rather than accepting
+  // a Back action that can no longer abort the installed image.
+  if (!ota_request_cancel())
+    return true;
+  if (!owned) {
+    active = false;
+    return false;
+  }
+  destination = static_cast<Screen>(target);
+  if (!leaving.exchange(true)) {
+    active = false;
+    ++generation;
+    const auto &state = get_slint_window()->global<UiState>();
+    state.set_update_primary_enabled(false);
+    state.set_update_body("Restoring board connection...");
+    ui_processing_begin("Restoring board connection...");
+    if (!running)
+      restore_radio();
+  }
+  return true;
 }
 
 // Slint update callbacks
 extern "C" void handle_update_primary() {
-  ESP_LOGI(TAG, "handle_update_primary called, current_update_step: %d", current_update_step);
-  switch (current_update_step) {
+  ESP_LOGI(TAG, "handle_update_primary called, current_update_step: %d", static_cast<int>(current_update_step.load()));
+  switch (current_update_step.load()) {
   case UPDATE_STEP_START:
     ESP_LOGI(TAG, "Transitioning from UPDATE_STEP_START to UPDATE_STEP_CONNECTING");
     current_update_step = UPDATE_STEP_CONNECTING;
     break;
   case UPDATE_STEP_UPDATE_AVAILABLE:
     ESP_LOGI(TAG, "Transitioning to UPDATE_STEP_IN_PROGRESS");
+    ota_phase = OtaPhase::Downloading;
     current_update_step = UPDATE_STEP_IN_PROGRESS;
     break;
-  case UPDATE_STEP_NO_UPDATE:
   case UPDATE_STEP_NO_WIFI:
+    wifi_return_to_update();
+    get_slint_window()->global<UiState>().set_screen(Screen::Wifi);
+    break;
+  case UPDATE_STEP_NO_UPDATE:
   case UPDATE_STEP_STARTUP_ERROR:
-    confirm_exit_restart();
+    get_slint_window()->global<UiState>().set_screen(Screen::About);
     break;
   case UPDATE_STEP_COMPLETE:
     ESP_LOGI(TAG, "Rebooting device...");
-    esp_restart();
+    ui_restart();
     break;
   case UPDATE_STEP_ERROR:
     ESP_LOGI(TAG, "Transitioning back to UPDATE_STEP_START");
@@ -437,7 +455,7 @@ extern "C" void handle_update_primary() {
 }
 
 extern "C" void handle_update_secondary() {
-  confirm_exit_restart();
+  get_slint_window()->global<UiState>().set_screen(Screen::About);
 }
 
 extern "C" void handle_update_selected(int index) {

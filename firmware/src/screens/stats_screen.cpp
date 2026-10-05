@@ -15,6 +15,7 @@
 #include "remote/vehicle_state.h"
 #include "slint_generated/app-window.h"
 #include "utilities/conversion_utils.h"
+#include "utilities/ui_operation.h"
 #include <atomic>
 #include <math.h>
 #include <stdio.h>
@@ -320,16 +321,18 @@ extern "C" void setup_stats_properties() {
       else {
         device_settings.battery_display = BATTERY_DISPLAY_PERCENT;
       }
-      save_device_settings();
-      stats_update_screen_display();
+      ui_operation_start(
+          "Saving display preference...", []() { return save_device_settings(); },
+          []() { stats_update_screen_display(); });
     });
 
     state.on_secondary_stat_left_clicked([]() {
       // Cycle secondary stat
       device_settings.secondary_stat_display =
           (SecondaryStatDisplayOption)((device_settings.secondary_stat_display + 1) % 3);
-      save_device_settings();
-      stats_update_screen_display();
+      ui_operation_start(
+          "Saving display preference...", []() { return save_device_settings(); },
+          []() { stats_update_screen_display(); });
     });
   }
 

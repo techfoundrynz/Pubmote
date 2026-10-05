@@ -69,6 +69,9 @@ For fast development builds, select one board with `pio run -e <environment>`.
 Use `pio run -e <environment> -t package` for release ZIP/BIN/ELF artifacts.
 See [firmware builds](docs/firmware-builds.md) for caching, generated-code debugging,
 and benchmark commands.
+See [device diagnostics](docs/device-diagnostics.md) for exporting recent radio/OTA logs and memory metrics.
+
+See [Wi-Fi menu and keyboard](docs/wifi-menu.md) for on-device network setup and text entry.
 
 ### Slint live preview
 

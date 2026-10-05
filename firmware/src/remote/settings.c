@@ -434,12 +434,13 @@ bool is_pocket_mode_enabled() {
   return device_settings.pocket_mode == POCKET_MODE_ENABLED;
 }
 
-void save_device_settings() {
+esp_err_t save_device_settings() {
   reset_sleep_timer();
   esp_err_t result = settings_save_device_preferences();
   if (result != ESP_OK) {
     ESP_LOGE(TAG, "Failed to save device settings: %s", esp_err_to_name(result));
   }
+  return result;
 }
 
 esp_err_t save_wifi_ssid(const char *ssid) {
@@ -561,11 +562,12 @@ esp_err_t save_pairing_data() {
   return ESP_OK;
 }
 
-void save_input_calibration() {
+esp_err_t save_input_calibration() {
   esp_err_t result = settings_store_input_state(&input_pin_settings, &calibration_settings);
   if (result != ESP_OK) {
     ESP_LOGE(TAG, "Failed to save input calibration: %s", esp_err_to_name(result));
   }
+  return result;
 }
 
 void input_pins_load_defaults(InputPinSettings *out) {
@@ -593,14 +595,30 @@ void reset_axis_calibration(bool reset_x, bool reset_y) {
   settings_reset_calibration(&calibration_settings, reset_x, reset_y);
 }
 
-void save_imu_calibration() {
-  nvs_write_int("imu_off_x", (int32_t)(imu_calibration.accel_x_offset * 1000.0f));
-  nvs_write_int("imu_off_y", (int32_t)(imu_calibration.accel_y_offset * 1000.0f));
-  nvs_write_int("imu_off_z", (int32_t)(imu_calibration.accel_z_offset * 1000.0f));
-  nvs_write_int("imu_inv_x", imu_calibration.invert_x ? 1 : 0);
-  nvs_write_int("imu_inv_y", imu_calibration.invert_y ? 1 : 0);
-  nvs_write_int("imu_inv_z", imu_calibration.invert_z ? 1 : 0);
-  nvs_write_int("imu_swap_xy", imu_calibration.swap_xy ? 1 : 0);
+esp_err_t save_imu_calibration() {
+  esp_err_t result;
+  result = nvs_write_int("imu_off_x", (int32_t)(imu_calibration.accel_x_offset * 1000.0f));
+  if (result != ESP_OK)
+    return result;
+  result = nvs_write_int("imu_off_y", (int32_t)(imu_calibration.accel_y_offset * 1000.0f));
+  if (result != ESP_OK)
+    return result;
+  result = nvs_write_int("imu_off_z", (int32_t)(imu_calibration.accel_z_offset * 1000.0f));
+  if (result != ESP_OK)
+    return result;
+  result = nvs_write_int("imu_inv_x", imu_calibration.invert_x ? 1 : 0);
+  if (result != ESP_OK)
+    return result;
+  result = nvs_write_int("imu_inv_y", imu_calibration.invert_y ? 1 : 0);
+  if (result != ESP_OK)
+    return result;
+  result = nvs_write_int("imu_inv_z", imu_calibration.invert_z ? 1 : 0);
+  if (result != ESP_OK)
+    return result;
+  result = nvs_write_int("imu_swap_xy", imu_calibration.swap_xy ? 1 : 0);
+  if (result != ESP_OK)
+    return result;
+  return ESP_OK;
 }
 
 void settings_apply_imu_calibration(const ImuCalibrationSettings *imu) {

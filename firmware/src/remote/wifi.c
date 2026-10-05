@@ -1,9 +1,16 @@
 #include "wifi.h"
 #include "esp_heap_caps.h"
+#include "freertos/semphr.h"
 #include "string.h"
+#include <stdatomic.h>
 
 #define ESP_MAXIMUM_RETRY 5
 #define RECONNECT_DELAY_MS 5000
+#define WIFI_SCAN_MAX_RECORDS 40
+
+// Retained across restarts so a waiter can never reference a deleted lock.
+static SemaphoreHandle_t radio_mutex = NULL;
+static atomic_bool connect_pending = false;
 
 static bool is_initialized = false;
 static const char *TAG = "PUBMOTE-WIFI";
@@ -21,12 +28,18 @@ esp_netif_t *wifi_netif_sta = NULL;
 
 // Timer callback for automatic reconnection
 static void reconnect_timer_callback(TimerHandle_t xTimer) {
+  if (connect_pending || !radio_mutex || xSemaphoreTake(radio_mutex, 0) != pdTRUE) {
+    if (s_auto_reconnect_enabled)
+      xTimerStart(xTimer, 0);
+    return;
+  }
   if (s_auto_reconnect_enabled && s_wifi_state == WIFI_STATE_RECONNECTING) {
     ESP_LOGI(TAG, "Attempting automatic reconnection to: %s", s_stored_ssid);
     s_wifi_state = WIFI_STATE_CONNECTING;
     s_retry_num = 0;
     esp_wifi_connect();
   }
+  xSemaphoreGive(radio_mutex);
 }
 
 // WiFi event handler with state management and auto-reconnection
@@ -138,6 +151,10 @@ esp_err_t wifi_init(void) {
   }
 
   ESP_LOGI(TAG, "Initializing WiFi station mode after ESP-NOW");
+  if (!radio_mutex)
+    radio_mutex = xSemaphoreCreateMutex();
+  if (!radio_mutex)
+    return ESP_ERR_NO_MEM;
 
   // Small delay to ensure ESP-NOW cleanup is complete
   vTaskDelay(pdMS_TO_TICKS(100));
@@ -257,6 +274,7 @@ esp_err_t wifi_init(void) {
   esp_wifi_set_max_tx_power(52); // ~14 dBm for balanced power and range
 
   ESP_LOGI(TAG, "WiFi station initialization completed after ESP-NOW transition");
+  s_auto_reconnect_enabled = true;
   is_initialized = true;
   return ESP_OK;
 
@@ -280,37 +298,62 @@ esp_err_t wifi_scan_networks(wifi_network_info_t **networks, uint16_t *network_c
 
   *networks = NULL;
   *network_count = 0;
+  if (!is_initialized || !radio_mutex)
+    return ESP_ERR_WIFI_NOT_INIT;
+  if (connect_pending || xSemaphoreTake(radio_mutex, 0) != pdTRUE)
+    return ESP_ERR_INVALID_STATE;
+  esp_err_t err = ESP_OK;
+  wifi_ap_record_t *ap_info = NULL;
+  wifi_network_info_t *result = NULL;
+  bool scan_attempted = false;
+  if (!is_initialized || connect_pending || s_wifi_state == WIFI_STATE_CONNECTING ||
+      s_wifi_state == WIFI_STATE_RECONNECTING) {
+    err = ESP_ERR_INVALID_STATE;
+    goto done;
+  }
 
   // Start scan
-  esp_err_t err = esp_wifi_scan_start(NULL, true);
+  scan_attempted = true;
+  err = esp_wifi_scan_start(NULL, true);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "WiFi scan start failed: %s", esp_err_to_name(err));
-    return err;
+    goto done;
+  }
+  if (connect_pending) {
+    err = ESP_ERR_INVALID_STATE;
+    goto done;
   }
 
   // Get scan results
   uint16_t ap_count = 0;
-  esp_wifi_scan_get_ap_num(&ap_count);
+  err = esp_wifi_scan_get_ap_num(&ap_count);
+  if (err != ESP_OK)
+    goto done;
 
   if (ap_count == 0) {
     ESP_LOGI(TAG, "No access points found");
-    return ESP_OK;
+    goto done;
   }
+  if (ap_count > WIFI_SCAN_MAX_RECORDS)
+    ap_count = WIFI_SCAN_MAX_RECORDS;
 
-  wifi_ap_record_t *ap_info = malloc(sizeof(wifi_ap_record_t) * ap_count);
+  ap_info = calloc(ap_count, sizeof(*ap_info));
   if (ap_info == NULL) {
     ESP_LOGE(TAG, "Failed to allocate memory for AP records");
-    return ESP_ERR_NO_MEM;
+    err = ESP_ERR_NO_MEM;
+    goto done;
   }
 
-  esp_wifi_scan_get_ap_records(&ap_count, ap_info);
+  err = esp_wifi_scan_get_ap_records(&ap_count, ap_info);
+  if (err != ESP_OK)
+    goto done;
 
   // Allocate memory for network info array
-  *networks = malloc(sizeof(wifi_network_info_t) * ap_count);
-  if (*networks == NULL) {
+  result = calloc(ap_count, sizeof(*result));
+  if (result == NULL) {
     ESP_LOGE(TAG, "Failed to allocate memory for network info");
-    free(ap_info);
-    return ESP_ERR_NO_MEM;
+    err = ESP_ERR_NO_MEM;
+    goto done;
   }
 
   ESP_LOGI(TAG, "Found %d access points:", ap_count);
@@ -318,27 +361,50 @@ esp_err_t wifi_scan_networks(wifi_network_info_t **networks, uint16_t *network_c
   ESP_LOGI(TAG, "----------------------------------------------------");
 
   // Fill network info array
+  uint16_t unique_count = 0;
   for (int i = 0; i < ap_count; i++) {
+    if (ap_info[i].ssid[0] == '\0')
+      continue;
+    int existing = -1;
+    for (int j = 0; j < unique_count; ++j) {
+      if (strcmp(result[j].ssid, (char *)ap_info[i].ssid) == 0) {
+        existing = j;
+        break;
+      }
+    }
+    if (existing >= 0) {
+      result[existing].password_protected |= ap_info[i].authmode != WIFI_AUTH_OPEN;
+      if (ap_info[i].rssi > result[existing].rssi)
+        result[existing].rssi = ap_info[i].rssi;
+      continue;
+    }
+    wifi_network_info_t *network = &result[unique_count++];
     // Copy SSID
-    strncpy((*networks)[i].ssid, (char *)ap_info[i].ssid, sizeof((*networks)[i].ssid) - 1);
-    (*networks)[i].ssid[sizeof((*networks)[i].ssid) - 1] = '\0';
+    strncpy(network->ssid, (char *)ap_info[i].ssid, sizeof(network->ssid) - 1);
 
     // Copy RSSI
-    (*networks)[i].rssi = ap_info[i].rssi;
+    network->rssi = ap_info[i].rssi;
 
     // Determine if password protected
-    (*networks)[i].password_protected = (ap_info[i].authmode != WIFI_AUTH_OPEN);
+    network->password_protected = (ap_info[i].authmode != WIFI_AUTH_OPEN);
 
     // Log network info
-    ESP_LOGI(TAG, "%32s | %4d | %s", (*networks)[i].ssid, (*networks)[i].rssi,
-             (*networks)[i].password_protected ? "Yes" : "No");
+    ESP_LOGI(TAG, "%32s | %4d | %s", network->ssid, network->rssi, network->password_protected ? "Yes" : "No");
   }
 
-  *network_count = ap_count;
-
+  *network_count = unique_count;
+  if (unique_count) {
+    *networks = result;
+    result = NULL;
+  }
+done:
+  // The driver owns a separate AP list, including on allocation/cancel failure.
+  if (scan_attempted)
+    esp_wifi_clear_ap_list();
   free(ap_info);
-  ESP_LOGI(TAG, "WiFi scan completed, returning %d networks", ap_count);
-  return ESP_OK;
+  free(result);
+  xSemaphoreGive(radio_mutex);
+  return err;
 }
 
 // Function to free the network list (call this when done with the scan results)
@@ -349,8 +415,9 @@ void wifi_free_network_list(wifi_network_info_t *networks) {
 }
 
 // Connect to WiFi network with SSID and password
-esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
-  if (ssid == NULL) {
+static esp_err_t connect_to_network_locked(const char *ssid, const char *password, wifi_cancel_fn cancelled,
+                                           void *context) {
+  if (ssid == NULL || strlen(ssid) == 0 || strlen(ssid) > 32 || (password && strlen(password) > 64)) {
     ESP_LOGE(TAG, "SSID cannot be NULL");
     return ESP_ERR_INVALID_ARG;
   }
@@ -361,6 +428,8 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
   }
 
   ESP_LOGI(TAG, "Connecting to WiFi network: %s", ssid);
+  if (cancelled && cancelled(context))
+    return ESP_ERR_TIMEOUT;
 
   // Store credentials for auto-reconnection
   strncpy(s_stored_ssid, ssid, sizeof(s_stored_ssid) - 1);
@@ -383,9 +452,9 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
   };
 
   // Copy SSID and password
-  strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
+  memcpy(wifi_config.sta.ssid, ssid, strlen(ssid));
   if (password != NULL) {
-    strncpy((char *)wifi_config.sta.password, password, sizeof(wifi_config.sta.password) - 1);
+    memcpy(wifi_config.sta.password, password, strlen(password));
   }
 
   // Set WiFi configuration
@@ -411,16 +480,15 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
     return err;
   }
 
-  // Wait for connection result with a timeout and abort check if the update screen is exited
-  extern bool is_update_screen_active(void);
+  // Wait in bounded increments so the owning worker can cancel without touching UI state.
   EventBits_t bits = 0;
   const int check_interval_ms = 200;
   const int max_wait_ms = 30000; // 30 seconds timeout
   int waited_ms = 0;
 
   while (waited_ms < max_wait_ms) {
-    if (!is_update_screen_active()) {
-      ESP_LOGW(TAG, "WiFi connection aborted: update screen is no longer active");
+    if (cancelled && cancelled(context)) {
+      ESP_LOGW(TAG, "WiFi connection cancelled");
       s_wifi_state = WIFI_STATE_DISCONNECTED;
       return ESP_ERR_TIMEOUT;
     }
@@ -431,6 +499,11 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
       break;
     }
     waited_ms += check_interval_ms;
+  }
+
+  if (cancelled && cancelled(context)) {
+    s_wifi_state = WIFI_STATE_DISCONNECTED;
+    return ESP_ERR_TIMEOUT;
   }
 
   if (bits & WIFI_CONNECTED_BIT) {
@@ -446,6 +519,50 @@ esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
     s_wifi_state = WIFI_STATE_DISCONNECTED;
     return ESP_ERR_TIMEOUT;
   }
+}
+
+esp_err_t wifi_connect_to_network_cancellable(const char *ssid, const char *password, wifi_cancel_fn cancelled,
+                                              void *context) {
+  if (!is_initialized || !radio_mutex)
+    return ESP_ERR_WIFI_NOT_INIT;
+  // Only one connect request can claim priority over an optional scan.
+  if (atomic_exchange(&connect_pending, true))
+    return ESP_ERR_INVALID_STATE;
+  TickType_t started = xTaskGetTickCount();
+  while (xSemaphoreTake(radio_mutex, 0) != pdTRUE) {
+    if (cancelled && cancelled(context)) {
+      connect_pending = false;
+      return ESP_ERR_TIMEOUT;
+    }
+    esp_wifi_scan_stop();
+    if (xTaskGetTickCount() - started >= pdMS_TO_TICKS(1000)) {
+      connect_pending = false;
+      return ESP_ERR_TIMEOUT;
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+  esp_err_t err =
+      is_initialized ? connect_to_network_locked(ssid, password, cancelled, context) : ESP_ERR_WIFI_NOT_INIT;
+  if (err != ESP_OK) {
+    // Do not let an abandoned join or its retry timer revive after cancellation.
+    s_wifi_state = WIFI_STATE_DISCONNECTED;
+    if (s_reconnect_timer)
+      xTimerStop(s_reconnect_timer, 0);
+    esp_wifi_disconnect();
+  }
+  connect_pending = false;
+  xSemaphoreGive(radio_mutex);
+  return err;
+}
+
+static bool update_cancelled(void *context) {
+  (void)context;
+  extern bool is_update_screen_active(void);
+  return !is_update_screen_active();
+}
+
+esp_err_t wifi_connect_to_network(const char *ssid, const char *password) {
+  return wifi_connect_to_network_cancellable(ssid, password, update_cancelled, NULL);
 }
 
 // Disconnect from WiFi
@@ -478,6 +595,10 @@ esp_err_t wifi_disconnect(void) {
 // Uninitialize WiFi and clean up resources
 esp_err_t wifi_uninit(void) {
   ESP_LOGI(TAG, "Uninitializing WiFi");
+  if (!is_initialized)
+    return ESP_OK;
+  if (!radio_mutex || xSemaphoreTake(radio_mutex, pdMS_TO_TICKS(1000)) != pdTRUE)
+    return ESP_ERR_TIMEOUT;
 
   // Stop the reconnection timer before tearing the driver down
   if (s_reconnect_timer != NULL) {
@@ -487,18 +608,23 @@ esp_err_t wifi_uninit(void) {
   // Clear stored credentials
   s_stored_ssid[0] = '\0';
   s_stored_password[0] = '\0';
-  s_auto_reconnect_enabled = true; // Reset to default
+  s_auto_reconnect_enabled = false; // Keep callbacks from reconnecting during teardown
+  s_wifi_state = WIFI_STATE_DISCONNECTED;
 
   // Stop WiFi
   esp_err_t err = esp_wifi_stop();
-  if (err != ESP_OK) {
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STARTED && err != ESP_ERR_WIFI_NOT_INIT) {
     ESP_LOGE(TAG, "WiFi stop failed: %s", esp_err_to_name(err));
+    xSemaphoreGive(radio_mutex);
+    return err;
   }
 
   // Deinitialize WiFi
   err = esp_wifi_deinit();
-  if (err != ESP_OK) {
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
     ESP_LOGE(TAG, "WiFi deinit failed: %s", esp_err_to_name(err));
+    xSemaphoreGive(radio_mutex);
+    return err;
   }
 
   // Destroy the netif and event loop so a following BLE (re)init gets its
@@ -511,6 +637,7 @@ esp_err_t wifi_uninit(void) {
 
   ESP_LOGI(TAG, "WiFi uninitialized");
   is_initialized = false;
+  xSemaphoreGive(radio_mutex);
   return ESP_OK;
 }
 

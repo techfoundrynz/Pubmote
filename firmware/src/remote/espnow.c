@@ -13,6 +13,7 @@
 
 static const char *TAG = "PUBREMOTE-ESPNOW-DRV";
 static bool is_initialized = false;
+static bool shutting_down = false;
 static comms_recv_cb_t registered_recv_cb = NULL;
 static comms_send_cb_t registered_send_cb = NULL;
 
@@ -29,6 +30,8 @@ static void on_espnow_sent(const esp_now_send_info_t *tx_info, esp_now_send_stat
 }
 
 static esp_err_t espnow_driver_init(void) {
+  if (is_initialized && shutting_down)
+    return ESP_ERR_INVALID_STATE;
   if (is_initialized) {
     return ESP_OK;
   }
@@ -36,14 +39,17 @@ static esp_err_t espnow_driver_init(void) {
   // Initialize NVS (handle case where already initialized)
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_erase();
+    if (ret != ESP_OK)
+      return ret;
     ret = nvs_flash_init();
   }
   else if (ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGI(TAG, "NVS already initialized");
     ret = ESP_OK;
   }
-  ESP_ERROR_CHECK(ret);
+  if (ret != ESP_OK)
+    return ret;
 
   // NOTE: no esp_netif here. ESP-NOW is a raw-frame protocol and needs no IP
   // stack - and creating the default STA netif would spawn the lwip TCP/IP
@@ -63,23 +69,30 @@ static esp_err_t espnow_driver_init(void) {
 
   // Initialize WiFi (should be fresh after wifi_uninit())
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-  esp_err_t wifi_init_ret = esp_wifi_init(&cfg);
+  wifi_mode_t existing_mode;
+  esp_err_t wifi_init_ret = esp_wifi_get_mode(&existing_mode);
+  if (wifi_init_ret == ESP_ERR_WIFI_NOT_INIT)
+    wifi_init_ret = esp_wifi_init(&cfg);
   if (wifi_init_ret != ESP_OK && wifi_init_ret != ESP_ERR_INVALID_STATE) {
     ESP_LOGE(TAG, "Failed to initialize WiFi: %s", esp_err_to_name(wifi_init_ret));
-    return wifi_init_ret;
+    ret = wifi_init_ret;
+    goto fail;
   }
   if (wifi_init_ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGW(TAG, "WiFi already initialized (unexpected after wifi_uninit())");
   }
 
   // Set WiFi mode to station for ESP-NOW
-  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+  ret = esp_wifi_set_mode(WIFI_MODE_STA);
+  if (ret != ESP_OK)
+    goto fail;
 
   // Start WiFi
   esp_err_t wifi_start_ret = esp_wifi_start();
   if (wifi_start_ret != ESP_OK && wifi_start_ret != ESP_ERR_INVALID_STATE) {
     ESP_LOGE(TAG, "Failed to start WiFi: %s", esp_err_to_name(wifi_start_ret));
-    return wifi_start_ret;
+    ret = wifi_start_ret;
+    goto fail;
   }
   if (wifi_start_ret == ESP_ERR_INVALID_STATE) {
     ESP_LOGW(TAG, "WiFi already started (unexpected after wifi_uninit())");
@@ -109,43 +122,66 @@ static esp_err_t espnow_driver_init(void) {
   if (chan_ret != ESP_OK) {
     ESP_LOGW(TAG, "Channel %d rejected (%s), falling back to 1", pairing_settings.channel, esp_err_to_name(chan_ret));
     pairing_settings.channel = 1;
-    ESP_ERROR_CHECK(esp_wifi_set_channel(pairing_settings.channel, WIFI_SECOND_CHAN_NONE));
+    ret = esp_wifi_set_channel(pairing_settings.channel, WIFI_SECOND_CHAN_NONE);
+    if (ret != ESP_OK)
+      goto fail;
   }
 
   // Initialize ESP-NOW
-  ESP_ERROR_CHECK(esp_now_init());
+  ret = esp_now_init();
+  if (ret != ESP_OK)
+    goto fail;
 
   // Register callbacks
-  ESP_ERROR_CHECK(esp_now_register_recv_cb(on_espnow_recv));
-  ESP_ERROR_CHECK(esp_now_register_send_cb(on_espnow_sent));
+  ret = esp_now_register_recv_cb(on_espnow_recv);
+  if (ret != ESP_OK)
+    goto fail;
+  ret = esp_now_register_send_cb(on_espnow_sent);
+  if (ret != ESP_OK)
+    goto fail;
 
   ESP_LOGI(TAG, "ESP-NOW initialized successfully");
   is_initialized = true;
   return ESP_OK;
+fail:
+  esp_now_unregister_recv_cb();
+  esp_now_unregister_send_cb();
+  esp_now_deinit();
+  esp_wifi_stop();
+  esp_wifi_deinit();
+  if (event_loop_ret == ESP_OK)
+    esp_event_loop_delete_default();
+  return ret;
 }
 
 static esp_err_t espnow_driver_deinit(void) {
   if (!is_initialized) {
     return ESP_OK;
   }
+  // Remain visible to comms_deinit(), but refuse init's fast path until every
+  // teardown step succeeds. ESP-NOW may already be gone when Wi-Fi stop fails.
+  shutting_down = true;
   esp_now_unregister_recv_cb();
   esp_now_unregister_send_cb();
 
   esp_err_t err = esp_now_deinit();
-  if (err != ESP_OK) {
+  if (err != ESP_OK && err != ESP_ERR_ESPNOW_NOT_INIT) {
     ESP_LOGE(TAG, "esp_now_deinit failed: %s", esp_err_to_name(err));
+    return err;
   }
 
   // Stop WiFi to release controller memory
   err = esp_wifi_stop();
-  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT && err != ESP_ERR_WIFI_NOT_STARTED) {
     ESP_LOGE(TAG, "esp_wifi_stop failed: %s", esp_err_to_name(err));
+    return err;
   }
 
   // Deinitialize WiFi to release driver structures
   err = esp_wifi_deinit();
   if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
     ESP_LOGE(TAG, "esp_wifi_deinit failed: %s", esp_err_to_name(err));
+    return err;
   }
 
   // Release the event loop too (its task stack is internal RAM the BLE
@@ -157,12 +193,15 @@ static esp_err_t espnow_driver_deinit(void) {
 
   ESP_LOGI(TAG, "ESP-NOW deinitialized");
   is_initialized = false;
+  shutting_down = false;
   return ESP_OK;
 }
 
 esp_err_t espnow_prepare_wifi(void) {
   if (!is_initialized)
     return ESP_OK;
+  if (shutting_down)
+    return espnow_driver_deinit();
   esp_now_unregister_recv_cb();
   esp_now_unregister_send_cb();
   esp_err_t err = esp_now_deinit();

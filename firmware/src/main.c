@@ -22,18 +22,15 @@
 #include "remote/orchestrator.h"
 #include "remote/peers.h"
 #include "remote/powermanagement.h"
+#include "remote/radio_session.h"
 #include "remote/receiver.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
 #include "remote/startup.h"
-#include "remote/stats.h"
-#include "remote/test_mode.h"
-#include "remote/time.h"
 #include "remote/transmitter.h"
 #include "remote/vehicle_state.h"
+#include "utilities/diagnostic_log.h"
 #include "utilities/mem_debug.h"
-#include <stdio.h>
-#include <string.h>
 
 static const char *TAG = "PUBREMOTE-MAIN";
 
@@ -59,6 +56,8 @@ static void configure_log_levels(void) {
 
 void app_main(void) {
   configure_log_levels();
+  if (!diagnostic_log_init())
+    ESP_LOGW(TAG, "Diagnostic capture unavailable (PSRAM or mutex allocation failed)");
 
   // Cover the boot window with the task watchdog: until power_management_task
   // exists nothing else could recover from an init step hanging forever
@@ -107,6 +106,7 @@ void app_main(void) {
   CommsType boot_comms_mode = settings_get_active_comms_mode();
   comms_select_driver(boot_comms_mode);
   MEM_MARK("comms driver select");
+  ESP_ERROR_CHECK(radio_session_init());
   comms_init();
   MEM_MARK("comms_init");
   connection_init();

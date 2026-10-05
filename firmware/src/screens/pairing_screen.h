@@ -10,6 +10,7 @@ extern "C"
   void setup_pairing_properties();
   void handle_pairing_action();
   void teardown_pairing_properties();
+  bool pairing_screen_prepare_exit(int destination);
 
 #ifdef __cplusplus
 }

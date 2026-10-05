@@ -1,7 +1,10 @@
 #include "comms.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "utilities/psram_task.h"
 #include "utilities/vesc_utils.h"
 #include <esp_log.h>
+#include <stdatomic.h>
 #include <string.h>
 
 #include "esp_timer.h"
@@ -14,22 +17,28 @@
 
 static const char *TAG = "PUBREMOTE-BLE-DRV";
 
-static bool is_initialized = false;
-static bool is_synced = false;
+static atomic_bool is_initialized = false;
+static atomic_bool is_synced = false;
+static atomic_bool shutting_down = true;
+static atomic_uint session_generation = 1;
+// Kept across controller restarts; never free a mutex a sender may be using.
+static SemaphoreHandle_t tx_mutex = NULL;
+static SemaphoreHandle_t host_queue_mutex = NULL;
+static bool host_stopped = false;
 static comms_recv_cb_t registered_recv_cb = NULL;
 static comms_send_cb_t registered_send_cb = NULL;
 static comms_discovery_cb_t registered_discovery_cb = NULL;
 
-static uint16_t ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
-static uint16_t nus_tx_handle = 0; // Remote writes to this (VESC RX)
-static uint16_t nus_rx_handle = 0; // Remote receives notifies from this (VESC TX)
+static _Atomic uint16_t ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+static _Atomic uint16_t nus_tx_handle = 0; // Remote writes to this (VESC RX)
+static _Atomic uint16_t nus_rx_handle = 0; // Remote receives notifies from this (VESC TX)
 static bool cccd_subscribed = false;
 static bool discovery_complete = false;
 
 // Reconnection tracking
 static uint8_t target_peer_mac[6] = {0};
 static uint8_t target_peer_addr_type = BLE_ADDR_RANDOM;
-static bool has_target_peer = false;
+static atomic_bool has_target_peer = false;
 static esp_timer_handle_t reconnect_timer = NULL;
 
 #define BLE_RECONNECT_FAST_DELAY_US 500000  // First retry after a link drop
@@ -38,10 +47,10 @@ static esp_timer_handle_t reconnect_timer = NULL;
 // Cached connection RSSI (refreshed at most once per second)
 #define BLE_RSSI_POLL_INTERVAL_MS 1000
 static int8_t cached_rssi = -50;
-static TaskHandle_t rssi_poll_task_handle = NULL;
+static _Atomic(TaskHandle_t) rssi_poll_task_handle = NULL;
 // Cooperative shutdown: the task may be blocked inside an HCI command, and a
 // force-deleted owner would leak NimBLE's host locks
-static volatile bool rssi_poll_should_exit = false;
+static atomic_bool rssi_poll_should_exit = false;
 
 // Poll the link RSSI from a dedicated low-priority task. ble_gap_conn_rssi is
 // a blocking HCI command round-trip - under load the response can stall for
@@ -72,7 +81,7 @@ static void rssi_poll_task(void *param) {
 // (Re)arm the reconnect timer. esp_timer_start_once fails silently on an
 // already-armed timer, so always stop it first.
 static void schedule_reconnect(uint64_t delay_us) {
-  if (!reconnect_timer || !has_target_peer) {
+  if (shutting_down || !reconnect_timer || !has_target_peer) {
     return;
   }
   esp_timer_stop(reconnect_timer);
@@ -109,6 +118,11 @@ static void start_scan(void);
 static void stop_scan(void);
 static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len);
 
+static bool current_session(uint16_t conn_handle, void *arg) {
+  return !shutting_down && conn_handle == ble_conn_handle &&
+         (uint32_t)(uintptr_t)arg == atomic_load(&session_generation);
+}
+
 // Forward declarations of GATT callbacks
 static int ble_on_disc_chrs(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_chr *chr,
                             void *arg);
@@ -118,7 +132,8 @@ static int ble_on_write_cccd(uint16_t conn_handle, const struct ble_gatt_error *
 static void subscribe_to_notifications(uint16_t conn_handle, uint16_t val_handle) {
   uint16_t cccd_val = 0x0001; // Enable notifications
   ESP_LOGI(TAG, "Subscribing to notifications on handle %d", val_handle);
-  int rc = ble_gattc_write_flat(conn_handle, val_handle + 1, &cccd_val, sizeof(cccd_val), ble_on_write_cccd, NULL);
+  int rc = ble_gattc_write_flat(conn_handle, val_handle + 1, &cccd_val, sizeof(cccd_val), ble_on_write_cccd,
+                                (void *)(uintptr_t)atomic_load(&session_generation));
   if (rc != 0) {
     ESP_LOGE(TAG, "Failed to write CCCD descriptor; rc=%d", rc);
   }
@@ -140,6 +155,8 @@ static void send_connection_init_dummy(void) {
 
 static int ble_on_write_cccd(uint16_t conn_handle, const struct ble_gatt_error *error, struct ble_gatt_attr *attr,
                              void *arg) {
+  if (!current_session(conn_handle, arg))
+    return 0;
   if (error->status == 0) {
     ESP_LOGI(TAG, "Successfully subscribed to notifications");
     cccd_subscribed = true;
@@ -159,6 +176,8 @@ static int ble_on_write_cccd(uint16_t conn_handle, const struct ble_gatt_error *
 
 static int ble_on_disc_chrs(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_chr *chr,
                             void *arg) {
+  if (!current_session(conn_handle, arg))
+    return 0;
   if (error->status == 0) {
     if (ble_uuid_cmp(&chr->uuid.u, &nus_tx_chr_uuid.u) == 0) {
       nus_tx_handle = chr->val_handle;
@@ -193,10 +212,12 @@ static bool nus_svc_found = false;
 
 static int ble_on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_svc *service,
                            void *arg) {
+  if (!current_session(conn_handle, arg))
+    return 0;
   if (error->status == 0) {
     ESP_LOGI(TAG, "Discovered NUS Service: start_handle=%d, end_handle=%d", service->start_handle, service->end_handle);
     nus_svc_found = true;
-    ble_gattc_disc_all_chrs(conn_handle, service->start_handle, service->end_handle, ble_on_disc_chrs, NULL);
+    ble_gattc_disc_all_chrs(conn_handle, service->start_handle, service->end_handle, ble_on_disc_chrs, arg);
   }
   else if (error->status == BLE_HS_EDONE) {
     ESP_LOGD(TAG, "Service discovery complete");
@@ -217,11 +238,12 @@ static int ble_on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *er
 static void start_service_discovery(uint16_t conn_handle) {
   ESP_LOGI(TAG, "Starting service discovery...");
   nus_svc_found = false;
-  ble_gattc_disc_svc_by_uuid(conn_handle, &nus_svc_uuid.u, ble_on_disc_svc, NULL);
+  ble_gattc_disc_svc_by_uuid(conn_handle, &nus_svc_uuid.u, ble_on_disc_svc,
+                             (void *)(uintptr_t)atomic_load(&session_generation));
 }
 
-static void on_reconnect_timer(void *arg) {
-  if (!has_target_peer || ble_conn_handle != BLE_HS_CONN_HANDLE_NONE || !is_initialized) {
+static void reconnect_on_host(struct ble_npl_event *event) {
+  if (shutting_down || !has_target_peer || ble_conn_handle != BLE_HS_CONN_HANDLE_NONE || !is_initialized) {
     return;
   }
 
@@ -254,7 +276,22 @@ static void on_reconnect_timer(void *arg) {
   }
 }
 
+static struct ble_npl_event reconnect_event;
+
+static void on_reconnect_timer(void *arg) {
+  // Serialize timer-triggered GAP work with discovery and disconnect events.
+  // A separate lock lets deinit drain callbacks without competing with TX.
+  if (!host_queue_mutex || xSemaphoreTake(host_queue_mutex, 0) != pdTRUE)
+    return;
+  if (!shutting_down) {
+    ble_npl_eventq_put(nimble_port_get_dflt_eventq(), &reconnect_event);
+  }
+  xSemaphoreGive(host_queue_mutex);
+}
+
 static int ble_gap_event(struct ble_gap_event *event, void *arg) {
+  if (shutting_down)
+    return 0;
   switch (event->type) {
   case BLE_GAP_EVENT_DISC: {
     struct ble_hs_adv_fields fields;
@@ -326,8 +363,14 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
 
   case BLE_GAP_EVENT_CONNECT: {
     if (event->connect.status == 0) {
+      if (!has_target_peer) {
+        ble_gap_terminate(event->connect.conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+        return 0;
+      }
+      atomic_fetch_add(&session_generation, 1);
       ESP_LOGI(TAG, "BLE Connected successfully! handle=%d", event->connect.conn_handle);
       ble_conn_handle = event->connect.conn_handle;
+      rx_stream_len = 0;
       cccd_subscribed = false;
       discovery_complete = false;
 
@@ -362,6 +405,9 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
     return 0;
 
   case BLE_GAP_EVENT_DISCONNECT: {
+    if (event->disconnect.conn.conn_handle != ble_conn_handle)
+      return 0;
+    atomic_fetch_add(&session_generation, 1);
     ESP_LOGI(TAG, "BLE Disconnected; reason=%d", event->disconnect.reason);
     ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
     nus_tx_handle = 0;
@@ -373,7 +419,8 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
   }
 
   case BLE_GAP_EVENT_NOTIFY_RX: {
-    if (event->notify_rx.attr_handle == nus_rx_handle) {
+    if (has_target_peer && event->notify_rx.conn_handle == ble_conn_handle &&
+        event->notify_rx.attr_handle == nus_rx_handle) {
       uint16_t data_len = OS_MBUF_PKTLEN(event->notify_rx.om);
       uint8_t *data_buf = (uint8_t *)malloc(data_len);
       if (data_buf) {
@@ -501,6 +548,8 @@ static void stop_scan(void) {
 }
 
 static void ble_on_sync(void) {
+  if (shutting_down)
+    return;
   ESP_LOGI(TAG, "BLE Host synced");
   is_synced = true;
 
@@ -531,6 +580,10 @@ static void ble_on_sync(void) {
 static void ble_on_reset(int reason) {
   ESP_LOGE(TAG, "BLE host reset; reason=%d", reason);
   is_synced = false;
+  atomic_fetch_add(&session_generation, 1);
+  ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+  nus_tx_handle = 0;
+  nus_rx_handle = 0;
 }
 
 static void ble_host_task(void *param) {
@@ -543,6 +596,8 @@ static StaticTask_t rssi_poll_task_tcb;
 static StackType_t *rssi_poll_task_stack;
 
 static esp_err_t ble_driver_init(void) {
+  if (is_initialized && shutting_down)
+    return ESP_ERR_INVALID_STATE;
   if (is_initialized) {
     return ESP_OK;
   }
@@ -555,6 +610,15 @@ static esp_err_t ble_driver_init(void) {
            (unsigned long)esp_get_free_heap_size(), (unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned long)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
 
+  if (!tx_mutex)
+    tx_mutex = xSemaphoreCreateMutex();
+  if (!tx_mutex)
+    return ESP_ERR_NO_MEM;
+  if (!host_queue_mutex)
+    host_queue_mutex = xSemaphoreCreateMutex();
+  if (!host_queue_mutex)
+    return ESP_ERR_NO_MEM;
+  host_stopped = false;
   is_synced = false;
   has_target_peer = false;
   scan_cache_count = 0;
@@ -594,17 +658,28 @@ static esp_err_t ble_driver_init(void) {
     ESP_LOGE(TAG, "Failed to set device name; rc=%d", rc);
   }
 
+  ble_npl_event_init(&reconnect_event, reconnect_on_host, NULL);
   esp_timer_create_args_t timer_args = {.callback = on_reconnect_timer, .name = "ble_reconnect"};
-  esp_timer_create(&timer_args, &reconnect_timer);
+  esp_err_t timer_err = esp_timer_create(&timer_args, &reconnect_timer);
+  if (timer_err != ESP_OK) {
+    ble_npl_event_deinit(&reconnect_event);
+    nimble_port_deinit();
+    return timer_err;
+  }
 
+  shutting_down = false;
   nimble_port_freertos_init(ble_host_task);
 
   rssi_poll_should_exit = false;
   rssi_poll_task_handle =
       create_psram_task(rssi_poll_task, "ble_rssi_poll", 3072, NULL, 2, &rssi_poll_task_tcb, &rssi_poll_task_stack);
-  ESP_ERROR_CHECK(rssi_poll_task_handle ? ESP_OK : ESP_FAIL);
-
   is_initialized = true;
+  if (!rssi_poll_task_handle) {
+    // Keep the initialized host visible so radio-session restoration can
+    // drain and deinitialize it before retrying.
+    shutting_down = true;
+    return ESP_ERR_NO_MEM;
+  }
   return ESP_OK;
 }
 
@@ -614,11 +689,20 @@ static esp_err_t ble_driver_deinit(void) {
   }
   ESP_LOGI(TAG, "Deinitializing BLE driver...");
 
+  shutting_down = true;
+  atomic_fetch_add(&session_generation, 1);
   has_target_peer = false;
-  rx_stream_len = 0;
   if (reconnect_timer) {
     esp_timer_stop(reconnect_timer);
   }
+  if (xSemaphoreTake(host_queue_mutex, pdMS_TO_TICKS(1000)) != pdTRUE)
+    return ESP_ERR_TIMEOUT;
+  xSemaphoreGive(host_queue_mutex);
+  if (xSemaphoreTake(tx_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+    ESP_LOGE(TAG, "BLE sender did not drain; keeping host alive");
+    return ESP_ERR_TIMEOUT;
+  }
+  xSemaphoreGive(tx_mutex);
 
   // Stop the RSSI poll task while the host is still running, so an in-flight
   // HCI command can complete - never force-delete it (a task killed inside
@@ -630,27 +714,45 @@ static esp_err_t ble_driver_deinit(void) {
     }
     if (rssi_poll_task_handle != NULL) {
       ESP_LOGE(TAG, "RSSI poll task did not exit in time");
+      return ESP_ERR_TIMEOUT;
     }
   }
 
-  if (ble_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+  if (!host_stopped && ble_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
     ble_gap_terminate(ble_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
     vTaskDelay(pdMS_TO_TICKS(100));
   }
 
-  if (ble_gap_conn_active()) {
+  if (!host_stopped && ble_gap_conn_active()) {
     ESP_LOGI(TAG, "Canceling active connection attempt during deinit");
     ble_gap_conn_cancel();
   }
 
-  ble_gap_disc_cancel();
+  if (!host_stopped)
+    ble_gap_disc_cancel();
 
-  int rc = nimble_port_stop();
+  int rc = host_stopped ? 0 : nimble_port_stop();
+  for (int attempt = 1; rc != 0 && attempt < 3; ++attempt) {
+    ESP_LOGW(TAG, "nimble_port_stop failed (%d), retrying", rc);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    rc = nimble_port_stop();
+  }
   if (rc != 0) {
-    ESP_LOGE(TAG, "nimble_port_stop failed: %d", rc);
+    ESP_LOGE(TAG, "nimble_port_stop failed: %d; refusing WiFi handoff", rc);
+    return ESP_FAIL;
+  }
+  if (!host_stopped) {
+    host_stopped = true;
+    // NPL allocates backing storage for even a static event; release it while
+    // the host memory pool is still alive, after its queue has stopped.
+    ble_npl_event_deinit(&reconnect_event);
   }
 
-  nimble_port_deinit();
+  esp_err_t deinit_err = nimble_port_deinit();
+  if (deinit_err != ESP_OK) {
+    ESP_LOGE(TAG, "nimble_port_deinit failed: %s", esp_err_to_name(deinit_err));
+    return deinit_err;
+  }
 
   // Delete the timer only after the host task is stopped, so no GAP event
   // can race schedule_reconnect() against a freed timer handle
@@ -695,7 +797,10 @@ static esp_err_t ble_driver_register_discovery_cb(comms_discovery_cb_t cb) {
   return ESP_OK;
 }
 
-static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len) {
+static esp_err_t ble_send_locked(const uint8_t *peer_mac, const uint8_t *data, size_t len) {
+  const uint32_t generation = atomic_load(&session_generation);
+  const uint16_t conn_handle = ble_conn_handle;
+  const uint16_t tx_handle = nus_tx_handle;
   if (ble_conn_handle == BLE_HS_CONN_HANDLE_NONE || nus_tx_handle == 0) {
     ESP_LOGD(TAG, "ble_driver_send failed: ble_conn_handle=%d, nus_tx_handle=%d", ble_conn_handle, nus_tx_handle);
     if (registered_send_cb) {
@@ -724,32 +829,36 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
   }
 
   // Retrieve current ATT MTU of connection (subtract 3 bytes for ATT header)
-  uint16_t mtu = ble_att_mtu(ble_conn_handle);
+  uint16_t mtu = ble_att_mtu(conn_handle);
   size_t max_payload = (mtu > 3) ? (mtu - 3) : 20;
 
   size_t sent_bytes = 0;
   esp_err_t result_err = ESP_OK;
 
   while (sent_bytes < tx_len) {
+    if (shutting_down || generation != atomic_load(&session_generation) || conn_handle != ble_conn_handle) {
+      result_err = ESP_ERR_INVALID_STATE;
+      break;
+    }
     size_t chunk_len = tx_len - sent_bytes;
     if (chunk_len > max_payload) {
       chunk_len = max_payload;
     }
 
-    int rc = ble_gattc_write_no_rsp_flat(ble_conn_handle, nus_tx_handle, tx_buf + sent_bytes, chunk_len);
+    int rc = ble_gattc_write_no_rsp_flat(conn_handle, tx_handle, tx_buf + sent_bytes, chunk_len);
     if (rc != 0) {
       ESP_LOGW(TAG, "ble_gattc_write_no_rsp_flat chunk failed; rc=%d", rc);
-      if (rc == BLE_HS_ENOTCONN) {
-        ble_conn_handle = BLE_HS_CONN_HANDLE_NONE;
-        nus_tx_handle = 0;
-        nus_rx_handle = 0;
-      }
+      // GAP owns link state; a failed old write must not clear a newer link.
       result_err = ESP_FAIL;
       break;
     }
     sent_bytes += chunk_len;
   }
 
+  if (result_err == ESP_OK &&
+      (shutting_down || generation != atomic_load(&session_generation) || conn_handle != ble_conn_handle)) {
+    result_err = ESP_ERR_INVALID_STATE;
+  }
   if (result_err != ESP_OK) {
     ESP_LOGD(TAG, "ble_gattc_write_no_rsp_flat failed; rc=%d", result_err);
     if (registered_send_cb) {
@@ -764,8 +873,28 @@ static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, s
   return ESP_OK;
 }
 
+static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len) {
+  // Never wait on the host task (the connection-init write runs there too).
+  if (shutting_down || !tx_mutex || xSemaphoreTake(tx_mutex, 0) != pdTRUE) {
+    if (registered_send_cb)
+      registered_send_cb(peer_mac, false);
+    return ESP_ERR_INVALID_STATE;
+  }
+  esp_err_t result;
+  if (shutting_down) {
+    if (registered_send_cb)
+      registered_send_cb(peer_mac, false);
+    result = ESP_ERR_INVALID_STATE;
+  }
+  else {
+    result = ble_send_locked(peer_mac, data, len);
+  }
+  xSemaphoreGive(tx_mutex);
+  return result;
+}
+
 static esp_err_t ble_driver_connect_peer(const uint8_t *peer_mac, uint8_t channel) {
-  if (!is_initialized) {
+  if (!is_initialized || shutting_down) {
     return ESP_ERR_INVALID_STATE;
   }
 
@@ -776,7 +905,6 @@ static esp_err_t ble_driver_connect_peer(const uint8_t *peer_mac, uint8_t channe
 
   memcpy(target_peer_mac, peer_mac, 6);
   has_target_peer = true;
-  rx_stream_len = 0;
 
   uint8_t addr_type = BLE_ADDR_PUBLIC;
   bool found = false;
@@ -843,7 +971,7 @@ static esp_err_t ble_driver_connect_peer(const uint8_t *peer_mac, uint8_t channe
 static esp_err_t ble_driver_disconnect_peer(const uint8_t *peer_mac) {
   ESP_LOGI(TAG, "BLE disconnecting peer");
   has_target_peer = false;
-  rx_stream_len = 0;
+  atomic_fetch_add(&session_generation, 1);
   if (reconnect_timer) {
     esp_timer_stop(reconnect_timer);
   }

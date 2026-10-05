@@ -139,7 +139,9 @@ esp_err_t comms_select_driver(CommsType type) {
 
   bool was_init = comms_is_initialized();
   if (was_init) {
-    comms_deinit();
+    esp_err_t err = comms_deinit();
+    if (err != ESP_OK)
+      return err;
   }
 
   active_driver = target;

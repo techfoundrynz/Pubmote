@@ -5,6 +5,7 @@
 #include "remote/led.h"
 #include "remote/settings.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
 
 static const char *TAG = "PUBREMOTE-SETTINGS_SCREEN";
 
@@ -148,13 +149,20 @@ extern "C" void handle_settings_save() {
     float v = state.get_theme_l();
     device_settings.theme_color = hsv_to_rgb(h, s, v);
 
-    save_device_settings();
-    display_set_bl_level(device_settings.bl_level);
-    display_set_rotation(device_settings.screen_rotation);
-    apply_theme_settings();
-    led_apply_mode();
-
-    // Navigate back to Menu Screen
-    state.set_screen(Screen::Menu);
+    ui_operation_start(
+        "Saving settings...",
+        []() {
+          esp_err_t result = save_device_settings();
+          if (result == ESP_OK) {
+            display_set_bl_level(device_settings.bl_level);
+            led_apply_mode();
+          }
+          return result;
+        },
+        []() {
+          display_set_rotation(device_settings.screen_rotation);
+          apply_theme_settings();
+          get_slint_window()->global<UiState>().set_screen(Screen::Menu);
+        });
   });
 }

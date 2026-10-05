@@ -14,6 +14,7 @@
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
 extern "C"
 {
 #include "lauxlib.h"
@@ -38,6 +39,8 @@ static int catalog_count, selected = -1;
 static uint32_t best_score;
 static char score_key[16];
 static bool drawing;
+static bool exit_saved = false;
+static void start_game(char *source, size_t length);
 static const char *callback_name = "startup";
 static InputRepeat game_repeat;
 static slint::Image textures[16];
@@ -489,17 +492,24 @@ static void key(int kind) {
   });
 }
 extern "C" void game_refresh_catalog(void) {
-  catalog_count = game_store_list(catalog, GAME_MAX_INSTALLED);
-  // This list is tiny; insertion sort also avoids GCC's std::sort small-array warning.
-  for (int i = 1; i < catalog_count; ++i) {
-    for (int j = i; j > 0 && strcmp(catalog[j].title, catalog[j - 1].title) < 0; --j)
-      std::swap(catalog[j], catalog[j - 1]);
-  }
-  auto entries = std::make_shared<slint::VectorModel<slint::SharedString>>();
-  for (int i = 0; i < catalog_count; i++)
-    entries->push_back(slint::SharedString(catalog[i].title));
-  if (ui())
-    ui()->set_installed_games(entries);
+  ui_operation_start(
+      "Loading games...",
+      []() {
+        catalog_count = game_store_list(catalog, GAME_MAX_INSTALLED);
+        return ESP_OK;
+      },
+      []() {
+        // This list is tiny; insertion sort also avoids GCC's std::sort small-array warning.
+        for (int i = 1; i < catalog_count; ++i) {
+          for (int j = i; j > 0 && strcmp(catalog[j].title, catalog[j - 1].title) < 0; --j)
+            std::swap(catalog[j], catalog[j - 1]);
+        }
+        auto entries = std::make_shared<slint::VectorModel<slint::SharedString>>();
+        for (int i = 0; i < catalog_count; i++)
+          entries->push_back(slint::SharedString(catalog[i].title));
+        if (ui())
+          ui()->set_installed_games(entries);
+      });
 }
 extern "C" void handle_game_launch(int index) {
   if (index < 0 || index >= catalog_count || !ui())
@@ -510,6 +520,7 @@ extern "C" void handle_game_launch(int index) {
 extern "C" void setup_game_properties(void) {
   if (!ui() || selected < 0 || selected >= catalog_count)
     return;
+  exit_saved = false;
   active = catalog[selected];
   for (auto &image : textures)
     image = slint::Image();
@@ -540,15 +551,32 @@ extern "C" void setup_game_properties(void) {
     for (int i = 0; i < 7; ++i)
       snprintf(score_key + 1 + i * 2, 3, "%02x", digest[i]);
   }
-  nvs_read_int(score_key, &best_score);
-  size_t length = 0;
-  char *source = game_store_read(active.id, &length);
-  game_info_t info;
-  if (!source || !game_store_metadata(source, length, &info) || strcmp(info.id, active.id)) {
-    free(source);
-    stop_vm("Game package is missing or incompatible");
-    return;
-  }
+  struct Package {
+    char *source = nullptr;
+    size_t length = 0;
+    ~Package() {
+      free(source);
+    }
+  };
+  auto package = std::make_shared<Package>();
+  ui_operation_start(
+      "Loading game...",
+      [package]() {
+        nvs_read_int(score_key, &best_score);
+        package->source = game_store_read(active.id, &package->length);
+        game_info_t info;
+        return package->source && game_store_metadata(package->source, package->length, &info) &&
+                       !strcmp(info.id, active.id)
+                   ? ESP_OK
+                   : ESP_ERR_INVALID_STATE;
+      },
+      [package]() {
+        char *source = package->source;
+        package->source = nullptr;
+        start_game(source, package->length);
+      });
+}
+static void start_game(char *source, size_t length) {
   allocated = 0;
 #if LUA_VERSION_NUM >= 505
   vm = lua_newstate(lua_alloc, nullptr, esp_random());
@@ -589,7 +617,7 @@ extern "C" void setup_game_properties(void) {
   render();
 }
 extern "C" void handle_game_tick(void) {
-  if (!function("update"))
+  if (ui_processing_active() || !function("update"))
     return;
   int64_t now = esp_timer_get_time();
   int64_t ms = (now - last_tick) / 1000;
@@ -609,7 +637,7 @@ extern "C" void handle_game_tick(void) {
 }
 extern "C" void handle_game_event(int kind, float x, float y) {
   reset_sleep_timer();
-  if (!function("event"))
+  if (ui_processing_active() || !function("event"))
     return;
   lua_pushinteger(vm, kind);
   lua_pushnumber(vm, x);
@@ -622,12 +650,6 @@ extern "C" void handle_game_event(int kind, float x, float y) {
   }
 }
 extern "C" void teardown_game_properties(void) {
-  if (active.id[0]) {
-    uint32_t stored = 0;
-    nvs_read_int(score_key, &stored);
-    if (best_score > stored)
-      nvs_write_int(score_key, best_score);
-  }
   stop_vm(nullptr);
   active = {};
   // Keep displayed rows through Slint's exit animation; VM memory is freed now.
@@ -637,4 +659,23 @@ extern "C" void handle_game_back(void) {
     if (ui())
       ui()->set_screen(Screen::Games);
   });
+}
+
+extern "C" bool game_screen_prepare_exit(int target) {
+  if (exit_saved || !active.id[0] || best_score == 0)
+    return false;
+  const std::string key = score_key;
+  const uint32_t score = best_score;
+  ui_operation_start(
+      "Saving game score...",
+      [key, score]() {
+        uint32_t stored = 0;
+        nvs_read_int(key.c_str(), &stored);
+        return score > stored ? nvs_write_int(key.c_str(), score) : ESP_OK;
+      },
+      [target]() {
+        exit_saved = true;
+        ui()->set_screen(static_cast<Screen>(target));
+      });
+  return true;
 }

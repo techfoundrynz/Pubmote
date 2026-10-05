@@ -1,6 +1,7 @@
 /* oxlint-disable no-control-regex */
 import { ESPLoader, Transport, LoaderOptions } from 'esptool-js';
 import type { SettingsTransport } from './settingsProtocol';
+import { parseDiagnostics } from './diagnosticsProtocol';
 import { delay } from '../utils/delay';
 import { LogEntry, TerminalService } from './terminal';
 import { FirmwareFiles } from '../types';
@@ -936,6 +937,8 @@ export class ESPService {
         }),
     );
   };
+
+  getDiagnostics = async () => parseDiagnostics(await this.executeCommand('diagnostics', 6000));
 
   getCompletions = async (prefix: string): Promise<string[]> => {
     // Don't autocomplete if empty or just whitespace

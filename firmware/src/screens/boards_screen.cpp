@@ -4,6 +4,7 @@
 #include "remote/display.h"
 #include "remote/settings.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
 
 static const char *TAG = "PUBREMOTE-BOARDS_SCREEN";
 
@@ -23,13 +24,20 @@ extern "C" void setup_boards_properties() {
     state.on_confirm_dialog_accepted([]() {
       slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_show_confirm_dialog(false); });
 
-      if (pending_delete_idx != -1) {
-        ESP_LOGI(TAG, "Confirming deletion of board at index %d", pending_delete_idx);
-        if (delete_paired_device_index(pending_delete_idx)) {
-          connection_connect_to_default_peer();
-          setup_boards_properties();
-        }
-        pending_delete_idx = -1;
+      const int index = pending_delete_idx;
+      pending_delete_idx = -1;
+      if (index >= 0) {
+        ui_operation_start(
+            "Removing board...",
+            [index]() {
+              if (!delete_paired_device_index(index))
+                return ESP_ERR_INVALID_ARG;
+              esp_err_t result = connection_switch_comms_mode(settings_get_active_comms_mode());
+              if (result == ESP_OK)
+                connection_connect_to_default_peer();
+              return result;
+            },
+            []() { setup_boards_properties(); });
       }
     });
 
@@ -68,18 +76,17 @@ extern "C" void setup_boards_properties() {
 
 extern "C" void handle_select_board(int idx) {
   ESP_LOGI(TAG, "Selected board at index %d", idx);
-  if (set_active_paired_device(idx)) {
-    // Switch active driver depending on selected board connection mode.
-    CommsType mode = settings_get_active_comms_mode();
-    ESP_LOGI(TAG, "Selected board, switching active comms mode to %d", (int)mode);
-    connection_switch_comms_mode(mode);
-
-    // Reconnect to the selected peer
-    connection_connect_to_default_peer();
-
-    // Go back to the Menu Screen
-    slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
-  }
+  ui_operation_start(
+      "Connecting to board...",
+      [idx]() {
+        if (!set_active_paired_device(idx))
+          return ESP_ERR_INVALID_ARG;
+        esp_err_t result = connection_switch_comms_mode(settings_get_active_comms_mode());
+        if (result == ESP_OK)
+          connection_connect_to_default_peer();
+        return result;
+      },
+      []() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
 }
 
 extern "C" void handle_delete_board(int idx) {
@@ -124,9 +131,9 @@ extern "C" void handle_boards_pair_new() {
         state.set_show_confirm_dialog(false);
 
         ESP_LOGI(TAG, "User selected ESP-NOW pairing");
-        connection_switch_comms_mode(COMMS_TYPE_ESPNOW);
-
-        state.set_screen(Screen::Pairing);
+        ui_operation_start(
+            "Starting ESP-NOW...", []() { return connection_switch_comms_mode(COMMS_TYPE_ESPNOW); },
+            []() { get_slint_window()->global<UiState>().set_screen(Screen::Pairing); });
       });
     });
 
@@ -136,9 +143,9 @@ extern "C" void handle_boards_pair_new() {
         state.set_show_confirm_dialog(false);
 
         ESP_LOGI(TAG, "User selected BLE pairing");
-        connection_switch_comms_mode(COMMS_TYPE_BLE);
-
-        state.set_screen(Screen::Pairing);
+        ui_operation_start(
+            "Starting Bluetooth...", []() { return connection_switch_comms_mode(COMMS_TYPE_BLE); },
+            []() { get_slint_window()->global<UiState>().set_screen(Screen::Pairing); });
       });
     });
 

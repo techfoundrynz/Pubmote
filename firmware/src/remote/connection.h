@@ -28,7 +28,8 @@ extern "C"
 
   void connection_update_state(ConnectionState state);
   void connection_init();
-  void connection_deinit();
+  esp_err_t connection_start(void);
+  esp_err_t connection_deinit(void);
   void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel);
   void connection_connect_to_default_peer();
   esp_err_t connection_switch_comms_mode(CommsType type);
