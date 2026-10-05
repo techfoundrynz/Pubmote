@@ -37,6 +37,7 @@
 #include "screens/stats_screen.h"
 #include "screens/update_screen.h"
 #include "screens/wifi_screen.h"
+#include "utilities/ui_operation.h"
 #include "settings.h"
 #include "slint-esp.h"
 #include "slint_generated/app-window.h"
@@ -309,7 +310,7 @@ static void post_key_event(std::u8string_view key, bool press, bool release) {
   }
   slint::SharedString text(key);
   slint::invoke_from_event_loop([text, press, release]() {
-    if (slint_window) {
+    if (slint_window && !ui_processing_active()) {
       if (press) {
         slint_window->window().dispatch_key_press_event(text);
       }
@@ -355,7 +356,19 @@ static void connect_callbacks() {
   input_router_set_default(INPUT_ACTION_STICK_UP, nav_focus_previous, input_repeat(750, 500));
 
   state.on_screen_changed([](Screen screen) {
-    Screen prev = cached_active_screen.exchange(screen);
+    Screen prev = cached_active_screen.load();
+    if (prev != screen && ui_processing_active()) {
+      get_slint_window()->global<UiState>().set_screen(prev);
+      return;
+    }
+    if (prev != screen && ((prev == Screen::Wifi && wifi_screen_prepare_exit(static_cast<int>(screen))) ||
+                           (prev == Screen::Update && update_screen_prepare_exit(static_cast<int>(screen))) ||
+                           (prev == Screen::Pairing && pairing_screen_prepare_exit(static_cast<int>(screen))) ||
+                           (prev == Screen::Game && game_screen_prepare_exit(static_cast<int>(screen))))) {
+      get_slint_window()->global<UiState>().set_screen(prev);
+      return;
+    }
+    cached_active_screen.store(screen);
     if (prev != screen) {
       // Exit hooks
       if (prev == Screen::Wifi) {

@@ -7,12 +7,14 @@
 #include "remote/display.h"
 #include "remote/settings.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
 #include <stdio.h>
 
 static const char *TAG = "PUBREMOTE-IMU_CALIBRATION_SCREEN";
 static TaskHandle_t imu_calibration_task_handle = NULL;
 static ImuCalibrationSettings original_imu_calibration;
 static int imu_calibration_step = 1;
+static void calibrate_level(bool advance);
 
 static void update_imu_calibration_ui_strings() {
   slint::invoke_from_event_loop([]() {
@@ -151,32 +153,7 @@ extern "C" void setup_imu_calibration_properties() {
       state.set_imu_calibration_invert_y(imu_calibration.invert_y);
       state.set_imu_calibration_swap_xy(imu_calibration.swap_xy);
 
-      state.on_imu_calibration_calibrate_level([]() {
-        ESP_LOGI(TAG, "Calibrating level offsets...");
-        ImuCalibrationSettings temp = imu_calibration;
-        imu_calibration.accel_x_offset = 0.0f;
-        imu_calibration.accel_y_offset = 0.0f;
-        imu_calibration.accel_z_offset = 0.0f;
-        imu_calibration.invert_x = false;
-        imu_calibration.invert_y = false;
-        imu_calibration.invert_z = false;
-        imu_calibration.swap_xy = false;
-        imu_data_t raw_data = {};
-        imu_driver_get_data(&raw_data);
-        imu_calibration = temp;
-        imu_calibration.accel_x_offset = raw_data.accel_x;
-        imu_calibration.accel_y_offset = raw_data.accel_y;
-        if (raw_data.accel_z < 0.0f) {
-          imu_calibration.invert_z = true;
-          imu_calibration.accel_z_offset = raw_data.accel_z + 1.0f;
-        }
-        else {
-          imu_calibration.invert_z = false;
-          imu_calibration.accel_z_offset = raw_data.accel_z - 1.0f;
-        }
-        ESP_LOGI(TAG, "Level calibrated (in-memory). Offsets: X=%.4f, Y=%.4f, Z=%.4f", imu_calibration.accel_x_offset,
-                 imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);
-      });
+      state.on_imu_calibration_calibrate_level([]() { calibrate_level(false); });
 
       state.on_imu_calibration_toggle_invert_x([]() {
         imu_calibration.invert_x = !imu_calibration.invert_x;
@@ -242,36 +219,7 @@ extern "C" void handle_imu_calibration_primary() {
     update_imu_calibration_ui_strings();
   }
   else if (imu_calibration_step == 2) {
-    ESP_LOGI(TAG, "Calibrating level offsets...");
-    ImuCalibrationSettings temp = imu_calibration;
-    imu_calibration.accel_x_offset = 0.0f;
-    imu_calibration.accel_y_offset = 0.0f;
-    imu_calibration.accel_z_offset = 0.0f;
-    imu_calibration.invert_x = false;
-    imu_calibration.invert_y = false;
-    imu_calibration.invert_z = false;
-    imu_calibration.swap_xy = false;
-
-    imu_data_t raw_data = {};
-    imu_driver_get_data(&raw_data);
-
-    imu_calibration = temp;
-    imu_calibration.accel_x_offset = raw_data.accel_x;
-    imu_calibration.accel_y_offset = raw_data.accel_y;
-    if (raw_data.accel_z < 0.0f) {
-      imu_calibration.invert_z = true;
-      imu_calibration.accel_z_offset = raw_data.accel_z + 1.0f;
-    }
-    else {
-      imu_calibration.invert_z = false;
-      imu_calibration.accel_z_offset = raw_data.accel_z - 1.0f;
-    }
-
-    ESP_LOGI(TAG, "Level calibrated. Offsets: X=%.4f, Y=%.4f, Z=%.4f", imu_calibration.accel_x_offset,
-             imu_calibration.accel_y_offset, imu_calibration.accel_z_offset);
-
-    imu_calibration_step = 3;
-    update_imu_calibration_ui_strings();
+    calibrate_level(true);
   }
   else if (imu_calibration_step == 3) {
     imu_calibration_step = 4;
@@ -279,8 +227,30 @@ extern "C" void handle_imu_calibration_primary() {
   }
   else if (imu_calibration_step == 4) {
     ESP_LOGI(TAG, "IMU Calibration completed. Saving to NVS...");
-    save_imu_calibration();
-
-    slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
+    ui_operation_start(
+        "Saving calibration...", []() { return save_imu_calibration(); },
+        []() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
   }
+}
+
+static void calibrate_level(bool advance) {
+  auto data = std::make_shared<imu_data_t>();
+  ui_operation_start(
+      "Calibrating level...",
+      [data]() {
+        if (!imu_driver_is_initialized())
+          return ESP_ERR_INVALID_STATE;
+        imu_driver_get_raw_data(data.get());
+        return ESP_OK;
+      },
+      [data, advance]() {
+        imu_calibration.accel_x_offset = data->accel_x;
+        imu_calibration.accel_y_offset = data->accel_y;
+        imu_calibration.invert_z = data->accel_z < 0;
+        imu_calibration.accel_z_offset = data->accel_z + (imu_calibration.invert_z ? 1.0f : -1.0f);
+        if (advance) {
+          imu_calibration_step = 3;
+          update_imu_calibration_ui_strings();
+        }
+      });
 }

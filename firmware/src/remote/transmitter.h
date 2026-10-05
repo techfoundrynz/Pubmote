@@ -21,7 +21,8 @@ extern "C"
   } LatencyTestResults;
 
   void transmitter_init();
-  void transmitter_deinit();
+  esp_err_t transmitter_start(void);
+  esp_err_t transmitter_deinit(void);
 
 #ifdef __cplusplus
 }

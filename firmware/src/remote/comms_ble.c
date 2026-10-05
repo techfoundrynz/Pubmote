@@ -673,9 +673,13 @@ static esp_err_t ble_driver_init(void) {
   rssi_poll_should_exit = false;
   rssi_poll_task_handle =
       create_psram_task(rssi_poll_task, "ble_rssi_poll", 3072, NULL, 2, &rssi_poll_task_tcb, &rssi_poll_task_stack);
-  ESP_ERROR_CHECK(rssi_poll_task_handle ? ESP_OK : ESP_FAIL);
-
   is_initialized = true;
+  if (!rssi_poll_task_handle) {
+    // Keep the initialized host visible so radio-session restoration can
+    // drain and deinitialize it before retrying.
+    shutting_down = true;
+    return ESP_ERR_NO_MEM;
+  }
   return ESP_OK;
 }
 

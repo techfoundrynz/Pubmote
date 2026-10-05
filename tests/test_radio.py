@@ -48,13 +48,20 @@ class RadioTests(unittest.TestCase):
                         'static esp_err_t ble_driver_send(const uint8_t *peer_mac, const uint8_t *data, size_t len) {'],
                 'wifi': ['esp_err_t wifi_scan_networks(', 'static esp_err_t connect_to_network_locked(',
                          'esp_err_t wifi_connect_to_network_cancellable('],
+                'radio_session': ['static esp_err_t stop_workers(', 'static esp_err_t start_workers(', 'static esp_err_t begin_session(',
+                                  'static esp_err_t end_session('],
             }.items():
-                path = ROOT / 'firmware/src/remote' / ('comms_ble.c' if name == 'ble' else 'wifi.c')
+                path = ROOT / 'firmware/src/remote' / ('comms_ble.c' if name == 'ble' else f'{name}.c')
                 source = path.read_text(encoding='utf-8')
                 (temporary / f'{name}_functions.inc').write_text(
                     '\n\n'.join(function(source, signature) for signature in signatures), encoding='utf-8')
             comms = (ROOT / 'firmware/src/remote/comms.c').read_text(encoding='utf-8')
             (temporary / 'comms_functions.inc').write_text(function(comms, 'esp_err_t comms_select_driver('), encoding='utf-8')
+            lifecycle = (ROOT / 'firmware/src/remote/radio_session.c').read_text(encoding='utf-8')
+            (temporary / 'radio_reset_functions.inc').write_text(
+                '\n\n'.join(function(lifecycle, signature) for signature in [
+                    'static esp_err_t stop_workers(', 'static esp_err_t start_workers(',
+                    'esp_err_t radio_session_reset_settings(']), encoding='utf-8')
             commands = [
                 [cmake, '-S', str(ROOT / 'tests/radio'), '-B', str(temporary / 'build'),
                  f'-DGENERATED_DIR={temporary.as_posix()}'],

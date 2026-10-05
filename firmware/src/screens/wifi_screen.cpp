@@ -3,15 +3,13 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
-#include "remote/comms.h"
-#include "remote/connection.h"
 #include "remote/display.h"
-#include "remote/receiver.h"
+#include "remote/radio_session.h"
 #include "remote/settings.h"
-#include "remote/transmitter.h"
 #include "remote/wifi.h"
 #include "slint_generated/app-window.h"
 #include "utilities/keypad.h"
+#include "utilities/ui_operation.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -24,6 +22,9 @@ namespace
 std::atomic<bool> active{false}, paused{false}, worker_running{false};
 std::atomic<unsigned> generation{0};
 std::atomic<unsigned> operation{0};
+std::atomic<bool> leaving{false};
+Screen destination = Screen::Menu, return_screen = Screen::Menu;
+void restore_radio();
 QueueHandle_t requests = nullptr;
 struct Request {
   bool scan;
@@ -96,14 +97,6 @@ void input_error(const char *message) {
 }
 void worker(void *context) {
   const unsigned token = static_cast<unsigned>(reinterpret_cast<uintptr_t>(context));
-  receiver_deinit();
-  transmitter_deinit();
-  connection_update_state(CONNECTION_STATE_DISCONNECTED);
-  esp_err_t ready = comms_is_initialized() ? comms_prepare_wifi() : ESP_OK;
-  if (ready == ESP_OK)
-    ready = wifi_init();
-  if (ready != ESP_OK)
-    status(token, operation.load(), "Could not start Wi-Fi. Back restarts the remote.");
   std::string joined_ssid;
   bool saved_ok = true;
   wifi_connection_state_t last_state = WIFI_STATE_DISCONNECTED;
@@ -112,7 +105,7 @@ void worker(void *context) {
     Request request{};
     if (xQueueReceive(requests, &request, pdMS_TO_TICKS(1000)) != pdTRUE) {
       auto connection = wifi_get_connection_state();
-      if (ready == ESP_OK && connection == WIFI_STATE_CONNECTED) {
+      if (connection == WIFI_STATE_CONNECTED) {
         char text[160];
         esp_netif_ip_info_t ip{};
         auto netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
@@ -122,7 +115,7 @@ void worker(void *context) {
                  saved_ok ? "" : "\nCould not save network");
         status(token, revision, text);
       }
-      else if (ready == ESP_OK && connection != last_state) {
+      else if (connection != last_state) {
         status(token, revision,
                connection == WIFI_STATE_RECONNECTING || connection == WIFI_STATE_CONNECTING
                    ? "Connection lost. Reconnecting..."
@@ -135,11 +128,6 @@ void worker(void *context) {
     if (!current_session(token))
       break;
     revision = request.revision;
-    if (ready != ESP_OK) {
-      status(token, revision, "Wi-Fi unavailable. Back restarts the remote.");
-      memset(&request, 0, sizeof(request));
-      continue;
-    }
     if (request.scan) {
       status(token, revision, "Scanning...", true);
       wifi_network_info_t *networks = nullptr;
@@ -197,12 +185,42 @@ void worker(void *context) {
     }
     memset(&request, 0, sizeof(request));
   }
-  if (wifi_is_initialized())
-    wifi_uninit();
   worker_running = false;
-  // Radio tasks were stopped; boot restores the configured transport and peer.
-  esp_restart();
+  restore_radio();
   vTaskDelete(nullptr);
+}
+void restored(esp_err_t result, void *) {
+  slint::invoke_from_event_loop([result]() {
+    ui_processing_end([result]() {
+      leaving = false;
+      if (result == ESP_OK) {
+        paused = false;
+        ui().set_screen(destination);
+      }
+      else {
+        ui().set_wifi_status("Could not restore board radio. Back retries.");
+        ui().set_wifi_busy(true);
+      }
+    });
+  });
+}
+void restore_radio() {
+  esp_err_t result = radio_session_end(restored, nullptr);
+  if (result != ESP_OK)
+    restored(result, nullptr);
+}
+void prepared(esp_err_t result, void *context) {
+  slint::invoke_from_event_loop([]() { ui_processing_end(); });
+  const unsigned token = static_cast<unsigned>(reinterpret_cast<uintptr_t>(context));
+  if (!current_session(token)) {
+    worker_running = false;
+    restore_radio();
+    return;
+  }
+  if (result == ESP_OK && xTaskCreate(worker, "wifi-page", 6144, context, 4, nullptr) == pdPASS)
+    return;
+  worker_running = false;
+  status(token, operation.load(), "Could not start Wi-Fi. Back restores the board radio.", true);
 }
 void submit(const Request &request) {
   if (ui().get_wifi_busy() || !active)
@@ -213,20 +231,24 @@ void submit(const Request &request) {
     ui().set_wifi_status("Not enough memory to start Wi-Fi.");
     return;
   }
-  if (!worker_running) {
-    worker_running = true;
-    paused = true;
-    auto context = reinterpret_cast<void *>(static_cast<uintptr_t>(generation.load()));
-    if (xTaskCreate(worker, "wifi-page", 6144, context, 4, nullptr) != pdPASS) {
-      worker_running = false;
-      paused = false;
-      ui().set_wifi_status("Not enough memory to start Wi-Fi.");
-      return;
-    }
-  }
   Request queued = request;
   queued.revision = ++operation;
   if (xQueueSend(requests, &queued, 0) == pdTRUE) {
+    if (!worker_running) {
+      worker_running = true;
+      paused = true;
+      auto context = reinterpret_cast<void *>(static_cast<uintptr_t>(generation.load()));
+      ui_processing_begin("Starting Wi-Fi...");
+      esp_err_t result = radio_session_begin(prepared, context);
+      if (result != ESP_OK) {
+        ui_processing_end();
+        worker_running = false;
+        paused = false;
+        xQueueReset(requests);
+        ui().set_wifi_status("Could not start Wi-Fi. Try again.");
+        return;
+      }
+    }
     ui().set_wifi_busy(true);
     ui().set_wifi_status(request.scan ? "Starting scan..." : "Connecting...");
   }
@@ -252,14 +274,15 @@ extern "C" void teardown_wifi_properties() {
   close_editor();
   selected_ssid.clear();
   found.clear();
-  if (paused && !worker_running)
-    esp_restart();
 }
 extern "C" void setup_wifi_properties() {
   active = true;
+  leaving = false;
   ++generation;
+  if (requests)
+    xQueueReset(requests);
   ui().set_wifi_busy(false);
-  ui().set_wifi_status("Scanning or connecting pauses your board radio. Back then restarts the remote.");
+  ui().set_wifi_status("Scanning or connecting pauses your board radio. Back reconnects it.");
   refresh_saved_network();
   ui().set_wifi_networks(std::make_shared<slint::VectorModel<WifiNetwork>>());
   close_editor();
@@ -293,14 +316,17 @@ extern "C" void setup_wifi_properties() {
   ui().on_wifi_forget([]() {
     ui().on_confirm_dialog_accepted([]() {
       ui().set_show_confirm_dialog(false);
-      esp_err_t ssid_result = save_wifi_ssid("");
-      esp_err_t password_result = save_wifi_password("");
-      refresh_saved_network();
-      if (ssid_result == ESP_OK && password_result == ESP_OK) {
-        ui().set_wifi_status("Saved network forgotten.");
-      }
-      else
-        ui().set_wifi_status("Could not clear all credentials.");
+      ui_operation_start(
+          "Forgetting network...",
+          []() {
+            esp_err_t result = save_wifi_ssid("");
+            esp_err_t password_result = save_wifi_password("");
+            return result == ESP_OK ? password_result : result;
+          },
+          []() {
+            refresh_saved_network();
+            ui().set_wifi_status("Saved network forgotten.");
+          });
     });
     ui().on_confirm_dialog_rejected([]() { ui().set_show_confirm_dialog(false); });
     ui().set_confirm_dialog_title("Forget network?");
@@ -343,16 +369,26 @@ extern "C" void setup_wifi_properties() {
       connect(selected_ssid, password);
     }
   });
-  ui().on_wifi_back([]() {
-    if (!paused) {
-      ui().set_screen(Screen::Menu);
-      return;
-    }
-    ui().on_confirm_dialog_accepted([]() { esp_restart(); });
-    ui().on_confirm_dialog_rejected([]() { ui().set_show_confirm_dialog(false); });
-    ui().set_confirm_dialog_title("Return to board?");
-    ui().set_confirm_dialog_message("Restart to restore your board connection. Saved Wi-Fi is kept.");
-    ui().set_confirm_dialog_confirm_text("Restart");
-    ui().set_show_confirm_dialog(true);
-  });
+  ui().on_wifi_back([]() { ui().set_screen(return_screen); });
+}
+extern "C" void wifi_return_to_update(void) {
+  return_screen = Screen::Update;
+}
+extern "C" bool wifi_screen_prepare_exit(int target) {
+  if (!paused) {
+    return_screen = Screen::Menu;
+    return false;
+  }
+  destination = static_cast<Screen>(target);
+  if (!leaving.exchange(true)) {
+    active = false;
+    ++generation;
+    close_editor();
+    ui().set_wifi_busy(true);
+    ui().set_wifi_status("Restoring board connection...");
+    ui_processing_begin("Restoring board connection...");
+    if (!worker_running)
+      restore_radio();
+  }
+  return true;
 }

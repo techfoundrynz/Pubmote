@@ -16,6 +16,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <remote/settings.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,7 +27,8 @@ static const char *TAG = "PUBREMOTE-CONNECTION";
 #define TIMEOUT_DURATION_MS 30000
 static uint8_t last_saved_channel = 0;
 
-static TaskHandle_t connection_task_handle = NULL;
+static _Atomic(TaskHandle_t) connection_task_handle = NULL;
+static atomic_bool connection_task_should_exit = false;
 ConnectionState connection_state = CONNECTION_STATE_DISCONNECTED;
 PairingState pairing_state = PAIRING_STATE_UNPAIRED;
 static int64_t last_connection_state_change = 0;
@@ -72,7 +74,7 @@ static void connection_task(void *pvParameters) {
   // connect attempts are async (NimBLE completes them via callback).
   ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
 
-  while (1) {
+  while (!connection_task_should_exit) {
     esp_task_wdt_reset();
     // DISCONNECTED is terminal by design: the remote connects once on boot
     // (connection_init) and after that only on explicit user action (menu
@@ -130,11 +132,10 @@ static void connection_task(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(CONNECTION_TIMER_DELAY_MS));
   }
 
-  // The task will not reach this point as it runs indefinitely
   ESP_LOGI(TAG, "Connection management task ended");
   esp_task_wdt_delete(NULL);
-  vTaskDelete(NULL);
   connection_task_handle = NULL;
+  vTaskDelete(NULL);
 }
 
 void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel) {
@@ -183,18 +184,31 @@ void connection_refresh_pairing_state() {
 }
 
 esp_err_t connection_switch_comms_mode(CommsType type) {
-  if (comms_get_active_type() == type) {
-    return ESP_OK;
-  }
-
+  // This may wait for tasks and the controller; callers must use a worker.
+  esp_err_t err = connection_deinit();
+  if (err != ESP_OK)
+    return err;
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
-  receiver_deinit();
-  transmitter_deinit();
-
-  esp_err_t err = comms_select_driver(type);
-
-  receiver_init();
-  transmitter_init();
+  err = transmitter_deinit();
+  if (err == ESP_OK)
+    err = receiver_deinit();
+  if (err != ESP_OK)
+    return err;
+  err = comms_select_driver(type);
+  if (err == ESP_OK)
+    err = comms_init();
+  if (err != ESP_OK && comms_get_active_type() == type && comms_is_initialized()) {
+    // A partially initialized/stopped host must drain before a retry can start it.
+    esp_err_t cleanup = comms_deinit();
+    if (cleanup == ESP_OK)
+      err = comms_init();
+  }
+  if (err == ESP_OK)
+    err = receiver_start();
+  if (err == ESP_OK)
+    err = transmitter_start();
+  if (err == ESP_OK)
+    err = connection_start();
   return err;
 }
 
@@ -205,30 +219,32 @@ void connection_connect_to_default_peer() {
   }
 }
 
-void connection_init() {
+esp_err_t connection_start(void) {
+  if (connection_task_handle)
+    return connection_task_should_exit ? ESP_ERR_INVALID_STATE : ESP_OK;
   connection_refresh_pairing_state();
 
   // Avoid a redundant NVS write when we reconnect on the same channel we
   // already have saved
   last_saved_channel = pairing_settings.channel;
 
-  // start off in connecting mode
-  if (pairing_state == PAIRING_STATE_PAIRED) {
-    connection_connect_to_default_peer();
-  }
-
-  ESP_ERROR_CHECK(
-      xTaskCreatePinnedToCore(connection_task, "connection_task", 3072, NULL, 20, &connection_task_handle, 0) == pdPASS
-          ? ESP_OK
-          : ESP_FAIL);
+  connection_task_should_exit = false;
+  TaskHandle_t handle = NULL;
+  if (xTaskCreatePinnedToCore(connection_task, "connection_task", 3072, NULL, 20, &handle, 0) != pdPASS)
+    return ESP_ERR_NO_MEM;
+  connection_task_handle = handle;
+  return ESP_OK;
 }
 
-void connection_deinit() {
-  if (connection_task_handle != NULL) {
-    // Unsubscribe from the watchdog first: a deleted-but-subscribed task
-    // leaves a dangling entry that can never be fed and would trip the WDT
-    esp_task_wdt_delete(connection_task_handle);
-    vTaskDelete(connection_task_handle);
-    connection_task_handle = NULL;
+void connection_init(void) {
+  ESP_ERROR_CHECK(connection_start());
+  connection_connect_to_default_peer();
+}
+
+esp_err_t connection_deinit(void) {
+  connection_task_should_exit = true;
+  for (int i = 0; i < 200 && connection_task_handle; ++i) {
+    vTaskDelay(pdMS_TO_TICKS(5));
   }
+  return connection_task_handle ? ESP_ERR_TIMEOUT : ESP_OK;
 }

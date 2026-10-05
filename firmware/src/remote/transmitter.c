@@ -17,6 +17,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <remote/settings.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,8 +35,8 @@ static const char *TAG = "PUBREMOTE-TRANSMITTER";
 #define TX_ERROR_LOG_INTERVAL_MS 1000
 
 static int64_t last_send_time = 0;
-static TaskHandle_t transmitter_task_handle = NULL;
-static volatile bool transmitter_task_should_exit = false;
+static _Atomic(TaskHandle_t) transmitter_task_handle = NULL;
+static atomic_bool transmitter_task_should_exit = false;
 
 static void on_data_sent(const uint8_t *mac_addr, bool success) {
   // This callback runs in WiFi task context!
@@ -60,7 +61,6 @@ static void on_data_sent(const uint8_t *mac_addr, bool success) {
 
 // Function to send ESP-NOW data
 static void transmitter_task(void *pvParameters) {
-  ESP_ERROR_CHECK(comms_register_send_cb(on_data_sent));
   ESP_LOGI(TAG, "Registered TX callback");
 
   ESP_LOGI(TAG, "TX task started");
@@ -260,22 +260,30 @@ static void transmitter_task(void *pvParameters) {
   vTaskDelete(NULL);
 }
 
-void transmitter_init() {
+esp_err_t transmitter_start(void) {
   if (transmitter_task_handle != NULL) {
-    ESP_LOGE(TAG, "Transmitter task still running, not starting a second one");
-    return;
+    return transmitter_task_should_exit ? ESP_ERR_INVALID_STATE : ESP_OK;
   }
 
   transmitter_task_should_exit = false;
   // 4096: the send path carries the wrapped-payload stack buffers of the
   // comms drivers (up to ~400 bytes) on this task's stack
-  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20,
-                                          &transmitter_task_handle, 0) == pdPASS
-                      ? ESP_OK
-                      : ESP_FAIL);
+  TaskHandle_t handle = NULL;
+  esp_err_t err = comms_register_send_cb(on_data_sent);
+  if (err == ESP_OK &&
+      xTaskCreatePinnedToCore(transmitter_task, "transmitter_task", 4096, NULL, 20, &handle, 0) != pdPASS)
+    err = ESP_ERR_NO_MEM;
+  transmitter_task_handle = handle;
+  if (err != ESP_OK)
+    comms_register_send_cb(NULL);
+  return err;
 }
 
-void transmitter_deinit() {
+void transmitter_init(void) {
+  ESP_ERROR_CHECK(transmitter_start());
+}
+
+esp_err_t transmitter_deinit(void) {
   if (transmitter_task_handle != NULL) {
     transmitter_task_should_exit = true;
     for (int i = 0; i < 200 && transmitter_task_handle != NULL; i++) {
@@ -283,6 +291,9 @@ void transmitter_deinit() {
     }
     if (transmitter_task_handle != NULL) {
       ESP_LOGE(TAG, "Transmitter task did not exit in time");
+      return ESP_ERR_TIMEOUT;
     }
   }
+  comms_register_send_cb(NULL);
+  return ESP_OK;
 }

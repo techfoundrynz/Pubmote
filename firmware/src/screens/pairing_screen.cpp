@@ -6,6 +6,8 @@
 #include "remote/led.h"
 #include "remote/settings.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
+#include <array>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -18,37 +20,25 @@ struct DiscoveredBleDevice {
 };
 
 static std::vector<DiscoveredBleDevice> discovered_ble_devices;
+static bool exit_restored = false;
 
 static void on_device_discovered(const uint8_t *mac, const char *name, int rssi) {
-  // Check if we already have it
-  for (const auto &dev : discovered_ble_devices) {
-    if (memcmp(dev.mac, mac, 6) == 0) {
-      return; // Already added
-    }
-  }
-
-  DiscoveredBleDevice new_dev;
-  memcpy(new_dev.mac, mac, 6);
-  new_dev.name = name ? name : "Unknown VESC";
-  discovered_ble_devices.push_back(new_dev);
-
-  ESP_LOGI(TAG, "Discovered BLE device: %s (%02X:%02X:%02X:%02X:%02X:%02X)", new_dev.name.c_str(), mac[0], mac[1],
-           mac[2], mac[3], mac[4], mac[5]);
-
-  // Update Slint UI
-  slint::invoke_from_event_loop([]() {
-    if (!get_slint_window()) {
+  std::array<uint8_t, 6> address;
+  memcpy(address.data(), mac, address.size());
+  slint::invoke_from_event_loop([address, name = std::string(name ? name : "Unknown VESC")]() {
+    if (!is_pairing_screen_active())
       return;
-    }
-    const auto &state = get_slint_window()->global<UiState>();
+    for (const auto &device : discovered_ble_devices)
+      if (memcmp(device.mac, address.data(), address.size()) == 0)
+        return;
+    DiscoveredBleDevice device;
+    memcpy(device.mac, address.data(), address.size());
+    device.name = name;
+    discovered_ble_devices.push_back(std::move(device));
     auto model = std::make_shared<slint::VectorModel<DiscoveredDevice>>();
-    for (size_t i = 0; i < discovered_ble_devices.size(); ++i) {
-      DiscoveredDevice d;
-      d.name = slint::SharedString(discovered_ble_devices[i].name);
-      d.index = (int)i;
-      model->push_back(d);
-    }
-    state.set_discovered_devices(model);
+    for (size_t i = 0; i < discovered_ble_devices.size(); ++i)
+      model->push_back(DiscoveredDevice{discovered_ble_devices[i].name.c_str(), static_cast<int>(i)});
+    get_slint_window()->global<UiState>().set_discovered_devices(model);
   });
 }
 
@@ -58,52 +48,34 @@ static void on_device_discovered(const uint8_t *mac, const char *name, int rssi)
 // attempt can fail under memory pressure (the BLE controller needs large
 // contiguous internal RAM right after a WiFi deinit).
 static void start_ble_scan() {
-  bool ok = comms_is_initialized();
-  if (!ok) {
-    ESP_LOGW(TAG, "Comms driver not initialized - attempting init");
-    ok = comms_init() == ESP_OK;
-  }
-
   discovered_ble_devices.clear();
-  if (ok) {
-    comms_register_discovery_cb(on_device_discovered);
-  }
-
-  slint::invoke_from_event_loop([ok]() {
-    if (!get_slint_window()) {
-      return;
-    }
-    const auto &state = get_slint_window()->global<UiState>();
-    auto model = std::make_shared<slint::VectorModel<DiscoveredDevice>>();
-    state.set_discovered_devices(model);
-    state.set_ble_scan_error(ok ? "" : "Radio failed to start (low memory). Retry, or reboot the remote.");
-  });
+  const auto &state = get_slint_window()->global<UiState>();
+  state.set_discovered_devices(std::make_shared<slint::VectorModel<DiscoveredDevice>>());
+  state.set_ble_scan_error("Scan stopped. Tap Retry.");
+  ui_operation_start(
+      "Starting Bluetooth scan...",
+      []() {
+        comms_disconnect_peer(pairing_settings.remote_addr);
+        esp_err_t result = comms_init();
+        if (result == ESP_OK)
+          result = comms_register_discovery_cb(on_device_discovered);
+        return result;
+      },
+      []() { get_slint_window()->global<UiState>().set_ble_scan_error(""); });
 }
 
 extern "C" void setup_pairing_properties() {
   ESP_LOGI(TAG, "Setting up pairing screen properties");
   led_set_effect_rainbow();
+  exit_restored = false;
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   pairing_state = PAIRING_STATE_UNPAIRED;
-  // Drop any existing link so it can't fight the pairing scan/handshake (for
-  // BLE this also stops the driver's reconnect timer from re-dialing the old
-  // board mid-scan). teardown_pairing_properties restores it if we cancel.
-  comms_disconnect_peer(pairing_settings.remote_addr);
-
-  bool is_ble = comms_get_active_type() == COMMS_TYPE_BLE;
-
-  // ESP-NOW pairing has no scan view; still surface an init failure there
-  bool espnow_ok = true;
-  if (!is_ble && !comms_is_initialized()) {
-    ESP_LOGW(TAG, "Comms driver not initialized on pairing entry - retrying init");
-    espnow_ok = comms_init() == ESP_OK;
-  }
-
-  slint::invoke_from_event_loop([is_ble, espnow_ok]() {
+  const bool is_ble = comms_get_active_type() == COMMS_TYPE_BLE;
+  {
     const auto &state = get_slint_window()->global<UiState>();
     state.set_pairing_code("----");
     state.set_pairing_action_text("Cancel");
-    state.set_pairing_status(espnow_ok ? "Searching for board..." : "Radio init failed - go back and retry");
+    state.set_pairing_status("Searching for board...");
     state.set_ble_scan_error("");
     state.set_is_ble_scan(is_ble);
 
@@ -137,22 +109,21 @@ extern "C" void setup_pairing_properties() {
         });
       });
     }
-  });
-
-  if (is_ble) {
-    start_ble_scan();
   }
+
+  if (is_ble)
+    start_ble_scan();
+  else
+    ui_operation_start("Starting board search...", []() {
+      esp_err_t result = comms_disconnect_peer(pairing_settings.remote_addr);
+      if (result != ESP_OK && result != ESP_ERR_INVALID_STATE)
+        return result;
+      return comms_init();
+    });
 }
 
 extern "C" void handle_pairing_action() {
   ESP_LOGI(TAG, "Pairing cancel action");
-  pairing_state = PAIRING_STATE_UNPAIRED;
-
-  if (comms_get_active_type() == COMMS_TYPE_BLE) {
-    comms_register_discovery_cb(NULL);
-    comms_disconnect_peer(pairing_settings.remote_addr);
-  }
-
   slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Boards); });
 }
 
@@ -164,29 +135,29 @@ extern "C" void teardown_pairing_properties() {
     comms_register_discovery_cb(NULL);
   }
 
-  // Entering this screen force-reset pairing_state and may have switched the
-  // active comms driver for a pairing attempt that never completed. Restore
-  // both from the saved paired devices so a cancelled pairing doesn't leave
-  // the remote unable to reconnect to its existing board.
-  //
-  // Order matters: switch the driver while pairing_state is still UNPAIRED -
-  // it gates connection_task's auto-reconnect, which must not dial a driver
-  // that comms_select_driver is concurrently tearing down.
-  if (get_default_device_index() >= 0) {
-    CommsType saved_mode = settings_get_active_comms_mode();
-    if (comms_get_active_type() != saved_mode) {
-      ESP_LOGI(TAG, "Restoring comms driver to saved board mode %d", (int)saved_mode);
-      connection_switch_comms_mode(saved_mode);
-    }
-  }
-
-  connection_refresh_pairing_state();
-
-  if (pairing_state == PAIRING_STATE_PAIRED) {
-    // Resume the connection to the default board if nothing else already did.
-    // Respect an explicit user disconnect made before entering this screen.
-    if (connection_state == CONNECTION_STATE_DISCONNECTED && connection_get_auto_reconnect()) {
-      connection_connect_to_default_peer();
-    }
-  }
+  discovered_ble_devices.clear();
+}
+extern "C" bool pairing_screen_prepare_exit(int target) {
+  if (exit_restored)
+    return false;
+  ui_operation_start(
+      "Restoring board connection...",
+      []() {
+        comms_register_discovery_cb(nullptr);
+        comms_disconnect_peer(pairing_settings.remote_addr);
+        if (get_default_device_index() >= 0) {
+          esp_err_t result = connection_switch_comms_mode(settings_get_active_comms_mode());
+          if (result != ESP_OK)
+            return result;
+        }
+        connection_refresh_pairing_state();
+        if (pairing_state == PAIRING_STATE_PAIRED && connection_get_auto_reconnect())
+          connection_connect_to_default_peer();
+        return ESP_OK;
+      },
+      [target]() {
+        exit_restored = true;
+        get_slint_window()->global<UiState>().set_screen(static_cast<Screen>(target));
+      });
+  return true;
 }

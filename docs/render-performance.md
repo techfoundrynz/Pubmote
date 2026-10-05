@@ -1289,9 +1289,19 @@ new option names. The flash configuration added a derived mode-value symbol,
 not a faster bus mode. The upgrade does not make the previously rejected
 memory-clock settings stable.
 
-The following decisions apply to the connected Pingumote. Other boards retain
-their own hardware mode and cache settings: Avaspark uses quad PSRAM, and all
-four other board profiles retain 32-byte data-cache lines.
+The following decisions were evaluated on the connected Pingumote. All five
+board profiles now use 64-byte data-cache lines with a 32 KB data cache.
+This is a shared configuration choice; a performance gain from the line size
+alone has not been established on each board. Hardware-specific PSRAM settings
+remain: Avaspark uses quad PSRAM, while the other profiles use octal PSRAM.
+
+Avaspark's Waveshare ESP32-S3-Touch-LCD-1.28 has only
+[2 MB of PSRAM](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.28).
+Keep `CONFIG_SPIRAM_FETCH_INSTRUCTIONS` disabled for this target: the measured
+instruction copy alone needs 2,752,512 bytes (2.625 MiB), exceeding its entire
+PSRAM capacity and aborting during startup. Instructions remain in flash;
+PSRAM stays enabled for application allocations. The instruction-fetch
+optimization below applies to the larger-PSRAM targets.
 
 - Keep CPU at 240 MHz, PSRAM at 80 MHz, and flash at 80 MHz DIO.
 - Octal PSRAM already uses **DDR**. `CONFIG_ESPTOOLPY_FLASH_SAMPLE_MODE_STR`

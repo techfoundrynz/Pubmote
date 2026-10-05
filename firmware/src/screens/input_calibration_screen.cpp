@@ -9,6 +9,7 @@
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
 #include <algorithm>
 #include <stdio.h>
 #include <string.h>
@@ -259,9 +260,9 @@ extern "C" void handle_input_calibration_primary() {
   else if (calibration_step >= CALIBRATION_STEP_DONE) {
     // Save to NVS
     calibration_settings = calibration_data;
-    save_input_calibration();
-
-    slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
+    ui_operation_start(
+        "Saving calibration...", []() { return save_input_calibration(); },
+        []() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
     return;
   }
 

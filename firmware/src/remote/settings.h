@@ -36,14 +36,14 @@ extern "C"
   // Function to read a byte array from NVS
   esp_err_t nvs_read_blob(const char *key, void *value, size_t length);
 
-  void save_device_settings();
+  esp_err_t save_device_settings();
 
-  void save_input_calibration();
+  esp_err_t save_input_calibration();
 
   // Restore the default range for axes whose pin changed
   void reset_axis_calibration(bool reset_x, bool reset_y);
 
-  void save_imu_calibration();
+  esp_err_t save_imu_calibration();
 
   esp_err_t save_pairing_data();
 
@@ -77,7 +77,7 @@ extern "C"
   extern PairingSettings pairing_settings;
   extern ImuCalibrationSettings imu_calibration;
 
-  void save_imu_calibration();
+  esp_err_t save_imu_calibration();
   void settings_apply_imu_calibration(const ImuCalibrationSettings *imu);
   // Persists new paired boards and reconnects to the default one.
   esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, int8_t default_index);

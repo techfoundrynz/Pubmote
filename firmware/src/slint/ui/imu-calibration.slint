@@ -39,6 +39,9 @@ export component ImuCalibrationScreen inherits Page {
     VerticalLayout {
         flick := Flickable {
             vertical-stretch: 1;
+            // Vertical-only: without this the viewport widens to the content
+            // min-width and the whole screen pans sideways
+            viewport-width: self.width;
             viewport-height: body-layout.min-height;
 
             body-layout := VerticalLayout {
@@ -76,6 +79,7 @@ export component ImuCalibrationScreen inherits Page {
                             font-size: Theme.font-12;
                             font-family: Theme.font-mono;
                             horizontal-alignment: center;
+                            wrap: word-wrap;
                         }
 
                         Text {
@@ -84,6 +88,7 @@ export component ImuCalibrationScreen inherits Page {
                             font-size: Theme.font-12;
                             font-family: Theme.font-mono;
                             horizontal-alignment: center;
+                            wrap: word-wrap;
                         }
 
                         Text {
@@ -92,6 +97,7 @@ export component ImuCalibrationScreen inherits Page {
                             font-size: Theme.font-12;
                             font-family: Theme.font-mono;
                             horizontal-alignment: center;
+                            wrap: word-wrap;
                         }
                     }
 

@@ -2,16 +2,16 @@
 #include "config.h"
 #include "esp_log.h"
 #include "esp_system.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/led.h"
 #include "remote/powermanagement.h"
+#include "remote/radio_session.h"
 #include "remote/settings.h"
 #include "remote/stats.h"
 #include "slint_generated/app-window.h"
+#include "utilities/ui_operation.h"
 #include <atomic>
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";
@@ -81,13 +81,19 @@ extern "C" void setup_menu_properties() {
 
   state.on_confirm_dialog_accepted([]() {
     slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_show_confirm_dialog(false); });
-    if (pending_action == PENDING_RESET) {
-      reset_all_settings();
-      esp_restart();
+    const PendingAction action = pending_action;
+    if (action == PENDING_RESET) {
+      ui_operation_start("Resetting settings...", radio_session_reset_settings, []() { esp_restart(); });
     }
-    else if (pending_action == PENDING_SHUTDOWN) {
-      enter_sleep();
+    else if (action == PENDING_SHUTDOWN) {
+      ui_operation_start(
+          "Shutting down...", []() { return ESP_OK; },
+          []() {
+            ui_processing_begin("Shutting down...");
+            enter_sleep();
+          });
     }
+
     pending_action = PENDING_NONE;
   });
 
@@ -122,19 +128,23 @@ extern "C" void setup_menu_properties() {
 
 extern "C" void handle_menu_connect() {
   ESP_LOGI(TAG, "Connect button pressed");
-  if (connection_state == CONNECTION_STATE_DISCONNECTED) {
-    connection_set_auto_reconnect(true);
-    connection_connect_to_default_peer();
-  }
-  else {
-    // Explicit user disconnect: stop auto-reconnect and tear the link down
-    // (for BLE this terminates the connection and stops retry timers)
-    connection_set_auto_reconnect(false);
-    connection_update_state(CONNECTION_STATE_DISCONNECTED);
-    comms_disconnect_peer(pairing_settings.remote_addr);
-  }
-
-  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Stats); });
+  const bool connecting = connection_state == CONNECTION_STATE_DISCONNECTED;
+  ui_operation_start(
+      connecting ? "Connecting to board..." : "Disconnecting...",
+      [connecting]() {
+        if (connecting) {
+          esp_err_t result = connection_switch_comms_mode(comms_get_active_type());
+          if (result != ESP_OK)
+            return result;
+          connection_set_auto_reconnect(true);
+          connection_connect_to_default_peer();
+          return ESP_OK;
+        }
+        connection_set_auto_reconnect(false);
+        connection_update_state(CONNECTION_STATE_DISCONNECTED);
+        return comms_disconnect_peer(pairing_settings.remote_addr);
+      },
+      []() { get_slint_window()->global<UiState>().set_screen(Screen::Stats); });
 }
 
 extern "C" void handle_menu_pocket_mode() {
@@ -145,9 +155,8 @@ extern "C" void handle_menu_pocket_mode() {
   else {
     device_settings.pocket_mode = POCKET_MODE_DISABLED;
   }
-  save_device_settings();
-
-  setup_menu_properties();
+  ui_operation_start(
+      "Saving settings...", []() { return save_device_settings(); }, []() { setup_menu_properties(); });
 }
 
 extern "C" void handle_menu_toggle_hbm() {
@@ -165,17 +174,15 @@ extern "C" void handle_menu_toggle_hbm() {
     device_settings.hbm_mode = HBM_MODE_OFF;
   }
 #endif
-  save_device_settings();
-
-  // Apply immediately: HBM is only active if HBM mode is set to ON
-  if (device_settings.hbm_mode == HBM_MODE_ON) {
-    display_set_hbm(true);
-  }
-  else {
-    display_set_hbm(false);
-  }
-
-  setup_menu_properties(); // update the text
+  ui_operation_start(
+      "Saving display mode...",
+      []() {
+        esp_err_t result = save_device_settings();
+        if (result == ESP_OK)
+          display_set_hbm(device_settings.hbm_mode == HBM_MODE_ON);
+        return result;
+      },
+      []() { setup_menu_properties(); });
 }
 
 extern "C" void handle_menu_toggle_led() {
@@ -184,12 +191,15 @@ extern "C" void handle_menu_toggle_led() {
   }
   device_settings.led_mode = (LedModeOptions)((device_settings.led_mode + 1) % LED_MODE_COUNT);
   ESP_LOGI(TAG, "LED mode button pressed - now %s", led_mode_label(device_settings.led_mode));
-  save_device_settings();
-
-  // Apply immediately so the new mode is visible while still on the menu
-  led_apply_mode();
-
-  setup_menu_properties(); // update the text
+  ui_operation_start(
+      "Saving LED mode...",
+      []() {
+        esp_err_t result = save_device_settings();
+        if (result == ESP_OK)
+          led_apply_mode();
+        return result;
+      },
+      []() { setup_menu_properties(); });
 }
 
 extern "C" void handle_open_settings() {

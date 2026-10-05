@@ -26,6 +26,7 @@ import { FpsOverlay } from "ui/fps-overlay.slint";
 import { ColorSliderGenerator } from "ui/color-slider.slint";
 export { ColorSliderGenerator }
 import { ArcGauge } from "ui/arc-gauge.slint";
+import { ProcessingOverlay } from "ui/processing-overlay.slint";
 import { ConfirmDialog } from "ui/confirm-dialog.slint";
 import { BoardsScreen, PairedBoard } from "ui/boards.slint";
 import { GamesScreen } from "ui/games.slint";
@@ -51,6 +52,9 @@ export enum Screen {
 
 // Single binding surface for the firmware.
 export global UiState {
+    in-out property <string> operation-error: "";
+    in property <bool> processing: false;
+    in property <string> processing-message: "Working...";
     in-out property <Screen> screen: Screen.splash;
     in-out property <int> fps: 0;
     in property <bool> show-fps: false;
@@ -740,4 +744,17 @@ export component AppWindow inherits Window {
         }
         cancelled => { UiState.calibration-prompt = false; }
     }
+    if UiState.operation-error != "": ConfirmDialog {
+        title: "Could not finish";
+        message: UiState.operation-error;
+        confirm-text: "OK";
+        show-cancel: false;
+        confirmed => { UiState.operation-error = ""; }
+    }
+
+    if UiState.processing: ProcessingOverlay {
+        width: 100%; height: 100%;
+        message: UiState.processing-message;
+    }
+
 }

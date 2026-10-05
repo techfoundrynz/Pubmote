@@ -28,5 +28,6 @@ fallback. The console's normal log output is preserved.
 
 The host failure tests are documented in [tests/radio](../tests/radio/README.md).
 On-device verification should include repeated BLE connections/disconnections,
-entry to the updater, and recovery by reboot, while checking control/telemetry
+entry to Wi-Fi setup and the updater, and return to the board without rebooting,
+while checking control/telemetry
 and exported diagnostic counters.

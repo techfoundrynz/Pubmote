@@ -274,6 +274,7 @@ esp_err_t wifi_init(void) {
   esp_wifi_set_max_tx_power(52); // ~14 dBm for balanced power and range
 
   ESP_LOGI(TAG, "WiFi station initialization completed after ESP-NOW transition");
+  s_auto_reconnect_enabled = true;
   is_initialized = true;
   return ESP_OK;
 
@@ -414,8 +415,8 @@ void wifi_free_network_list(wifi_network_info_t *networks) {
 }
 
 // Connect to WiFi network with SSID and password
-static esp_err_t connect_to_network_locked(const char *ssid, const char *password,
-                                          wifi_cancel_fn cancelled, void *context) {
+static esp_err_t connect_to_network_locked(const char *ssid, const char *password, wifi_cancel_fn cancelled,
+                                           void *context) {
   if (ssid == NULL || strlen(ssid) == 0 || strlen(ssid) > 32 || (password && strlen(password) > 64)) {
     ESP_LOGE(TAG, "SSID cannot be NULL");
     return ESP_ERR_INVALID_ARG;
@@ -520,8 +521,8 @@ static esp_err_t connect_to_network_locked(const char *ssid, const char *passwor
   }
 }
 
-esp_err_t wifi_connect_to_network_cancellable(const char *ssid, const char *password,
-                                             wifi_cancel_fn cancelled, void *context) {
+esp_err_t wifi_connect_to_network_cancellable(const char *ssid, const char *password, wifi_cancel_fn cancelled,
+                                              void *context) {
   if (!is_initialized || !radio_mutex)
     return ESP_ERR_WIFI_NOT_INIT;
   // Only one connect request can claim priority over an optional scan.
@@ -540,7 +541,8 @@ esp_err_t wifi_connect_to_network_cancellable(const char *ssid, const char *pass
     }
     vTaskDelay(pdMS_TO_TICKS(10));
   }
-  esp_err_t err = is_initialized ? connect_to_network_locked(ssid, password, cancelled, context) : ESP_ERR_WIFI_NOT_INIT;
+  esp_err_t err =
+      is_initialized ? connect_to_network_locked(ssid, password, cancelled, context) : ESP_ERR_WIFI_NOT_INIT;
   if (err != ESP_OK) {
     // Do not let an abandoned join or its retry timer revive after cancellation.
     s_wifi_state = WIFI_STATE_DISCONNECTED;
@@ -606,18 +608,23 @@ esp_err_t wifi_uninit(void) {
   // Clear stored credentials
   s_stored_ssid[0] = '\0';
   s_stored_password[0] = '\0';
-  s_auto_reconnect_enabled = true; // Reset to default
+  s_auto_reconnect_enabled = false; // Keep callbacks from reconnecting during teardown
+  s_wifi_state = WIFI_STATE_DISCONNECTED;
 
   // Stop WiFi
   esp_err_t err = esp_wifi_stop();
-  if (err != ESP_OK) {
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STARTED && err != ESP_ERR_WIFI_NOT_INIT) {
     ESP_LOGE(TAG, "WiFi stop failed: %s", esp_err_to_name(err));
+    xSemaphoreGive(radio_mutex);
+    return err;
   }
 
   // Deinitialize WiFi
   err = esp_wifi_deinit();
-  if (err != ESP_OK) {
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
     ESP_LOGE(TAG, "WiFi deinit failed: %s", esp_err_to_name(err));
+    xSemaphoreGive(radio_mutex);
+    return err;
   }
 
   // Destroy the netif and event loop so a following BLE (re)init gets its

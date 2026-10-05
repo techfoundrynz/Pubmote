@@ -19,23 +19,29 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
 static const char *TAG = "PUBREMOTE-RECEIVER";
 #define RX_QUEUE_SIZE 10
 
-static TaskHandle_t receiver_task_handle = NULL;
+static _Atomic(TaskHandle_t) receiver_task_handle = NULL;
 static QueueHandle_t comms_queue = NULL;
+static SemaphoreHandle_t queue_mutex = NULL;
 // Cooperative shutdown: the task must exit at its loop boundary, never be
 // force-deleted (it could be holding channel_mutex mid change_channel, and a
 // killed owner leaks a non-recursive mutex forever)
-static volatile bool receiver_task_should_exit = false;
+static atomic_bool receiver_task_should_exit = false;
 
 static void on_comms_data_recv(const uint8_t *src_mac, const uint8_t *data, int len, uint8_t channel, int rssi) {
   // This callback runs in WiFi/BLE host task context!
   ESP_LOGD(TAG, "RECEIVED");
-  if (len <= 0 || comms_queue == NULL) {
+  if (len <= 0 || !queue_mutex || xSemaphoreTake(queue_mutex, 0) != pdTRUE) {
+    return;
+  }
+  if (!comms_queue) {
+    xSemaphoreGive(queue_mutex);
     return;
   }
 
@@ -44,6 +50,7 @@ static void on_comms_data_recv(const uint8_t *src_mac, const uint8_t *data, int 
   evt.data = malloc(len);
   if (evt.data == NULL) {
     ESP_LOGE(TAG, "RX allocation failed (%d bytes)", len);
+    xSemaphoreGive(queue_mutex);
     return;
   }
   memcpy(evt.data, data, len);
@@ -69,6 +76,7 @@ static void on_comms_data_recv(const uint8_t *src_mac, const uint8_t *data, int 
     ESP_LOGE(TAG, "Queue send failed");
     free(evt.data);
   }
+  xSemaphoreGive(queue_mutex);
 }
 
 static void process_data(comms_event_t evt) {
@@ -231,8 +239,6 @@ static void change_channel(uint8_t chan, bool is_pairing) {
 }
 
 static void receiver_task(void *pvParameters) {
-  comms_queue = xQueueCreate(RX_QUEUE_SIZE, sizeof(comms_event_t));
-  ESP_ERROR_CHECK(comms_register_recv_cb(on_comms_data_recv));
   ESP_LOGI(TAG, "Registered RX callback");
   comms_event_t evt;
   // Hop through channels if in pairing mode, connecting, or stuck reconnecting
@@ -290,21 +296,43 @@ static void receiver_task(void *pvParameters) {
   vTaskDelete(NULL);
 }
 
-void receiver_init() {
+esp_err_t receiver_start(void) {
   if (receiver_task_handle != NULL) {
-    ESP_LOGE(TAG, "Receiver task still running, not starting a second one");
-    return;
+    return receiver_task_should_exit ? ESP_ERR_INVALID_STATE : ESP_OK;
   }
-
+  if (!queue_mutex)
+    queue_mutex = xSemaphoreCreateMutex();
+  if (!queue_mutex)
+    return ESP_ERR_NO_MEM;
+  if (xSemaphoreTake(queue_mutex, pdMS_TO_TICKS(1000)) != pdTRUE)
+    return ESP_ERR_TIMEOUT;
+  if (!comms_queue)
+    comms_queue = xQueueCreate(RX_QUEUE_SIZE, sizeof(comms_event_t));
+  if (!comms_queue) {
+    xSemaphoreGive(queue_mutex);
+    return ESP_ERR_NO_MEM;
+  }
   ESP_LOGI(TAG, "Starting receiver task");
   receiver_task_should_exit = false;
-  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(receiver_task, "receiver_task", 4096, NULL, 20, &receiver_task_handle, 0) ==
-                          pdPASS
-                      ? ESP_OK
-                      : ESP_FAIL);
+  TaskHandle_t handle = NULL;
+  esp_err_t err = comms_register_recv_cb(on_comms_data_recv);
+  if (err == ESP_OK && xTaskCreatePinnedToCore(receiver_task, "receiver_task", 4096, NULL, 20, &handle, 0) != pdPASS)
+    err = ESP_ERR_NO_MEM;
+  receiver_task_handle = handle;
+  if (err != ESP_OK) {
+    comms_register_recv_cb(NULL);
+    vQueueDelete(comms_queue);
+    comms_queue = NULL;
+  }
+  xSemaphoreGive(queue_mutex);
+  return err;
 }
 
-void receiver_deinit() {
+void receiver_init(void) {
+  ESP_ERROR_CHECK(receiver_start());
+}
+
+esp_err_t receiver_deinit(void) {
   // Stop the driver from posting to the queue before tearing it down
   comms_register_recv_cb(NULL);
 
@@ -318,15 +346,13 @@ void receiver_deinit() {
     }
     if (receiver_task_handle != NULL) {
       ESP_LOGE(TAG, "Receiver task did not exit in time");
-      return; // Leave the queue alive rather than free it under the task
+      return ESP_ERR_TIMEOUT; // Leave the queue alive rather than free it under the task
     }
   }
-  else {
-    // Fence: let any in-flight radio-task callback (dispatched before the
-    // unregister above) finish with the queue before we delete it
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-
+  if (!queue_mutex)
+    return ESP_OK;
+  if (xSemaphoreTake(queue_mutex, pdMS_TO_TICKS(1000)) != pdTRUE)
+    return ESP_ERR_TIMEOUT;
   if (comms_queue != NULL) {
     // Drain any queued events so their payloads don't leak
     comms_event_t evt;
@@ -337,4 +363,6 @@ void receiver_deinit() {
     comms_queue = NULL;
     vQueueDelete(queue);
   }
+  xSemaphoreGive(queue_mutex);
+  return ESP_OK;
 }

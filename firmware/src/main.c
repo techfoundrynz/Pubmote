@@ -22,6 +22,7 @@
 #include "remote/orchestrator.h"
 #include "remote/peers.h"
 #include "remote/powermanagement.h"
+#include "remote/radio_session.h"
 #include "remote/receiver.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
@@ -105,6 +106,7 @@ void app_main(void) {
   CommsType boot_comms_mode = settings_get_active_comms_mode();
   comms_select_driver(boot_comms_mode);
   MEM_MARK("comms driver select");
+  ESP_ERROR_CHECK(radio_session_init());
   comms_init();
   MEM_MARK("comms_init");
   connection_init();
