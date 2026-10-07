@@ -12,6 +12,7 @@ extern "C"
   void handle_game_launch(int index);
   void handle_game_back(void);
   void game_refresh_catalog(void);
+  void handle_game_placed(bool placed);
 #ifdef __cplusplus
 }
 #endif

@@ -13,7 +13,7 @@ extern "C"
   esp_err_t qmi8658_imu_driver_init();
   void qmi8658_imu_driver_deinit();
   bool qmi8658_is_active();
-  void qmi8658_get_data(imu_data_t *data);
+  bool qmi8658_get_data(imu_data_t *data);
 
 #ifdef __cplusplus
 }

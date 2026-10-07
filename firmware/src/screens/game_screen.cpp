@@ -3,12 +3,14 @@
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "games/game_store.h"
+#include "games/game_warp.h"
 #include "mbedtls/base64.h"
 #include "miniz.h"
 #include "psa/crypto.h"
 #include "remote/buzzer.h"
 #include "remote/display.h"
 #include "remote/haptic.h"
+#include "remote/imu.h"
 #include "remote/input_router.h"
 #include "remote/powermanagement.h"
 #include "remote/remoteinputs.h"
@@ -22,6 +24,7 @@ extern "C"
 #include "lualib.h"
 }
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -49,6 +52,22 @@ static BuzzerNote notes[128];
 static std::vector<GameDraw> frame;
 static std::shared_ptr<slint::VectorModel<GameDraw>> model;
 static std::shared_ptr<slint::VectorModel<GamePosition>> positions;
+// 60 Hz packages: update() runs from single-shot timers aimed at an absolute
+// deadline (previous deadline + period), so an update that starts late shortens
+// the next wait instead of losing a slot to timer quantization. Falling more than
+// a period behind resyncs rather than bursting. The .slint Timer still drives
+// 30 Hz packages, exactly as before. A generation number retires pending shots
+// when the game stops or restarts.
+static constexpr int64_t PACED_PERIOD_US = 1000000 / 60;
+static constexpr int64_t LATE_US = 2000;
+static int64_t next_update_us;
+static uint32_t pacing_generation;
+// update() cadence, taken by game_host_take_update_stats().
+static struct {
+  int updates, intervals, late, skipped;
+  int64_t lua_us, lua_max_us, interval_us, interval_max_us, last_start_us;
+} cadence;
+static void schedule_update(void);
 static const UiState *ui() {
   auto *window = get_slint_window();
   return window ? &window->global<UiState>() : nullptr;
@@ -72,10 +91,19 @@ static void budget_hook(lua_State *L, lua_Debug *) {
   if (--hooks_left <= 0 || esp_timer_get_time() > deadline)
     luaL_error(L, "Game exceeded execution budget");
 }
+// Per-callback budget: 200,000 instructions and 20 ms at 30 Hz; a 60 Hz game gets
+// half the instructions and one frame period of wall time.
+static int callback_budget_us(void) {
+  return active.rate == 60 ? 16000 : 20000;
+}
 static void arm_budget(int time_budget_us) {
-  hooks_left = 200; // 200,000 instructions per callback, also capped by wall time.
+  hooks_left = active.rate == 60 ? 100 : 200; // thousands of instructions
   deadline = esp_timer_get_time() + time_budget_us;
   lua_sethook(vm, budget_hook, LUA_MASKCOUNT, 1000);
+}
+void game_host_credit(int64_t microseconds) {
+  if (microseconds > 0)
+    deadline += microseconds;
 }
 static int bounded_int(lua_State *L, int arg, int low, int high) {
   lua_Integer value = luaL_checkinteger(L, arg);
@@ -363,6 +391,62 @@ static int save_score(lua_State *L) {
     best_score = value;
   return 0;
 }
+// game.imu(): the mean display-aligned acceleration (g) and angular rate (deg/s)
+// since the previous call, and whether it is valid (fresh, and not pocketed).
+static int imu_sample(lua_State *L) {
+  imu_data_t sample{};
+  const bool valid = !is_pocket_mode_enabled() && imu_take_motion_sample(&sample);
+  float ax = sample.accel_x, ay = sample.accel_y, gx = sample.gyro_x, gy = sample.gyro_y;
+  switch (device_settings.screen_rotation) {
+  case SCREEN_ROTATION_90:
+    ax = sample.accel_y;
+    ay = -sample.accel_x;
+    gx = sample.gyro_y;
+    gy = -sample.gyro_x;
+    break;
+  case SCREEN_ROTATION_180:
+    ax = -ax;
+    ay = -ay;
+    gx = -gx;
+    gy = -gy;
+    break;
+  case SCREEN_ROTATION_270:
+    ax = -sample.accel_y;
+    ay = sample.accel_x;
+    gx = -sample.gyro_y;
+    gy = sample.gyro_x;
+    break;
+  default:
+    break;
+  }
+  lua_pushnumber(L, ax);
+  lua_pushnumber(L, ay);
+  lua_pushnumber(L, sample.accel_z);
+  lua_pushnumber(L, gx);
+  lua_pushnumber(L, gy);
+  lua_pushnumber(L, sample.gyro_z);
+  lua_pushboolean(L, valid);
+  return 7;
+}
+// game.warp.draw(x, y): places the warp layer in this frame's command list.
+static int warp_draw(lua_State *L) {
+  float x = coordinate(L, 1), y = coordinate(L, 2), w, h;
+  if (!drawing || frame.size() >= MAX_COMMANDS)
+    return luaL_error(L, "Drawing budget exceeded");
+  for (const auto &cmd : frame)
+    if (cmd.kind == 5)
+      return luaL_error(L, "One warp layer per frame");
+  if (!game_warp_place(&x, &y, &w, &h))
+    return luaL_error(L, "No warp image loaded");
+  GameDraw cmd{};
+  cmd.kind = 5;
+  cmd.x = x;
+  cmd.y = y;
+  cmd.w = w;
+  cmd.h = h;
+  frame.push_back(cmd);
+  return 0;
+}
 static int repeat_input(lua_State *L) {
   int delay = bounded_int(L, 1, 0, 1000);
   int interval = bounded_int(L, 2, 0, 1000);
@@ -394,20 +478,37 @@ static int bootstrap(lua_State *L) {
                           {"texture", texture},     {"sprite", sprite},         {"column", column},
                           {"exit", exit_button},    {nullptr, nullptr}};
   luaL_setfuncs(L, api, 0);
+  // Optional host capabilities, only for packages that declare them.
+  if (active.needs & GAME_NEEDS_IMU) {
+    lua_pushcfunction(L, imu_sample);
+    lua_setfield(L, -2, "imu");
+  }
+  if (active.needs & GAME_NEEDS_WARP) {
+    lua_newtable(L);
+    game_warp_open(L);
+    lua_pushcfunction(L, warp_draw);
+    lua_setfield(L, -2, "draw");
+    lua_setfield(L, -2, "warp");
+  }
   lua_setglobal(L, "game");
   return 0;
 }
 static void stop_vm(const char *error) {
+  ++pacing_generation; // retires a pending paced update
   if (ui() && error)
     ui()->set_game_error(slint::SharedString(error));
   if (vm) {
     lua_close(vm);
     vm = nullptr;
   }
+  game_warp_end();
+  imu_set_motion_sampling(false);
   buzzer_stop();
   drawing = false;
 }
-static bool finish_call(int arguments, int results = 0, int time_budget_us = 20000) {
+static bool finish_call(int arguments, int results = 0, int time_budget_us = 0) {
+  if (time_budget_us <= 0)
+    time_budget_us = callback_budget_us();
   arm_budget(time_budget_us);
   if (lua_pcall(vm, arguments, results, 0) != LUA_OK) {
     const char *message = lua_type(vm, -1) == LUA_TSTRING ? lua_tostring(vm, -1) : "callback failed";
@@ -442,6 +543,7 @@ static bool same_style(const GameDraw &a, const GameDraw &b) {
   case 3:
     return a.labels == b.labels && a.spacing == b.spacing && a.pad_bottom == b.pad_bottom;
   case 4:
+  case 5:
     return true;
   default:
     return false;
@@ -484,6 +586,24 @@ static void render(void) {
     model->erase(model->row_count() - 1);
   while (positions->row_count() > frame.size())
     positions->erase(positions->row_count() - 1);
+  // The warp layer goes straight to the panel unless something is drawn over it:
+  // any later command, or the Exit button, whose box overlaps it. Text with an
+  // intrinsic size may extend to the display's right or bottom edge.
+  int layer = -1;
+  for (size_t i = 0; i < frame.size(); i++)
+    if (frame[i].kind == 5)
+      layer = i;
+  bool covered = false;
+  for (size_t i = 0; layer >= 0 && i < frame.size() && !covered; i++) {
+    const auto &c = frame[i], &l = frame[layer];
+    if ((int)i == layer || ((int)i < layer && c.kind != 4) || (c.kind == 0 && (c.w <= 0 || c.h <= 0)))
+      continue;
+    const float right = c.kind == 1 && c.w == 0 ? 100 : c.x + c.w;
+    const float bottom = c.kind == 1 && c.h == 0 ? 100 : c.y + c.h;
+    covered = c.x < l.x + l.w && right > l.x && c.y < l.y + l.h && bottom > l.y;
+  }
+  if (active.needs & GAME_NEEDS_WARP)
+    game_warp_layout(layer >= 0, layer >= 0 ? frame[layer].x : 0, layer >= 0 ? frame[layer].y : 0, covered);
 }
 static void key(int kind) {
   slint::invoke_from_event_loop([kind]() {
@@ -532,6 +652,7 @@ extern "C" void setup_game_properties(void) {
   positions = std::make_shared<slint::VectorModel<GamePosition>>();
   ui()->set_game_draw(model);
   ui()->set_game_positions(positions);
+  ui()->set_game_rate(active.rate);
   best_score = 0;
   game_repeat = INPUT_ONCE;
   if (strlen(active.id) <= 11) {
@@ -577,6 +698,10 @@ extern "C" void setup_game_properties(void) {
       });
 }
 static void start_game(char *source, size_t length) {
+  if (active.needs & GAME_NEEDS_WARP)
+    game_warp_begin(active.id);
+  if (active.needs & GAME_NEEDS_IMU)
+    imu_set_motion_sampling(true);
   allocated = 0;
 #if LUA_VERSION_NUM >= 505
   vm = lua_newstate(lua_alloc, nullptr, esp_random());
@@ -608,32 +733,108 @@ static void start_game(char *source, size_t length) {
   // Discard source/initialization temporaries before the frame budget applies.
   // Whack releases its compressed texture constants after decoding them.
   lua_gc(vm, LUA_GCCOLLECT);
+  game_warp_commit();
   input_router_claim(INPUT_ACTION_STICK_UP, []() { key(1); }, INPUT_ONCE);
   input_router_claim(INPUT_ACTION_STICK_DOWN, []() { key(2); }, game_repeat);
   input_router_claim(INPUT_ACTION_STICK_LEFT, []() { key(3); }, game_repeat);
   input_router_claim(INPUT_ACTION_STICK_RIGHT, []() { key(4); }, game_repeat);
   input_router_claim(INPUT_ACTION_DOUBLE_PRESS, []() { handle_game_back(); }, INPUT_ONCE);
   last_tick = esp_timer_get_time();
+  cadence = {};
   render();
+  if (vm && active.rate == 60) {
+    next_update_us = last_tick + PACED_PERIOD_US;
+    schedule_update();
+  }
 }
-extern "C" void handle_game_tick(void) {
+// One update() call. `late_us` is how far past its slot a paced update starts
+// (0 for the .slint timer's), `skipped` the slots dropped before it.
+static void run_update(int64_t late_us, int skipped) {
   if (ui_processing_active() || !function("update"))
     return;
   int64_t now = esp_timer_get_time();
-  int64_t ms = (now - last_tick) / 1000;
+  double dt;
+  if (active.rate == 60) {
+    // Microseconds: a 16.7 ms frame must not read as 16 or 17 ms.
+    const int64_t elapsed = now - last_tick;
+    dt = (elapsed <= 0 || elapsed > 250000 ? PACED_PERIOD_US : elapsed) / 1000000.0;
+  }
+  else {
+    int64_t ms = (now - last_tick) / 1000;
+    dt = (ms < 0 || ms > 250 ? 1000 / active.rate : ms) / 1000.0;
+  }
   last_tick = now;
-  double dt = (ms < 0 || ms > 250 ? 33 : ms) / 1000.0;
+  if (cadence.last_start_us) {
+    const int64_t interval = now - cadence.last_start_us;
+    cadence.interval_us += interval;
+    cadence.interval_max_us = std::max(cadence.interval_max_us, interval);
+    ++cadence.intervals;
+    if (active.rate != 60) { // unpaced: judge by the interval alone
+      const int64_t period = 1000000 / active.rate;
+      late_us = interval - period;
+      skipped = int((interval - period / 2) / period);
+    }
+  }
+  cadence.last_start_us = now;
+  cadence.late += late_us > LATE_US;
+  cadence.skipped += skipped;
   lua_pushnumber(vm, dt);
   lua_pushnumber(vm, remote_data.js_x);
   lua_pushnumber(vm, remote_data.js_y);
   lua_pushboolean(vm, ui() && ui()->get_joystick_supported());
   bool ok = finish_call(4, 1);
+  const int64_t spent = esp_timer_get_time() - now;
+  cadence.lua_us += spent;
+  cadence.lua_max_us = std::max(cadence.lua_max_us, spent);
+  ++cadence.updates;
   if (ok) {
     bool changed = !lua_isboolean(vm, -1) || lua_toboolean(vm, -1);
     lua_pop(vm, 1);
     if (changed)
       render();
+    if (vm)
+      game_warp_commit();
   }
+}
+// Arms the next paced update for next_update_us.
+static void schedule_update(void) {
+  const int64_t wait = next_update_us - esp_timer_get_time();
+  // Whole milliseconds, rounded up: the shot never fires before its slot.
+  const auto delay = std::chrono::milliseconds(wait > 0 ? (wait + 999) / 1000 : 0);
+  slint::Timer::single_shot(delay, [generation = pacing_generation]() {
+    if (generation != pacing_generation || !vm)
+      return;
+    const int64_t late = esp_timer_get_time() - next_update_us;
+    int skipped = 0;
+    if (late > PACED_PERIOD_US) { // more than a slot behind: resync, don't burst
+      skipped = int(late / PACED_PERIOD_US);
+      next_update_us += skipped * PACED_PERIOD_US;
+    }
+    // At most one period away; if this update overruns it, the next runs at once.
+    next_update_us += PACED_PERIOD_US;
+    run_update(late, skipped);
+    if (vm && generation == pacing_generation)
+      schedule_update();
+  });
+}
+GameUpdateStats game_host_take_update_stats() {
+  GameUpdateStats stats{};
+  stats.updates = cadence.updates;
+  stats.late = cadence.late;
+  stats.skipped = cadence.skipped;
+  stats.lua_avg_us = cadence.updates ? cadence.lua_us / cadence.updates : 0;
+  stats.lua_max_us = cadence.lua_max_us;
+  stats.interval_avg_us = cadence.intervals ? cadence.interval_us / cadence.intervals : 0;
+  stats.interval_max_us = cadence.interval_max_us;
+  const int64_t last_start = cadence.last_start_us;
+  cadence = {};
+  cadence.last_start_us = last_start;
+  return stats;
+}
+extern "C" void handle_game_tick(void) {
+  // The .slint Timer, for 30 Hz packages; 60 Hz ones run from schedule_update().
+  if (active.rate != 60)
+    run_update(0, 0);
 }
 extern "C" void handle_game_event(int kind, float x, float y) {
   reset_sleep_timer();
@@ -647,7 +848,12 @@ extern "C" void handle_game_event(int kind, float x, float y) {
     lua_pop(vm, 1);
     if (changed)
       render();
+    if (vm)
+      game_warp_commit();
   }
+}
+extern "C" void handle_game_placed(bool placed) {
+  game_warp_placed(placed);
 }
 extern "C" void teardown_game_properties(void) {
   stop_vm(nullptr);

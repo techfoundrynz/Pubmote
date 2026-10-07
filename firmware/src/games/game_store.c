@@ -7,6 +7,7 @@
 #include "freertos/semphr.h"
 #include "psa/crypto.h"
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,11 @@ static void lock_store(void) {
 static bool valid_id(const char *id) {
   size_t n = strlen(id);
   return n > 0 && n < sizeof(((game_info_t *)0)->id) && strspn(id, "abcdefghijklmnopqrstuvwxyz0123456789_-") == n;
+}
+bool game_store_asset_name(const char *name) {
+  size_t n = strlen(name);
+  return n > 0 && n < GAME_ASSET_NAME_MAX && name[0] != '.' &&
+         strspn(name, "abcdefghijklmnopqrstuvwxyz0123456789_-.") == n;
 }
 static bool mount_locked(void) {
   if (mounted)
@@ -60,47 +66,114 @@ bool game_store_metadata(const char *source, size_t length, game_info_t *info) {
   const cJSON *id = cJSON_GetObjectItemCaseSensitive(json, "id");
   const cJSON *title = cJSON_GetObjectItemCaseSensitive(json, "title");
   const cJSON *version = cJSON_GetObjectItemCaseSensitive(json, "version");
+  const cJSON *needs = cJSON_GetObjectItemCaseSensitive(json, "needs");
+  const cJSON *rate = cJSON_GetObjectItemCaseSensitive(json, "rate");
   bool ok = cJSON_IsNumber(api) && api->valuedouble == 1 && cJSON_IsString(id) && valid_id(id->valuestring) &&
             cJSON_IsString(title) && strlen(title->valuestring) > 0 &&
             strlen(title->valuestring) < sizeof(info->title) && cJSON_IsString(version) &&
             strlen(version->valuestring) > 0 && strlen(version->valuestring) < sizeof(info->version);
+  // Optional capabilities: a package needing one this host lacks is not listed.
+  uint8_t need_bits = 0;
+  if (ok && needs) {
+    ok = cJSON_IsArray(needs);
+    const cJSON *need;
+    cJSON_ArrayForEach(need, needs) {
+      if (cJSON_IsString(need) && !strcmp(need->valuestring, "imu"))
+        need_bits |= GAME_NEEDS_IMU;
+      else if (cJSON_IsString(need) && !strcmp(need->valuestring, "warp"))
+        need_bits |= GAME_NEEDS_WARP;
+      else
+        ok = false;
+    }
+  }
+  ok = ok && (!rate || (cJSON_IsNumber(rate) && (rate->valuedouble == 30 || rate->valuedouble == 60)));
   if (ok) {
     strcpy(info->id, id->valuestring);
     strcpy(info->title, title->valuestring);
     strcpy(info->version, version->valuestring);
+    info->needs = need_bits;
+    info->rate = rate ? (uint8_t)rate->valuedouble : 30;
   }
   cJSON_Delete(json);
   return ok;
+}
+// Reads a whole file into one PSRAM buffer (plus `extra` zeroed bytes) with a
+// single read(). stdio's fread goes through a 128-byte FILE buffer, which made
+// littlefs serve an 85 KB asset in hundreds of small reads.
+static char *read_file_locked(const char *path, size_t max_size, size_t extra, size_t *length) {
+  int fd = open(path, O_RDONLY);
+  if (fd < 0)
+    return NULL;
+  struct stat st;
+  char *data = NULL;
+  if (!fstat(fd, &st) && st.st_size > 0 && (size_t)st.st_size <= max_size) {
+    const size_t size = st.st_size;
+    data = heap_caps_malloc(size + extra, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!data)
+      data = malloc(size + extra);
+    size_t done = 0;
+    while (data && done < size) {
+      const ssize_t n = read(fd, data + done, size - done);
+      if (n <= 0)
+        break;
+      done += n;
+    }
+    if (data && done == size) {
+      memset(data + size, 0, extra);
+      *length = size;
+    }
+    else {
+      free(data);
+      data = NULL;
+    }
+  }
+  close(fd);
+  return data;
 }
 static char *read_locked(const char *id, size_t *length) {
   if (!valid_id(id) || !mount_locked())
     return NULL;
   char path[96];
   snprintf(path, sizeof(path), ROOT "/%s.lua", id);
-  struct stat st;
-  if (stat(path, &st) || st.st_size <= 0 || st.st_size > GAME_MAX_BYTES)
-    return NULL;
-  FILE *file = fopen(path, "rb");
-  if (!file)
-    return NULL;
-  char *source = heap_caps_malloc(st.st_size + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if (!source)
-    source = malloc(st.st_size + 1);
-  bool ok = source && fread(source, 1, st.st_size, file) == (size_t)st.st_size;
-  fclose(file);
-  if (!ok) {
-    free(source);
-    return NULL;
-  }
-  source[st.st_size] = 0;
-  *length = st.st_size;
-  return source;
+  // Sources get a terminating zero.
+  return read_file_locked(path, GAME_MAX_BYTES, 1, length);
 }
 char *game_store_read(const char *id, size_t *length) {
   lock_store();
   char *source = read_locked(id, length);
   xSemaphoreGive(mutex);
   return source;
+}
+char *game_store_read_asset(const char *id, const char *name, size_t *length) {
+  if (!valid_id(id) || !game_store_asset_name(name))
+    return NULL;
+  lock_store();
+  char *data = NULL;
+  char path[96];
+  snprintf(path, sizeof(path), ROOT "/%s/%s", id, name);
+  if (mount_locked())
+    data = read_file_locked(path, GAME_ASSET_MAX_BYTES, 0, length);
+  xSemaphoreGive(mutex);
+  return data;
+}
+// Removes a package's asset folder; missing folders are fine.
+static bool remove_assets_locked(const char *id) {
+  char path[96];
+  snprintf(path, sizeof(path), ROOT "/%s", id);
+  DIR *dir = opendir(path);
+  if (!dir)
+    return true;
+  bool ok = true;
+  struct dirent *entry;
+  while ((entry = readdir(dir))) {
+    if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+      continue;
+    char file[sizeof(path) + GAME_ASSET_NAME_MAX + 2];
+    snprintf(file, sizeof(file), "%s/%.*s", path, GAME_ASSET_NAME_MAX, entry->d_name);
+    ok = unlink(file) == 0 && ok;
+  }
+  closedir(dir);
+  return rmdir(path) == 0 && ok;
 }
 int game_store_list(game_info_t *games, int capacity) {
   lock_store();
@@ -128,7 +201,7 @@ int game_store_list(game_info_t *games, int capacity) {
 
 // One bounded USB upload; staging never replaces the installed file before commit.
 static FILE *upload;
-static char upload_id[24], expected_hash[65];
+static char upload_id[24], upload_asset[GAME_ASSET_NAME_MAX], expected_hash[65];
 static size_t expected_size, written;
 static psa_hash_operation_t hash = PSA_HASH_OPERATION_INIT;
 static void abort_upload(void) {
@@ -158,17 +231,21 @@ static int game_command(int argc, char **argv) {
     }
   }
   else if (mount_locked()) {
-    if (argc == 5 && !strcmp(argv[1], "begin") && valid_id(argv[2])) {
+    // begin <id> <size> <sha256> [asset name]: the package source, or one of its assets.
+    if ((argc == 5 || (argc == 6 && game_store_asset_name(argv[5]))) && !strcmp(argv[1], "begin") &&
+        valid_id(argv[2])) {
       abort_upload();
       char *end;
       unsigned long size = strtoul(argv[3], &end, 10);
-      if (*argv[3] && !*end && size > 0 && size <= GAME_MAX_BYTES && strlen(argv[4]) == 64 &&
+      const unsigned long limit = argc == 6 ? GAME_ASSET_MAX_BYTES : GAME_MAX_BYTES;
+      if (*argv[3] && !*end && size > 0 && size <= limit && strlen(argv[4]) == 64 &&
           strspn(argv[4], "0123456789abcdef") == 64) {
         size_t total, used;
         if (esp_littlefs_info("littlefs", &total, &used) == ESP_OK && total - used > size + 8192) {
           upload = fopen(ROOT "/.upload", "wb");
           if (upload) {
             strcpy(upload_id, argv[2]);
+            strcpy(upload_asset, argc == 6 ? argv[5] : "");
             strcpy(expected_hash, argv[4]);
             expected_size = size;
             written = 0;
@@ -217,18 +294,26 @@ static int game_command(int argc, char **argv) {
       int close_result = fclose(upload);
       upload = NULL;
       ok = ok && close_result == 0;
-      FILE *file = ok ? fopen(ROOT "/.upload", "rb") : NULL;
-      char header[256] = {0};
-      game_info_t info;
-      if (file) {
-        size_t n = fread(header, 1, sizeof(header) - 1, file);
-        fclose(file);
-        ok = game_store_metadata(header, n, &info) && !strcmp(info.id, upload_id);
-      }
-      else
-        ok = false;
       char path[96];
-      snprintf(path, sizeof(path), ROOT "/%s.lua", upload_id);
+      if (upload_asset[0]) {
+        // Assets are opaque; the package's code validates what it loads.
+        snprintf(path, sizeof(path), ROOT "/%s", upload_id);
+        mkdir(path, 0755);
+        snprintf(path, sizeof(path), ROOT "/%s/%s", upload_id, upload_asset);
+      }
+      else {
+        FILE *file = ok ? fopen(ROOT "/.upload", "rb") : NULL;
+        char header[256] = {0};
+        game_info_t info;
+        if (file) {
+          size_t n = fread(header, 1, sizeof(header) - 1, file);
+          fclose(file);
+          ok = game_store_metadata(header, n, &info) && !strcmp(info.id, upload_id);
+        }
+        else
+          ok = false;
+        snprintf(path, sizeof(path), ROOT "/%s.lua", upload_id);
+      }
       if (ok)
         ok = rename(ROOT "/.upload", path) == 0;
       abort_upload();
@@ -237,6 +322,7 @@ static int game_command(int argc, char **argv) {
       char path[96];
       snprintf(path, sizeof(path), ROOT "/%s.lua", argv[2]);
       ok = unlink(path) == 0;
+      ok = remove_assets_locked(argv[2]) && ok;
     }
     else if (argc == 2 && !strcmp(argv[1], "abort")) {
       abort_upload();
