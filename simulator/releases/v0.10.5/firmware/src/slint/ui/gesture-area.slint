@@ -1,0 +1,65 @@
+// Shared drag/tap gesture handling. Measures in screen space so it works on
+// areas that ride the element being dragged, locks to the dominant axis after
+// a small threshold, and reports deltas relative to the lock point. A pointer
+// grab by another element raises drag-cancelled so consumers can snap back.
+export component GestureArea inherits TouchArea {
+    in property <length> axis-threshold: 10px;
+    callback h-drag(length);
+    callback h-drag-end(length);
+    callback v-drag(length);
+    callback v-drag-end(length);
+    callback drag-cancelled();
+    callback tapped();
+
+    property <length> start-x;
+    property <length> start-y;
+    property <length> lock-x;
+    property <length> lock-y;
+    property <int> axis: 0; // 0 undecided, 1 horizontal, 2 vertical
+
+    pointer-event(evt) => {
+        if (evt.kind == PointerEventKind.cancel) {
+            if (self.axis != 0) {
+                root.drag-cancelled();
+            }
+            self.axis = 0;
+            return;
+        }
+        if (evt.button != PointerEventButton.left) {
+            return;
+        }
+        if (evt.kind == PointerEventKind.down) {
+            self.start-x = self.absolute-position.x + self.mouse-x;
+            self.start-y = self.absolute-position.y + self.mouse-y;
+            self.axis = 0;
+        } else if (evt.kind == PointerEventKind.up) {
+            if (self.axis == 1) {
+                root.h-drag-end(self.absolute-position.x + self.mouse-x - self.lock-x);
+            } else if (self.axis == 2) {
+                root.v-drag-end(self.absolute-position.y + self.mouse-y - self.lock-y);
+            } else {
+                root.tapped();
+            }
+            self.axis = 0;
+        }
+    }
+
+    moved => {
+        let x = self.absolute-position.x + self.mouse-x;
+        let y = self.absolute-position.y + self.mouse-y;
+        if (self.axis == 0) {
+            let adx = x > self.start-x ? x - self.start-x : self.start-x - x;
+            let ady = y > self.start-y ? y - self.start-y : self.start-y - y;
+            if (adx > root.axis-threshold || ady > root.axis-threshold) {
+                self.axis = adx > ady ? 1 : 2;
+                self.lock-x = x;
+                self.lock-y = y;
+            }
+        }
+        if (self.axis == 1) {
+            root.h-drag(x - self.lock-x);
+        } else if (self.axis == 2) {
+            root.v-drag(y - self.lock-y);
+        }
+    }
+}
