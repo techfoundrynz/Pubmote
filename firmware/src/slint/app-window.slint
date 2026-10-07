@@ -30,7 +30,7 @@ import { ProcessingOverlay } from "ui/processing-overlay.slint";
 import { ConfirmDialog } from "ui/confirm-dialog.slint";
 import { BoardsScreen, PairedBoard } from "ui/boards.slint";
 import { GamesScreen } from "ui/games.slint";
-import { GameScreen, GameDraw, GamePosition } from "ui/game.slint";
+import { GameScreen, GameDraw, GamePosition, GameTile } from "ui/game.slint";
 import { EdgeFade } from "ui/edge-fade.slint";
 
 export enum Screen {
@@ -155,12 +155,16 @@ export global UiState {
     in property <[GameDraw]> game-draw: [];
     in property <[GamePosition]> game-positions: [];
     in property <string> game-error: "";
+    in property <int> game-rate: 30;
+    in property <[GameTile]> game-layer-tiles: [];
+    in property <bool> game-layer-direct: false;
     callback open-games();
     callback games-launch(int);
     callback games-back();
     callback game-tick();
     callback game-event(int, float, float);
     callback game-back();
+    callback game-placed(bool);
 
     // --- IMU Calibration ---
     in property <float> imu-calibration-accel-x: 0.0;
@@ -614,6 +618,12 @@ export component AppWindow inherits Window {
         positions: UiState.game-positions;
         error: UiState.game-error;
         active: UiState.screen == Screen.game;
+        rate: UiState.game-rate;
+        layer-tiles: UiState.game-layer-tiles;
+        layer-direct: UiState.game-layer-direct;
+        placed: UiState.screen == Screen.game && !UiState.show-fps &&
+            abs(root.view-x - screen-x(Screen.game)) < 0.001 && abs(root.view-y - screen-y(Screen.game)) < 0.001;
+        placed-changed(placed) => { UiState.game-placed(placed); }
         tick => { UiState.game-tick(); }
         event(kind, x, y) => { UiState.game-event(kind, x, y); }
         back => { UiState.game-back(); }

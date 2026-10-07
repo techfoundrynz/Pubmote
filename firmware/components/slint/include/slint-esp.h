@@ -76,5 +76,24 @@ void slint_esp_init(const SlintPlatformConfiguration<slint::Rgb8Pixel> &config);
 void slint_esp_init(const SlintPlatformConfiguration<slint::platform::Rgb565BigEndianPixel> &config);
 void slint_esp_set_rotation(slint::platform::SoftwareRenderer::RenderingRotation rotation);
 
+/**
+ * Direct overlay: pixels pushed straight to the panel after Slint's own frame, for
+ * content the software renderer is slow to draw (such as a game's warp layer).
+ * The callback runs on the UI task with the panel bus held, after Slint's chunks are on
+ * the panel. `repainted` is true when Slint drew anything that frame, which may have
+ * covered the overlay's area; the overlay then redraws what it owns. Nothing else may be
+ * drawn by Slint inside the overlay's area while it is set. Pass nullptr to remove it.
+ */
+using slint_esp_overlay_fn = void (*)(bool repainted, void *user);
+void slint_esp_set_overlay(slint_esp_overlay_fn fn, void *user);
+/// Asks for an overlay pass on this or the next loop iteration, even if Slint has
+/// nothing to redraw. Call from the UI task (e.g. a Slint timer).
+void slint_esp_request_overlay();
+/// Only inside the overlay callback. Draws a w x h block of big-endian RGB565 pixels,
+/// given in logical (unrotated) coordinates with row pitch `stride`, at logical (x, y).
+/// x, y, w and h must be even: the panel only accepts even windows. Returns once the
+/// panel has read the pixels, so the caller may reuse them.
+bool slint_esp_overlay_draw(int x, int y, int w, int h, const uint16_t *pixels, int stride);
+
 extern volatile uint32_t slint_esp_frame_counter;
 extern volatile uint32_t slint_esp_last_frame_us;

@@ -117,6 +117,18 @@ A package is a UTF-8 Lua source file, at most 128 KiB, with this first line:
 
 IDs contain 1–23 lowercase letters, digits, underscores, or hyphens. The title
 and version allow at most 47 and 23 UTF-8 bytes. The menu displays up to 12 games.
+
+Two optional header fields opt into host capabilities and a faster update:
+
+```lua
+-- pubmote-game {"api":1,"id":"motion_demo","title":"Motion Demo","version":"1.0.0","needs":["imu","warp"],"rate":60}
+```
+
+- `needs`: `"imu"` adds `game.imu` and samples the IMU at 100 Hz while the game
+  runs; `"warp"` adds `game.warp`. Firmware that does not know a listed
+  capability hides the package instead of starting it. Older firmware ignores
+  the field, so such packages fail there with a missing-function error.
+- `rate`: `30` (default) or `60` update callbacks per second.
 Packages implement these global functions:
 
 ```lua
@@ -135,8 +147,8 @@ Events are action=0, up=1, down=2, left=3, right=4, touch-down=5, touch-up=6,
 touch-move=7.
 Touch positions and drawings use coordinates 0–100 across the whole display.
 Packages position a firmware-owned Exit button with `game.exit`. Update runs
-about 30 times per second. Elapsed time is integer milliseconds; negative gaps
-or gaps over 250 ms use 33 ms, as in the original handlers.
+about 30 (or, with `"rate":60`, 60) times per second. Elapsed time is integer
+milliseconds; negative gaps or gaps over 250 ms use one period (33 or 16 ms).
 
 Host functions:
 
@@ -154,6 +166,13 @@ game.texture(id, width, height, base64_zlib_rgba)
 game.sprite(id, x, y, width, height, optional_tint)
 game.column(x, y, width, height, spacing, bottom_padding, rows)
 game.exit(x, y, width, height)
+-- With "needs":["imu"]:
+game.imu() -- ax, ay, az (g), gx, gy, gz (deg/s), valid
+-- With "needs":["warp"]:
+game.warp.load(asset, width, height) -- true, or false and a message
+game.warp.rig(rig)
+game.warp.set(region, dx, dy, squash)
+game.warp.draw(x, y) -- in draw(), at most once per frame
 ```
 
 Optional rectangle arguments default to zero, except alpha (255). Text defaults
@@ -164,12 +183,96 @@ optional cells form a 4×4 colour grid for previews. Columns allow 16 rows.
 Sequences allow 128 notes. Input repeat applies to down/left/right; up remains
 one event per press.
 
+### IMU
+
+`game.imu()` returns the mean of the calibrated samples since the previous call
+(the latest one if none arrived), aligned with the display: the screen rotation
+is applied to acceleration and to the x/y angular rates. Acceleration is the
+specific force the sensor reports, so a remote at rest reads about 1 g.
+`valid` is false when no sample is under 250 ms old or pocket mode is on;
+games should then ignore the values. Calling it once per update sees every jolt,
+not only the newest sample.
+
+### Warp layer
+
+A warp layer shows one RGB565 image from the package's assets and deforms it
+smoothly, natively, at up to 60 frames per second. The package describes soft
+regions and pins once per image (`game.warp.rig`) and moves each region every
+frame (`game.warp.set`); the firmware turns that into a continuous 8 px mesh,
+keeps it from folding, and redraws only the cells that moved, on both cores.
+While nothing the package draws after the layer (nor the Exit button) overlaps
+it and the screen is not sliding, the layer goes straight to the panel; otherwise
+it is shown through Slint tiles at about 30 Hz. The per-pixel work stays in
+firmware; a Lua warp would need about a million instructions per frame.
+
+- `load(asset, width, height)` inflates `/games/<id>/<asset>`: a zlib stream of
+  width × height little-endian RGB565 pixels in row-major order. Encode each
+  pixel as `(red >> 3) << 11 | (green >> 2) << 5 | (blue >> 3)`, write the low
+  byte first, and zlib-compress the complete pixel buffer.
+  Width and height are multiples of 8, at most 352. Loading replaces the image,
+  clears the rig and makes the layer still. Its decoding time is not billed to
+  the callback budget. It returns `false` and a message for a missing or
+  invalid asset, or when memory runs out; the layer is then gone.
+- `rig(table)` defines the deformation, in image pixels:
+
+  ```lua
+  {
+    edge = 40, -- weights fade to 0 over this many px toward the image border
+    pins = {   -- up to 8 still shapes
+      {left, top, right, bottom},              -- a box
+      {rows = {{y, left, right}, ...}},        -- 2-6 rows going down, open below
+    },
+    regions = { -- up to 8; the index is the one set() uses
+      {patch = {x, y, rx, ry},  -- ellipse: moves as a unit to r = 0.5, stretches to r = 1.7
+       group = 1,               -- overlapping regions of one group share weight (1-8)
+       anchor = {0.3, -1.1, 0.1}, -- weight rises from 0.3 at y + ry * -1.1 to 1 at y + ry * 0.1
+       pins = {1, 2}, feather = 24, -- held by these pins, fading in over 24 px
+       travel = 1,              -- share of the fold-free travel budget (default 1)
+       squash = 0.07},          -- limit of the area-preserving squash (default 0)
+      {blobs = {{x, y, rx, ry}, ...}, -- up to 4 ellipses, combined by max
+       clear = {1},             -- keeps a still ring around group 1's patches
+       under = 1,               -- yields to region 1 where both reach
+       travel = {8, 7}},        -- soft x/y travel limits in px (default 0: still)
+    },
+  }
+  ```
+
+- `set(region, dx, dy, squash)` sets a region's motion for the coming frames in
+  source pixels (squash is a fraction; > 0 stretches vertically). Values are
+  soft-limited as the rig says; the whole field is then scaled down if any mesh
+  edge would stretch or shear by more than 0.45 of a cell.
+- `draw(x, y)` places the layer at display coordinates (rounded to even pixels)
+  at the image's native pixel size. Commands before it are underneath; any
+  later command overlapping it switches it to the Slint path for that time.
+
+A loaded layer uses the image (2 bytes per pixel), two direct frame buffers of
+the same size, about 150 KiB of mesh state and, only on the Slint path, up to
+two 24-bit copies of the image as tiles; all in PSRAM (about 1.7 MiB at
+352 × 352). It is freed when the game exits.
+
+### Package assets
+
+Asset files sit in a folder named after the package ID beside its Lua file
+(`fs/games/<id>/`), and install to `/games/<id>/`. Names are 1–31 characters of
+lowercase letters, digits, `_`, `-` and `.`, not starting with a dot; files are
+at most 256 KiB. Packages cannot read them directly; host functions such as
+`game.warp.load` take their names.
+
+Firmware accepts staged asset uploads with
+`game begin <id> <size> <sha256> <asset-name>`, followed by the same sequential
+`game chunk <offset> <hex-data>` and `game commit` used for Lua source. Upload assets before
+the Lua package. Removing a package also removes its asset folder.
+
+### Limits
+
 Drawing is bounded to 512 commands per frame. Firmware limits Lua allocations
 to 256 KiB of PSRAM and decoded texture storage to a separate 256 KiB (16 slots,
 maximum 256×256 each). Slint models and renderer allocations are additional.
-Each callback is limited to 200,000 instructions and 20 ms; initialization gets
-250 ms to decode bounded textures. Only selected base, math, string and table functionality is exposed;
-there is no filesystem, networking, module loading, or device-control API.
+Each callback is limited to 200,000 instructions and 20 ms (60 Hz packages:
+100,000 instructions and 16 ms); initialization gets 250 ms to decode bounded
+textures. Only selected base, math, string and table functionality is exposed;
+there is no filesystem, networking, module loading, or device-control API
+beyond the declared capabilities above.
 Scores are written on game exit, rather than during the frame loop.
 
 The packages reproduce the original gameplay, artwork, layouts, music and

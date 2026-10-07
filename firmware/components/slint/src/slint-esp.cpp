@@ -71,6 +71,110 @@ static inline esp_err_t timed_draw_bitmap(esp_lcd_panel_handle_t p, int x0, int 
 }
 volatile uint32_t slint_esp_dirty_px = 0;
 
+// Direct overlay (see slint-esp.h). Only touched from the UI task.
+static slint_esp_overlay_fn s_overlay_fn = nullptr;
+static void *s_overlay_user = nullptr;
+static bool s_overlay_pending = false;
+struct OverlayTarget {
+  esp_lcd_panel_handle_t panel = nullptr;
+  slint::platform::SoftwareRenderer::RenderingRotation rotation =
+      slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
+  int width = 0, height = 0;
+  bool active = false; // inside the callback, bus held
+};
+static OverlayTarget s_overlay_target;
+
+void slint_esp_set_overlay(slint_esp_overlay_fn fn, void *user) {
+  s_overlay_fn = fn;
+  s_overlay_user = user;
+  s_overlay_pending = fn != nullptr;
+}
+
+void slint_esp_request_overlay() {
+  s_overlay_pending = s_overlay_fn != nullptr;
+}
+
+bool slint_esp_overlay_draw(int x, int y, int w, int h, const uint16_t *pixels, int stride) {
+  extern SemaphoreHandle_t trans_sem;
+  extern uint16_t *slint_chunk_buffer[SLINT_CHUNK_ACCUMULATORS];
+  extern int slint_chunk_lines;
+  using Rotation = slint::platform::SoftwareRenderer::RenderingRotation;
+  const OverlayTarget &t = s_overlay_target;
+  if (!t.active || !pixels || w <= 0 || h <= 0 || ((x | y | w | h) & 1)) {
+    return false;
+  }
+  // Strips of logical rows sized to one staging buffer, alternating two buffers so
+  // filling one overlaps the transfer of the other.
+  const int capacity = t.width * slint_chunk_lines; // pixels per staging buffer
+  int strip = (capacity / w) & ~1;
+  if (strip <= 0) {
+    return false;
+  }
+  bool ok = true;
+  bool inflight[2] = {false, false};
+  auto wait = [&](int b) {
+    if (inflight[b] && trans_sem) {
+      xSemaphoreTake(trans_sem, pdMS_TO_TICKS(250));
+    }
+    inflight[b] = false;
+  };
+  int b = 0;
+  for (int row = 0; row < h; row += strip, b ^= 1) {
+    const int n = std::min(strip, h - row);
+    wait(b);
+    uint16_t *out = slint_chunk_buffer[b];
+    const uint16_t *src = pixels + row * stride;
+    // Map the logical strip (x, y + row, w, n) to its physical window and fill it in
+    // physical row-major order. Same conventions as the touch mapping above.
+    int px0, py0, pw, ph;
+    switch (t.rotation) {
+    case Rotation::Rotate90:
+      px0 = t.width - (y + row + n); py0 = x; pw = n; ph = w;
+      for (int v = 0; v < ph; ++v)
+        for (int u = 0; u < pw; ++u) *out++ = src[(n - 1 - u) * stride + v];
+      break;
+    case Rotation::Rotate180:
+      px0 = t.width - (x + w); py0 = t.height - (y + row + n); pw = w; ph = n;
+      for (int v = 0; v < ph; ++v)
+        for (int u = 0; u < pw; ++u) *out++ = src[(n - 1 - v) * stride + (w - 1 - u)];
+      break;
+    case Rotation::Rotate270:
+      px0 = y + row; py0 = t.height - (x + w); pw = n; ph = w;
+      for (int v = 0; v < ph; ++v)
+        for (int u = 0; u < pw; ++u) *out++ = src[u * stride + (w - 1 - v)];
+      break;
+    default:
+      px0 = x; py0 = y + row; pw = w; ph = n;
+      for (int v = 0; v < ph; ++v) {
+        memcpy(out, src + v * stride, w * sizeof(uint16_t));
+        out += w;
+      }
+      break;
+    }
+    if (timed_draw_bitmap(t.panel, px0, py0, px0 + pw, py0 + ph, slint_chunk_buffer[b]) == ESP_OK) {
+      inflight[b] = true;
+    }
+    else {
+      ok = false;
+    }
+  }
+  wait(0);
+  wait(1);
+  return ok;
+}
+
+// Runs the overlay with the bus already held.
+static void run_overlay(esp_lcd_panel_handle_t panel, slint::platform::SoftwareRenderer::RenderingRotation rotation,
+                        slint::PhysicalSize size, bool repainted) {
+  s_overlay_pending = false;
+  if (!s_overlay_fn) {
+    return;
+  }
+  s_overlay_target = {panel, rotation, (int)size.width, (int)size.height, true};
+  s_overlay_fn(repainted, s_overlay_user);
+  s_overlay_target.active = false;
+}
+
 using RepaintBufferType = slint::platform::SoftwareRenderer::RepaintBufferType;
 
 class EspWindowAdapter : public slint::platform::WindowAdapter {
@@ -690,7 +794,17 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         (void)t_copy;
         (void)t_wait_transmit;
 #endif
+        run_overlay(panel_handle, rotation, size, last_dirty_px > 0);
         panel_io_lock_release();
+      }
+      // Overlay-only frame: the overlay changed but Slint has nothing to redraw, so skip
+      // the scene walk entirely and push just the overlay.
+      else if (s_overlay_pending && s_overlay_fn && panel_io_lock_acquire(1000)) {
+        uint64_t t_start = esp_timer_get_time();
+        run_overlay(panel_handle, rotation, size, false);
+        panel_io_lock_release();
+        slint_esp_last_frame_us = (uint32_t)(esp_timer_get_time() - t_start);
+        slint_esp_frame_counter = slint_esp_frame_counter + 1;
       }
 
       if (m_window->window().has_active_animations()) {

@@ -31,16 +31,23 @@ esp_err_t imu_driver_deinit() {
   return ESP_ERR_NOT_SUPPORTED;
 }
 
-void imu_driver_get_raw_data(imu_data_t *data) {
+bool imu_driver_get_raw_data(imu_data_t *data) {
+  if (!data)
+    return false;
+  *data = (imu_data_t){0};
 #if IMU_QMI8658
-  qmi8658_get_data(data);
-#elif IMU_BHI260
-  // bhi260_get_data(data);
+  if (!qmi8658_get_data(data))
+    return false;
+#else
+  // No supported sensor can supply a complete sample.
+  return false;
 #endif
+  return true;
 }
 
-void imu_driver_get_data(imu_data_t *data) {
-  imu_driver_get_raw_data(data);
+bool imu_driver_get_data(imu_data_t *data) {
+  if (!imu_driver_get_raw_data(data))
+    return false;
   // Apply calibration offsets
   data->accel_x -= imu_calibration.accel_x_offset;
   data->accel_y -= imu_calibration.accel_y_offset;
@@ -79,6 +86,7 @@ void imu_driver_get_data(imu_data_t *data) {
   data->gyro_x = gx;
   data->gyro_y = gy;
   data->gyro_z = gz;
+  return true;
 }
 
 bool imu_driver_is_initialized() {

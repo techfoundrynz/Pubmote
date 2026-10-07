@@ -181,7 +181,12 @@ bool qmi8658_is_active() {
   return imu_initialized;
 }
 
-void qmi8658_get_data(imu_data_t *data) {
+bool qmi8658_get_data(imu_data_t *data) {
+  if (data == nullptr) {
+    ESP_LOGE(TAG, "Invalid data pointer");
+    return false;
+  }
+  *data = {};
   if (!imu_initialized) {
     static uint32_t last_warn_time = 0;
     uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
@@ -189,12 +194,7 @@ void qmi8658_get_data(imu_data_t *data) {
       last_warn_time = now;
       ESP_LOGW(TAG, "IMU not initialized");
     }
-    return;
-  }
-
-  if (data == nullptr) {
-    ESP_LOGE(TAG, "Invalid data pointer");
-    return;
+    return false;
   }
 
   uint8_t status = imu.getStatusRegister();
@@ -215,17 +215,20 @@ void qmi8658_get_data(imu_data_t *data) {
 
   IMUdata acc = {};
   IMUdata gyr = {};
-  // Read accelerometer data
-  imu.getAccelerometer(acc.x, acc.y, acc.z);
+  // Publish a complete sample only when both transfers succeeded.
+  const bool accel_ok = imu.getAccelerometer(acc.x, acc.y, acc.z);
+  const bool gyro_ok = imu.getGyroscope(gyr.x, gyr.y, gyr.z) != 0;
+  if (!accel_ok || !gyro_ok)
+    return false;
+
   data->accel_x = acc.x;
   data->accel_y = acc.y;
   data->accel_z = acc.z;
 
-  // Read gyroscope data
-  imu.getGyroscope(gyr.x, gyr.y, gyr.z);
   data->gyro_x = gyr.x;
   data->gyro_y = gyr.y;
   data->gyro_z = gyr.z;
+  return true;
 }
 
 esp_err_t qmi8658_imu_driver_init() {

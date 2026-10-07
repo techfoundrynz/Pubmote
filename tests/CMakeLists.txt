@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(firmware_host_tests C)
+project(firmware_host_tests C CXX)
 
 set(IDF_PATH "$ENV{IDF_PATH}" CACHE PATH "ESP-IDF source directory")
 set(CJSON_DIR "${CMAKE_SOURCE_DIR}/../managed_components/espressif__cjson/cJSON" CACHE PATH "cJSON source directory")
@@ -19,6 +19,7 @@ endforeach()
 foreach(stub config.h remote/settings.h remote/remoteinputs.h)
   configure_file("${CMAKE_SOURCE_DIR}/shadow/${stub}" "${STAGED}/${stub}" COPYONLY)
 endforeach()
+configure_file("${CMAKE_SOURCE_DIR}/../firmware/src/imu/imu_driver.c" "${STAGED}/imu/imu_driver.c" COPYONLY)
 
 add_executable(settings_console_test
   settings_console_test.c
@@ -38,6 +39,19 @@ endif()
 enable_testing()
 add_test(NAME settings_console COMMAND settings_console_test)
 
+add_executable(warp_mesh_test warp_mesh_test.cpp)
+target_include_directories(warp_mesh_test PRIVATE "${CMAKE_SOURCE_DIR}/../firmware/src")
+target_compile_definitions(warp_mesh_test PRIVATE WARP_FIXTURE="${CMAKE_SOURCE_DIR}/fixtures/mascot_rigs.txt")
+set_target_properties(warp_mesh_test PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES)
+find_package(Threads REQUIRED) # the split-draw tests run two threads
+target_link_libraries(warp_mesh_test PRIVATE Threads::Threads)
+if(MSVC)
+  target_compile_options(warp_mesh_test PRIVATE /UNDEBUG)
+else()
+  target_compile_options(warp_mesh_test PRIVATE -UNDEBUG -Wall -Wextra)
+endif()
+add_test(NAME warp_mesh COMMAND warp_mesh_test)
+
 add_executable(sleep_timer_test sleep_timer_test.c)
 target_include_directories(sleep_timer_test PRIVATE "${STAGED}" "${FIRMWARE_REMOTE}" stubs)
 set_target_properties(sleep_timer_test PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED YES)
@@ -47,3 +61,14 @@ else()
   target_compile_options(sleep_timer_test PRIVATE -UNDEBUG -Wall -Wextra)
 endif()
 add_test(NAME sleep_timer COMMAND sleep_timer_test)
+
+add_executable(imu_driver_sample_test imu_driver_sample_test.c)
+target_include_directories(imu_driver_sample_test PRIVATE "${STAGED}" "${CMAKE_SOURCE_DIR}/../firmware/src"
+  "${CMAKE_SOURCE_DIR}/../firmware/src/imu" stubs)
+set_target_properties(imu_driver_sample_test PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED YES)
+if(MSVC)
+  target_compile_options(imu_driver_sample_test PRIVATE /UNDEBUG)
+else()
+  target_compile_options(imu_driver_sample_test PRIVATE -UNDEBUG -Wall -Wextra)
+endif()
+add_test(NAME imu_driver_sample COMMAND imu_driver_sample_test)

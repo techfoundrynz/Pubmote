@@ -9,11 +9,23 @@ export struct GameDraw {
     labels: [GameLabel], spacing: float, pad-bottom: float,
 }
 export struct GamePosition { x: float, y: float, w: float, h: float }
+// One tile of a warp layer (kind 5), in pixels relative to the layer.
+export struct GameTile { image: image, x: float, y: float, w: float, h: float }
 export component GameScreen inherits Rectangle {
     in property <[GameDraw]> commands;
     in property <[GamePosition]> positions;
     in property <string> error;
     in property <bool> active;
+    // Update callbacks per second, as the package's header requests.
+    in property <int> rate: 30;
+    // A warp layer's tiles; while `layer-direct` the firmware pushes the layer
+    // straight to the panel instead and Slint only keeps its area black.
+    in property <[GameTile]> layer-tiles;
+    in property <bool> layer-direct;
+    // Fully in view with nothing drawn over the screen (see app-window).
+    in property <bool> placed;
+    changed placed => { root.placed-changed(root.placed); }
+    callback placed-changed(bool);
     callback tick;
     callback event(int, float, float);
     callback back;
@@ -25,7 +37,8 @@ export component GameScreen inherits Rectangle {
         return size == 10 ? Theme.font-10 : size == 11 ? Theme.font-11 : size == 12 ? Theme.font-12 : size == 14 ? Theme.font-14 : size == 28 ? Theme.font-28 : Math.round(size * Theme.font-scale) * 1px;
     }
     clip: true;
-    Timer { interval: 33ms; running: root.active && root.error == ""; triggered => { root.tick(); } }
+    // 30 Hz packages; the firmware paces 60 Hz ones against absolute deadlines.
+    Timer { interval: 33ms; running: root.active && root.error == "" && root.rate < 60; triggered => { root.tick(); } }
     for cmd[index] in root.commands: Rectangle {
         property <GamePosition> pos: root.positions[index];
         x: root.pixel(self.pos.x * (parent.width / 100)); y: root.pixel(self.pos.y * (parent.height / 100));
@@ -34,6 +47,16 @@ export component GameScreen inherits Rectangle {
         border-radius: cmd.radius * parent.width / 100;
         border-width: cmd.border * parent.width / 100;
         border-color: cmd.edge;
+        if cmd.kind == 5: Rectangle {
+            width: 100%; height: 100%; background: #000000;
+            if !root.layer-direct: Rectangle {
+                width: 100%; height: 100%;
+                for tile in root.layer-tiles: Image {
+                    x: tile.x * 1px; y: tile.y * 1px; width: tile.w * 1px; height: tile.h * 1px;
+                    source: tile.image; image-rendering: pixelated;
+                }
+            }
+        }
         if cmd.kind == 2: Image { width: 100%; height: 100%; source: cmd.image; colorize: cmd.color; image-fit: fill; }
         if cmd.kind == 3: VerticalLayout {
             alignment: center;

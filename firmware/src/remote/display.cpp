@@ -473,6 +473,7 @@ static void connect_callbacks() {
   state.on_games_back([]() { handle_games_back(); });
   state.on_game_tick([]() { handle_game_tick(); });
   state.on_game_event([](int kind, float x, float y) { handle_game_event(kind, x, y); });
+  state.on_game_placed([](bool placed) { handle_game_placed(placed); });
   state.on_game_back([]() { handle_game_back(); });
 
   const auto &color_slider_gen = slint_window->global<ColorSliderGenerator>();

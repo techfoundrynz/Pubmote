@@ -7,6 +7,8 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/portmacro.h"
 #include "imu/imu_datatypes.h"
 #include "imu/imu_driver.h"
 #include "settings.h"
@@ -22,6 +24,45 @@ static const char *TAG = "PUBREMOTE-IMU";
 static TaskHandle_t imu_task_handle = NULL;
 static volatile bool imu_should_run = false;
 static volatile bool imu_running = false;
+
+// Motion input for animated screens. While enabled the task samples at 100 Hz
+// and accumulates a mean, so a consumer polling at its frame rate sees every
+// jolt instead of whichever single sample happened to be newest.
+static portMUX_TYPE sample_lock = portMUX_INITIALIZER_UNLOCKED;
+static volatile bool motion_sampling = false;
+static imu_data_t latest_sample;
+static int64_t latest_sample_us = 0;
+static imu_data_t sample_sum;
+static int sample_count = 0;
+
+void imu_set_motion_sampling(bool enabled) {
+  portENTER_CRITICAL(&sample_lock);
+  motion_sampling = enabled;
+  sample_count = 0;
+  portEXIT_CRITICAL(&sample_lock);
+}
+
+bool imu_take_motion_sample(imu_data_t *mean) {
+  if (!mean) {
+    return false;
+  }
+  portENTER_CRITICAL(&sample_lock);
+  const int count = sample_count;
+  const int64_t sample_us = latest_sample_us;
+  *mean = count > 0 ? sample_sum : latest_sample;
+  sample_count = 0;
+  portEXIT_CRITICAL(&sample_lock);
+  if (count > 1) {
+    mean->accel_x /= count;
+    mean->accel_y /= count;
+    mean->accel_z /= count;
+    mean->gyro_x /= count;
+    mean->gyro_y /= count;
+    mean->gyro_z /= count;
+  }
+  const int64_t age = esp_timer_get_time() - sample_us;
+  return sample_us > 0 && age >= 0 && age <= 250000;
+}
 
 #define DEBUG_IMU 0
 
@@ -68,14 +109,45 @@ esp_err_t imu_unregister_gesture_callback(imu_gesture_cb_t cb) {
 }
 #endif
 
-static void imu_get_data() {
+static void imu_get_data(bool run_gestures) {
 #if IMU_ENABLED
   imu_data_t imu_data = {0};
-  imu_driver_get_data(&imu_data);
+  const bool sample_ok = imu_driver_get_data(&imu_data);
+
+  // Failed transfers never refresh the cache, even with calibration offsets.
+  const float norm2 =
+      imu_data.accel_x * imu_data.accel_x + imu_data.accel_y * imu_data.accel_y + imu_data.accel_z * imu_data.accel_z;
+  if (sample_ok && isfinite(norm2) && norm2 > 0.01f && norm2 < 100.0f && isfinite(imu_data.gyro_x) &&
+      isfinite(imu_data.gyro_y) && isfinite(imu_data.gyro_z)) {
+    const int64_t now = esp_timer_get_time();
+    portENTER_CRITICAL(&sample_lock);
+    latest_sample = imu_data;
+    latest_sample_us = now;
+    if (sample_count == 0) {
+      sample_sum = imu_data;
+    }
+    else {
+      sample_sum.accel_x += imu_data.accel_x;
+      sample_sum.accel_y += imu_data.accel_y;
+      sample_sum.accel_z += imu_data.accel_z;
+      sample_sum.gyro_x += imu_data.gyro_x;
+      sample_sum.gyro_y += imu_data.gyro_y;
+      sample_sum.gyro_z += imu_data.gyro_z;
+    }
+    if (sample_count < 1000) {
+      sample_count++;
+    }
+    portEXIT_CRITICAL(&sample_lock);
+  }
 
   if (imu_data.event == IMU_EVENT_DOUBLE_TAP) {
     ESP_LOGI(TAG, "Double tap event detected! Triggering callback.");
     trigger_gesture_callbacks(IMU_GESTURE_DOUBLE_TAP);
+  }
+
+  // Gesture detection is tuned for a 50 ms cadence.
+  if (!run_gestures) {
+    return;
   }
 
   #if DEBUG_IMU
@@ -138,9 +210,13 @@ static void imu_get_data() {
 
 void imu_task(void *pvParameters) {
   imu_running = true;
+  int tick = 0;
   while (imu_should_run) {
-    imu_get_data();
-    vTaskDelay(pdMS_TO_TICKS(50));
+    // 10 ms ticks while motion sampling, else 50 ms. Gestures stay at 50 ms.
+    const bool fast = motion_sampling;
+    imu_get_data(!fast || tick % 5 == 0);
+    tick = fast ? tick + 1 : 0;
+    vTaskDelay(pdMS_TO_TICKS(fast ? 10 : 50));
   }
 
   ESP_LOGI(TAG, "IMU task ended");
@@ -189,4 +265,8 @@ void imu_deinit() {
   }
   imu_driver_deinit();
 #endif
+  portENTER_CRITICAL(&sample_lock);
+  latest_sample_us = 0;
+  sample_count = 0;
+  portEXIT_CRITICAL(&sample_lock);
 }
