@@ -612,7 +612,8 @@ static void start_game(char *source, size_t length) {
   input_router_claim(INPUT_ACTION_STICK_DOWN, []() { key(2); }, game_repeat);
   input_router_claim(INPUT_ACTION_STICK_LEFT, []() { key(3); }, game_repeat);
   input_router_claim(INPUT_ACTION_STICK_RIGHT, []() { key(4); }, game_repeat);
-  input_router_claim(INPUT_ACTION_DOUBLE_PRESS, []() { handle_game_back(); }, INPUT_ONCE);
+  // Keep activation on the press edge. Claiming double-press delays Return until
+  // release + the click window, and turns rapid gameplay presses into an exit.
   last_tick = esp_timer_get_time();
   render();
 }
