@@ -897,6 +897,7 @@ fn capture_scenarios(
         "about",
         "update",
         "charge",
+        "charge-full",
         "games",
         "shutdown-dialog",
     ] {
@@ -916,9 +917,13 @@ fn capture_scenarios(
             controls.set_property("remote-battery", 12.into())?;
             controls.set_property("rssi", (-92).into())?;
         }
+        if name == "charge-full" {
+            controls.set_property("remote-battery", 100.into())?;
+        }
         tick(&ui, &controls, 0.0);
         let target = match name {
             "stats-disconnected" | "stats-low-battery" => "stats",
+            "charge-full" => "charge",
             "boards-empty" => {
                 boards(&ui, false);
                 "boards"

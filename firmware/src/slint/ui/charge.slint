@@ -15,7 +15,7 @@ export component ChargeScreen inherits Rectangle {
     callback dismissed();
     background: Theme.bg;
 
-    // Near-full-circle charge dial, starting at 12 o'clock.
+    // Full-circle charge dial, starting at 12 o'clock.
     ArcGauge {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
@@ -23,7 +23,7 @@ export component ChargeScreen inherits Rectangle {
         height: parent.height;
         thickness: 20px * Theme.scale;
         start-angle: 270deg;
-        span-angle: 359deg;
+        span-angle: 360deg;
         rounded-ends: false;
         track-color: Theme.track;
         indicator-color: Theme.accent;
