@@ -25,7 +25,7 @@ export component AppButton inherits Rectangle {
     }
 
     height: 34px * Theme.scale;
-    border-radius: 12px * Theme.scale;
+    border-radius: root.height / 3;
 
     // Always have a 2px border to prevent layout shifts on focus
     border-width: 2px;

@@ -5,7 +5,7 @@ int main() {
   ChargeScreenState screen;
   screen.update(false);
   assert(!screen.should_show(false));
-  screen.update(true); // Plug in, or boot already connected.
+  screen.update(true); // Plug in after boot.
   assert(screen.should_show(false));
   screen.update(true); // Busy UI can defer presentation without losing the edge.
   assert(screen.should_show(false));
@@ -24,9 +24,18 @@ int main() {
   assert(screen.should_show(false));
   ChargeScreenState boot;
   boot.update(true);
-  assert(boot.should_show(false));
+  assert(!boot.should_show(false)); // USB used for flashing is already connected.
+  for (int i = 0; i < 100; ++i) {
+    boot.update(true);
+    assert(!boot.should_show(false));
+  }
+  boot.update(false);
+  assert(!boot.should_power_off());
+  boot.update(true);
+  assert(boot.should_show(false)); // A later plug-in still opens the screen.
 
   ChargeScreenState controlling;
+  controlling.update(false);
   controlling.update(true);
   for (int i = 0; i < 100; ++i) {
     controlling.update(true);
@@ -64,7 +73,14 @@ int main() {
 
   ChargeScreenState button_wake;
   button_wake.update(true);
-  button_wake.presented();
+  assert(!button_wake.should_show(false));
   button_wake.update(false);
   assert(!button_wake.should_power_off());
+  button_wake.update(true);
+  assert(button_wake.should_show(false));
+
+  ChargeScreenState charger_removed_before_poll(true);
+  charger_removed_before_poll.update(false);
+  assert(!charger_removed_before_poll.should_show(false));
+  assert(charger_removed_before_poll.should_power_off());
 }
