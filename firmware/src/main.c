@@ -49,7 +49,8 @@ static void configure_log_levels(void) {
   // Module overrides — comment a line out to restore the global default
   esp_log_level_set("PUBREMOTE-IMU", ESP_LOG_ERROR);
   esp_log_level_set("PUBREMOTE-IMU_DRIVER_QMI8658", ESP_LOG_ERROR);
-  esp_log_level_set("PUBREMOTE-DISPLAY", ESP_LOG_ERROR);
+  esp_log_level_set("PUBREMOTE-PANEL", ESP_LOG_ERROR);
+  esp_log_level_set("PUBREMOTE-SLINT-DISPLAY", ESP_LOG_ERROR);
   esp_log_level_set("PUBREMOTE-DISPLAY-DRIVER", ESP_LOG_ERROR);
   esp_log_level_set("NimBLE", ESP_LOG_WARN);
 }

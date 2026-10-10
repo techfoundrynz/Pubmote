@@ -25,7 +25,7 @@ typedef enum {
   SCREEN_ROTATION_COUNT // Sentinel - keep last
 } ScreenRotation;
 
-// High Brightness Mode, persisted in device_settings.hbm_mode and cycled from
+// High Brightness Mode, saved as the hbm_mode device preference and cycled from
 // the main menu. Order is the cycle order shown to the user.
 typedef enum {
   HBM_MODE_OFF,
@@ -34,7 +34,7 @@ typedef enum {
   HBM_MODE_COUNT   // Sentinel - keep last
 } HbmModeOptions;
 
-// User-selectable LED behaviour, persisted in device_settings.led_mode and
+// User-selectable LED behaviour, saved as the led_mode device preference and
 // cycled from the main menu. Order is the cycle order shown to the user, and
 // the values are persisted in NVS - append rather than renumber.
 typedef enum {
