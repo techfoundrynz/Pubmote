@@ -527,8 +527,7 @@ void power_management_init() {
   ESP_LOGI(TAG, "Wake-up sources: 0x%lx", (unsigned long)wakeup_causes);
   const bool ext1_wake = (wakeup_causes & BIT(ESP_SLEEP_WAKEUP_EXT1)) != 0;
   // A deliberate button wake takes priority over a simultaneous PMU interrupt.
-  if (ext1_wake && input_pins_button_enabled() &&
-      (wakeup_pin_mask & BIT64(settings_get_pins().btn1_gpio))) {
+  if (ext1_wake && input_pins_button_enabled() && (wakeup_pin_mask & BIT64(settings_get_pins().btn1_gpio))) {
     ESP_LOGI(TAG, "Woken up by power button.");
     if (!check_button_press()) {
       enter_sleep_internal();
