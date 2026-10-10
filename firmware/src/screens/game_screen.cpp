@@ -7,13 +7,14 @@
 #include "miniz.h"
 #include "psa/crypto.h"
 #include "remote/buzzer.h"
-#include "remote/display.h"
 #include "remote/haptic.h"
 #include "remote/input_router.h"
 #include "remote/powermanagement.h"
 #include "remote/remoteinputs.h"
-#include "remote/settings.h"
+#include "remote/settings_snapshot.h"
+#include "remote/settings_store.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include "utilities/ui_operation.h"
 extern "C"
 {
@@ -137,7 +138,7 @@ static int draw_text(lua_State *L) {
 }
 static int tone(lua_State *L) {
   int hz = bounded_int(L, 1, 0, 4000), ms = bounded_int(L, 2, 0, 1000);
-  if (device_settings.startup_sound != STARTUP_SOUND_DISABLED)
+  if (settings_get_device().startup_sound != STARTUP_SOUND_DISABLED)
     buzzer_set_tone((BuzzerToneFrequency)hz, ms);
   return 0;
 }
@@ -170,7 +171,7 @@ static int sequence(lua_State *L) {
     lua_pop(L, 2);
     notes[i] = {(uint16_t)hz, (uint16_t)ms};
   }
-  if (device_settings.startup_sound != STARTUP_SOUND_DISABLED)
+  if (settings_get_device().startup_sound != STARTUP_SOUND_DISABLED)
     buzzer_play_sequence(notes, count, lua_toboolean(L, 2));
   return 0;
 }

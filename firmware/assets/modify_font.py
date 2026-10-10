@@ -1,21 +1,13 @@
 import os
-import shutil
 from fontTools.ttLib import TTFont
 
 # Get script's directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
 font_path = os.path.join(script_dir, "Saira-SemiBold.ttf")
-backup_path = os.path.join(script_dir, "Saira-SemiBold.ttf.bak")
-
-# Create a backup of the original font if not already backed up
-if not os.path.exists(backup_path):
-    shutil.copyfile(font_path, backup_path)
-    print("Created font backup at:", backup_path)
-else:
-    print("Backup already exists.")
+source_path = os.path.join(script_dir, "Saira-SemiBold.original.ttf")
 
 # Load font
-font = TTFont(backup_path)
+font = TTFont(source_path)
 hmtx = font['hmtx']
 glyf = font['glyf']
 

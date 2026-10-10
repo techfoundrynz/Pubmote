@@ -1,6 +1,5 @@
 #include "receiver.h"
 #include "commands.h"
-#include "comms.h"
 #include "config.h"
 #include "connection.h"
 #include "display.h"
@@ -8,12 +7,14 @@
 #include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "pairing.h"
-#include "peers.h"
 #include "powermanagement.h"
-#include "screens/pairing_screen.h"
+#include "remote/comms.h"
+#include "remote/protocol.h"
+#include "remote/settings_state.h"
+#include "remote/stats.h"
 #include "settings.h"
-#include "stats.h"
 #include "time.h"
+#include "ui/screen_status.h"
 #include "utilities/conversion_utils.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -83,15 +84,15 @@ static void process_data(comms_event_t evt) {
   uint8_t *data = evt.data;
   int len = evt.len;
 
-  bool is_pairing_start = pairing_state == PAIRING_STATE_UNPAIRED && is_pairing_screen_active();
+  bool is_pairing_start = connection_get_pairing_state() == PAIRING_STATE_UNPAIRED && is_pairing_screen_active();
   // Check mac for security on anything other than initial pairing
-  if (!comms_is_same_mac(evt.mac_addr, pairing_settings.remote_addr) && !is_pairing_start) {
+  if (!comms_is_same_mac(evt.mac_addr, settings_get_pairing().remote_addr) && !is_pairing_start) {
     ESP_LOGD(TAG, "Ignoring data from unknown MAC");
     return;
   }
 
   // Only track signal strength for packets from our paired peer (or pairing)
-  remoteStats.signalStrength = evt.rssi;
+  stats_set_signal_strength(evt.rssi);
 
   const uint8_t *payload_data = data;
   int payload_len = len;
@@ -124,11 +125,9 @@ static void process_data(comms_event_t evt) {
     // TODO - send back receiver version
     break;
   case REM_RECEIVER_VERSION: {
-    if (len >= 5) {
-      uint16_t api_version = data[4];
-      if (len >= 6) {
-        api_version |= (data[5] << 8);
-      }
+    ReceiverVersion version;
+    if (protocol_decode_receiver_version(data, (size_t)len, &version)) {
+      uint16_t api_version = version.api_version;
       ESP_LOGI(TAG, "Rec: Receiver API version: %d", api_version);
 
       // Check if the receiver API version is below the minimum required version
@@ -136,22 +135,18 @@ static void process_data(comms_event_t evt) {
         handle_receiver_api_version_too_low(api_version);
       }
 
-      if (len >= 7) {
-        uint8_t vehicle_type = data[6];
+      if (version.has_vehicle_type) {
+        uint8_t vehicle_type = version.vehicle_type;
         ESP_LOGI(TAG, "Rec: Vehicle type: %d", vehicle_type);
-        remoteStats.vehicleType = vehicle_type;
+        stats_set_vehicle_type(vehicle_type);
 
         // Persist if it changed for the current default device
-        int default_idx = get_default_device_index();
-        if (default_idx >= 0 && default_idx < pairing_settings.device_count) {
-          if (pairing_settings.devices[default_idx].vehicle_type != vehicle_type) {
-            pairing_settings.devices[default_idx].vehicle_type = vehicle_type;
-            save_pairing_data();
-          }
+        if (settings_set_saved_vehicle(evt.mac_addr, vehicle_type)) {
+          save_pairing_data();
         }
       }
       else {
-        remoteStats.vehicleType = VEHICLE_TYPE_UNSPECIFIED;
+        stats_set_vehicle_type(VEHICLE_TYPE_UNSPECIFIED);
       }
       stats_update();
     }
@@ -164,13 +159,13 @@ static void process_data(comms_event_t evt) {
     }
     break;
   case REM_PAIR_BOND:
-    if (pairing_state == PAIRING_STATE_PAIRING && is_pairing_screen_active()) {
+    if (connection_get_pairing_state() == PAIRING_STATE_PAIRING && is_pairing_screen_active()) {
       ESP_LOGI(TAG, "Process: Pairing bond");
       pairing_process_bond_event(data, len);
     }
     break;
   case REM_PAIR_COMPLETE:
-    if (pairing_state == PAIRING_STATE_PENDING && is_pairing_screen_active()) {
+    if (connection_get_pairing_state() == PAIRING_STATE_PENDING && is_pairing_screen_active()) {
       ESP_LOGI(TAG, "Process: Pairing complete");
       pairing_process_completion_event(data, len);
     }
@@ -223,11 +218,12 @@ static void change_channel(uint8_t chan, bool is_pairing) {
   // Only commit the channel if the radio accepted it - some channels (12-14)
   // are rejected under certain regulatory configs
   if (comms_set_channel(chan) == ESP_OK) {
-    pairing_settings.channel = chan;
+    settings_set_channel(chan);
 
     if (!is_pairing) {
       // Add peer so we can send if we're already paired
-      uint8_t *mac_addr = pairing_settings.remote_addr;
+      PairingSettings peer = settings_get_pairing();
+      uint8_t *mac_addr = peer.remote_addr;
       comms_connect_peer(mac_addr, chan);
     }
   }
@@ -243,7 +239,7 @@ static void receiver_task(void *pvParameters) {
   comms_event_t evt;
   // Hop through channels if in pairing mode, connecting, or stuck reconnecting
   uint64_t channel_switch_time_ms = 0;
-  // Sweep cursor - kept separate from pairing_settings.channel so that
+  // Sweep cursor - kept separate from settings_get_pairing().channel so that
   // channels rejected by the radio (regulatory limits) don't wedge the sweep
   uint8_t hop_cursor = 0;
 
@@ -260,18 +256,18 @@ static void receiver_task(void *pvParameters) {
       channel_switch_time_ms = 0;
     }
     else {
-      bool is_pairing = pairing_state == PAIRING_STATE_UNPAIRED && is_pairing_screen_active();
-      bool is_connecting = connection_state == CONNECTION_STATE_CONNECTING;
+      bool is_pairing = connection_get_pairing_state() == PAIRING_STATE_UNPAIRED && is_pairing_screen_active();
+      bool is_connecting = connection_get_state() == CONNECTION_STATE_CONNECTING;
       // If a reconnect has stalled, the board may have moved channels (e.g.
       // its WiFi joined an AP) - sweep for it after a grace period
-      bool is_reconnect_stale = connection_state == CONNECTION_STATE_RECONNECTING &&
-                                get_current_time_ms() - remoteStats.lastUpdated > RECONNECT_HOP_GRACE_MS;
+      bool is_reconnect_stale = connection_get_state() == CONNECTION_STATE_RECONNECTING &&
+                                get_current_time_ms() - stats_snapshot().lastUpdated > RECONNECT_HOP_GRACE_MS;
       // Nothing received while connecting or pairing - hop through channels (only for ESP-NOW)
       if ((is_connecting || is_pairing || is_reconnect_stale) && comms_get_active_type() == COMMS_TYPE_ESPNOW) {
         if (channel_switch_time_ms > CHANNEL_HOP_INTERVAL_MS) {
           // Hop to next channel
           if (hop_cursor == 0) {
-            hop_cursor = pairing_settings.channel;
+            hop_cursor = settings_get_pairing().channel;
           }
           hop_cursor = (hop_cursor % NUM_AVAIL_WIFI_CHANNELS) + 1;
           change_channel(hop_cursor, is_pairing);

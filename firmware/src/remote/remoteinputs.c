@@ -1,11 +1,7 @@
 #include "remoteinputs.h"
 #include "adc.h"
-#include "input_router.h"
-
-// Implemented in display.cpp
-extern void ui_dispatch_activate();
-extern void ui_dispatch_activate_edge(bool pressed);
 #include "config.h"
+#include "driver/gpio.h"
 #include "driver/rtc_io.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
@@ -15,14 +11,19 @@ extern void ui_dispatch_activate_edge(bool pressed);
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "input_router.h"
+#include "input_settings.h"
 #include "iot_button.h"
 #include "powermanagement.h"
 #include "remote/display.h"
 #include "remote/haptic.h"
+#include "remote/settings_snapshot.h"
+#include "remote/settings_state.h"
 #include "rom/gpio.h"
-#include "settings.h"
 #include "settings_api.h"
 #include "time.h"
+#include "ui/device_preferences.h"
+#include "ui/input_navigation.h"
 #include <button_gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -47,11 +48,11 @@ static volatile bool thumbstick_should_run = false;
 static volatile bool thumbstick_running = false;
 
 bool input_pins_x_enabled() {
-  return input_pin_settings.js_x_gpio > INPUT_PIN_DISABLED;
+  return settings_get_pins().js_x_gpio > INPUT_PIN_DISABLED;
 }
 
 bool input_pins_y_enabled() {
-  return input_pin_settings.js_y_gpio > INPUT_PIN_DISABLED;
+  return settings_get_pins().js_y_gpio > INPUT_PIN_DISABLED;
 }
 
 bool input_pins_joystick_enabled() {
@@ -59,7 +60,7 @@ bool input_pins_joystick_enabled() {
 }
 
 bool input_pins_button_enabled() {
-  return input_pin_settings.btn1_gpio > INPUT_PIN_DISABLED;
+  return settings_get_pins().btn1_gpio > INPUT_PIN_DISABLED;
 }
 
 // Release a pad an input no longer uses. RTC pulls are cleared explicitly
@@ -140,13 +141,14 @@ float convert_adc_to_axis(int adc_value, int min_val, int mid_val, int max_val, 
 }
 
 static void thumbstick_task(void *pvParameters) {
+  const InputPinSettings pins = settings_get_pins();
   // Read once: input_pins_apply() restarts this task to change the assignment
   adc_oneshot_unit_handle_t x_adc_handle = NULL;
   adc_oneshot_unit_handle_t y_adc_handle = NULL;
   adc_channel_t x_channel = ADC_CHANNEL_0;
   adc_channel_t y_channel = ADC_CHANNEL_0;
-  bool x_enabled = resolve_axis(input_pin_settings.js_x_gpio, &x_adc_handle, &x_channel);
-  bool y_enabled = resolve_axis(input_pin_settings.js_y_gpio, &y_adc_handle, &y_channel);
+  bool x_enabled = resolve_axis(pins.js_x_gpio, &x_adc_handle, &x_channel);
+  bool y_enabled = resolve_axis(pins.js_y_gpio, &y_adc_handle, &y_channel);
 
   if (x_enabled && adc_oneshot_config_channel(x_adc_handle, x_channel, &adc_channel_config) != ESP_OK) {
     ESP_LOGE(TAG, "Failed to configure X axis channel");
@@ -166,16 +168,17 @@ static void thumbstick_task(void *pvParameters) {
     esp_task_wdt_reset();
     uint64_t newTime = get_current_time_ms();
     bool trigger_sleep_disrupt = false;
-    int16_t deadband = calibration_settings.deadband;
-    int16_t y_center = calibration_settings.y_center;
-    int16_t y_max = calibration_settings.y_max;
-    int16_t y_min = calibration_settings.y_min;
-    int16_t x_center = calibration_settings.x_center;
-    int16_t x_max = calibration_settings.x_max;
-    int16_t x_min = calibration_settings.x_min;
-    float expo = calibration_settings.expo;
-    bool invert_x = calibration_settings.invert_x;
-    bool invert_y = calibration_settings.invert_y;
+    const CalibrationSettings calibration = settings_get_calibration();
+    int16_t deadband = calibration.deadband;
+    int16_t y_center = calibration.y_center;
+    int16_t y_max = calibration.y_max;
+    int16_t y_min = calibration.y_min;
+    int16_t x_center = calibration.x_center;
+    int16_t x_max = calibration.x_max;
+    int16_t x_min = calibration.x_min;
+    float expo = calibration.expo;
+    bool invert_x = calibration.invert_x;
+    bool invert_y = calibration.invert_y;
     esp_err_t read_err;
 
     if (x_enabled) {
@@ -380,8 +383,8 @@ void buttons_init() {
   };
 
   const button_gpio_config_t btn1_gpio_cfg = {
-      .gpio_num = input_pin_settings.btn1_gpio,
-      .active_level = input_pin_settings.btn1_active_level,
+      .gpio_num = settings_get_pins().btn1_gpio,
+      .active_level = settings_get_pins().btn1_active_level,
   };
 
   button_event_args_t btn_args = {
@@ -725,7 +728,7 @@ esp_err_t input_pins_apply(const struct InputPinSettings *cfg, char *err, size_t
     return res;
   }
 
-  const InputPinSettings previous = input_pin_settings;
+  const InputPinSettings previous = settings_get_pins();
   if (memcmp(&previous, cfg, sizeof(InputPinSettings)) == 0) {
     ESP_LOGI(TAG, "Input pins unchanged");
     return ESP_OK;
@@ -749,14 +752,15 @@ esp_err_t input_pins_apply(const struct InputPinSettings *cfg, char *err, size_t
   release_unused_pin(previous.js_y_gpio, cfg);
   release_unused_pin(previous.btn1_gpio, cfg);
 
-  input_pin_settings = *cfg;
+  CalibrationSettings calibration = settings_get_calibration();
 
   // A moved axis has a different resting range, so its calibration is stale
-  reset_axis_calibration(previous.js_x_gpio != cfg->js_x_gpio, previous.js_y_gpio != cfg->js_y_gpio);
+  settings_reset_calibration(&calibration, previous.js_x_gpio != cfg->js_x_gpio, previous.js_y_gpio != cfg->js_y_gpio);
+  settings_publish_input(cfg, &calibration);
 
   buttons_init();
   thumbstick_start();
-  display_set_joystick_supported(input_pins_joystick_enabled());
+  ui_set_input_support(input_pins_joystick_enabled());
 
   return ESP_OK;
 }

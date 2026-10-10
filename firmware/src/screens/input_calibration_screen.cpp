@@ -4,11 +4,13 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "remote/display.h"
+#include "remote/adc.h"
 #include "remote/input_router.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
+#include "remote/settings_state.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include "utilities/ui_operation.h"
 #include <algorithm>
 #include <stdio.h>
@@ -181,16 +183,7 @@ extern "C" void setup_input_calibration_properties() {
   input_router_claim(INPUT_ACTION_STICK_RIGHT, NULL, INPUT_ONCE);
 
   // Load current values
-  calibration_data.x_center = calibration_settings.x_center;
-  calibration_data.y_center = calibration_settings.y_center;
-  calibration_data.x_min = calibration_settings.x_min;
-  calibration_data.y_min = calibration_settings.y_min;
-  calibration_data.x_max = calibration_settings.x_max;
-  calibration_data.y_max = calibration_settings.y_max;
-  calibration_data.deadband = calibration_settings.deadband;
-  calibration_data.expo = calibration_settings.expo;
-  calibration_data.invert_x = calibration_settings.invert_x;
-  calibration_data.invert_y = calibration_settings.invert_y;
+  calibration_data = settings_get_calibration();
 
   reset_min_max_data();
   deadband = STICK_DEADBAND;
@@ -259,7 +252,7 @@ extern "C" void handle_input_calibration_primary() {
   }
   else if (calibration_step >= CALIBRATION_STEP_DONE) {
     // Save to NVS
-    calibration_settings = calibration_data;
+    settings_set_calibration(&calibration_data);
     ui_operation_start(
         "Saving calibration...", []() { return save_input_calibration(); },
         []() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });

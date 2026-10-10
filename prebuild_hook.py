@@ -26,6 +26,7 @@ project_dir = Path(env.subst("$PROJECT_DIR"))
 sys.path.insert(0, str(project_dir / "scripts"))
 from slint_codegen import split_resource_declarations, prepare_font_resources
 from slint_fonts import font_settings as make_font_settings
+from cmake_inputs import CACHE_VARIABLE, cmake_input_fingerprint, invalidate_cmake_cache
 build_dir = Path(env.subst("$BUILD_DIR")).resolve()
 generated_dir = build_dir / "slint_generated"
 generated_dir.mkdir(parents=True, exist_ok=True)
@@ -50,7 +51,14 @@ cpp_count = int(env.GetProjectOption("custom_slint_cpp_files", "8"))
 if not 1 <= cpp_count <= 32:
     raise ValueError("custom_slint_cpp_files must be between 1 and 32")
 cmake_args = env.BoardConfig().get("build.cmake_extra_args", "")
-env.BoardConfig().update("build.cmake_extra_args", f"{cmake_args} -DSLINT_CPP_FILES={cpp_count}")
+cmake_args = f"{cmake_args} -DSLINT_CPP_FILES={cpp_count}"
+# PlatformIO checks only the root/application CMakeLists timestamps. Component
+# source lists and included manifests need content-based tracking too; otherwise
+# a removed source remains in its cached compilation graph.
+cmake_fingerprint = cmake_input_fingerprint(project_dir, cmake_args)
+if invalidate_cmake_cache(build_dir, cmake_fingerprint):
+    print("[CMake] Project build definitions changed; refreshing configuration")
+env.BoardConfig().update("build.cmake_extra_args", f"{cmake_args} -D{CACHE_VARIABLE}={cmake_fingerprint}")
 
 compiler_name = "slint-compiler.exe" if os.name == "nt" else "slint-compiler"
 compiler = build_dir / "slint-prebuilt" / compiler_name

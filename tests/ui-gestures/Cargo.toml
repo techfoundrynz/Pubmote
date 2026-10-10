@@ -1,0 +1,18 @@
+[package]
+name = "firmware-ui-gesture-tests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[[test]]
+name = "ui_gestures"
+path = "../ui_gestures.rs"
+
+[dependencies]
+slint = { path = "../../.pio/slint/source/api/rs/slint", default-features = false, features = ["std", "renderer-software", "software-renderer-caches", "compat-1-2"] }
+
+[build-dependencies]
+# Enable software-resource embedding in the slint! macro's host compiler.
+slint-build = { path = "../../.pio/slint/source/api/rs/build" }

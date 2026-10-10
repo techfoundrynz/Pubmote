@@ -1,6 +1,6 @@
 #include "settings_console.h"
+#include "remote/settings_types.h"
 #include "settings_api.h"
-#include "settings_types.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>

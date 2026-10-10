@@ -4,9 +4,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "imu/imu_driver.h"
-#include "remote/display.h"
 #include "remote/settings.h"
+#include "remote/settings_state.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include "utilities/ui_operation.h"
 #include <stdio.h>
 
@@ -128,7 +129,7 @@ extern "C" void setup_imu_calibration_properties() {
   if (!get_slint_window())
     return;
 
-  original_imu_calibration = imu_calibration;
+  original_imu_calibration = settings_get_imu();
   imu_calibration_step = 1;
   update_imu_calibration_ui_strings();
 
@@ -149,38 +150,45 @@ extern "C" void setup_imu_calibration_properties() {
     if (get_slint_window()) {
       const auto &state = get_slint_window()->global<UiState>();
       state.set_imu_calibration_enabled(IMU_ENABLED && imu_driver_is_initialized());
-      state.set_imu_calibration_invert_x(imu_calibration.invert_x);
-      state.set_imu_calibration_invert_y(imu_calibration.invert_y);
-      state.set_imu_calibration_swap_xy(imu_calibration.swap_xy);
+      const ImuCalibrationSettings calibration = settings_get_imu();
+      state.set_imu_calibration_invert_x(calibration.invert_x);
+      state.set_imu_calibration_invert_y(calibration.invert_y);
+      state.set_imu_calibration_swap_xy(calibration.swap_xy);
 
       state.on_imu_calibration_calibrate_level([]() { calibrate_level(false); });
 
       state.on_imu_calibration_toggle_invert_x([]() {
-        imu_calibration.invert_x = !imu_calibration.invert_x;
-        ESP_LOGI(TAG, "Invert X toggled (in-memory): %d", imu_calibration.invert_x);
+        ImuCalibrationSettings preview = settings_get_imu();
+        preview.invert_x = !preview.invert_x;
+        settings_set_imu(&preview);
+        ESP_LOGI(TAG, "Invert X toggled (in-memory): %d", settings_get_imu().invert_x);
         slint::invoke_from_event_loop([]() {
           if (get_slint_window()) {
-            get_slint_window()->global<UiState>().set_imu_calibration_invert_x(imu_calibration.invert_x);
+            get_slint_window()->global<UiState>().set_imu_calibration_invert_x(settings_get_imu().invert_x);
           }
         });
       });
 
       state.on_imu_calibration_toggle_invert_y([]() {
-        imu_calibration.invert_y = !imu_calibration.invert_y;
-        ESP_LOGI(TAG, "Invert Y toggled (in-memory): %d", imu_calibration.invert_y);
+        ImuCalibrationSettings preview = settings_get_imu();
+        preview.invert_y = !preview.invert_y;
+        settings_set_imu(&preview);
+        ESP_LOGI(TAG, "Invert Y toggled (in-memory): %d", settings_get_imu().invert_y);
         slint::invoke_from_event_loop([]() {
           if (get_slint_window()) {
-            get_slint_window()->global<UiState>().set_imu_calibration_invert_y(imu_calibration.invert_y);
+            get_slint_window()->global<UiState>().set_imu_calibration_invert_y(settings_get_imu().invert_y);
           }
         });
       });
 
       state.on_imu_calibration_toggle_swap_xy([]() {
-        imu_calibration.swap_xy = !imu_calibration.swap_xy;
-        ESP_LOGI(TAG, "Swap X/Y toggled (in-memory): %d", imu_calibration.swap_xy);
+        ImuCalibrationSettings preview = settings_get_imu();
+        preview.swap_xy = !preview.swap_xy;
+        settings_set_imu(&preview);
+        ESP_LOGI(TAG, "Swap X/Y toggled (in-memory): %d", settings_get_imu().swap_xy);
         slint::invoke_from_event_loop([]() {
           if (get_slint_window()) {
-            get_slint_window()->global<UiState>().set_imu_calibration_swap_xy(imu_calibration.swap_xy);
+            get_slint_window()->global<UiState>().set_imu_calibration_swap_xy(settings_get_imu().swap_xy);
           }
         });
       });
@@ -207,7 +215,7 @@ extern "C" void handle_open_imu_calibration() {
 
 extern "C" void handle_imu_calibration_back() {
   ESP_LOGI(TAG, "IMU back/cancel pressed. Restoring original calibration settings...");
-  imu_calibration = original_imu_calibration;
+  settings_set_imu(&original_imu_calibration);
   slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
 }
 
@@ -244,10 +252,12 @@ static void calibrate_level(bool advance) {
         return ESP_OK;
       },
       [data, advance]() {
-        imu_calibration.accel_x_offset = data->accel_x;
-        imu_calibration.accel_y_offset = data->accel_y;
-        imu_calibration.invert_z = data->accel_z < 0;
-        imu_calibration.accel_z_offset = data->accel_z + (imu_calibration.invert_z ? 1.0f : -1.0f);
+        ImuCalibrationSettings calibrated = settings_get_imu();
+        calibrated.accel_x_offset = data->accel_x;
+        calibrated.accel_y_offset = data->accel_y;
+        calibrated.invert_z = data->accel_z < 0;
+        calibrated.accel_z_offset = data->accel_z + (calibrated.invert_z ? 1.0f : -1.0f);
+        settings_set_imu(&calibrated);
         if (advance) {
           imu_calibration_step = 3;
           update_imu_calibration_ui_strings();

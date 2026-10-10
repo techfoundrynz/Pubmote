@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.16.0)
+set(PUBREMOTE_CMAKE_INPUT_HASH "" CACHE STRING "PlatformIO project build definition fingerprint")
+mark_as_advanced(PUBREMOTE_CMAKE_INPUT_HASH)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-list(APPEND EXTRA_COMPONENT_DIRS firmware/components)
+list(APPEND EXTRA_COMPONENT_DIRS firmware/components firmware/modules)
 project(PubRemote)

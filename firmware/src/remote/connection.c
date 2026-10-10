@@ -1,14 +1,14 @@
 #include "connection.h"
-#include "comms.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 #include "esp_wifi.h"
-#include "peers.h"
 #include "receiver.h"
+#include "remote/comms.h"
+#include "remote/stats.h"
+#include "remote/stats_lifecycle.h"
 #include "remoteinputs.h"
-#include "stats.h"
 #include "time.h"
 #include "transmitter.h"
 
@@ -29,13 +29,25 @@ static uint8_t last_saved_channel = 0;
 
 static _Atomic(TaskHandle_t) connection_task_handle = NULL;
 static atomic_bool connection_task_should_exit = false;
-ConnectionState connection_state = CONNECTION_STATE_DISCONNECTED;
-PairingState pairing_state = PAIRING_STATE_UNPAIRED;
+static _Atomic(ConnectionState) connection_state = CONNECTION_STATE_DISCONNECTED;
+static _Atomic(PairingState) pairing_state = PAIRING_STATE_UNPAIRED;
 static int64_t last_connection_state_change = 0;
 // Tracks user link intent (menu connect/disconnect, incompatible receiver).
 // There is no periodic self-reconnect: this only gates whether user-initiated
 // flows (e.g. pairing-screen teardown) may restore the link.
-static bool auto_reconnect_enabled = true;
+static atomic_bool auto_reconnect_enabled = true;
+
+ConnectionState connection_get_state(void) {
+  return atomic_load(&connection_state);
+}
+
+PairingState connection_get_pairing_state(void) {
+  return atomic_load(&pairing_state);
+}
+
+void connection_update_pairing_state(PairingState state) {
+  atomic_store(&pairing_state, state);
+}
 
 void connection_set_auto_reconnect(bool enabled) {
   auto_reconnect_enabled = enabled;
@@ -61,7 +73,7 @@ void connection_update_state(ConnectionState state) {
     stats_init();
   }
   else if (connection_state == CONNECTION_STATE_RECONNECTING) {
-    remoteStats.signalStrength = -255;
+    stats_set_signal_strength(-255);
   }
 
   stats_update();
@@ -76,17 +88,18 @@ static void connection_task(void *pvParameters) {
 
   while (!connection_task_should_exit) {
     esp_task_wdt_reset();
+    const RemoteStats telemetry = stats_snapshot();
+    PairingSettings peer = settings_get_pairing();
     // DISCONNECTED is terminal by design: the remote connects once on boot
     // (connection_init) and after that only on explicit user action (menu
     // connect, pairing-screen teardown restore) - it never retries on its own
     if (connection_state == CONNECTION_STATE_CONNECTED) {
-      int64_t data_gap_ms = get_current_time_ms() - remoteStats.lastUpdated;
+      int64_t data_gap_ms = get_current_time_ms() - telemetry.lastUpdated;
       if (data_gap_ms > RECONNECTING_DURATION_MS) {
         // No data received for a while - update connection state. Log the
         // link diagnostics before RECONNECTING resets signalStrength
         ESP_LOGW(TAG, "Link stale: no data for %lldms (comms=%s, channel=%d, last RSSI=%d)", data_gap_ms,
-                 comms_get_active_type() == COMMS_TYPE_BLE ? "BLE" : "ESPNOW", pairing_settings.channel,
-                 remoteStats.signalStrength);
+                 comms_get_active_type() == COMMS_TYPE_BLE ? "BLE" : "ESPNOW", peer.channel, telemetry.signalStrength);
         connection_update_state(CONNECTION_STATE_RECONNECTING);
       }
     }
@@ -96,16 +109,15 @@ static void connection_task(void *pvParameters) {
         // own pursuit (the BLE reconnect timer keeps re-dialing otherwise),
         // so a DISCONNECTED remote is genuinely radio-idle
         connection_update_state(CONNECTION_STATE_DISCONNECTED);
-        comms_disconnect_peer(pairing_settings.remote_addr);
+        comms_disconnect_peer(peer.remote_addr);
       }
-      else if (remoteStats.lastUpdated > 0 &&
-               get_current_time_ms() - remoteStats.lastUpdated < RECONNECTING_DURATION_MS) {
+      else if (telemetry.lastUpdated > 0 && get_current_time_ms() - telemetry.lastUpdated < RECONNECTING_DURATION_MS) {
         // Connected - update connection state
         connection_update_state(CONNECTION_STATE_CONNECTED);
         // Save pairing data. This way we remember the last channel we connected on
-        if (pairing_settings.channel != last_saved_channel) {
+        if (peer.channel != last_saved_channel) {
           save_pairing_data();
-          last_saved_channel = pairing_settings.channel;
+          last_saved_channel = peer.channel;
         }
       }
     }
@@ -114,17 +126,17 @@ static void connection_task(void *pvParameters) {
         // Reconnect failed - reset the connection state and stop the driver's
         // own pursuit (see CONNECTING timeout above)
         connection_update_state(CONNECTION_STATE_DISCONNECTED);
-        comms_disconnect_peer(pairing_settings.remote_addr);
+        comms_disconnect_peer(peer.remote_addr);
       }
-      else if (get_current_time_ms() - remoteStats.lastUpdated < RECONNECTING_DURATION_MS) {
+      else if (get_current_time_ms() - telemetry.lastUpdated < RECONNECTING_DURATION_MS) {
         // Reconnected - update connection state
         connection_update_state(CONNECTION_STATE_CONNECTED);
         // The reconnect sweep may have found the board on a new channel (e.g.
         // its WiFi joined an AP) - persist it, or every wake/reboot pays the
         // full sweep again
-        if (pairing_settings.channel != last_saved_channel) {
+        if (peer.channel != last_saved_channel) {
           save_pairing_data();
-          last_saved_channel = pairing_settings.channel;
+          last_saved_channel = peer.channel;
         }
       }
     }
@@ -168,13 +180,13 @@ void connection_connect_to_peer(uint8_t *mac_addr, uint8_t channel) {
 
 void connection_refresh_pairing_state() {
   int8_t default_idx = get_default_device_index();
-  if (default_idx >= 0 && default_idx < pairing_settings.device_count) {
+  if (default_idx >= 0 && default_idx < settings_get_pairing().device_count) {
     // Restore the active peer fields from the saved device - an aborted
     // pairing attempt may have overwritten remote_addr/channel/secret_code
     set_default_device_index(default_idx);
     pairing_state = PAIRING_STATE_PAIRED;
   }
-  else if (pairing_settings.secret_code != DEFAULT_PAIRING_SECRET_CODE) {
+  else if (settings_get_pairing().secret_code != DEFAULT_PAIRING_SECRET_CODE) {
     // Legacy single-device pairing data without a devices-list entry
     pairing_state = PAIRING_STATE_PAIRED;
   }
@@ -214,8 +226,9 @@ esp_err_t connection_switch_comms_mode(CommsType type) {
 
 void connection_connect_to_default_peer() {
   if (pairing_state == PAIRING_STATE_PAIRED) {
-    uint8_t *mac_addr = pairing_settings.remote_addr;
-    connection_connect_to_peer(mac_addr, pairing_settings.channel);
+    PairingSettings peer = settings_get_pairing();
+    uint8_t *mac_addr = peer.remote_addr;
+    connection_connect_to_peer(mac_addr, peer.channel);
   }
 }
 
@@ -226,7 +239,7 @@ esp_err_t connection_start(void) {
 
   // Avoid a redundant NVS write when we reconnect on the same channel we
   // already have saved
-  last_saved_channel = pairing_settings.channel;
+  last_saved_channel = settings_get_pairing().channel;
 
   connection_task_should_exit = false;
   TaskHandle_t handle = NULL;

@@ -44,6 +44,9 @@ static bool connection_get_auto_reconnect(void) {
 static void connection_set_auto_reconnect(bool value) {
   automatic = value;
 }
+static int connection_get_state(void) {
+  return connection_state;
+}
 static void connection_update_state(int value) {
   connection_state = value;
 }

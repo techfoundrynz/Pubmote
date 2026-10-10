@@ -1,39 +1,30 @@
-# Render performance: state, findings, and what to do next
+# Render performance measurements and findings
 
-Target hardware: `pingumote_esp32s3_touch_amoled_132` — ESP32-S3 @ 240 MHz, 466×466 CO5300 AMOLED
-over QSPI @ 80 MHz, 8 MB octal PSRAM, Slint software renderer via `render_by_line`.
+Target hardware: `pingumote_esp32s3_touch_amoled_132` — ESP32-S3 at 240 MHz,
+466×466 CO5300 AMOLED over QSPI at 80 MHz, 8 MB octal PSRAM, and Slint's
+software renderer using `render_by_line`.
 
-This document records historical measurements, retained changes, rejected experiments,
-and validation limits. Results are summarized here without requiring local benchmark
-logs or saved firmware images. Slint internals and renderer tests refer to the
-[external Slint fork](https://github.com/techfoundrynz/slint/tree/mcu-v1.19.2),
-not files in this repository. Build outputs are generated locally.
+The hardened renderer measures **48.267 delivered FPS** during continuous menu
+scrolling with the header fade and colored buttons enabled.
+It passes a ten-minute menu/statistics transition soak and 5,760 pixel-comparison
+frames across bitmap, vector, SDF, and cache-disabled configurations.
+See [renderer hardening](#27-renderer-hardening-2026-10-10) for measurements,
+memory behavior, and validation limits.
+The changes are committed and tagged in the
+[Slint fork](https://github.com/techfoundrynz/slint/tree/mcu-v1.19.4).
+Firmware 0.10.6 pins `mcu-v1.19.4`; these measurements used the same hardened renderer built locally.
 
-**Current decision:** retain three 14-row DMA buffers on Pingumote. The smaller-buffer
-sweep was stopped after reported UI artifacting; its FPS results do not establish
-visual correctness. See [the buffer results](#smaller-dma-buffers-interrupted-visual-validation)
-and [the IDF 6.1 findings](#20-esp-idf-61-migration) for the latest measurements.
+Retain three 14-row DMA buffers on Pingumote.
+The smaller-buffer sweep was stopped after reported UI artifacts; its FPS results
+do not establish visual correctness.
+See [buffer validation](#smaller-dma-buffers-interrupted-visual-validation) and
+[SDK findings](#20-esp-idf-61-migration) for those decisions.
 
-The initial sections record the 2026-08-15 investigation and include hypotheses later corrected by subsequent sessions.
-Read the dated updates before treating an earlier conclusion as current.
-
-**Earlier instruction-fetch findings (2026-09-27, second pass):** executing instructions from PSRAM
-reached **54.62 and 57.34 delivered FPS**, against fresh flash-execution baselines
-of **34.43 and 36.26 FPS**, with the same published renderer and `TEST_MODE=1`.
-The user confirmed normal visuals and behavior. See [§18](#18-execute-instructions-from-psram-2026-09-27)
-for the memory cost, measurements, and validation limits.
-
-The follow-up in [§19](#19-follow-up-memory-and-dma-comparisons-2026-09-27)
-retains earlier DMA submission for another **0.71 FPS** with profiling disabled
-(57.27 to 57.98 FPS). Read-only data in PSRAM had negligible benefit and was
-rejected; the proposed 64-byte instruction-cache line is unsupported.
-
-The preceding renderer investigation reached **34.97 delivered FPS** with the published `mcu-v1.19.2` renderer, up from **28.53 FPS** initially.
-The preceding local build measured 34.91 FPS.
-The successful changes are DMA buffer packing, empty-center arc rejection, scanline membership reuse, and opaque-cover caching.
-Slint changes are published in `mcu-v1.19.2`, and PubRemote builds successfully from the downloaded release.
-The published-release firmware is installed and measured with continuous profiling disabled.
-See [§17](#17-stats-screen-fps-results-and-release-2026-09-27) for controlled measurements, build discoveries, tests, limitations, and release status.
+The dated sections preserve measurements, rejected experiments, and corrected
+hypotheses. Sections 1–9 describe the initial August 2026 investigation.
+Read subsequent corrections before using an earlier conclusion as guidance.
+Benchmarks from different workloads are not interchangeable.
+See [reproduction and test instructions](slint-renderer.md) for current commands.
 
 ---
 
@@ -258,9 +249,6 @@ are unconditional, so content is ~576 px in a 466 px viewport even with every co
   unpinned tasks sit at priority 2–5 and only run when the UI blocks on `trans_sem` during DMA.
 - `sdkconfig.pingumote_esp32s3_touch_amoled_132` is tracked per-env — edit it directly, not
   `platformio.ini`.
-- After changing `SLINT_PREBUILT_TAG`, the first build fails with
-  `Couldn't find target config target-PubRemote.elf-<hash>.json`. Delete
-  `.pio/build/<env>/.cmake` and rebuild.
 - `PLATFORMIO_BUILD_FLAGS` **replaces** `[common].build_flags` rather than appending — pass the full
   set (`TX_RATE_MS`, `INPUT_RATE_MS`, `SHOW_FPS`, `SLINT_PERF_LOG`) or perf logging silently
   disappears.
@@ -679,7 +667,7 @@ registered for SH8601 and CO5300 but never GC9A01) that rounded x1/y1 down to ev
 to odd. The Slint flush path never aligned y at all.
 
 It went unnoticed for as long as it did because **full invalidation satisfies the requirement by
-accident**: the flush starts at row 0 and advances by `slint_chunk_lines`, which `display.cpp`
+accident**: the flush starts at row 0 and advances by `slint_chunk_lines`, which `display/slint_display.cpp`
 forces even, so every window came out even. A narrowed region starts on whatever row the damage
 begins, which is odd half the time. That is why full invalidation looked clean, why band slack
 made no difference at 6px or 30px, and why every renderer-side fix failed - the renderer was
@@ -1392,7 +1380,7 @@ block of 28 bytes and over 5 MB of free PSRAM. Refreshing the games list then
 aborted when Picolibc could not allocate a file mutex. About task creation and
 Wi-Fi event-group allocation also failed under the same memory pressure.
 
-The project-local startup wrapper in `firmware/src/utilities/internal_ram_reserve.c` restores
+The project-local startup wrapper in `firmware/modules/support/src/internal_ram_reserve.c` restores
 the IDF 5.5 protected-pool capabilities and priorities without modifying the
 installed SDK. Two captured game exits completed successfully with this fix,
 and the user confirmed the crash was resolved. The configured reserve remains
@@ -1667,3 +1655,619 @@ After the visual report, original normal firmware was restored with flash hash
 verification. One reboot, the PSRAM startup test, absence of the test counter,
 and a 30-second soak passed without new runtime diagnostics. Visual recovery
 has not been independently confirmed.
+
+## 21. Current firmware and menu scrolling (2026-10-10)
+
+Measured the modularized 0.10.5 workspace on Pingumote with `TEST_MODE=1`,
+`TARGET_FPS=60`, the published `mcu-v1.19.3` renderer, instruction fetch from
+PSRAM, and three 14-row DMA buffers. Profiling logs and the FPS overlay were
+both disabled. Each workload had two measurements of approximately 90 seconds,
+after a software reboot and 22-second warm-up. FPS uses differences in the
+rendered frame counter and device uptime; the aggregate is weighted by duration.
+
+The menu benchmark opened the actual menu and continuously animated its
+viewport between the top and bottom, taking two seconds in each direction.
+Console scene checks confirmed the menu was active. Menu contents, layout,
+scrolling, and display settings were held constant between comparisons.
+
+| Workload | Run 1 FPS | Run 2 FPS | Aggregate FPS | Change vs menu |
+| --- | ---: | ---: | ---: | ---: |
+| Stats screen | 58.29 | 58.22 | 58.25 | — |
+| Continuous menu scrolling | 39.34 | 39.31 | 39.33 | +0.0% |
+| Menu scrolling, header fade removed | 41.37 | 41.28 | 41.32 | +5.1% |
+| Menu scrolling, ghost backgrounds transparent | 41.98 | 42.03 | 42.00 | +6.8% |
+| Menu scrolling, both effects removed | 44.27 | 44.37 | 44.32 | +12.7% |
+
+The current menu's header seam is a translucent `EdgeFade` linear gradient,
+not a blurred drop shadow. Removing only that header overlay gained about
+2.00 FPS (5.1%). Keeping the fade and making the ghost variant's background
+transparent gained about 2.68 FPS (6.8%). The two effects therefore contribute
+to rendering cost, but neither independently explains the whole difference
+between the stats and scrolling scenes. Removing both together averaged
+44.32 FPS, a gain of 4.99 FPS (12.7%) over baseline. This is a repeatable
+improvement in this workload, but remains below the stats scene and target
+frame rate. Remaining costs require profiling.
+
+All samples completed without a panic, watchdog trigger, or draw failure.
+Existing settings-write and duplicate GPIO ISR startup diagnostics appeared
+in the original device firmware as well as the test builds. Menu baseline
+internal free heap was approximately 27 KB at the sample endpoints; its
+minimum since boot was about 1 KB. That minimum includes initialization and
+does not establish a 1 KB steady-state free heap. These short tests do not
+establish long-term stability or visual correctness.
+
+All benchmark-only menu controls and UI changes were removed byte-for-byte;
+`TEST_MODE` is back to zero. The normal Pingumote build and module boundary
+check passed. The missing explicit `remote/test_mode.h` include in `main.c`
+was fixed so the modularized firmware also builds with test mode enabled.
+
+The device's original 0.10.4 application was restored to its active app1 partition
+(`0x700000`) with flash hash verification. Its version, boot partition, rejection
+of the test-only counter command, and a 30-second soak passed, with only the
+known startup diagnostics. No settings or filesystem partitions were flashed.
+
+Raw serial captures, counter values, and saved comparison images are local,
+ignored artifacts under `.pio/fps-current-20261010/`.
+
+
+## 22. Scrolling bottleneck investigation (2026-10-10)
+
+The original menu was profiled with the existing renderer's 60-frame averages,
+without the diagnostic UI branches described below. After a reboot and
+22-second warm-up, a 90-second sample measured **39.21 FPS**, close to the
+profiling-off baseline of 39.33 FPS in section 21. The sample contained 59
+complete 60-frame phase batches. Average measured drawing time was 24.18 ms:
+
+| Drawing phase | Average time |
+| --- | ---: |
+| Scene preparation | 10.84 ms |
+| Rasterization and per-line processing | 10.96 ms |
+| Panel wait | 0.80 ms |
+| Panel draw-call submission | 1.50 ms |
+| Copy bookkeeping | 0.02 ms |
+| Remaining drawing overhead | 0.06 ms |
+
+Preparation plus rasterization accounted for approximately 90% of drawing
+time. This is wall-clock phase timing, not a CPU-cycle or task-scheduling
+profile. The rasterization estimate includes per-line callback overhead.
+Draw-call submission is included in the log's `other` column; the table splits
+it out rather than counting it twice. Drawing time excludes event-loop work
+and the frame limiter's yield, so its reciprocal is not delivered FPS.
+
+The menu repainted 55.2% of the panel on average, in four rectangles and about
+20.4 panel draw calls per frame. The stats control below repainted about 10.1%.
+Panel transfers overlap rendering: a small wait is evidence against panel
+waiting being the primary limit here, not a measurement of total bus occupancy.
+
+### Controlled diagnostic cases
+
+A separate image allowed cases to switch on the Slint event-loop thread. It
+kept the same two-second full-range scrolling, rows, fonts, and display settings.
+Cases had an eight-second settling period and approximately 45-second samples.
+Both-effects-removed was the reference for the text, viewport, and callback
+experiments. The narrower viewport preserved row positions and widths by
+moving horizontal padding outside the Flickable. Hiding the menu text included
+labels, icon glyphs, and right-hand values; header text remained visible.
+
+| Diagnostic case | Samples | FPS | Prepare ms | Render ms | Wait ms | Dirty area |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stats control | 1 | 58.49 | 7.97 | 5.74 | 0.33 | 10.1% |
+| Original scrolling menu | 2 | 35.99 | 13.07 | 11.04 | 0.78 | 55.3% |
+| Both visual effects removed | 2 | 38.83 | 13.40 | 6.90 | 2.52 | 55.3% |
+| Both removed; menu labels/icons hidden | 1 | 55.35 | 8.65 | 2.74 | 3.91 | 54.9% |
+| Both removed; narrower viewport | 2 | 38.86 | 13.41 | 6.87 | 2.52 | 55.3% |
+| Both removed; no scroll-position updates | 1 | 38.80 | 13.42 | 6.88 | 2.52 | 55.3% |
+
+Diagnostic branches and item structure add overhead: use comparisons within
+this table, not its absolute FPS, to judge the isolated cases. Original-menu
+samples were 37.00 and 34.99 FPS, with preparation drifting from 12.31 to
+13.89 ms. Both-effects-removed repeated at 38.83 and 38.82 FPS; narrower viewport
+repeated at 38.79 and 38.93 FPS. These diagnostic timings do not supersede the
+clean 39.33/44.32 FPS measurements in section 21 or the exact-menu profile above.
+
+Hiding menu text raised diagnostic FPS from 38.83 to 55.35 while dirty area
+remained around 55%. Preparation fell by about 4.76 ms and rasterization by
+about 4.15 ms. The increased panel wait reflects reduced overlap once rendering
+became faster. This identifies text-related preparation and pixel drawing as
+major costs; it does not isolate shaping alone. Neither narrower clipping nor
+removing scroll-position updates produced a useful gain in this experiment.
+
+### Renderer source and next optimization
+
+The local Slint checkout matched release `mcu-v1.19.3` exactly, at commit
+`1cdd13661d5f8954be5dabbce516c5f5918c840c`. In
+`internal/renderers/software/lib.rs`, `prepare_scene` computes dirty regions
+and builds a scene from component items. `SceneBuilder::draw_text` receives
+an unused `_cache`, creates a paragraph layout, and emits glyph commands via
+`draw_text_paragraph`. The embedded-font path's `TextParagraphLayout::layout_lines`
+in `internal/core/textlayout.rs` creates a `ShapeBuffer` on that call.
+The generated firmware fonts are bitmap fonts with `sdf = false`; glyphs are
+already embedded, so this is not font-outline rasterization every frame.
+
+The best next experiment is bounded reuse of unchanged embedded text layout
+and glyph commands during translation, followed by profiling the remaining
+glyph blending cost. Changes to content, font, size, color, clipping, and
+screen lifecycle must invalidate the appropriate cached data. Geometry and
+old/new dirty bounds must still update as text moves. A layout/command cache
+would address preparation, not eliminate rasterization. Its performance and
+memory benefits are unmeasured, and it cannot yet be claimed to reach 60 FPS.
+Avoid adding an unbounded internal-RAM cache: the ordinary menu startup minimum
+was about 1 KB. Whole-row bitmap caching would require a separate PSRAM bandwidth
+comparison before adoption.
+
+All diagnostic cases and the exact-menu sample completed without a panic,
+watchdog trigger, or draw failure. Existing settings-write and duplicate GPIO
+ISR startup messages remained. The diagnostic image's minimum internal free
+heap since boot was only 16 bytes; this is a test-image initialization result,
+not its steady-state free heap or a validated production memory margin.
+No diagnostic UI, cache, or renderer change was retained. All temporary source
+edits were restored byte-for-byte, `TEST_MODE=0`, and the normal Pingumote build
+and firmware boundary check passed. Visual correctness and long-term stability
+were not established by these console-only experiments.
+
+The original 0.10.4 device application was restored to app1 (`0x700000`) with
+flash hash verification. Correct boot partition and version, rejection of the
+test-only counter command, and a 30-second soak passed with only the known
+startup diagnostics. Settings and filesystem partitions were not flashed.
+
+Raw phase batches, serial logs, source snapshots, image hashes, and test images
+are ignored local artifacts under `.pio/fps-investigate-20261010/`.
+
+
+## 23. Bounded embedded text cache prototype (2026-10-10)
+
+Implemented and tested a value-keyed LRU for plain, non-SDF bitmap-font text
+in an isolated checkout of Slint `mcu-v1.19.3`.
+The [renderer source and reproduction instructions](slint-renderer.md)
+are retained for review; PubRemote's firmware release pin remains unchanged.
+
+The cache retains glyph data references and their positions relative to each
+text item, bypassing paragraph layout and glyph preparation on a hit.
+The existing glyph drawing path applies current translation, clipping, rotation,
+color, and opacity on every frame.
+Keys include content, resolved bitmap/glyph set, font request, scale, physical
+layout size, alignment, wrapping, elision, and line limit.
+The cache clears on component destruction, window replacement, and bitmap-font
+registration.
+It caps retained payloads at 8 KiB and 24 entries; allocator overhead,
+reference-count headers, and entry-vector storage are additional.
+Long text (over 128 bytes), styled/vector/SDF text, and layouts exceeding the
+budget follow the existing path.
+No glyph bitmap or whole-row framebuffer is allocated by the cache.
+
+### Hardware comparison
+
+Built both an unmodified control and the cache candidate locally with the same
+ESP toolchain, release features, core size optimization, renderer optimization,
+fat LTO, and one codegen unit.
+Both used the original menu appearance, TEST_MODE=1, target 60 FPS, the FPS
+overlay disabled, and 60-frame phase logging enabled.
+The menu workload traversed its full scroll range in two seconds each direction.
+Each menu image had two roughly 90-second samples after a reboot and 22-second
+warm-up; console checks verified the active scene.
+The stats comparison had one such sample per image.
+
+| Workload | Control FPS | Cached FPS | Change |
+| --- | ---: | ---: | ---: |
+| Continuous menu scrolling, two-sample aggregate | 39.06 | 40.93 | +4.8% |
+| Stats screen, one sample | 58.19 | 58.93 | +1.3% |
+
+Menu control samples were 38.95 and 39.16 FPS; cached samples were 40.89 and
+40.96 FPS.
+The gain repeats, but it is modest and does not approach 60 FPS.
+The single stats comparison found no regression; its small gain needs repeated
+controls before it can be treated as established.
+The combined cache-plus-fade/background-removal configuration was not measured.
+
+Across 117 control and 122 cached 60-frame batches, average menu preparation
+fell from 10.89 to 9.63 ms (about 1.26 ms or 11.6%).
+Rasterization was effectively unchanged, 11.03 versus 11.11 ms.
+Average measured drawing time fell from 24.30 to 23.11 ms.
+Dirty area remained approximately 55.2%, with about 20.4 panel draw calls.
+This confirms that layout/glyph reuse reduces preparation work without reducing
+pixel drawing or transfer area.
+Further large gains require addressing the remaining item-tree work and glyph
+rasterization; enlarging this cache alone is not established as useful.
+
+Menu internal free heap at sample endpoints ranged from approximately 26–32 KB
+for the control and 23–29 KB for the candidate.
+Both menu images reported a 1,040-byte minimum since boot.
+Those free-heap snapshots include other task activity and are not a precise
+cache allocation measurement.
+The candidate firmware image grew by 5,632 bytes.
+
+### Correctness and validation limits
+
+Two host tests compare cached and uncached RGB565 output pixel-for-pixel over
+1,440 frames, with full and partial repainting and all four rotations.
+They passed with label, color, font-size/style, opacity, wrapping, elision,
+line-limit, alignment, dimension, and clipping changes.
+They also verify cache reuse, the payload limit, long-text fallback, and cleanup.
+The existing climbing/stalling arc partial-repaint comparisons passed as well.
+These are bitmap-font tests; styled/vector/SDF fallback behavior has not received
+an equivalent new rendering comparison.
+
+The first cached-image serial capture lost its USB connection during startup,
+before timing began.
+The board reconnected with a responsive console and active menu; the cause of
+the interruption was not established.
+The retry's two timed runs and both stats samples completed without panic,
+watchdog trigger, or draw failure.
+Known settings-write and duplicate GPIO ISR startup diagnostics remained.
+Host pixel equality does not independently establish physical-panel visual
+correctness or long-term device stability.
+
+All temporary firmware sources were restored byte-for-byte, TEST_MODE=0,
+and the staged Slint archive was restored to the published release.
+The normal Pingumote build and module boundary check passed.
+The local build helper now accepts `--slint-dir` and honors `CARGO_TARGET_DIR`,
+so an isolated checkout can be staged without changing its default source path.
+Its explicit-directory staging path was exercised during restoration.
+
+The original 0.10.4 application was restored to active app1 (`0x700000`) with
+flash hash verification. Correct version and boot partition, rejection of the
+test counter, and a 30-second soak passed with only the known startup messages.
+Settings and filesystem partitions were not flashed.
+
+Raw serial logs, phase batches, archive/image hashes, source snapshots, and
+comparison images are ignored artifacts under `.pio/slint-text-cache/`.
+
+
+## 24. 50 FPS scrolling investigation (2026-10-10)
+
+The target is delivered FPS during continuous menu scrolling with TEST_MODE=1,
+including the original colored, rounded button backgrounds. Renderer prototypes
+were built in the isolated Slint checkout from section 23. The published release
+pin remains unchanged. [Renderer reproduction steps](slint-renderer.md#reproduce-and-validate)
+are retained for review.
+
+### Changes and hardware method
+
+The first experiment combines the bounded layout cache with removal of the header
+fade and ghost-button fills. A direct alpha-map scanline path then avoids generic
+texture sampling for unrotated, unit-step bitmap text. This path skips empty
+coverage and writes fully opaque pixels directly; other sampling keeps the
+existing renderer. It allocates no cache or framebuffer.
+
+To meet the colored-button requirement, subsequent images restore AppButton
+byte-for-byte. The renderer groups unchanged glyph coverage into bounded alpha
+masks, preserves overlapping glyph order, and caches RGB565 coverage palettes
+only when the actual background span is uniform. Current colors, opacity,
+translation, rotation, and clipping still apply. Rounded-corner geometry is then
+memoized to avoid repeating fixed-point integer square roots for common radii.
+These caches do not pre-render whole buttons or enlarge the DMA buffers.
+
+The final native experiment retains the header-fade removal and all original
+button fills and radii. Its idle-aware pacing skips an extra one-tick sleep after
+an over-budget animation frame only when the UI CPU's idle callback ran during
+that same event-loop iteration. Display-transfer waits can already provide that
+opportunity. Missing idle execution or failed hook registration retains the
+original sleep. The under-budget 60 FPS limiter, other event-loop waits, task
+priorities, transfer buffers, and watchdog configuration are unchanged.
+The hook uses single-writer atomic loads/stores; ESP32-S3 object disassembly
+confirmed direct instructions with no locking calls. A runtime console switch
+compares both pacing modes using the same firmware, renderer, and visuals.
+
+Every timed sample follows a reboot and 22-second warm-up. The menu traverses its
+full Flickable range in two seconds each direction. Delivered FPS is the frame
+counter delta divided by the device uptime delta across approximately 90 seconds;
+the inverse draw-time profiler value is not delivered FPS. Target is 60 FPS and
+the overlay is disabled. The test workload continues telemetry updates every
+15 ms. Console checks confirm the scene, firmware, and active test workload.
+
+### Measurements
+
+| Configuration | Delivered FPS | 90-second samples |
+| --- | ---: | ---: |
+| Layout cache, fade and ghost fills removed | 46.60 | 2 |
+| Add direct bitmap scanlines, fade and ghost fills removed | 50.63 | 2 |
+| Layout + scanlines, all original visuals | 44.32 | 1 |
+| Add initial alpha masks, all original visuals | 45.29 | 2 |
+| Grouped masks + RGB565 palettes, all original visuals | 45.85 | 1 |
+| Grouped masks + palettes, fade removed; colored buttons | 48.98 | 2 |
+| Add corner tables, original pacing; colored buttons, no fade | 49.55 | 1 |
+| Same image, idle-aware pacing; colored buttons, no fade | 51.93 | 2 |
+
+The candidate runs were 51.929 and 51.934 FPS (aggregate 51.931 FPS).
+The runtime pacing control measured 49.552 FPS, so the pacing change gained
+4.8% without changing pixels. This control has one timed sample.
+Approximate 60-frame windows, inferred from profiler timestamps, ranged down
+to 49.38 FPS in both candidate runs; their tenth percentiles were about 49.55
+and 49.59 FPS. These are coarse window estimates, not per-frame latency data.
+The prototype clears a 50 FPS average, but does not establish a strict 50 FPS
+floor or enough margin for every production workload.
+
+The stats-screen sample measured **61.37 completed frames/s** with TEST_MODE=1,
+against the earlier local controls near 58-59 FPS. No regression was observed,
+but this is one candidate sample without a new paired control. The animation
+FPS limiter does not cap every telemetry-driven redraw, so this count can exceed
+60. Frame counters measure completed firmware renders/transfers, not independent
+physical-panel scanout.
+
+The original full menu was approximately 39.1 FPS in the paired local control
+from section 23. The first result above reaching 50 FPS used transparent ghost
+buttons and therefore does not meet the colored-button requirement. Results
+with colored buttons explicitly retain the original AppButton source.
+Full appearance, including the header fade, reached 45.85 FPS before the final
+corner/pacing changes. That is a separate configuration; the colored-button
+candidate's result must not be presented as a full-fade measurement.
+The final fade-on follow-up is recorded in [section 25](#25-final-renderer-with-header-fade-retained-2026-10-10).
+
+The same-image pacing A/B had essentially unchanged drawing costs: 18.88 ms
+(control) versus 18.92 ms (candidate), with preparation about 9.1 ms and
+rasterization about 7.2 ms. Dirty area remained about 55%. The FPS gain comes
+from avoiding redundant post-frame sleeps, rather than reducing panel traffic.
+Scene preparation and rasterization still dominate. Further margin needs work
+there; enlarging the DMA buffers or disabling the watchdog is not part of this
+solution.
+
+### Memory and correctness
+
+Layout metadata retains at most 8 KiB and 24 entries. Alpha-mask payload retains
+at most 64 KiB, at most 16 KiB per text item. RGB565 palette and rounded-corner
+tables each add approximately 4.2 KiB. Allocator/reference-count overhead and
+transient mask-construction allocations are additional. Allocations use the
+ordinary allocator, which prefers PSRAM for larger allocations on this board
+but can fall back to internal memory. These are retained-payload budgets, not
+hard limits on all peak heap use.
+
+Menu candidate endpoint snapshots reported approximately 24-28 KB of free
+internal memory, about 5.3 MB free PSRAM, and a 5 MB largest PSRAM block.
+The minimum internal free memory since boot was 1,040 bytes, close to the earlier
+control. The runtime pacing control reported approximately 24 KB free internal
+memory and a 1,056-byte boot minimum. These snapshots include other task activity;
+they are not precise measurements of cache allocations. Startup memory margin
+remains small and requires attention before release.
+
+All 32 software-renderer unit tests and four standalone host rendering tests
+passed. The text comparisons cover 1,440 frames with full/partial repainting,
+all four rotations, changing colored backgrounds, labels, fonts, opacity,
+wrapping, elision, dimensions, and clipping. Unit comparisons independently
+check the fast scanline against generic sampling, palette colors against generic
+blending, and cached rounded geometry against uncached geometry. Tests also
+verify mask grouping, cache budgets, fallback bounds, and component cleanup.
+Rust formatting and firmware module-boundary checks passed. Applying all five
+renderer patches to clean upstream file snapshots reproduced the tested checkout
+exactly. These tests do not replace inspection of the physical panel.
+
+All timed menu samples completed without panic, watchdog trigger, draw failure,
+or detected reboot. Idle-run and skipped-delay counters increased throughout
+both candidate samples. Known settings-write and duplicate GPIO ISR startup
+diagnostics remained. This is a short benchmark, not a long-term stability soak.
+The stats sample also completed without a timed reboot, panic, watchdog trigger,
+or draw failure. Its internal-free endpoint snapshots were approximately 41-45 KB,
+with a 14,876-byte boot minimum. Known startup diagnostics remained.
+
+All eight temporary firmware files were restored byte-for-byte to their initial
+snapshots, TEST_MODE=0, and the staged renderer archive matches the published
+release backup. The normal Pingumote build passed. The prototype changes remain
+as reviewable patches; no renderer release pin or production visual was changed.
+
+The original 0.10.4 application was restored to active app1 (`0x700000`) with
+flash hash verification. Correct version and boot partition, rejection of the
+test-only counter, and a 30-second soak passed with only the known startup messages.
+Settings and filesystem partitions were not flashed.
+
+Raw serial logs, phase batches, firmware images and hashes, source snapshots,
+patch-reproduction snapshots, and comparison results are ignored local artifacts
+under `.pio/fps-50plus/`.
+
+
+## 25. Final renderer with header fade retained (2026-10-10)
+
+Measured the final section 24 renderer with the original header fade and all
+original colored, rounded buttons. This uses the same layout cache, direct bitmap
+scanlines, grouped alpha masks, RGB565 palettes, corner tables, and idle-aware
+pacing as the 51.93 FPS fade-off candidate. The only visual change from that
+candidate is restoration of the original Page header fade; AppButton is unchanged.
+Both runs used TEST_MODE=1, the full-range two-second scrolling workload,
+22-second reboot warm-up, and approximately 90-second frame-counter samples.
+
+| Final optimized menu | Delivered FPS | Samples |
+| --- | ---: | ---: |
+| Header fade enabled; original colored, rounded buttons | **48.70** | 2 |
+| Header fade disabled; original colored, rounded buttons (section 24) | 51.93 | 2 |
+
+Fade-on runs measured 48.802 and 48.593 FPS.
+The aggregate is 48.697 FPS. Retaining the fade costs approximately
+3.23 FPS (6.2%) against the earlier final fade-off measurements.
+
+Across 144 complete timed profiler batches, average drawing took
+20.20 ms, including 9.30 ms preparation and 8.30 ms rasterization.
+Compared with fade-off, total drawing increased by about
+1.28 ms, primarily rasterization
+(+1.14 ms). Dirty area and transfer counts stayed approximately unchanged.
+
+The user accepts approximately 48 FPS with the fade. The preferred prototype
+therefore retains both the header fade and colored button backgrounds; reaching
+a strict 50 FPS floor is no longer required for this menu configuration.
+These results are sample averages, not minimum per-frame delivery rates.
+Approximate 60-frame windows had medians near 47.8 FPS and minima near 46.5 FPS.
+
+Both timed runs passed scene/version/workload and idle-hook checks. No panic,
+watchdog trigger, draw failure, or timed reboot was detected. Known startup
+settings-write and duplicate GPIO ISR diagnostics remained. The renderer archive
+is unchanged from section 24, whose host correctness tests already passed.
+To reproduce this configuration, use the colored-button prototype instructions
+without applying `menu-header-fade-benchmark.patch`.
+
+All temporary firmware files were restored byte-for-byte, TEST_MODE=0, and the
+published renderer archive was restored. The normal Pingumote build passed.
+The original 0.10.4 application was restored to active app1 at `0x700000` with
+flash hash verification. Correct boot partition/version, rejection of the
+test-only counter, and a 30-second soak passed. Settings and filesystem partitions
+were not flashed. Prototype patches are retained for review and reproduction;
+production renderer pins and visuals remain unchanged.
+
+Raw serial captures, samples, phase batches, firmware hashes, configuration
+checks, and source snapshots are ignored local artifacts under
+`.pio/fps-final-fade-20261010/`.
+
+
+## 26. Renderer Review Before Fork Release (2026-10-10)
+
+The five renderer patches are promising for the measured ESP32-S3 workload.
+They are not ready to tag unchanged.
+The review found test integration failures and cache-miss performance regressions.
+No pixel mismatch was found in the completed comparisons.
+The actual fork checkout remains unchanged; review experiments used the isolated checkout.
+
+| Slint change | Purpose | Review assessment |
+| --- | --- | --- |
+| Embedded text layout cache | Reuse unchanged bitmap glyph positions | Keys include content, resolved font, size, scale, spacing, line height, alignment, wrapping, and elision. Lifecycle clearing and current clipping/color application are sound in the reviewed paths. |
+| Direct alpha-map scanlines | Avoid generic unit-step texture sampling | Lowest-risk optimization; no extra heap cache. Generic sampling remains the fallback for other rotations/scales. |
+| Grouped text alpha masks | Replace repeated glyph commands with ordered coverage groups | Coverage overlap preserves blending order. Retained budgets are bounded, but allocation peaks and allocation failure need attention. |
+| RGB565 big-endian palettes | Reuse coverage-to-color blending results for uniform backgrounds | Correctness comparisons pass; short spans with frequently changing keys can become much slower. |
+| Rounded-corner tables | Reuse fixed-point geometry calculations | Correctness comparisons pass; eager whole-table construction makes clipped cache misses more expensive. |
+
+### Findings to Address Before Tagging
+
+1. **Make the bitmap test fixtures explicit and gate release on tests.**
+   Both new cache tests fail when bitmap embedding is unset.
+   They assert that the cache was exercised, even when the compiler generates vector-font resources.
+   Move them into a fixture configuration that embeds bitmap fonts explicitly, or handle the non-bitmap configuration deliberately.
+   Keep a mandatory bitmap-font job so skipping unsupported fixtures cannot hide lost coverage.
+   The MCU release workflow currently depends on library and host-binary builds, without a renderer-test prerequisite.
+
+2. **Avoid expensive precomputation for cache keys that do not repeat.**
+   The palette cache builds 256 blended colors on a miss, even for an eight-pixel span.
+   A release host microbenchmark of 100,000 spans cycling through 16 colors took 38,852 us with caching versus 5,378 us generically.
+   That is approximately 7.2 times slower for this specific workload.
+   The four-entry corner cache computes every radius row on a miss.
+   A 30,000-iteration benchmark with one visible row and five cycling radii took 21,138 us cached versus 10,020 us uncached.
+   That is approximately 2.1 times slower.
+   These are host microbenchmarks, not ESP32-S3 whole-frame regressions.
+   Promote palette keys after observed reuse and compute corner rows lazily, or retain the generic path when reuse is unlikely.
+
+3. **Make added cache memory controllable and handle allocation failure.**
+   The retained payload budgets total approximately 80 KiB before allocator overhead and temporary allocations.
+   Mask construction allocates scratch buffers and copies data into reference-counted storage.
+   Scene references can keep evicted mask data alive until rendering releases it.
+   The budgets therefore do not bound total peak memory.
+   Allocations use the ordinary heap, without guaranteed PSRAM placement or fallible fallback.
+   Smaller heaps could abort on allocation failure.
+   Provide an opt-in feature or configurable budgets, and fall back to glyph rendering when mask allocation fails.
+   The tested board has ample free PSRAM, but its approximately 1 KiB startup internal-memory minimum remains small.
+
+4. **Keep consumer changes separate from the renderer release.**
+   Idle-aware pacing lives in PubRemote's vendored ESP backend and is not included in the renderer archive.
+   A new Slint library tag alone does not reproduce the measured 48.70 FPS result.
+   Production integration needs that backend change too.
+   Remove the benchmark console switch/counters from the production form and retain the registration-failure fallback.
+   TEST_MODE scrolling, phase-log overrides, and fade/background-removal experiments do not belong in the release.
+   The preferred appearance retains the original fade and colored buttons.
+
+### Validation and Remaining Work
+
+The existing 32 renderer unit tests and four host rendering comparisons passed before review.
+Two expanded comparisons also passed with multiline text, changing letter spacing and line-height factor, and negative/fractional positions.
+Three additional scanline comparisons passed for RGB888, native RGB565, and premultiplied RGBA.
+The temporary audit sources were restored byte-for-byte.
+
+The cache keys include letter spacing and line height through the complete FontRequest.
+Bitmap font references have static lifetimes; masks use reference-counted buffers.
+The reviewed changes add no new unsafe blocks, UI language syntax, C++ header API, or dependency.
+Styled, vector, and SDF text bypass the new bitmap cache, although the shared glyph helper still needs fallback regression coverage.
+Thread-local geometry/palette caches remain allocated until thread exit; no_std storage is process-wide under Slint's single-threaded contract.
+Their retention is bounded, but component destruction does not release them.
+
+Before tagging, add the expanded cases to fork-owned tests, address the findings above, and rerun host and MCU checks.
+Benchmark the hardened image with the original fade and colored buttons.
+Run a longer device soak with screen transitions and changing telemetry, checking peak memory and watchdog behavior.
+No commit, tag, push, firmware source change, or device flash occurred during this review.
+Audit logs are ignored local artifacts under `.pio/slint-review-20261010/`.
+
+
+## 27. Renderer Hardening (2026-10-10)
+
+The section 26 findings are addressed in the Slint fork, released as `mcu-v1.19.4`.
+The original header fade and colored, rounded button backgrounds remain enabled.
+PubRemote's published renderer pin is unchanged.
+
+### Implementation
+
+- Heap caches are disabled by default and enabled explicitly for the fork's MCU archive and local build helper.
+  Rust and CMake expose the option; a CMake check verifies default-off behavior, Cargo forwarding, and the renderer dependency.
+- Large mask/scratch allocations and cache vectors use fallible reservations with uncached fallback.
+  Masks retain their Vec allocation, removing the second large pixel copy.
+  Small reference-count headers still use the ordinary allocator.
+- Palette admission requires reuse and bypasses short spans and nonuniform backgrounds.
+  Corner tables calculate only visible rows and reuse storage on eviction.
+- Fork-owned fixtures explicitly compile bitmap, vector, and SDF font representations.
+  The MCU release waits for renderer units, all font fixtures, and the CMake feature check.
+- PubRemote's idle-aware pacing is production code, without the benchmark switch or counters.
+  Hook-registration failure retains the original delay.
+  Scrolling, screen-transition controls, and forced phase logging remain temporary benchmark instrumentation.
+
+Retained payload limits remain approximately 80 KiB, with allocator overhead and transient memory additional.
+Scene references can keep evicted buffers alive until rendering releases them.
+PSRAM placement and a total peak-heap ceiling are not guaranteed.
+Enabling this feature on smaller heaps still requires target validation.
+
+### Validation
+
+All 39 renderer unit tests pass with caches enabled and disabled.
+The bitmap, vector, and SDF fixtures pass full and partial comparisons across all rotations, totaling 4,320 compared frames with the feature enabled.
+The cache-disabled bitmap fixture adds 1,440 comparisons and asserts that the cache stays empty.
+Bitmap tests assert cache reuse; vector and SDF tests assert cache bypass.
+The two existing arc partial-repaint comparisons pass.
+The CMake feature mapping check passes.
+The ESP32-S3 static library builds with the release staticlib/fat-LTO profile.
+
+The same host churn loops used in section 26 now measure:
+
+| Workload | Ordinary path | Hardened path | Ratio |
+| --- | ---: | ---: | ---: |
+| 100,000 eight-pixel spans, 16 changing colors | 5,383 us | 5,208 us | 0.97x |
+| 30,000 one-row rectangles, five changing radii | 9,540 us | 10,382 us | 1.09x |
+
+The previous 7.2x palette and 2.1x corner penalties are removed or substantially reduced.
+These host measurements do not predict whole-frame ESP32 timing.
+
+Two device runs use TEST_MODE=1, 15 ms telemetry, continuous real menu scrolling, and 22 seconds of warmup:
+
+| Run | Frames | Device interval | Delivered FPS |
+| --- | ---: | ---: | ---: |
+| 1 | 4,365 | 90.342247 s | 48.316 |
+| 2 | 4,357 | 90.359155 s | 48.219 |
+| Aggregate | 8,722 | 180.701402 s | **48.267** |
+
+That is approximately 0.9% below the earlier 48.697 FPS prototype aggregate.
+Both runs pass version, workload, scene, idle-hook, counter, and uptime checks.
+No panic, watchdog trigger, drawing failure, or timed reboot was detected.
+Menu snapshots show approximately 23.6–28.0 KiB free internal memory and 5.3 MB free PSRAM.
+The timed menu samples retain the 1,024-byte startup low-water reading.
+Startup settings-write and duplicate GPIO ISR diagnostics are unchanged.
+
+The hardened image also passes a 604.168-second soak with 20 transitions between the scrolling menu and changing live statistics.
+All frame counters and device uptimes increase monotonically.
+Both scenes are observed, with no panic, watchdog trigger, drawing failure, or timed reboot.
+Only the two known startup diagnostics appear.
+
+Menu snapshots range from 24,963 to 33,039 free internal bytes; statistics snapshots range from 57,223 to 65,227 bytes.
+Free PSRAM stays approximately 5.3 MB, with a 5,242,880-byte largest block throughout.
+There is no sustained decline in sampled free memory.
+The final menu has 31,303 internal bytes free, compared with 30,211 before transitions.
+These periodic samples do not measure the simultaneous peak allocation.
+
+Transitions lower the cumulative internal low-water reading to 16 bytes.
+A separate image using the published Slint archive and identical benchmark controls reproduces that reading on its first transition.
+It is therefore not specific to the new renderer caches.
+ESP-IDF sums individual heap regions' minima, which can occur at different times.
+The reading is not a simultaneous global free-memory measurement, but remains a reason to avoid claiming unlimited internal headroom.
+The protected internal-allocation reserve policy is unchanged.
+
+The normal TEST_MODE=0 firmware build and component-boundary check pass after restoring benchmark sources and the published archive.
+Only the production idle-pacing change remains in the ESP backend.
+The 18 validated Slint files are released as commit
+[`4bba41bd5`](https://github.com/techfoundrynz/slint/commit/4bba41bd5d9a386bcf2b41d07b9cacc24c563c53), tagged `mcu-v1.19.4`.
+Final checks on the actual fork pass, including Rust formatting, CMake feature mapping,
+39 renderer tests with caches enabled, 39 with caches disabled, and all four font configurations.
+The MCU package workflow requires those checks before publishing assets.
+
+The published-renderer baseline passes 124.142 seconds with four transitions and the same 16-byte low-water reading.
+No panic, watchdog trigger, drawing failure, or timed reboot is detected in that comparison.
+The original 0.10.4 application is restored to active app1 at `0x700000`, with flash hash verification.
+Correct version and boot partition, rejection of the test-only counter, and a 30-second restoration soak pass.
+Settings and filesystem partitions are not flashed.
+Raw builds, hashes, source snapshots, host comparisons, serial captures, and samples are ignored under `.pio/slint-hardening-20261010/`.

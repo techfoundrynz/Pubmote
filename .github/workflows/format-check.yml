@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'firmware/src/**'
+      - 'firmware/modules/**'
       - '.clang-format'
       - '.github/workflows/format-check.yml'
     branches:
@@ -35,6 +36,7 @@ jobs:
         run: |
           clang-format --version
           if ! git ls-files -z 'firmware/src/*.c' 'firmware/src/*.h' 'firmware/src/*.cpp' 'firmware/src/*.hpp' \
+              'firmware/modules/*.c' 'firmware/modules/*.h' 'firmware/modules/*.cpp' 'firmware/modules/*.hpp' \
               | xargs -0 -r clang-format --style=file --dry-run --Werror; then
             echo "::error::C/C++ sources are not formatted. Run clang-format 23.1.0 (or format-on-save in VS Code) on the files above."
             exit 1

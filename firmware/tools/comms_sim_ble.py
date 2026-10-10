@@ -1,7 +1,7 @@
 """
 Software-in-the-loop simulation of the BLE side of the PubRemote comms
 pipeline. Mirrors:
-  - firmware/src/remote/comms_ble.c  (dial, discovery, zombie recovery,
+  - firmware/modules/transport/src/comms_ble.c  (dial, discovery, zombie recovery,
                                       reconnect timer arming rules)
   - firmware/src/remote/connection.c (state machine, auto-reconnect)
   - firmware/src/remote/transmitter.c (hunting / stale-poke cadence)

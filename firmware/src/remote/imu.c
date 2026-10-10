@@ -9,7 +9,7 @@
 #include "esp_wifi.h"
 #include "imu/imu_datatypes.h"
 #include "imu/imu_driver.h"
-#include "settings.h"
+#include "remote/settings_snapshot.h"
 #include "utilities/psram_task.h"
 #include <driver/gpio.h>
 #include <esp_wifi.h>
@@ -109,7 +109,7 @@ static void imu_get_data() {
     ESP_LOGI(TAG,
              "Gesture check - Raw Z: %.3f (Accel Z: %.3f, Offset: %.3f), Gyro Mag: %.3f, Flat: %d, Motionless: %d, "
              "Counter: %d",
-             raw_z, imu_data.accel_z, imu_calibration.accel_z_offset, gyro_mag, is_flat, is_motionless,
+             raw_z, imu_data.accel_z, settings_get_imu().accel_z_offset, gyro_mag, is_flat, is_motionless,
              motionless_counter);
   }
 

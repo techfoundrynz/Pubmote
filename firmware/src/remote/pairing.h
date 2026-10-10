@@ -1,8 +1,7 @@
 #pragma once
 
-#include "comms.h"
+#include "remote/comms.h"
 #include <stdbool.h>
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C"

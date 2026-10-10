@@ -1,7 +1,8 @@
 // Shared drag/tap gesture handling. Measures in screen space so it works on
 // areas that ride the element being dragged, locks to the dominant axis after
-// a small threshold, and reports deltas relative to the lock point. A pointer
-// grab by another element raises drag-cancelled so consumers can snap back.
+// a small threshold, and reports deltas relative to the lock point. Pointer
+// cancellation cancels an active drag. On release, the drag is cancelled if
+// the latest deliberate direction opposes the remaining displacement.
 export component GestureArea inherits TouchArea {
     in property <length> axis-threshold: 10px;
     callback h-drag(length);
@@ -15,7 +16,28 @@ export component GestureArea inherits TouchArea {
     property <length> start-y;
     property <length> lock-x;
     property <length> lock-y;
+    property <length> direction-extreme;
+    property <int> direction: 0;
     property <int> axis: 0; // 0 undecided, 1 horizontal, 2 vertical
+
+    // Keep the latest deliberate direction; ignore sub-threshold finger jitter.
+    function track-direction(position: length) {
+        if (root.direction > 0) {
+            if (position > root.direction-extreme) {
+                root.direction-extreme = position;
+            } else if (root.direction-extreme - position > root.axis-threshold) {
+                root.direction = -1;
+                root.direction-extreme = position;
+            }
+        } else {
+            if (position < root.direction-extreme) {
+                root.direction-extreme = position;
+            } else if (position - root.direction-extreme > root.axis-threshold) {
+                root.direction = 1;
+                root.direction-extreme = position;
+            }
+        }
+    }
 
     pointer-event(evt) => {
         if (evt.kind == PointerEventKind.cancel) {
@@ -23,6 +45,7 @@ export component GestureArea inherits TouchArea {
                 root.drag-cancelled();
             }
             self.axis = 0;
+            self.direction = 0;
             return;
         }
         if (evt.button != PointerEventButton.left) {
@@ -32,19 +55,36 @@ export component GestureArea inherits TouchArea {
             self.start-x = self.absolute-position.x + self.mouse-x;
             self.start-y = self.absolute-position.y + self.mouse-y;
             self.axis = 0;
+            self.direction = 0;
         } else if (evt.kind == PointerEventKind.up) {
-            if (self.axis == 1) {
-                root.h-drag-end(self.absolute-position.x + self.mouse-x - self.lock-x);
-            } else if (self.axis == 2) {
-                root.v-drag-end(self.absolute-position.y + self.mouse-y - self.lock-y);
+            if (self.axis != 0) {
+                let position = self.axis == 1
+                    ? self.absolute-position.x + self.mouse-x
+                    : self.absolute-position.y + self.mouse-y;
+                let delta = position - (self.axis == 1 ? self.lock-x : self.lock-y);
+                root.track-direction(position);
+                if (self.axis == 1) {
+                    root.h-drag(delta);
+                } else {
+                    root.v-drag(delta);
+                }
+                if ((delta > 0px && self.direction < 0) || (delta < 0px && self.direction > 0)) {
+                    root.drag-cancelled();
+                } else if (self.axis == 1) {
+                    root.h-drag-end(delta);
+                } else {
+                    root.v-drag-end(delta);
+                }
             } else {
                 root.tapped();
             }
             self.axis = 0;
+            self.direction = 0;
         }
     }
 
     moved => {
+        if (!self.pressed) { return; }
         let x = self.absolute-position.x + self.mouse-x;
         let y = self.absolute-position.y + self.mouse-y;
         if (self.axis == 0) {
@@ -54,11 +94,17 @@ export component GestureArea inherits TouchArea {
                 self.axis = adx > ady ? 1 : 2;
                 self.lock-x = x;
                 self.lock-y = y;
+                self.direction = self.axis == 1
+                    ? (x > self.start-x ? 1 : -1)
+                    : (y > self.start-y ? 1 : -1);
+                self.direction-extreme = self.axis == 1 ? x : y;
             }
         }
         if (self.axis == 1) {
+            root.track-direction(x);
             root.h-drag(x - self.lock-x);
         } else if (self.axis == 2) {
+            root.track-direction(y);
             root.v-drag(y - self.lock-y);
         }
     }

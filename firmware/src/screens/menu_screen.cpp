@@ -9,8 +9,11 @@
 #include "remote/powermanagement.h"
 #include "remote/radio_session.h"
 #include "remote/settings.h"
+#include "remote/settings_state.h"
 #include "remote/stats.h"
 #include "slint_generated/app-window.h"
+#include "ui/device_preferences.h"
+#include "ui/slint_window.h"
 #include "utilities/ui_operation.h"
 #include <atomic>
 
@@ -42,14 +45,14 @@ static int menu_last_connection_state = -1;
 // Only DISCONNECTED offers to connect; the other states (including CONNECTING)
 // offer to tear the attempt down.
 static const char *menu_connect_label() {
-  return connection_state == CONNECTION_STATE_DISCONNECTED ? "Connect" : "Disconnect";
+  return connection_get_state() == CONNECTION_STATE_DISCONNECTED ? "Connect" : "Disconnect";
 }
 
 static void menu_update_display() {
   if (!get_slint_window())
     return;
 
-  int state = (int)connection_state;
+  int state = (int)connection_get_state();
   if (state == menu_last_connection_state) {
     return;
   }
@@ -61,7 +64,7 @@ static void menu_update_display() {
   slint::invoke_from_event_loop([]() {
     menu_update_pending.store(false);
     const auto &state = get_slint_window()->global<UiState>();
-    state.set_connection_state((int)connection_state);
+    state.set_connection_state((int)connection_get_state());
     state.set_menu_connect_label(menu_connect_label());
   });
 }
@@ -109,7 +112,7 @@ extern "C" void setup_menu_properties() {
     pending_action = PENDING_NONE;
   });
 
-  if (pairing_state == PAIRING_STATE_PAIRED) {
+  if (connection_get_pairing_state() == PAIRING_STATE_PAIRED) {
     state.set_menu_show_connect(true);
   }
   else {
@@ -117,9 +120,9 @@ extern "C" void setup_menu_properties() {
   }
 
   state.set_pocket_mode_active(is_pocket_mode_enabled());
-  state.set_hbm_mode_label(hbm_mode_label(device_settings.hbm_mode));
+  state.set_hbm_mode_label(ui_hbm_mode_label(settings_get_device().hbm_mode));
   state.set_hbm_mode_supported(display_supports_hbm());
-  state.set_led_mode_label(led_mode_label(device_settings.led_mode));
+  state.set_led_mode_label(led_mode_label(settings_get_device().led_mode));
   state.set_led_mode_supported(led_is_supported());
 
   stats_register_update_cb(menu_update_display);
@@ -128,7 +131,7 @@ extern "C" void setup_menu_properties() {
 
 extern "C" void handle_menu_connect() {
   ESP_LOGI(TAG, "Connect button pressed");
-  const bool connecting = connection_state == CONNECTION_STATE_DISCONNECTED;
+  const bool connecting = connection_get_state() == CONNECTION_STATE_DISCONNECTED;
   ui_operation_start(
       connecting ? "Connecting to board..." : "Disconnecting...",
       [connecting]() {
@@ -142,18 +145,18 @@ extern "C" void handle_menu_connect() {
         }
         connection_set_auto_reconnect(false);
         connection_update_state(CONNECTION_STATE_DISCONNECTED);
-        return comms_disconnect_peer(pairing_settings.remote_addr);
+        return comms_disconnect_peer(settings_get_pairing().remote_addr);
       },
       []() { get_slint_window()->global<UiState>().set_screen(Screen::Stats); });
 }
 
 extern "C" void handle_menu_pocket_mode() {
   ESP_LOGI(TAG, "Pocket mode button pressed");
-  if (device_settings.pocket_mode == POCKET_MODE_DISABLED) {
-    device_settings.pocket_mode = POCKET_MODE_ENABLED;
+  if (settings_get_device().pocket_mode == POCKET_MODE_DISABLED) {
+    settings_set_pocket_mode(POCKET_MODE_ENABLED);
   }
   else {
-    device_settings.pocket_mode = POCKET_MODE_DISABLED;
+    settings_set_pocket_mode(POCKET_MODE_DISABLED);
   }
   ui_operation_start("Saving settings...", []() { return save_device_settings(); }, []() { setup_menu_properties(); });
 }
@@ -164,13 +167,13 @@ extern "C" void handle_menu_toggle_hbm() {
   }
   ESP_LOGI(TAG, "HBM mode button pressed");
 #if IMU_ENABLED
-  device_settings.hbm_mode = (HbmModeOptions)((device_settings.hbm_mode + 1) % HBM_MODE_COUNT);
+  settings_set_hbm_mode((HbmModeOptions)((settings_get_device().hbm_mode + 1) % HBM_MODE_COUNT));
 #else
-  if (device_settings.hbm_mode == HBM_MODE_OFF) {
-    device_settings.hbm_mode = HBM_MODE_ON;
+  if (settings_get_device().hbm_mode == HBM_MODE_OFF) {
+    settings_set_hbm_mode(HBM_MODE_ON);
   }
   else {
-    device_settings.hbm_mode = HBM_MODE_OFF;
+    settings_set_hbm_mode(HBM_MODE_OFF);
   }
 #endif
   ui_operation_start(
@@ -178,7 +181,7 @@ extern "C" void handle_menu_toggle_hbm() {
       []() {
         esp_err_t result = save_device_settings();
         if (result == ESP_OK)
-          display_set_hbm(device_settings.hbm_mode == HBM_MODE_ON);
+          display_set_hbm(settings_get_device().hbm_mode == HBM_MODE_ON);
         return result;
       },
       []() { setup_menu_properties(); });
@@ -188,8 +191,8 @@ extern "C" void handle_menu_toggle_led() {
   if (!led_is_supported()) {
     return;
   }
-  device_settings.led_mode = (LedModeOptions)((device_settings.led_mode + 1) % LED_MODE_COUNT);
-  ESP_LOGI(TAG, "LED mode button pressed - now %s", led_mode_label(device_settings.led_mode));
+  settings_set_led_mode((LedModeOptions)((settings_get_device().led_mode + 1) % LED_MODE_COUNT));
+  ESP_LOGI(TAG, "LED mode button pressed - now %s", led_mode_label(settings_get_device().led_mode));
   ui_operation_start(
       "Saving LED mode...",
       []() {

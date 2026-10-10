@@ -32,7 +32,7 @@ export component WifiScreen inherits Rectangle {
         show-back: true;
         back => { root.back(); }
         Flickable {
-            viewport-height: content.min-height;
+            content-height: content.min-height;
             content := VerticalLayout {
                 padding-left: Theme.page-padding-horizontal;
                 padding-right: Theme.page-padding-horizontal;

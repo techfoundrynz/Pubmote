@@ -1,5 +1,5 @@
 #pragma once
-#include "comms.h"
+#include "remote/comms.h"
 #include <esp_timer.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -23,8 +23,11 @@ extern "C"
     PAIRING_STATE_PAIRED
   } PairingState;
 
-  extern ConnectionState connection_state;
-  extern PairingState pairing_state;
+  // Individually atomic reads; a pair of reads is not a combined snapshot.
+  ConnectionState connection_get_state(void);
+  PairingState connection_get_pairing_state(void);
+  // Pairing protocol and pairing-screen lifecycle are the permitted writers.
+  void connection_update_pairing_state(PairingState state);
 
   void connection_update_state(ConnectionState state);
   void connection_init();

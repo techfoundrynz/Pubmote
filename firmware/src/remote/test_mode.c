@@ -22,31 +22,45 @@ static void test_mode_task(void *pvParameters) {
     if (mock_speed > 40.0f) {
       mock_speed = 0.0f;
     }
-    remoteStats.speed = mock_speed;
-    remoteStats.dutyCycle = (uint8_t)(mock_speed * 2);
-    remoteStats.batteryPercentage = 80;
-    remoteStats.batteryVoltage = 74.0f;
-    remoteStats.switchState = SWITCH_STATE_BOTH;
-    remoteStats.motorTemp = 40.0f;
-    remoteStats.controllerTemp = 35.0f;
-    remoteStats.tripDistance += 10.0f;
-    remoteStats.remoteBatteryPercentage = 95;
+    RemoteStats reading = stats_snapshot();
+    reading.speed = mock_speed;
+    reading.dutyCycle = (uint8_t)(mock_speed * 2);
+    reading.batteryPercentage = 80;
+    reading.batteryVoltage = 74.0f;
+    reading.switchState = SWITCH_STATE_BOTH;
+    reading.motorTemp = 40.0f;
+    reading.controllerTemp = 35.0f;
+    reading.tripDistance += 10.0f;
+    reading.remoteBatteryPercentage = 95;
 
     // Mock signal strength (RSSI) so RSSI arcs render correctly
-    remoteStats.signalStrength = -55; // RSSI_GOOD is -75, so -55 shows 3 bars
+    reading.signalStrength = -55; // RSSI_GOOD is -75, so -55 shows 3 bars
 
     // Mock battery charging state, cycling every 10 seconds (200 ticks of 50ms)
     static uint32_t tick_count = 0;
     tick_count++;
     if ((tick_count / 200) % 2 == 0) {
-      remoteStats.chargeState = CHARGE_STATE_CHARGING;
+      reading.chargeState = CHARGE_STATE_CHARGING;
     }
     else {
-      remoteStats.chargeState = CHARGE_STATE_NOT_CHARGING;
+      reading.chargeState = CHARGE_STATE_NOT_CHARGING;
     }
 
-    remoteStats.lastUpdated = get_current_time_ms();
+    reading.lastUpdated = get_current_time_ms();
 
+    BoardTelemetry board = {.speed = reading.speed,
+                            .dutyCycle = reading.dutyCycle,
+                            .batteryVoltage = reading.batteryVoltage,
+                            .batteryPercentage = reading.batteryPercentage,
+                            .tripDistance = reading.tripDistance,
+                            .motorTemp = reading.motorTemp,
+                            .controllerTemp = reading.controllerTemp,
+                            .state = reading.state,
+                            .switchState = reading.switchState};
+    stats_publish_board(&board, reading.lastUpdated);
+    stats_publish_power(reading.remoteBatteryVoltage, reading.remoteBatteryPercentage, reading.chargeState,
+                        reading.chargeCurrent);
+    stats_set_signal_strength(reading.signalStrength);
     stats_update();
 
     vTaskDelay(pdMS_TO_TICKS(15));

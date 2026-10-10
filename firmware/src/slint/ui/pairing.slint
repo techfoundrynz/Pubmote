@@ -28,11 +28,6 @@ export component PairingScreen inherits Page {
     VerticalLayout {
         // ui_PairingBody
         Rectangle {
-            padding-left: Theme.page-padding-horizontal;
-            padding-right: Theme.page-padding-horizontal;
-            padding-top: Theme.page-padding-vertical;
-            padding-bottom: Theme.page-padding-vertical;
-
             if !root.is-ble-scan: VerticalLayout {
                 alignment: center;
                 spacing: 10px * Theme.scale;
@@ -95,7 +90,7 @@ export component PairingScreen inherits Page {
                 }
 
                 if root.scan-error == "" && root.discovered-devices.length > 0: Flickable {
-                    viewport-height: devices-layout.min-height;
+                    content-height: devices-layout.min-height;
                     devices-layout := VerticalLayout {
                         padding-top: Theme.seam-size;
                         padding-bottom: Theme.scroll-padding-bottom;

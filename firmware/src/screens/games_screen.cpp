@@ -1,8 +1,8 @@
 #include "screens/games_screen.h"
-#include "remote/display.h"
 #include "remote/haptic.h"
 #include "screens/game_screen.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 extern "C" void handle_open_games() {
   haptic_vibrate(HAPTIC_DOUBLE_CLICK);
   slint::invoke_from_event_loop([]() {

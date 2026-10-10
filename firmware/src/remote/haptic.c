@@ -8,8 +8,8 @@
 #include "esp_wifi.h"
 #include "haptic/haptic_driver.h"
 #include "nvs_flash.h"
+#include "remote/settings_snapshot.h"
 #include "remote/startup.h"
-#include "settings.h"
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
 #include <nvs.h>

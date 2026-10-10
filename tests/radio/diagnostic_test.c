@@ -27,7 +27,7 @@ vprintf_like_t esp_log_set_vprintf(vprintf_like_t sink) {
   installed_sink = sink;
   return output;
 }
-#include "../../firmware/src/utilities/diagnostic_log.c"
+#include "../../firmware/modules/support/src/diagnostic_log.c"
 static int emit(const char *format, ...) {
   va_list args;
   va_start(args, format);

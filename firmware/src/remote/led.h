@@ -1,6 +1,6 @@
 #pragma once
 
-#include "settings_types.h"
+#include "remote/settings_types.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -32,7 +32,7 @@ extern "C"
   void led_set_effect_rainbow();
   void led_set_effect_none();
 
-  // Apply the effect configured by device_settings.led_mode. Use this to return
+  // Apply the effect selected by settings_get_device().led_mode. Use this to return
   // the LED to its resting behaviour after a temporary override (pairing,
   // colour preview, duty alert).
   void led_apply_mode();

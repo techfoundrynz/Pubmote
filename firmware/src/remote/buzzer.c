@@ -7,8 +7,8 @@
 #include "esp_wifi.h"
 #include "led_strip.h"
 #include "nvs_flash.h"
+#include "remote/settings_snapshot.h"
 #include "remote/startup.h"
-#include "settings.h"
 #include "tones.h"
 #include "utilities/psram_task.h"
 #include <driver/ledc.h>
@@ -271,10 +271,10 @@ static void process_buzzer_pattern() {
 static void play_startup_effect() {
 #if BUZZER_ENABLED
   // Handle startup
-  if (device_settings.startup_sound == STARTUP_SOUND_MELODY) {
+  if (settings_get_device().startup_sound == STARTUP_SOUND_MELODY) {
     buzzer_set_pattern(BUZZER_PATTERN_MELODY);
   }
-  else if (device_settings.startup_sound == STARTUP_SOUND_BEEP) {
+  else if (settings_get_device().startup_sound == STARTUP_SOUND_BEEP) {
     buzzer_set_tone(NOTE_C5, 500); // Default beep tone
   }
 #endif

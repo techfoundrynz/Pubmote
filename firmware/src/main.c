@@ -1,4 +1,5 @@
 #include "config.h"
+#include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -20,13 +21,13 @@
 #include "remote/imu.h"
 #include "remote/led.h"
 #include "remote/orchestrator.h"
-#include "remote/peers.h"
 #include "remote/powermanagement.h"
 #include "remote/radio_session.h"
 #include "remote/receiver.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
 #include "remote/startup.h"
+#include "remote/test_mode.h"
 #include "remote/transmitter.h"
 #include "remote/vehicle_state.h"
 #include "utilities/diagnostic_log.h"
@@ -48,7 +49,8 @@ static void configure_log_levels(void) {
   // Module overrides — comment a line out to restore the global default
   esp_log_level_set("PUBREMOTE-IMU", ESP_LOG_ERROR);
   esp_log_level_set("PUBREMOTE-IMU_DRIVER_QMI8658", ESP_LOG_ERROR);
-  esp_log_level_set("PUBREMOTE-DISPLAY", ESP_LOG_ERROR);
+  esp_log_level_set("PUBREMOTE-PANEL", ESP_LOG_ERROR);
+  esp_log_level_set("PUBREMOTE-SLINT-DISPLAY", ESP_LOG_ERROR);
   esp_log_level_set("PUBREMOTE-DISPLAY-DRIVER", ESP_LOG_ERROR);
   esp_log_level_set("NimBLE", ESP_LOG_WARN);
 }
