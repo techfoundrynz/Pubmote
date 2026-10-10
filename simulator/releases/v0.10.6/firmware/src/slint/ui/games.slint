@@ -1,0 +1,29 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { Page } from "page.slint";
+export component GamesScreen inherits Page {
+    in property <[string]> games;
+    callback launch(int);
+    title: "ARCADE";
+    show-back: true;
+    VerticalLayout {
+        Flickable {            content-height: games-layout.min-height;
+            games-layout := VerticalLayout {
+                padding-top: Theme.seam-size;
+                padding-left: Theme.page-padding-horizontal;
+                padding-right: Theme.page-padding-horizontal;
+                padding-bottom: Theme.scroll-padding-bottom;
+                spacing: 8px * Theme.scale;
+                if root.games.length == 0: Text {
+                    text: "No games installed\nInstall games over USB";
+                    color: Theme.text-dim; font-size: Theme.font-12;
+                    horizontal-alignment: center; wrap: word-wrap;
+                }
+                for title[index] in root.games: AppButton {
+                    text: title; variant: "secondary";
+                    clicked => { root.launch(index); }
+                }
+            }
+        }
+    }
+}
