@@ -16,8 +16,8 @@
 #include "remote/time.h"
 #include "remote/vehicle_state.h"
 #include "slint_generated/app-window.h"
-#include "ui/slint_window.h"
 #include "ui/screen_status.h"
+#include "ui/slint_window.h"
 #include "utilities/conversion_utils.h"
 #include "utilities/ui_operation.h"
 #include <atomic>
@@ -275,8 +275,8 @@ static void double_press_handler() {
 static hbm_switch_t raised_hbm_switch;
 
 static bool set_raised_hbm(bool active) {
-  if (!hbm_switch_should_change(&raised_hbm_switch, display_get_hbm(), active,
-                                esp_timer_get_time() / 1000)) return false;
+  if (!hbm_switch_should_change(&raised_hbm_switch, display_get_hbm(), active, esp_timer_get_time() / 1000))
+    return false;
   display_set_hbm(active);
   return true;
 }
@@ -289,8 +289,8 @@ static void apply_imu_pose(bool raised) {
     return;
   }
   if (set_raised_hbm(raised)) {
-    ESP_LOGI(TAG, "%s", raised ? "Raise-to-HBM: viewing position detected. Enabling HBM."
-                              : "Remote lowered. Disabling HBM.");
+    ESP_LOGI(TAG, "%s",
+             raised ? "Raise-to-HBM: viewing position detected. Enabling HBM." : "Remote lowered. Disabling HBM.");
   }
   if (raised) {
     reset_sleep_timer();
@@ -307,10 +307,12 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
   static std::atomic<bool> latest_raised{false};
   static std::atomic<bool> pending{false};
   latest_raised.store(gesture == IMU_GESTURE_RAISED);
-  if (pending.exchange(true)) return;
+  if (pending.exchange(true))
+    return;
   slint::invoke_from_event_loop([]() {
     pending.store(false);
-    if (!is_stats_screen_active() || !get_slint_window()) return;
+    if (!is_stats_screen_active() || !get_slint_window())
+      return;
     apply_imu_pose(latest_raised.load());
   });
 }
