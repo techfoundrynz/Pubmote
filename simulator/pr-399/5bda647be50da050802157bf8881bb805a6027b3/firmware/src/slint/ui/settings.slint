@@ -1,0 +1,137 @@
+// SettingsScreen — faithful reproduction of ui_SettingsScreen.
+//
+// LVGL: ui_SettingsContent (column SPACE_BETWEEN)
+//   ui_SettingsHeader (20%) (empty row)
+//   ui_SettingsBody   (55%) — a HORIZONTAL, snap-scrolled row of setting "pages",
+//     each a full-width column with a control and a label below it:
+//       Brightness slider (10..255)         "Screen brightness"
+//       Double-press dropdown (None/Open menu) "Double-press action"
+//       Rotation dropdown (None/90/180/270)   "Screen rotation"
+// SettingsScreen — restored to horizontal pages with snapping and artifact-free rendering
+
+import { Theme } from "theme.slint";
+import { ComboBox } from "combo-box.slint";
+import { AppSwitch } from "app-switch.slint";
+import { AppSlider } from "app-slider.slint";
+import { ColorSlider } from "color-slider.slint";
+import { PagedPage } from "paged-page.slint";
+
+// One settings page: a centered control slot. Its caption shows in the
+// page header's subtitle, keyed by pager position.
+component SettingPage inherits Rectangle {
+    background: Theme.bg;
+
+    VerticalLayout {
+        alignment: center;
+        padding-left: round(20px / 1px * Theme.scale) * 1px;
+        padding-right: round(20px / 1px * Theme.scale) * 1px;
+
+        @children
+    }
+}
+
+export component SettingsScreen inherits PagedPage {
+    in-out property <float> brightness: 128;
+    in-out property <int> double-press-index: 0;
+    in-out property <int> rotation-index: 0;
+    in-out property <int> auto-off-index: 0;
+    in-out property <int> temp-units-index: 0;
+    in-out property <int> distance-units-index: 0;
+    in-out property <int> startup-sound-index: 0;
+    in property <[string]> double-press-options: [];
+    in property <[string]> rotation-options: [];
+    in property <[string]> auto-off-options: [];
+    in property <[string]> temp-units-options: [];
+    in property <[string]> distance-units-options: [];
+    in property <[string]> startup-sound-options: [];
+
+    in-out property <float> theme-h: 0;
+    in-out property <float> theme-s: 100;
+    in-out property <float> theme-l: 50;
+
+    callback save;
+
+    // Order must match the SettingPage order below
+    property <[string]> page-captions: [
+        "Screen brightness",
+        "Double-press action",
+        "Screen rotation",
+        "Auto-off time",
+        "Temp units",
+        "Distance units",
+        "Startup sound",
+        "Theme color",
+    ];
+
+    title: "SETTINGS";
+    subtitle: root.page-captions[root.current-page];
+    show-back: true;
+    back => { root.save(); }
+    total-pages: 8;
+
+    SettingPage {
+        width: root.width;
+        AppSlider {
+            minimum: 10;
+            maximum: 255;
+            value <=> root.brightness;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.double-press-options;
+            current-index <=> root.double-press-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.rotation-options;
+            current-index <=> root.rotation-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.auto-off-options;
+            current-index <=> root.auto-off-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.temp-units-options;
+            current-index <=> root.temp-units-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.distance-units-options;
+            current-index <=> root.distance-units-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ComboBox {
+            model: root.startup-sound-options;
+            current-index <=> root.startup-sound-index;
+        }
+    }
+
+    SettingPage {
+        width: root.width;
+        ColorSlider {
+            hue <=> root.theme-h;
+            sat <=> root.theme-s;
+            lit <=> root.theme-l;
+        }
+    }
+}
