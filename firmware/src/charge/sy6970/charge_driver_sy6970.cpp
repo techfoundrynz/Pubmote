@@ -214,7 +214,10 @@ extern "C" RemotePowerState sy6970_get_power_state() {
     break;
   }
 
-  state.isPowered = PPM.isVbusIn();
+  // PG_STAT is the live input-power status, independent of ADC conversions
+  // and DPDM source classification. An OTG output is not a charger input.
+  const int power_status = PPM.readRegister(0x0B);
+  state.isPowered = power_status >= 0 && (power_status & 0x04) != 0;
   state.isFault = PPM.getFaultStatus() != 0;
 
   if (state.isFault) {

@@ -15,6 +15,7 @@ export component ArcGauge inherits Rectangle {
     in property <brush> track-color: Theme.track;
     in property <brush> indicator-color: Theme.accent;
     in property <bool> show-track: true;
+    in property <bool> rounded-ends: true;
 
     // Centre line of the stroke, inset by half the stroke so the outer edge sits on the box.
     // Path offsets the whole shape by half the stroke width to keep it inside the element,
@@ -53,7 +54,7 @@ export component ArcGauge inherits Rectangle {
         arc-sweep-angle: root.span-angle;
         stroke: root.track-color;
         stroke-width: root.thickness;
-        stroke-line-cap: round;
+        stroke-line-cap: root.rounded-ends ? round : butt;
         MoveTo {
             x: (root.cx + root.r * Math.cos(root.start-angle)) / 1px;
             y: (root.cy + root.r * Math.sin(root.start-angle)) / 1px;
@@ -80,7 +81,7 @@ export component ArcGauge inherits Rectangle {
         arc-sweep-angle: root.ind-end - root.ind-start;
         stroke: (root.ind-end - root.ind-start) > 0.5deg ? root.indicator-color : transparent;
         stroke-width: root.thickness;
-        stroke-line-cap: round;
+        stroke-line-cap: root.rounded-ends ? round : butt;
         MoveTo {
             x: (root.cx + root.r * Math.cos(root.ind-start)) / 1px;
             y: (root.cy + root.r * Math.sin(root.ind-start)) / 1px;

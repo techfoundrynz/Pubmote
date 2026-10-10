@@ -12,6 +12,8 @@ extern "C"
   void reset_sleep_timer();
   void power_management_preinit();
   void power_management_init();
+  bool power_management_is_power_connected();
+  bool power_management_woke_for_charging();
   void enter_sleep();
 
   typedef enum {

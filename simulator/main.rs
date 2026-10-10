@@ -187,6 +187,24 @@ fn edit_wifi(ui: &ComponentInstance, secret: bool) {
 fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args: &[Value]) {
     match name {
         "screen-changed" => {}
+        // The controls window supplies charge telemetry; screen selection is manual.
+        "charge-poll" => {
+            set(ui, "charge-percent", controls.get_property("remote-battery").unwrap());
+            set(
+                ui,
+                "charge-label",
+                text(if boolean(controls.get_property("charging").unwrap()) {
+                    "Charging"
+                } else {
+                    "Power connected"
+                }),
+            );
+        }
+        "charge-tapped" => {
+            if matches!(get(ui, "screen"), Value::EnumerationValue(_, name) if name == "charge") {
+                screen(ui, "stats");
+            }
+        }
         "splash-tapped" | "menu-back" => screen(ui, "stats"),
         "stats-swiped-down"
         | "about-back"
@@ -768,6 +786,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .unwrap();
         }
+        controls.set_property("remote-battery", 73.into())?;
+        controls.set_property("charging", true.into())?;
+        screen(&ui, "charge");
+        ui.invoke_global("UiState", "charge-poll", &[])?;
+        assert_eq!(number(get(&ui, "charge-percent")), 73.0);
+        assert_eq!(string(get(&ui, "charge-label")), "Charging");
+        ui.invoke_global("UiState", "charge-tapped", &[])?;
+        assert!(matches!(get(&ui, "screen"), Value::EnumerationValue(_, name) if name == "stats"));
+        controls.set_property("charging", false.into())?;
+        ui.invoke_global("UiState", "charge-poll", &[])?;
+        assert_eq!(string(get(&ui, "charge-label")), "Power connected");
         controls.set_property("connected", false.into())?;
         tick(&ui, &controls, 0.0);
         assert!(!boolean(get(&ui, "is-connected")));
@@ -868,6 +897,7 @@ fn capture_scenarios(
         "about",
         "update",
         "charge",
+        "charge-full",
         "games",
         "shutdown-dialog",
     ] {
@@ -887,9 +917,13 @@ fn capture_scenarios(
             controls.set_property("remote-battery", 12.into())?;
             controls.set_property("rssi", (-92).into())?;
         }
+        if name == "charge-full" {
+            controls.set_property("remote-battery", 100.into())?;
+        }
         tick(&ui, &controls, 0.0);
         let target = match name {
             "stats-disconnected" | "stats-low-battery" => "stats",
+            "charge-full" => "charge",
             "boards-empty" => {
                 boards(&ui, false);
                 "boards"
