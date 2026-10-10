@@ -1,0 +1,767 @@
+{
+  "label": "Simulator visual comparison",
+  "total": 54,
+  "counts": {
+    "identical": 48,
+    "changed": 6
+  },
+  "pixel_threshold": 2,
+  "screens": [
+    {
+      "name": "round-240/about.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/boards-empty.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/boards.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge-full.png",
+      "status": "changed",
+      "changed_pixels": 1862,
+      "percent": 3.2326388888888893,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge.png",
+      "status": "changed",
+      "changed_pixels": 2899,
+      "percent": 5.032986111111111,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/games.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/imu-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/input-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/menu.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/pairing.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/settings.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/update.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/wifi-keyboard.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/wifi.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-466/about.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/boards-empty.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/boards.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge-full.png",
+      "status": "changed",
+      "changed_pixels": 5571,
+      "percent": 2.5654368288235188,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge.png",
+      "status": "changed",
+      "changed_pixels": 9540,
+      "percent": 4.3931551511355895,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/games.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/imu-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/input-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/menu.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/pairing.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/settings.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/update.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/wifi-keyboard.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/wifi.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "square-410x502/about.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/boards-empty.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/boards.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge-full.png",
+      "status": "changed",
+      "changed_pixels": 4639,
+      "percent": 2.253911184530172,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge.png",
+      "status": "changed",
+      "changed_pixels": 7672,
+      "percent": 3.7275289087552235,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/games.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/imu-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/input-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/menu.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/pairing.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/settings.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/update.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/wifi-keyboard.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/wifi.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    }
+  ]
+}
