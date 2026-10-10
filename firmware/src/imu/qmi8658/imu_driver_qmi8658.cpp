@@ -182,6 +182,11 @@ bool qmi8658_is_active() {
 }
 
 void qmi8658_get_data(imu_data_t *data) {
+  if (data == nullptr) {
+    ESP_LOGE(TAG, "Invalid data pointer");
+    return;
+  }
+  *data = {};
   if (!imu_initialized) {
     static uint32_t last_warn_time = 0;
     uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
@@ -192,14 +197,8 @@ void qmi8658_get_data(imu_data_t *data) {
     return;
   }
 
-  if (data == nullptr) {
-    ESP_LOGE(TAG, "Invalid data pointer");
-    return;
-  }
-
   uint8_t status = imu.getStatusRegister();
 
-  data->event = IMU_EVENT_NONE;
   if (status & SensorQMI8658::EVENT_TAP_MOTION) {
     SensorQMI8658::TapEvent tap = imu.getTapStatus();
     if (tap == SensorQMI8658::SINGLE_TAP) {
@@ -213,19 +212,8 @@ void qmi8658_get_data(imu_data_t *data) {
     data->event = IMU_EVENT_WOM_MOTION;
   }
 
-  IMUdata acc = {};
-  IMUdata gyr = {};
-  // Read accelerometer data
-  imu.getAccelerometer(acc.x, acc.y, acc.z);
-  data->accel_x = acc.x;
-  data->accel_y = acc.y;
-  data->accel_z = acc.z;
-
-  // Read gyroscope data
-  imu.getGyroscope(gyr.x, gyr.y, gyr.z);
-  data->gyro_x = gyr.x;
-  data->gyro_y = gyr.y;
-  data->gyro_z = gyr.z;
+  data->accel_valid = imu.getAccelerometer(data->accel_x, data->accel_y, data->accel_z);
+  data->gyro_valid = imu.getGyroscope(data->gyro_x, data->gyro_y, data->gyro_z);
 }
 
 esp_err_t qmi8658_imu_driver_init() {

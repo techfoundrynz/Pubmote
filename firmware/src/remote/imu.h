@@ -1,6 +1,5 @@
 #pragma once
 #include "esp_err.h"
-#include "imu/imu_driver.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -10,7 +9,6 @@ extern "C"
   typedef enum {
     IMU_GESTURE_LOWERED,
     IMU_GESTURE_RAISED,
-    IMU_GESTURE_TABLE_FLAT,
     IMU_GESTURE_DOUBLE_TAP,
   } imu_gesture_t;
 

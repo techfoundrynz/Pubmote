@@ -2,6 +2,7 @@
 #include "config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "imu/hbm_switch.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/imu.h"
@@ -16,6 +17,7 @@
 #include "remote/vehicle_state.h"
 #include "slint_generated/app-window.h"
 #include "ui/slint_window.h"
+#include "ui/screen_status.h"
 #include "utilities/conversion_utils.h"
 #include "utilities/ui_operation.h"
 #include <atomic>
@@ -270,43 +272,52 @@ static void double_press_handler() {
   }
 }
 
+static hbm_switch_t raised_hbm_switch;
+
+static bool set_raised_hbm(bool active) {
+  if (!hbm_switch_should_change(&raised_hbm_switch, display_get_hbm(), active,
+                                esp_timer_get_time() / 1000)) return false;
+  display_set_hbm(active);
+  return true;
+}
+
+static void apply_imu_pose(bool raised) {
+  if (settings_get_device().hbm_mode != HBM_MODE_RAISED || !display_supports_hbm() || is_pocket_mode_enabled()) {
+    return;
+  }
+  if (raised && get_slint_window()->global<UiState>().get_show_confirm_dialog()) {
+    return;
+  }
+  if (set_raised_hbm(raised)) {
+    ESP_LOGI(TAG, "%s", raised ? "Raise-to-HBM: viewing position detected. Enabling HBM."
+                              : "Remote lowered. Disabling HBM.");
+  }
+  if (raised) {
+    reset_sleep_timer();
+  }
+}
+
+// IMU callbacks run on the sensor worker. Apply display/UI policy on the
+// event loop and discard work queued before leaving the Stats screen.
 extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
   if (gesture == IMU_GESTURE_DOUBLE_TAP) {
-    ESP_LOGI(TAG, "Double tap gesture callback triggered. Resetting sleep timer.");
     reset_sleep_timer();
     return;
   }
-
-  if (settings_get_device().hbm_mode == HBM_MODE_RAISED && display_supports_hbm() && !is_pocket_mode_enabled()) {
-    if (gesture == IMU_GESTURE_RAISED) {
-      // Do not trigger HBM raise logic if a confirmation dialog/alert is currently open
-      if (get_slint_window() && get_slint_window()->global<UiState>().get_show_confirm_dialog()) {
-        return;
-      }
-
-      if (!display_get_hbm()) {
-        ESP_LOGI(TAG, "Raise-to-HBM: viewing position detected. Enabling HBM.");
-        display_set_hbm(true);
-      }
-      reset_sleep_timer();
-    }
-    else if (gesture == IMU_GESTURE_TABLE_FLAT) {
-      if (display_get_hbm()) {
-        ESP_LOGI(TAG, "Table detection: flat & motionless. Disabling HBM.");
-        display_set_hbm(false);
-      }
-    }
-    else if (gesture == IMU_GESTURE_LOWERED) {
-      if (display_get_hbm()) {
-        ESP_LOGI(TAG, "Wrist/remote lowered. Disabling HBM.");
-        display_set_hbm(false);
-      }
-    }
-  }
+  static std::atomic<bool> latest_raised{false};
+  static std::atomic<bool> pending{false};
+  latest_raised.store(gesture == IMU_GESTURE_RAISED);
+  if (pending.exchange(true)) return;
+  slint::invoke_from_event_loop([]() {
+    pending.store(false);
+    if (!is_stats_screen_active() || !get_slint_window()) return;
+    apply_imu_pose(latest_raised.load());
+  });
 }
 
 // Registration functions called from main flow (replaces LVGL loaded events)
 extern "C" void setup_stats_properties() {
+  hbm_switch_reset(&raised_hbm_switch);
   ui_update_pending.store(false);
   stats_register_update_cb(stats_update_screen_display);
   input_router_claim(INPUT_ACTION_DOUBLE_PRESS, double_press_handler, INPUT_ONCE);

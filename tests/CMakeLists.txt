@@ -36,6 +36,7 @@ else()
 endif()
 
 enable_testing()
+add_subdirectory(imu)
 add_test(NAME settings_console COMMAND settings_console_test)
 
 add_executable(sleep_timer_test sleep_timer_test.c)

@@ -1,29 +1,25 @@
 #include "imu.h"
-#include "buzzer.h"
 #include "config.h"
-#include "esp_err.h"
 #include "esp_log.h"
-#include "esp_now.h"
-#include "esp_system.h"
 #include "esp_timer.h"
-#include "esp_wifi.h"
-#include "imu/imu_datatypes.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "imu/imu_driver.h"
-#include "remote/settings_snapshot.h"
+#include "imu/raise_detector.h"
 #include "utilities/psram_task.h"
-#include <driver/gpio.h>
-#include <esp_wifi.h>
-#include <esp_wifi_types.h>
-#include <math.h>
 
-static int motionless_counter = 0;
+#if IMU_ENABLED
+static raise_detector_t raise_detector;
+#endif
 
 static const char *TAG = "PUBREMOTE-IMU";
 static TaskHandle_t imu_task_handle = NULL;
 static volatile bool imu_should_run = false;
 static volatile bool imu_running = false;
 
-#define DEBUG_IMU 0
+#ifndef DEBUG_IMU
+  #define DEBUG_IMU 0
+#endif
 
 #if IMU_ENABLED
   #define MAX_IMU_CALLBACKS 4
@@ -78,60 +74,16 @@ static void imu_get_data() {
     trigger_gesture_callbacks(IMU_GESTURE_DOUBLE_TAP);
   }
 
-  #if DEBUG_IMU
-  ESP_LOGI(TAG, "IMU Data - Accel: [%.2f, %.2f, %.2f], Gyro: [%.2f, %.2f, %.2f], Event: %d", imu_data.accel_x,
-           imu_data.accel_y, imu_data.accel_z, imu_data.gyro_x, imu_data.gyro_y, imu_data.gyro_z, imu_data.event);
-  #endif
-
-  static uint64_t last_log_time_ms = 0;
   uint64_t now_ms = esp_timer_get_time() / 1000;
-  bool should_log = (now_ms - last_log_time_ms >= 1000);
-  if (should_log) {
-    last_log_time_ms = now_ms;
-  }
-
-  // Use calibrated Z acceleration directly
-  float raw_z = imu_data.accel_z;
-
-  // Calculate gyroscope magnitude (angular velocity in dps)
-  float gyro_mag =
-      sqrtf(imu_data.gyro_x * imu_data.gyro_x + imu_data.gyro_y * imu_data.gyro_y + imu_data.gyro_z * imu_data.gyro_z);
-
-  // Z acceleration component is close to 1g (screen facing up/towards user).
-  // We allow a comfortable tilt range (Z > 0.70g corresponds to tilt < ~45 degrees).
-  bool is_flat = (raw_z > 0.70f);
-
-  // Gyroscope angular velocity is low (< 8 dps), indicating the device is sitting stable
-  // on a table, desk, or resting flat.
-  bool is_motionless = (gyro_mag < 8.0f);
-
-  if (should_log) {
-    ESP_LOGI(TAG,
-             "Gesture check - Raw Z: %.3f (Accel Z: %.3f, Offset: %.3f), Gyro Mag: %.3f, Flat: %d, Motionless: %d, "
-             "Counter: %d",
-             raw_z, imu_data.accel_z, settings_get_imu().accel_z_offset, gyro_mag, is_flat, is_motionless,
-             motionless_counter);
-  }
-
-  if (is_flat && is_motionless) {
-    if (motionless_counter < 100) { // cap at 5 seconds (50ms * 100)
-      motionless_counter++;
-    }
-  }
-  else {
-    motionless_counter = 0;
-  }
-
-  imu_gesture_t current_gesture = IMU_GESTURE_LOWERED;
-  if (is_flat) {
-    if (motionless_counter > 60) {
-      current_gesture = IMU_GESTURE_TABLE_FLAT;
-    }
-    else {
-      current_gesture = IMU_GESTURE_RAISED;
-    }
-  }
-
+  bool raised = raise_detector_update(&raise_detector, now_ms, imu_data.accel_x, imu_data.accel_y, imu_data.accel_z,
+                                      imu_data.accel_valid);
+  #if DEBUG_IMU
+  // CSV at the detector's sample rate for replay; gyro is diagnostic only.
+  ESP_LOGI(TAG, "raise_trace,%llu,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%d,%d,%d", (unsigned long long)now_ms, imu_data.accel_x,
+           imu_data.accel_y, imu_data.accel_z, imu_data.gyro_x, imu_data.gyro_y, imu_data.gyro_z, imu_data.accel_valid,
+           imu_data.gyro_valid, raised);
+  #endif
+  imu_gesture_t current_gesture = raised ? IMU_GESTURE_RAISED : IMU_GESTURE_LOWERED;
   trigger_gesture_callbacks(current_gesture);
 #endif
 }
@@ -163,6 +115,7 @@ void imu_init() {
     ESP_LOGI(TAG, "imu_driver_init succeeded");
   }
 
+  raise_detector_reset(&raise_detector);
   imu_should_run = true;
   imu_task_handle = create_psram_task(imu_task, "imu_task", 4096, NULL, 2, &imu_task_tcb, &imu_task_stack);
 #endif
