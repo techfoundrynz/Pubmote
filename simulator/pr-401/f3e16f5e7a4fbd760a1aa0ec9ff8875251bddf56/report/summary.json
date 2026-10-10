@@ -2,8 +2,8 @@
   "label": "Simulator visual comparison",
   "total": 54,
   "counts": {
-    "changed": 33,
-    "identical": 21
+    "changed": 36,
+    "identical": 18
   },
   "pixel_threshold": 2,
   "screens": [
@@ -121,9 +121,9 @@
     },
     {
       "name": "round-240/menu.png",
-      "status": "identical",
-      "changed_pixels": 0,
-      "percent": 0.0,
+      "status": "changed",
+      "changed_pixels": 10875,
+      "percent": 18.880208333333336,
       "before_size": [
         240,
         240
@@ -373,9 +373,9 @@
     },
     {
       "name": "round-466/menu.png",
-      "status": "identical",
-      "changed_pixels": 0,
-      "percent": 0.0,
+      "status": "changed",
+      "changed_pixels": 36422,
+      "percent": 16.772274309712834,
       "before_size": [
         466,
         466
@@ -625,9 +625,9 @@
     },
     {
       "name": "square-410x502/menu.png",
-      "status": "identical",
-      "changed_pixels": 0,
-      "percent": 0.0,
+      "status": "changed",
+      "changed_pixels": 41858,
+      "percent": 20.337187834029734,
       "before_size": [
         410,
         502

@@ -1,6 +1,6 @@
 ## Simulator visual comparison
 
-54 scenarios: 33 changed, 21 identical
+54 scenarios: 36 changed, 18 identical
 
 Visual differences are advisory. Rendering and browser interaction errors fail the check.
 
@@ -14,7 +14,7 @@ Visual differences are advisory. Rendering and browser interaction errors fail t
 | round-240/games.png | identical | 0.000% |
 | round-240/imu-calibration.png | changed | 1.335% |
 | round-240/input-calibration.png | changed | 5.944% |
-| round-240/menu.png | identical | 0.000% |
+| round-240/menu.png | changed | 18.880% |
 | round-240/pairing.png | changed | 6.342% |
 | round-240/settings.png | identical | 0.000% |
 | round-240/shutdown-dialog.png | changed | 6.290% |
@@ -32,7 +32,7 @@ Visual differences are advisory. Rendering and browser interaction errors fail t
 | round-466/games.png | identical | 0.000% |
 | round-466/imu-calibration.png | changed | 1.229% |
 | round-466/input-calibration.png | changed | 4.922% |
-| round-466/menu.png | identical | 0.000% |
+| round-466/menu.png | changed | 16.772% |
 | round-466/pairing.png | changed | 5.219% |
 | round-466/settings.png | identical | 0.000% |
 | round-466/shutdown-dialog.png | changed | 4.976% |
@@ -50,7 +50,7 @@ Visual differences are advisory. Rendering and browser interaction errors fail t
 | square-410x502/games.png | identical | 0.000% |
 | square-410x502/imu-calibration.png | changed | 1.359% |
 | square-410x502/input-calibration.png | changed | 1.390% |
-| square-410x502/menu.png | identical | 0.000% |
+| square-410x502/menu.png | changed | 20.337% |
 | square-410x502/pairing.png | changed | 1.324% |
 | square-410x502/settings.png | identical | 0.000% |
 | square-410x502/shutdown-dialog.png | changed | 4.591% |
