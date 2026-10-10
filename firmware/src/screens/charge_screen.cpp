@@ -8,8 +8,13 @@
 #include "utilities/ui_operation.h"
 
 static const char *TAG = "PUBREMOTE-CHARGE_SCREEN";
-static ChargeScreenState charge_screen;
 static Screen return_screen = Screen::Stats;
+
+static ChargeScreenState &charge_state() {
+  // The first UI poll happens after power management has accepted the wake.
+  static ChargeScreenState state(power_management_woke_for_charging());
+  return state;
+}
 
 // UI task only, including the initial boot sample.
 extern "C" void poll_charge_screen() {
@@ -17,6 +22,7 @@ extern "C" void poll_charge_screen() {
   if (!window)
     return;
   const bool powered = power_management_is_power_connected();
+  auto &charge_screen = charge_state();
   static bool last_powered = false;
   if (powered != last_powered) {
     ESP_LOGI(TAG, "UI detected charger %s", powered ? "connection" : "disconnection");
@@ -29,6 +35,11 @@ extern "C" void poll_charge_screen() {
   // control session, including connection/reconnection and idle telemetry.
   const bool board_control_active = screen == Screen::Stats && connection_get_state() != CONNECTION_STATE_DISCONNECTED;
   if (!powered && screen == Screen::Charge) {
+    if (charge_screen.should_power_off()) {
+      ESP_LOGI(TAG, "Charger-only wake ended: powering off after unplug");
+      enter_sleep();
+      return;
+    }
     state.set_screen(return_screen);
   }
   else if (charge_screen.should_show(board_control_active) && !ui_processing_active() &&
@@ -37,7 +48,7 @@ extern "C" void poll_charge_screen() {
     return_screen = screen == Screen::Splash ? Screen::Stats : screen;
     state.set_screen(Screen::Charge);
     if (state.get_screen() == Screen::Charge) {
-      charge_screen.dismiss();
+      charge_screen.presented();
       ESP_LOGI(TAG, "Charger connected: showing charge screen");
     }
   }
@@ -51,9 +62,9 @@ extern "C" void poll_charge_screen() {
 }
 
 extern "C" void handle_charge_tapped() {
-  charge_screen.dismiss();
-  reset_sleep_timer();
   if (auto *window = get_slint_window(); window && window->global<UiState>().get_screen() == Screen::Charge) {
+    charge_state().dismiss();
+    reset_sleep_timer();
     window->global<UiState>().set_screen(return_screen);
     ESP_LOGI(TAG, "Charge screen dismissed");
   }

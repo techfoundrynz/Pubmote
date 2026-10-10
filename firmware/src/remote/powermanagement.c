@@ -43,9 +43,14 @@ static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
 
 RTC_DATA_ATTR bool is_power_connected = false; // Store power state across deep sleep
 static atomic_bool power_connected_snapshot = false;
+static bool woke_for_charging = false;
 
 bool power_management_is_power_connected(void) {
   return atomic_load(&power_connected_snapshot);
+}
+
+bool power_management_woke_for_charging(void) {
+  return woke_for_charging;
 }
 
 static volatile bool shutdown_initiated = false; // Flag for triggering shutdown sequence
@@ -484,6 +489,7 @@ static bool check_pmu_should_wake(bool last_powered) {
   await_pmu_int_reset();
   power_state_update();
   if (is_power_connected && !last_powered) {
+    woke_for_charging = true;
     buzzer_set_tone(NOTE_SUCCESS, PMU_INT_NOTE_DURATION);
     // Power was connected after last sleep - continue to normal operation
   }
