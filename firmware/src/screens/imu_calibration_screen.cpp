@@ -73,6 +73,10 @@ static void imu_calibration_task(void *pvParameters) {
   while (is_imu_calibration_screen_active()) {
 #if IMU_ENABLED
     imu_driver_get_data(&data);
+    if (!data.accel_valid) {
+      vTaskDelay(pdMS_TO_TICKS(50));
+      continue;
+    }
 
     char accel_str[64];
     char gyro_str[64];
@@ -249,7 +253,7 @@ static void calibrate_level(bool advance) {
         if (!imu_driver_is_initialized())
           return ESP_ERR_INVALID_STATE;
         imu_driver_get_raw_data(data.get());
-        return ESP_OK;
+        return data->accel_valid ? ESP_OK : ESP_FAIL;
       },
       [data, advance]() {
         ImuCalibrationSettings calibrated = settings_get_imu();
