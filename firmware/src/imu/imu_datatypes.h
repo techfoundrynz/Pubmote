@@ -1,4 +1,5 @@
 #pragma once
+#include <stdbool.h>
 
 typedef enum {
   IMU_EVENT_NONE,
@@ -17,4 +18,6 @@ typedef struct {
   float gyro_y;
   float gyro_z;
   imu_event_t event;
+  bool accel_valid;
+  bool gyro_valid;
 } imu_data_t;

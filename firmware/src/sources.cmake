@@ -14,6 +14,8 @@ set(app_sources
     "haptic/drv2605/haptic_driver_drv2605.cpp"
     "haptic/haptic_driver.c"
     "imu/imu_driver.c"
+    "imu/raise_detector.c"
+    "imu/hbm_switch.c"
     "imu/qmi8658/imu_driver_qmi8658.cpp"
     "main.c"
     "remote/adc.c"

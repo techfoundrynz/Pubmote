@@ -9,14 +9,10 @@ static const char *TAG = "PUBREMOTE-IMU";
 
 esp_err_t imu_driver_init() {
 #if IMU_QMI8658
-  // Initialize the DRV2605 haptic driver
-  ESP_LOGI(TAG, "Initializing QMI8568 haptic driver");
+  ESP_LOGI(TAG, "Initializing QMI8658 IMU driver");
   return qmi8658_imu_driver_init();
 #elif IMU_BHI260
   return ESP_ERR_NOT_SUPPORTED; // BHI260 not implemented yet
-                                // // Initialize the BHI260 haptic driver
-                                // ESP_LOGI(TAG, "Initializing BHI260 haptic driver");
-                                // return bhi260_imu_driver_init();
 #else
   ESP_LOGE(TAG, "No IMU driver defined");
   return ESP_ERR_NOT_SUPPORTED;
@@ -32,15 +28,21 @@ esp_err_t imu_driver_deinit() {
 }
 
 void imu_driver_get_raw_data(imu_data_t *data) {
+  if (!data)
+    return;
 #if IMU_QMI8658
   qmi8658_get_data(data);
-#elif IMU_BHI260
-  // bhi260_get_data(data);
+#else
+  *data = (imu_data_t){0};
 #endif
 }
 
 void imu_driver_get_data(imu_data_t *data) {
+  if (!data)
+    return;
   imu_driver_get_raw_data(data);
+  if (!data->accel_valid)
+    return;
   // Apply calibration offsets
   const ImuCalibrationSettings calibration = settings_get_imu();
   data->accel_x -= calibration.accel_x_offset;
@@ -84,7 +86,6 @@ void imu_driver_get_data(imu_data_t *data) {
 
 bool imu_driver_is_initialized() {
 #if IMU_QMI8658
-  extern bool qmi8658_is_active();
   return qmi8658_is_active();
 #else
   return false;
