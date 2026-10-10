@@ -102,7 +102,7 @@ extern "C" void stats_update_screen_display() {
     max_speed = telemetry.speed;
   }
   float speed_fraction = telemetry.speed / max_speed;
-  float duty_fraction = (float)telemetry.dutyCycle / 100.0f;
+  float duty_fraction = (float)stats_utilization(&telemetry) / 100.0f;
 
   // 2. Format speed string
   float converted_speed = telemetry.speed;
@@ -339,18 +339,16 @@ extern "C" void setup_stats_properties() {
       else {
         settings_set_battery_display(BATTERY_DISPLAY_PERCENT);
       }
-      ui_operation_start(
-          "Saving display preference...", []() { return save_device_settings(); },
-          []() { stats_update_screen_display(); });
+      stats_update_screen_display();
+      ui_save_quietly([]() { return save_device_settings(); });
     });
 
     state.on_secondary_stat_left_clicked([]() {
       // Cycle secondary stat
       settings_set_secondary_stat_display(
           (SecondaryStatDisplayOption)((settings_get_device().secondary_stat_display + 1) % 3));
-      ui_operation_start(
-          "Saving display preference...", []() { return save_device_settings(); },
-          []() { stats_update_screen_display(); });
+      stats_update_screen_display();
+      ui_save_quietly([]() { return save_device_settings(); });
     });
   }
 
@@ -358,6 +356,7 @@ extern "C" void setup_stats_properties() {
 }
 
 extern "C" void teardown_stats_properties() {
+  ui_save_quietly_flush();
   stats_unregister_update_cb(stats_update_screen_display);
   imu_unregister_gesture_callback(handle_imu_gesture);
   if (settings_get_device().hbm_mode == HBM_MODE_RAISED) {

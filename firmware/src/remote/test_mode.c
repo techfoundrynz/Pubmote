@@ -25,6 +25,9 @@ static void test_mode_task(void *pvParameters) {
     RemoteStats reading = stats_snapshot();
     reading.speed = mock_speed;
     reading.dutyCycle = (uint8_t)(mock_speed * 2);
+    reading.phaseUtilization = (int8_t)(mock_speed * 2.5f);
+    // Swing into regen for the second half of the sweep
+    reading.batteryUtilization = (int8_t)(mock_speed < 20.0f ? mock_speed * 1.5f : -(mock_speed * 2.4f));
     reading.batteryPercentage = 80;
     reading.batteryVoltage = 74.0f;
     reading.switchState = SWITCH_STATE_BOTH;
@@ -50,6 +53,8 @@ static void test_mode_task(void *pvParameters) {
 
     BoardTelemetry board = {.speed = reading.speed,
                             .dutyCycle = reading.dutyCycle,
+                            .phaseUtilization = reading.phaseUtilization,
+                            .batteryUtilization = reading.batteryUtilization,
                             .batteryVoltage = reading.batteryVoltage,
                             .batteryPercentage = reading.batteryPercentage,
                             .tripDistance = reading.tripDistance,

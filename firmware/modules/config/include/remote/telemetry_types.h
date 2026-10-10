@@ -39,6 +39,8 @@ typedef enum {
 typedef struct {
   float speed; // canonical KPH
   uint8_t dutyCycle;
+  int8_t phaseUtilization;   // motor current as % of the ESC limit, negative = braking
+  int8_t batteryUtilization; // battery current as % of the ESC limit, negative = regen
   float batteryVoltage;
   uint8_t batteryPercentage;
   float tripDistance;

@@ -158,7 +158,8 @@ extern "C" void handle_menu_pocket_mode() {
   else {
     settings_set_pocket_mode(POCKET_MODE_DISABLED);
   }
-  ui_operation_start("Saving settings...", []() { return save_device_settings(); }, []() { setup_menu_properties(); });
+  setup_menu_properties();
+  ui_save_quietly([]() { return save_device_settings(); });
 }
 
 extern "C" void handle_menu_toggle_hbm() {
@@ -176,15 +177,9 @@ extern "C" void handle_menu_toggle_hbm() {
     settings_set_hbm_mode(HBM_MODE_OFF);
   }
 #endif
-  ui_operation_start(
-      "Saving display mode...",
-      []() {
-        esp_err_t result = save_device_settings();
-        if (result == ESP_OK)
-          display_set_hbm(settings_get_device().hbm_mode == HBM_MODE_ON);
-        return result;
-      },
-      []() { setup_menu_properties(); });
+  display_set_hbm(settings_get_device().hbm_mode == HBM_MODE_ON);
+  setup_menu_properties();
+  ui_save_quietly([]() { return save_device_settings(); });
 }
 
 extern "C" void handle_menu_toggle_led() {
@@ -193,15 +188,9 @@ extern "C" void handle_menu_toggle_led() {
   }
   settings_set_led_mode((LedModeOptions)((settings_get_device().led_mode + 1) % LED_MODE_COUNT));
   ESP_LOGI(TAG, "LED mode button pressed - now %s", led_mode_label(settings_get_device().led_mode));
-  ui_operation_start(
-      "Saving LED mode...",
-      []() {
-        esp_err_t result = save_device_settings();
-        if (result == ESP_OK)
-          led_apply_mode();
-        return result;
-      },
-      []() { setup_menu_properties(); });
+  led_apply_mode();
+  setup_menu_properties();
+  ui_save_quietly([]() { return save_device_settings(); });
 }
 
 extern "C" void handle_open_settings() {
@@ -247,13 +236,13 @@ extern "C" void handle_menu_shutdown() {
 
 extern "C" void teardown_menu_properties() {
   ESP_LOGI(TAG, "Tearing down menu screen properties");
+  ui_save_quietly_flush();
   stats_unregister_update_cb(menu_update_display);
   if (!get_slint_window())
     return;
-  slint::invoke_from_event_loop([]() {
-    const auto &state = get_slint_window()->global<UiState>();
-    state.on_menu_shutdown_long_press([]() {});
-    state.on_confirm_dialog_accepted([]() {});
-    state.on_confirm_dialog_rejected([]() {});
-  });
+  // Synchronously, for the same reason as teardown_boards_properties
+  const auto &state = get_slint_window()->global<UiState>();
+  state.on_menu_shutdown_long_press([]() {});
+  state.on_confirm_dialog_accepted([]() {});
+  state.on_confirm_dialog_rejected([]() {});
 }

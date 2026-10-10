@@ -17,7 +17,7 @@
 #endif
 
 // Minimum required VESC receiver API version
-#define MIN_RCV_API_VERSION 1
+#define MIN_RCV_API_VERSION 2
 
 #ifndef TARGET_FPS
   #define TARGET_FPS 60

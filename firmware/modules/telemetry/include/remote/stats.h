@@ -26,6 +26,10 @@ extern "C"
     float maxSpeed;
     // 0 to 100
     uint8_t dutyCycle;
+    // -100 to 100, motor current as a share of the ESC limit, negative = braking
+    int8_t phaseUtilization;
+    // -100 to 100, battery current as a share of the ESC limit, negative = regen
+    int8_t batteryUtilization;
     // Unit of speed measure
     SpeedUnit speedUnit;
     // Unit of temperature measure
@@ -73,6 +77,8 @@ extern "C"
   void stats_set_signal_strength(int rssi);
   void stats_set_vehicle_type(uint8_t vehicle_type);
   void stats_set_duty_cycle(uint8_t duty_cycle);
+  // Highest of duty, |phase| and |battery| utilization, 0 to 100
+  uint8_t stats_utilization(const RemoteStats *stats);
   void stats_reset(uint8_t vehicle_type);
 
   void stats_update();

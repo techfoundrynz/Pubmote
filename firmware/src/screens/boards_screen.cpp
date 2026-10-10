@@ -162,9 +162,9 @@ extern "C" void teardown_boards_properties() {
   ESP_LOGI(TAG, "Tearing down boards screen properties");
   if (!get_slint_window())
     return;
-  slint::invoke_from_event_loop([]() {
-    const auto &state = get_slint_window()->global<UiState>();
-    state.on_confirm_dialog_accepted([]() {});
-    state.on_confirm_dialog_rejected([]() {});
-  });
+  // Synchronously: teardown runs on the UI thread just before the next screen's
+  // setup, and a deferred clear would wipe the handlers that setup registers.
+  const auto &state = get_slint_window()->global<UiState>();
+  state.on_confirm_dialog_accepted([]() {});
+  state.on_confirm_dialog_rejected([]() {});
 }

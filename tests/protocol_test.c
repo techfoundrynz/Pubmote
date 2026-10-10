@@ -27,23 +27,35 @@ static void test_encoding(void) {
   assert(!protocol_encode_version(out, 32, 1, NULL));
 }
 static void test_decoding(void) {
-  uint8_t packet[32] = {0x81, 0x23, 0x45, 0x67};
+  uint8_t packet[33] = {0x81, 0x23, 0x45, 0x67};
   BoardTelemetry out = {.speed = 99};
-  assert(!protocol_decode_board(packet, 31, 0x81234567, &out) && out.speed == 99);
-  assert(!protocol_decode_board(packet, 32, 1, &out) && out.speed == 99);
-  assert(!protocol_decode_board(NULL, 32, 1, &out));
-  assert(!protocol_decode_board(packet, 32, 0x81234567, NULL));
+  assert(!protocol_decode_board(packet, 32, 0x81234567, &out) && out.speed == 99);
+  assert(!protocol_decode_board(packet, 34, 0x81234567, &out) && out.speed == 99);
+  assert(!protocol_decode_board(packet, 33, 1, &out) && out.speed == 99);
+  assert(!protocol_decode_board(NULL, 33, 1, &out));
+  assert(!protocol_decode_board(packet, 33, 0x81234567, NULL));
   // Exhaustive duty bytes and all signed speed values preserve legacy rounding.
   for (unsigned i = 0; i < 256; ++i) {
     packet[19] = (uint8_t)i;
-    assert(protocol_decode_board(packet, 32, 0x81234567, &out));
+    assert(protocol_decode_board(packet, 33, 0x81234567, &out));
     float old_duty = (float)i / 100.0 - 0.5;
     assert(out.dutyCycle == (uint8_t)(fabs(old_duty) * 100));
   }
+  // Utilization bytes follow duty: signed (negative = braking/regen), clamped to +-100
+  packet[20] = 42;
+  packet[21] = (uint8_t)-37;
+  assert(protocol_decode_board(packet, 33, 0x81234567, &out));
+  assert(out.phaseUtilization == 42 && out.batteryUtilization == -37);
+  packet[20] = 0x7f;
+  packet[21] = 0x80;
+  assert(protocol_decode_board(packet, 33, 0x81234567, &out));
+  assert(out.phaseUtilization == 100 && out.batteryUtilization == -100);
+  packet[20] = 0;
+  packet[21] = 0;
   for (int speed = -32768; speed <= 32767; ++speed) {
     packet[15] = (uint8_t)((uint16_t)speed >> 8);
     packet[16] = (uint8_t)speed;
-    assert(protocol_decode_board(packet, 32, 0x81234567, &out));
+    assert(protocol_decode_board(packet, 33, 0x81234567, &out));
     float old_speed = (int16_t)speed / 10.0;
     assert(out.speed == (float)(fabs(old_speed) * 3.6));
   }
