@@ -8,6 +8,7 @@
 #include "remote/settings_snapshot.h"
 #include "screens/about_screen.h"
 #include "screens/boards_screen.h"
+#include "screens/charge_screen.h"
 #include "screens/game_screen.h"
 #include "screens/games_screen.h"
 #include "screens/imu_calibration_screen.h"
@@ -244,6 +245,8 @@ static void connect_callbacks() {
   });
 
   state.on_splash_tapped([]() { handle_splash_tapped(); });
+  state.on_charge_poll([]() { poll_charge_screen(); });
+  state.on_charge_tapped([]() { handle_charge_tapped(); });
   state.on_stats_swiped_down([]() { handle_stats_swiped_down(); });
   state.on_menu_back([]() { handle_menu_back(); });
   state.on_menu_connect([]() { handle_menu_connect(); });
@@ -310,6 +313,7 @@ void ui_navigation_init(int reset_reason) {
       settings_calibration_needed(&snapshot.pins, &snapshot.calibration));
   connect_callbacks();
   ui_apply_theme();
+  poll_charge_screen();
 }
 void ui_navigation_prepare_shutdown(void) {
   imu_unregister_gesture_callback(handle_imu_gesture);

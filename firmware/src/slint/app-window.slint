@@ -223,6 +223,7 @@ export global UiState {
 
     // --- Charge (ui_ChargeScreen) ---
     in property <int> charge-percent: 0;
+    in property <string> charge-label: "Charging";
 
     // --- Boot notice (set by firmware when recovering from a crash) ---
     in-out property <string> boot-notice: "";
@@ -243,6 +244,8 @@ export global UiState {
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
     callback splash-tapped();
+    callback charge-poll();
+    callback charge-tapped();
     callback stats-swiped-down();
     callback secondary-stat-left-clicked();
     callback board-battery-clicked();
@@ -291,6 +294,12 @@ export component AppWindow inherits Window {
     // Must match the TTF's family name exactly, or the compiler embeds the
     // host system font as the default instead
     default-font-family: "Saira Thin SemiBold";
+
+    Timer {
+        interval: 100ms;
+        running: true;
+        triggered => { UiState.charge-poll(); }
+    }
 
     Timer {
         interval: 1000ms;
@@ -697,6 +706,8 @@ export component AppWindow inherits Window {
         x: (screen-x(Screen.charge) - root.view-x) * self.width;
         y: (screen-y(Screen.charge) - root.view-y) * self.height;
         battery-percent: UiState.charge-percent;
+        charge-label: UiState.charge-label;
+        dismissed => { UiState.charge-tapped(); }
     }
 
     if UiState.show-fps: FpsOverlay {

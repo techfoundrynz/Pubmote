@@ -11,6 +11,8 @@ import { ArcGauge } from "arc-gauge.slint";
 
 export component ChargeScreen inherits Rectangle {
     in property <int> battery-percent: 0;
+    in property <string> charge-label: "Charging";
+    callback dismissed();
     background: Theme.bg;
 
     // ui_ChargeLevelDial — near-full-circle arc (LVGL bg angles 90..89).
@@ -31,7 +33,7 @@ export component ChargeScreen inherits Rectangle {
     VerticalLayout {
         alignment: center;
         Text {
-            text: "Charging";
+            text: root.charge-label;
             color: Theme.text;
             font-size: Theme.font-14;
             font-weight: Theme.w-semibold;
@@ -45,5 +47,12 @@ export component ChargeScreen inherits Rectangle {
             font-family: Theme.font-mono;
             horizontal-alignment: center;
         }
+        Text {
+            text: "Tap to dismiss";
+            color: Theme.text-dim;
+            font-size: Theme.font-11;
+            horizontal-alignment: center;
+        }
     }
+    TouchArea { clicked => { root.dismissed(); } }
 }

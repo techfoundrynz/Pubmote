@@ -7,7 +7,8 @@ extern "C"
 {
 #endif
 
-  void setup_charge_properties();
+  void poll_charge_screen();
+  void handle_charge_tapped();
 
 #ifdef __cplusplus
 }

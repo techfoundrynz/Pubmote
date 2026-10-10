@@ -14,8 +14,12 @@ static bool active;
 static uint64_t last_delay;
 static int stops, shutdowns;
 static void (*queued_callback)(void *);
-uint64_t get_auto_off_ms(void) { return duration; }
-int64_t esp_timer_get_time(void) { return now; }
+uint64_t get_auto_off_ms(void) {
+  return duration;
+}
+int64_t esp_timer_get_time(void) {
+  return now;
+}
 bool esp_timer_is_active(esp_timer_handle_t timer) {
   (void)timer;
   return active;
@@ -37,14 +41,20 @@ int esp_timer_start_once(esp_timer_handle_t timer, uint64_t delay) {
   last_delay = delay;
   return ESP_OK;
 }
-SemaphoreHandle_t xSemaphoreCreateMutex(void) { return (void *)1; }
+SemaphoreHandle_t xSemaphoreCreateMutex(void) {
+  return (void *)1;
+}
 int xSemaphoreTake(SemaphoreHandle_t mutex, uint32_t timeout) {
   (void)mutex;
   (void)timeout;
   return pdTRUE;
 }
-void xSemaphoreGive(SemaphoreHandle_t mutex) { (void)mutex; }
-static void shutdown(void) { ++shutdowns; }
+void xSemaphoreGive(SemaphoreHandle_t mutex) {
+  (void)mutex;
+}
+static void shutdown(void) {
+  ++shutdowns;
+}
 
 int main(void) {
   sleep_timer_init(shutdown);

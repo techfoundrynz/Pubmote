@@ -30,6 +30,7 @@
 #include <freertos/queue.h>
 #include <freertos/task.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <sys/time.h>
 static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
 
@@ -40,7 +41,13 @@ static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
   #define PMU_INT_NOTE_DURATION 100
 #endif
 
-RTC_DATA_ATTR bool is_power_connected = false;   // Store power state across deep sleep
+RTC_DATA_ATTR bool is_power_connected = false; // Store power state across deep sleep
+static atomic_bool power_connected_snapshot = false;
+
+bool power_management_is_power_connected(void) {
+  return atomic_load(&power_connected_snapshot);
+}
+
 static volatile bool shutdown_initiated = false; // Flag for triggering shutdown sequence
 
 #ifdef PMU_INT
@@ -58,7 +65,11 @@ static void power_state_update() {
   uint8_t percentage = battery_mv_to_percent(powerState.voltage);
   stats_publish_power(powerState.voltage, percentage, powerState.chargeState, powerState.current);
   ESP_LOGD(TAG, "Battery volts: %u %d", powerState.voltage, percentage);
+  if (is_power_connected != powerState.isPowered) {
+    ESP_LOGI(TAG, "Charger %s", powerState.isPowered ? "connected" : "disconnected");
+  }
   is_power_connected = powerState.isPowered;
+  atomic_store(&power_connected_snapshot, is_power_connected);
   stats_update();
 }
 
@@ -87,39 +98,35 @@ static esp_err_t enable_wake() {
   const InputPinSettings pins = settings_get_pins();
   esp_err_t res = ESP_OK;
 
-  if (pins.btn1_gpio == INPUT_PIN_DISABLED) {
-    // Nothing to wake on - the remote will need a reset to come back
-    ESP_LOGW(TAG, "No button configured - no wake source armed");
-    return res;
-  }
-
-  const gpio_num_t btn_pin = (gpio_num_t)pins.btn1_gpio;
-  uint64_t io_mask = BIT64(btn_pin);
-
-  ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(io_mask, pins.btn1_active_level ? ESP_EXT1_WAKEUP_ANY_HIGH
-                                                                               : ESP_EXT1_WAKEUP_ANY_LOW));
-
-  // The button driver relies on the internal pull to hold the line at its
-  // inactive level. Configure the pull at RTC level so it persists through
-  // deep sleep (with the RTC peripherals domain kept on - see enter_sleep_internal)
-  if (rtc_gpio_is_valid_gpio(btn_pin)) {
-    if (pins.btn1_active_level) {
-      rtc_gpio_pulldown_en(btn_pin);
-      rtc_gpio_pullup_dis(btn_pin);
-    }
-    else {
-      rtc_gpio_pullup_en(btn_pin);
-      rtc_gpio_pulldown_dis(btn_pin);
+  if (pins.btn1_gpio != INPUT_PIN_DISABLED) {
+    const gpio_num_t btn_pin = (gpio_num_t)pins.btn1_gpio;
+    ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(BIT64(btn_pin), pins.btn1_active_level ? ESP_EXT1_WAKEUP_ANY_HIGH
+                                                                                        : ESP_EXT1_WAKEUP_ANY_LOW));
+    if (rtc_gpio_is_valid_gpio(btn_pin)) {
+      if (pins.btn1_active_level) {
+        rtc_gpio_pulldown_en(btn_pin);
+        rtc_gpio_pullup_dis(btn_pin);
+      }
+      else {
+        rtc_gpio_pullup_en(btn_pin);
+        rtc_gpio_pulldown_dis(btn_pin);
+      }
     }
   }
 
-  // Use PMU as secondary wake source if available
 #ifdef PMU_INT
-// Temp disabled as it seems to case immediate wake
-// res = esp_sleep_enable_ext0_wakeup(PMU_INT, 0);
-// if (res != ESP_OK) {
-//   ESP_LOGE(TAG, "Failed to enable PMU interrupt wake-up.");
-// }
+  // A low interrupt at entry would immediately wake again. Only arm after
+  // charger shutdown operations have finished and the interrupt has settled.
+  if (gpio_get_level(PMU_INT) && rtc_gpio_is_valid_gpio(PMU_INT)) {
+    rtc_gpio_pullup_en(PMU_INT);
+    rtc_gpio_pulldown_dis(PMU_INT);
+    res = esp_sleep_enable_ext0_wakeup(PMU_INT, 0);
+    ESP_ERROR_CHECK(res);
+    ESP_LOGI(TAG, "Charger wake armed on GPIO %d", PMU_INT);
+  }
+  else {
+    ESP_LOGW(TAG, "Charger interrupt is active or not RTC capable; charger wake not armed");
+  }
 #endif
 
   return res;
@@ -292,6 +299,17 @@ static void configure_sleep_pins() {
 // Release the pin holds from the previous deep sleep so drivers can
 // reconfigure their pins. Must run before any peripheral init.
 void power_management_preinit() {
+#ifdef PMU_INT
+  // EXT0 leaves its pad in RTC mode after wake. Restore it before reading
+  // the interrupt, including early boot paths that return straight to sleep.
+  rtc_gpio_deinit(PMU_INT);
+  gpio_config_t pmu_input = {.pin_bit_mask = BIT64(PMU_INT),
+                             .mode = GPIO_MODE_INPUT,
+                             .pull_up_en = GPIO_PULLUP_ENABLE,
+                             .pull_down_en = GPIO_PULLDOWN_DISABLE,
+                             .intr_type = GPIO_INTR_DISABLE};
+  ESP_ERROR_CHECK(gpio_config(&pmu_input));
+#endif
   gpio_deep_sleep_hold_dis();
 #ifdef DISP_BL
   gpio_hold_dis(DISP_BL);
@@ -350,17 +368,19 @@ static void enter_sleep_internal() {
   acc1_power_set_level(0);
   acc2_power_set_level(0);
 
-  enable_wake();
   esp_task_wdt_reset();
 
 #ifdef PMU_INT
-  await_pmu_int_reset();
   power_state_update();
   esp_task_wdt_reset();
 #endif
 
   // Must come after the last power_state_update - it turns off the PMU ADC
   charge_driver_deinit();
+#ifdef PMU_INT
+  await_pmu_int_reset();
+#endif
+  ESP_ERROR_CHECK(enable_wake());
 
   configure_sleep_pins();
 
@@ -566,7 +586,7 @@ void power_management_init() {
   gpio_config_t pmu_io_conf = {};
   pmu_io_conf.intr_type = GPIO_INTR_NEGEDGE;
   pmu_io_conf.mode = GPIO_MODE_INPUT;
-  pmu_io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+  pmu_io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
   pmu_io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
   pmu_io_conf.pin_bit_mask = BIT64(PMU_INT);
   gpio_config(&pmu_io_conf);
