@@ -12,7 +12,7 @@ See [renderer hardening](#27-renderer-hardening-2026-10-10) for measurements,
 memory behavior, and validation limits.
 The changes are committed and tagged in the
 [Slint fork](https://github.com/techfoundrynz/slint/tree/mcu-v1.19.4).
-PubRemote currently pins `mcu-v1.19.3`; these results use the hardened local renderer.
+Firmware 0.10.6 pins `mcu-v1.19.4`; these measurements used the same hardened renderer built locally.
 
 Retain three 14-row DMA buffers on Pingumote.
 The smaller-buffer sweep was stopped after reported UI artifacts; its FPS results

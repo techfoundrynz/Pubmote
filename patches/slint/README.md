@@ -1,10 +1,10 @@
 # Embedded renderer optimizations
 
 The hardened renderer implementation and its comparison tests live in the Slint fork.
-PubRemote's release pin still selects `mcu-v1.19.3` while the new package builds.
+PubRemote's release pin selects the published `mcu-v1.19.4` package.
 
 The hardened change is committed to the fork as [`4bba41bd5`](https://github.com/techfoundrynz/slint/commit/4bba41bd5d9a386bcf2b41d07b9cacc24c563c53), tagged `mcu-v1.19.4`.
-The [MCU package workflow](https://github.com/techfoundrynz/slint/actions/runs/38017877001) builds and publishes its release assets after validation.
+The [MCU package workflow](https://github.com/techfoundrynz/slint/actions/runs/38017877001) passed all checks and published its release assets.
 
 ## Behavior and memory
 
