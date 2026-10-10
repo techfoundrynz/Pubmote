@@ -34,7 +34,7 @@ extern "C"
 
   // Apply the effect selected by settings_get_device().led_mode. Use this to return
   // the LED to its resting behaviour after a temporary override (pairing,
-  // colour preview, duty alert).
+  // colour preview, utilization alert).
   void led_apply_mode();
 
   // Short label for a mode, for display in the UI.
@@ -43,7 +43,7 @@ extern "C"
   // True when this board actually has an addressable LED.
   bool led_is_supported();
 
-  // Temporary alert override, driven by the duty-cycle monitor. Suppressed in
+  // Temporary alert override, driven by the utilization monitor. Suppressed in
   // LED_MODE_OFF, which wants the LED dark at all times.
   void led_set_alert(uint32_t color);
   void led_clear_alert();

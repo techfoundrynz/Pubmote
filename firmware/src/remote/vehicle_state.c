@@ -14,56 +14,56 @@ static const char *TAG = "PUBREMOTE-VEHICLE_STATE";
 
 static TaskHandle_t monitor_task_handle = NULL;
 
-DutyStatus get_duty_status(uint8_t duty) {
-  if (duty >= DUTY_THRESHOLD_CRITICAL) {
-    return DUTY_STATUS_CRITICAL;
+UtilizationStatus get_utilization_status(uint8_t utilization) {
+  if (utilization >= UTILIZATION_THRESHOLD_CRITICAL) {
+    return UTILIZATION_STATUS_CRITICAL;
   }
-  else if (duty >= DUTY_THRESHOLD_WARNING) {
-    return DUTY_STATUS_WARNING;
+  else if (utilization >= UTILIZATION_THRESHOLD_WARNING) {
+    return UTILIZATION_STATUS_WARNING;
   }
-  else if (duty >= DUTY_THRESHOLD_CAUTION) {
-    return DUTY_STATUS_CAUTION;
+  else if (utilization >= UTILIZATION_THRESHOLD_CAUTION) {
+    return UTILIZATION_STATUS_CAUTION;
   }
   else {
-    return DUTY_STATUS_NONE;
+    return UTILIZATION_STATUS_NONE;
   }
 }
 
-BuzzerToneFrequency get_buzzer_tone(DutyStatus status) {
+BuzzerToneFrequency get_buzzer_tone(UtilizationStatus status) {
   switch (status) {
-  case DUTY_STATUS_CAUTION:
+  case UTILIZATION_STATUS_CAUTION:
     // return NOTE_CAUTION;
     return 0;
-  case DUTY_STATUS_WARNING:
+  case UTILIZATION_STATUS_WARNING:
     // return NOTE_WARNING;
     return 0;
-  case DUTY_STATUS_CRITICAL:
+  case UTILIZATION_STATUS_CRITICAL:
     return NOTE_CRITICAL;
   default:
     return 0; // No alert tone
   }
 }
 
-DutyStatusColor get_duty_color(DutyStatus status) {
+UtilizationStatusColor get_utilization_color(UtilizationStatus status) {
   switch (status) {
-  case DUTY_STATUS_CAUTION:
-    return DUTY_COLOR_CAUTION;
-  case DUTY_STATUS_WARNING:
-    return DUTY_COLOR_WARNING;
-  case DUTY_STATUS_CRITICAL:
-    return DUTY_COLOR_CRITICAL;
+  case UTILIZATION_STATUS_CAUTION:
+    return UTILIZATION_COLOR_CAUTION;
+  case UTILIZATION_STATUS_WARNING:
+    return UTILIZATION_COLOR_WARNING;
+  case UTILIZATION_STATUS_CRITICAL:
+    return UTILIZATION_COLOR_CRITICAL;
   default:
-    return DUTY_COLOR_NONE; // Don't use this
+    return UTILIZATION_COLOR_NONE; // Don't use this
   }
 }
 
-HapticFeedbackPattern get_haptic_pattern(DutyStatus status) {
+HapticFeedbackPattern get_haptic_pattern(UtilizationStatus status) {
   switch (status) {
-  case DUTY_STATUS_CAUTION:
+  case UTILIZATION_STATUS_CAUTION:
     return HAPTIC_SOFT_BUZZ;
-  case DUTY_STATUS_WARNING:
+  case UTILIZATION_STATUS_WARNING:
     return HAPTIC_ALERT_750MS;
-  case DUTY_STATUS_CRITICAL:
+  case UTILIZATION_STATUS_CRITICAL:
     return HAPTIC_ALERT_1000MS;
   default:
     return HAPTIC_NONE; // No alert pattern
@@ -71,7 +71,7 @@ HapticFeedbackPattern get_haptic_pattern(DutyStatus status) {
 }
 
 static void monitor_task(void *pvParameters) {
-  DutyStatus last_duty_status = DUTY_STATUS_NONE;
+  UtilizationStatus last_utilization_status = UTILIZATION_STATUS_NONE;
 #if VEHICLE_STATE_DEBUG
   int count = 0;
 #endif
@@ -86,30 +86,32 @@ static void monitor_task(void *pvParameters) {
     }
 #endif
 
-    DutyStatus current_duty_status = get_duty_status(stats_snapshot().dutyCycle);
-    bool is_duty_alert = get_duty_status(stats_snapshot().dutyCycle) != DUTY_STATUS_NONE;
-    if (current_duty_status != last_duty_status) {
-      if (is_duty_alert) {
-        ESP_LOGW(TAG, "Duty cycle alert: %d%%", stats_snapshot().dutyCycle);
-        led_set_alert(get_duty_color(current_duty_status));
-        if (current_duty_status > last_duty_status) {
-          // Duty cycle increased, alert with haptic and buzzer
-          haptic_vibrate(get_haptic_pattern(current_duty_status));
+    const RemoteStats telemetry = stats_snapshot();
+    const uint8_t utilization = stats_utilization(&telemetry);
+    UtilizationStatus current_utilization_status = get_utilization_status(utilization);
+    bool is_utilization_alert = current_utilization_status != UTILIZATION_STATUS_NONE;
+    if (current_utilization_status != last_utilization_status) {
+      if (is_utilization_alert) {
+        ESP_LOGW(TAG, "Utilization alert: %d%%", utilization);
+        led_set_alert(get_utilization_color(current_utilization_status));
+        if (current_utilization_status > last_utilization_status) {
+          // Utilization increased, alert with haptic and buzzer
+          haptic_vibrate(get_haptic_pattern(current_utilization_status));
           // Caution and warning have no tone assigned, which is not an error - only call the
           // buzzer when there is something to play.
-          BuzzerToneFrequency tone = get_buzzer_tone(current_duty_status);
+          BuzzerToneFrequency tone = get_buzzer_tone(current_utilization_status);
           if (tone) {
-            buzzer_set_tone(tone, 200 * current_duty_status);
+            buzzer_set_tone(tone, 200 * current_utilization_status);
           }
         }
       }
       else {
-        ESP_LOGD(TAG, "Duty cycle normal: %d%%", stats_snapshot().dutyCycle);
+        ESP_LOGD(TAG, "Utilization normal: %d%%", utilization);
         led_clear_alert();
         haptic_stop_vibration();
         buzzer_stop();
       }
-      last_duty_status = current_duty_status;
+      last_utilization_status = current_utilization_status;
       continue;
     }
 

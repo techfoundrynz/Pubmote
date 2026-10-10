@@ -43,7 +43,7 @@ static RGB last_displayed_color = {0, 0, 0};
 static RGB transition_start_color = {0, 0, 0};
 static int64_t transition_start_time = 0;
 
-// True while a duty alert is overriding the configured mode
+// True while a utilization alert is overriding the configured mode
 static bool alert_active = false;
 
 static void trigger_transition() {

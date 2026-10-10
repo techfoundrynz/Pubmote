@@ -89,6 +89,25 @@ else()
 endif()
 add_test(NAME commands COMMAND commands_test)
 
+# Exercise the real alert monitor with device outputs and task scheduling stubbed.
+configure_file("${FIRMWARE_REMOTE}/vehicle_state.c" "${STAGED}/alerts/vehicle_state.c" COPYONLY)
+foreach(stub esp_log.h esp_task.h remote/buzzer.h remote/haptic.h remote/led.h utilities/psram_task.h)
+  file(WRITE "${STAGED}/alerts/${stub}" "#pragma once\n")
+endforeach()
+add_executable(vehicle_alert_test vehicle_alert_test.c ../firmware/modules/telemetry/src/stats.c)
+target_include_directories(vehicle_alert_test PRIVATE "${STAGED}/alerts" "${FIRMWARE_REMOTE}"
+  state_stubs ../firmware/src ../firmware/modules/telemetry/include
+  ../firmware/modules/config/include ../firmware/modules/support/include)
+target_link_libraries(vehicle_alert_test PRIVATE Threads::Threads)
+set_target_properties(vehicle_alert_test PROPERTIES C_STANDARD 11)
+if(MSVC)
+  target_compile_options(vehicle_alert_test PRIVATE /UNDEBUG)
+else()
+  target_compile_options(vehicle_alert_test PRIVATE -UNDEBUG -Wall -Wextra)
+endif()
+add_test(NAME vehicle_alert COMMAND vehicle_alert_test)
+set_tests_properties(vehicle_alert PROPERTIES TIMEOUT 10)
+
 add_executable(protocol_test protocol_test.c ../firmware/modules/protocol/src/protocol.c)
 target_include_directories(protocol_test PRIVATE ../firmware/modules/protocol/include ../firmware/modules/config/include)
 set_target_properties(protocol_test PROPERTIES C_STANDARD 11)
