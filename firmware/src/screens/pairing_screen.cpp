@@ -116,7 +116,8 @@ extern "C" void setup_pairing_properties() {
   else
     ui_operation_start("Starting board search...", []() {
       esp_err_t result = comms_disconnect_peer(settings_get_pairing().remote_addr);
-      if (result != ESP_OK && result != ESP_ERR_INVALID_STATE)
+      // First-time pairing has no previous peer to remove.
+      if (result != ESP_OK && result != ESP_ERR_INVALID_STATE && result != ESP_ERR_NOT_FOUND)
         return result;
       return comms_init();
     });
