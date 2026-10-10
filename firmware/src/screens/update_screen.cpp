@@ -8,12 +8,12 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "ota/update_client.h"
-#include "remote/display.h"
 #include "remote/radio_session.h"
 #include "remote/settings.h"
 #include "remote/wifi.h"
 #include "screens/wifi_screen.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include "utilities/ui_operation.h"
 #include <atomic>
 #include <memory>

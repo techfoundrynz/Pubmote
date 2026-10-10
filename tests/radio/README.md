@@ -10,6 +10,10 @@ writes, overlapping sends, stale discovery completion, failed host shutdown,
 scan cancellation/allocation/API failures, join cancellation (including a
 simultaneous IP event), full-length SSID/key copying, and diagnostic retention/overflow.
 The diagnostic capture implementation is compiled in full.
+BLE/ESP-NOW sources now live in `firmware/modules/transport`; diagnostics
+and keypad helpers live in `firmware/modules/support`. The ESP-NOW harness
+also verifies saved-channel access, invalid-channel normalization, rejected-channel
+fallback, and initialization without an application channel adapter.
 
 The production keypad editor is compiled directly. Its tests cover multi-tap
 expiry, separate letter/digit/symbol modes, case, full buffers, UTF-8 deletion/truncation, and

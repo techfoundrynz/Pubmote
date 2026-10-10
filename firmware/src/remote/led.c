@@ -7,9 +7,9 @@
 #include "esp_wifi.h"
 #include "led_strip.h"
 #include "nvs_flash.h"
+#include "remote/settings_snapshot.h"
 #include "remote/startup.h"
-#include "settings.h"
-#include "stats.h"
+#include "remote/stats.h"
 #include "time.h"
 #include "utilities/psram_task.h"
 #include <driver/ledc.h>
@@ -265,7 +265,7 @@ static void play_startup_effect() {
   esp_timer_create(&timer_args, &led_startup_off_timer);
   esp_timer_start_once(led_startup_off_timer, 3000 * 1000);
 
-  led_set_effect_pulse(device_settings.theme_color);
+  led_set_effect_pulse(settings_get_device().theme_color);
 }
 
 static void led_task(void *pvParameters) {
@@ -341,9 +341,9 @@ void led_apply_mode() {
     return;
   }
 
-  switch (device_settings.led_mode) {
+  switch (settings_get_device().led_mode) {
   case LED_MODE_SOLID:
-    led_set_effect_solid(device_settings.theme_color);
+    led_set_effect_solid(settings_get_device().theme_color);
     break;
   case LED_MODE_OFF:
   case LED_MODE_ALERTS:
@@ -376,7 +376,7 @@ void led_set_alert(uint32_t color) {
 #if LED_ENABLED
   // OFF stays dark. SOLID and ALERTS both let the alert colour take over, and
   // led_clear_alert() drops them back to their resting behaviour.
-  if (device_settings.led_mode == LED_MODE_OFF) {
+  if (settings_get_device().led_mode == LED_MODE_OFF) {
     return;
   }
 

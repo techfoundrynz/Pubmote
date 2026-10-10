@@ -1,4 +1,4 @@
-file(GLOB_RECURSE app_sources "${CMAKE_CURRENT_SOURCE_DIR}/*.c" "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+include("${CMAKE_CURRENT_LIST_DIR}/sources.cmake")
 
 set(SLINT_CPP_FILES 8 CACHE STRING "Number of generated Slint C++ translation units")
 math(EXPR slint_last_cpp "${SLINT_CPP_FILES} - 1")
@@ -7,12 +7,10 @@ foreach(index RANGE 0 ${slint_last_cpp})
     list(APPEND slint_sources "${CMAKE_BINARY_DIR}/slint_generated/app-window-${index}.cpp")
 endforeach()
 
-idf_component_register(SRCS ${app_sources} ${slint_sources} INCLUDE_DIRS "${CMAKE_BINARY_DIR}")
-if(CONFIG_SPIRAM_USE_MALLOC)
-    # IDF 6 allows ordinary malloc() to consume the DMA/internal reserve.
-    # Keep the pre-upgrade protected pool for task stacks and libc locks.
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_psram_extram_reserve_dma_pool")
-endif()
+idf_component_register(
+    SRCS ${app_sources} ${slint_sources}
+    PRIV_INCLUDE_DIRS "." "${CMAKE_BINARY_DIR}"
+    PRIV_REQUIRES config support transport ota game_store settings telemetry settings_store protocol)
 # Match espressif/lua's private numeric ABI (32-bit integers and floats).
 target_compile_definitions(${COMPONENT_LIB} PRIVATE LUA_32BITS=1)
 # Retain line/function information without enormous generated variable debug

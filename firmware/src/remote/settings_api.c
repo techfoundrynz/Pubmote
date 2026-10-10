@@ -1,10 +1,15 @@
 #include "settings_api.h"
-#include "../config.h"
 #include "cJSON.h"
+#include "config.h"
 #include "input_settings.h"
 #include "powermanagement.h"
+#include "remote/display.h"
+#include "remote/led.h"
+#include "remote/settings_state.h"
+#include "remote/settings_store.h"
 #include "remoteinputs.h"
 #include "settings.h"
+#include "ui/device_preferences.h"
 #include <ctype.h>
 #include <math.h>
 #include <stddef.h>
@@ -68,11 +73,11 @@ DEFINE_SETTING_OPTIONS(vehicle_options, VEHICLE_LABELS, 5)
 
 // Typed accessors, so enum and byte members are never aliased through an int.
 #define DEFINE_DEVICE_ACCESSORS(key, member, type)                                                                     \
-  static uint32_t read_##key(void) {                                                                                   \
-    return device_settings.member;                                                                                     \
+  static uint32_t read_##key(const DeviceSettings *device) {                                                           \
+    return device->member;                                                                                             \
   }                                                                                                                    \
   static void apply_##key(uint32_t value) {                                                                            \
-    device_settings.member = (type)value;                                                                              \
+    settings_set_##member((type)value);                                                                                \
   }
 DEFINE_DEVICE_ACCESSORS(bl_level, bl_level, uint8_t)
 DEFINE_DEVICE_ACCESSORS(screen_rotation, screen_rotation, ScreenRotation)
@@ -137,7 +142,7 @@ typedef struct {
   bool secret;
   char *(*read_string)(void);
   const char *length_key; // NVS key holding a string's byte length
-  uint32_t (*read_number)(void);
+  uint32_t (*read_number)(const DeviceSettings *device);
   void (*apply_number)(uint32_t value);
   SettingOptions (*options)(void);
   int64_t minimum;
@@ -392,18 +397,19 @@ static bool allowed_number(const SettingDescriptor *field, double value) {
 }
 
 int settings_save_device_preferences(void) {
+  const SettingsSnapshot snapshot = settings_snapshot();
   for (size_t i = 0; i < FIELD_COUNT; ++i) {
-    if (fields[i].read_number && !allowed_number(&fields[i], fields[i].read_number())) {
+    if (fields[i].read_number && !allowed_number(&fields[i], fields[i].read_number(&snapshot.device))) {
       // Unsupported optional hardware has no effect, but keep its stored mode.
-      if (!((fields[i].options == hbm_options && fields[i].read_number() < HBM_MODE_COUNT) ||
-            (fields[i].options == led_options && fields[i].read_number() < LED_MODE_COUNT))) {
+      if (!((fields[i].options == hbm_options && fields[i].read_number(&snapshot.device) < HBM_MODE_COUNT) ||
+            (fields[i].options == led_options && fields[i].read_number(&snapshot.device) < LED_MODE_COUNT))) {
         return ESP_ERR_INVALID_ARG;
       }
     }
   }
   for (size_t i = 0; i < FIELD_COUNT; ++i) {
     if (fields[i].read_number) {
-      int result = nvs_write_int(fields[i].key, fields[i].read_number());
+      int result = nvs_write_int(fields[i].key, fields[i].read_number(&snapshot.device));
       if (result != ESP_OK) {
         return result;
       }
@@ -425,9 +431,9 @@ static bool add_option(cJSON *options, int value, const char *label) {
   return true;
 }
 
-static int current_default_board(void) {
-  int index = pairing_settings.default_index;
-  return index >= 0 && index < pairing_settings.device_count ? index : -1;
+static int current_default_board(const PairingSettings *pairing) {
+  int index = pairing->default_index;
+  return index >= 0 && index < pairing->device_count ? index : -1;
 }
 
 static cJSON *board_json(const PairedDevice *board) {
@@ -488,7 +494,8 @@ static bool parse_board(const cJSON *item, PairedDevice *board) {
 }
 
 static bool pairing_changed(const PairedDevice *boards, uint8_t count, int default_board) {
-  if (count != pairing_settings.device_count || default_board != current_default_board()) {
+  const PairingSettings pairing_settings = settings_get_pairing();
+  if (count != pairing_settings.device_count || default_board != current_default_board(&pairing_settings)) {
     return true;
   }
   for (uint8_t i = 0; i < count; ++i) {
@@ -637,6 +644,7 @@ fail:
 }
 
 cJSON *settings_describe_json(void) {
+  const SettingsSnapshot snapshot = settings_snapshot();
   cJSON *reply = cJSON_CreateObject();
   if (!reply) {
     return NULL;
@@ -645,7 +653,7 @@ cJSON *settings_describe_json(void) {
       !cJSON_AddNumberToObject(reply, "version", SETTINGS_VERSION)) {
     goto fail;
   }
-  SettingsRecords live = {calibration_settings, imu_calibration};
+  SettingsRecords live = {snapshot.calibration, snapshot.imu};
   cJSON *metadata = cJSON_AddArrayToObject(reply, "fields");
   cJSON *values = cJSON_AddObjectToObject(reply, "values");
   if (!metadata || !values) {
@@ -676,8 +684,8 @@ cJSON *settings_describe_json(void) {
       if (!boards) {
         goto fail;
       }
-      for (uint8_t b = 0; b < pairing_settings.device_count && b < MAX_PAIRED_DEVICES; ++b) {
-        cJSON *board = board_json(&pairing_settings.devices[b]);
+      for (uint8_t b = 0; b < snapshot.pairing.device_count && b < MAX_PAIRED_DEVICES; ++b) {
+        cJSON *board = board_json(&snapshot.pairing.devices[b]);
         if (!board || !cJSON_AddItemToArray(boards, board)) {
           cJSON_Delete(board);
           goto fail;
@@ -685,17 +693,17 @@ cJSON *settings_describe_json(void) {
       }
     }
     else {
-      double number = field->read_number     ? (double)field->read_number()
+      double number = field->read_number     ? (double)field->read_number(&snapshot.device)
                       : field->read_record   ? (double)field->read_record(&live)
-                      : field->default_board ? (double)current_default_board()
-                                             : (double)pin_value(field, &input_pin_settings);
+                      : field->default_board ? (double)current_default_board(&snapshot.pairing)
+                                             : (double)pin_value(field, &snapshot.pins);
       if (!cJSON_AddNumberToObject(values, field->key, number)) {
         goto fail;
       }
     }
   }
   char warning[192] = {0};
-  input_pins_warnings(&input_pin_settings, warning, sizeof(warning));
+  input_pins_warnings(&snapshot.pins, warning, sizeof(warning));
   if (!cJSON_AddStringToObject(reply, "warning", warning)) {
     goto fail;
   }
@@ -713,6 +721,7 @@ static int settings_error(char *error, size_t error_size, const char *message) {
 }
 
 int settings_apply_json(const char *json, char *error_out, size_t error_size) {
+  const SettingsSnapshot snapshot = settings_snapshot();
   if (error_out && error_size) {
     error_out[0] = '\0';
   }
@@ -750,17 +759,17 @@ int settings_apply_json(const char *json, char *error_out, size_t error_size) {
   // Reject trailing garbage.
   cJSON *patch = cJSON_ParseWithOpts(json, NULL, true);
   const char *error = NULL;
-  InputPinSettings pending = input_pin_settings;
-  DeviceSettings previous_preferences = device_settings;
+  InputPinSettings pending = snapshot.pins;
+  DeviceSettings previous_preferences = snapshot.device;
   bool preferences_dirty = false;
   bool pins_dirty = false;
   bool seen[FIELD_COUNT] = {false};
-  SettingsRecords staged = {calibration_settings, imu_calibration};
+  SettingsRecords staged = {snapshot.calibration, snapshot.imu};
   PairedDevice boards[MAX_PAIRED_DEVICES];
-  memcpy(boards, pairing_settings.devices, sizeof(boards));
+  memcpy(boards, snapshot.pairing.devices, sizeof(boards));
   uint8_t board_count =
-      pairing_settings.device_count < MAX_PAIRED_DEVICES ? pairing_settings.device_count : MAX_PAIRED_DEVICES;
-  int default_board = current_default_board();
+      snapshot.pairing.device_count < MAX_PAIRED_DEVICES ? snapshot.pairing.device_count : MAX_PAIRED_DEVICES;
+  int default_board = current_default_board(&snapshot.pairing);
   bool pairing_seen = false, default_seen = false;
   if (!cJSON_IsObject(patch)) {
     error = "Expected a JSON object";
@@ -858,7 +867,8 @@ int settings_apply_json(const char *json, char *error_out, size_t error_size) {
   }
   // After pins, so restored calibration overrides a remap's reset.
   if (!error) {
-    SettingsRecords applied = {calibration_settings, imu_calibration};
+    const SettingsSnapshot after_pins = settings_snapshot();
+    SettingsRecords applied = {after_pins.calibration, after_pins.imu};
     bool calibration_changed = false, imu_changed = false;
     for (size_t i = 0; i < FIELD_COUNT; ++i) {
       if (seen[i] && fields[i].write_record && fields[i].read_record(&applied) != fields[i].read_record(&staged)) {
@@ -872,11 +882,11 @@ int settings_apply_json(const char *json, char *error_out, size_t error_size) {
       }
     }
     if (calibration_changed) {
-      if (settings_store_input_state(&input_pin_settings, &applied.calibration) != ESP_OK) {
+      if (settings_store_input_state(&after_pins.pins, &applied.calibration) != ESP_OK) {
         error = "Failed to persist settings; reload to check applied values";
       }
       else {
-        calibration_settings = applied.calibration;
+        settings_set_calibration(&applied.calibration);
       }
     }
     if (!error && imu_changed) {
@@ -891,7 +901,7 @@ int settings_apply_json(const char *json, char *error_out, size_t error_size) {
     for (size_t i = 0; i < FIELD_COUNT; ++i) {
       if (seen[i] && fields[i].read_number) {
         uint32_t value = (uint32_t)cJSON_GetObjectItemCaseSensitive(patch, fields[i].key)->valuedouble;
-        if (value != fields[i].read_number()) {
+        if (value != fields[i].read_number(&snapshot.device)) {
           if (nvs_write_int(fields[i].key, value) != ESP_OK) {
             error = "Failed to persist settings; reload to check applied values";
             break;
@@ -913,7 +923,7 @@ int settings_apply_json(const char *json, char *error_out, size_t error_size) {
   }
   // Refresh successful changes even when a later write fails.
   if (preferences_dirty) {
-    display_refresh_device_settings(&previous_preferences);
+    ui_refresh_device_settings(&previous_preferences);
   }
   cJSON_Delete(patch);
   if (error) {

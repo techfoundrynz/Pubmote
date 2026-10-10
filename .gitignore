@@ -24,5 +24,9 @@ api/.wrangler/
 # Slint generated C++ files
 firmware/src/generated/
 
+# Local font editor sidecars and backups; original font sources are tracked explicitly.
+firmware/assets/*.ttf.meta
+firmware/assets/*.ttf.bak
+
 # slint-lsp fetched by scripts/sync_slint_lsp.py for the editor preview
 .slint/

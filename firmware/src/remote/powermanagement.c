@@ -16,12 +16,11 @@
 #include "haptic.h"
 #include "imu.h"
 #include "led.h"
+#include "remote/settings_snapshot.h"
+#include "remote/stats.h"
 #include "remote/tones.h"
 #include "remoteinputs.h"
-#include "screens/charge_screen.h"
-#include "settings.h"
 #include "sleep_timer.h"
-#include "stats.h"
 #include "utilities/number_utils.h"
 #include <driver/ledc.h>
 #include <esp_adc/adc_oneshot.h>
@@ -56,20 +55,19 @@ static void IRAM_ATTR pmu_isr_handler(void *arg) {
 
 static void power_state_update() {
   RemotePowerState powerState = get_power_state();
-  remoteStats.remoteBatteryVoltage = powerState.voltage;
-  remoteStats.remoteBatteryPercentage = battery_mv_to_percent(remoteStats.remoteBatteryVoltage);
-  remoteStats.chargeState = powerState.chargeState;
-  remoteStats.chargeCurrent = powerState.current;
-  ESP_LOGD(TAG, "Battery volts: %u %d", remoteStats.remoteBatteryVoltage, remoteStats.remoteBatteryPercentage);
+  uint8_t percentage = battery_mv_to_percent(powerState.voltage);
+  stats_publish_power(powerState.voltage, percentage, powerState.chargeState, powerState.current);
+  ESP_LOGD(TAG, "Battery volts: %u %d", powerState.voltage, percentage);
   is_power_connected = powerState.isPowered;
   stats_update();
 }
 
 static bool get_button_pressed() {
-  if (!input_pins_button_enabled()) {
+  const InputPinSettings pins = settings_get_pins();
+  if (pins.btn1_gpio == INPUT_PIN_DISABLED) {
     return false;
   }
-  return gpio_get_level((gpio_num_t)input_pin_settings.btn1_gpio) == input_pin_settings.btn1_active_level;
+  return gpio_get_level((gpio_num_t)pins.btn1_gpio) == pins.btn1_active_level;
 }
 
 static bool check_button_press() {
@@ -86,25 +84,26 @@ static bool check_button_press() {
 }
 
 static esp_err_t enable_wake() {
+  const InputPinSettings pins = settings_get_pins();
   esp_err_t res = ESP_OK;
 
-  if (!input_pins_button_enabled()) {
+  if (pins.btn1_gpio == INPUT_PIN_DISABLED) {
     // Nothing to wake on - the remote will need a reset to come back
     ESP_LOGW(TAG, "No button configured - no wake source armed");
     return res;
   }
 
-  const gpio_num_t btn_pin = (gpio_num_t)input_pin_settings.btn1_gpio;
+  const gpio_num_t btn_pin = (gpio_num_t)pins.btn1_gpio;
   uint64_t io_mask = BIT64(btn_pin);
 
-  ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(
-      io_mask, input_pin_settings.btn1_active_level ? ESP_EXT1_WAKEUP_ANY_HIGH : ESP_EXT1_WAKEUP_ANY_LOW));
+  ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(io_mask, pins.btn1_active_level ? ESP_EXT1_WAKEUP_ANY_HIGH
+                                                                               : ESP_EXT1_WAKEUP_ANY_LOW));
 
   // The button driver relies on the internal pull to hold the line at its
   // inactive level. Configure the pull at RTC level so it persists through
   // deep sleep (with the RTC peripherals domain kept on - see enter_sleep_internal)
   if (rtc_gpio_is_valid_gpio(btn_pin)) {
-    if (input_pin_settings.btn1_active_level) {
+    if (pins.btn1_active_level) {
       rtc_gpio_pulldown_en(btn_pin);
       rtc_gpio_pullup_dis(btn_pin);
     }
@@ -131,7 +130,7 @@ static bool empty_long_press_hold() {
 }
 
 static bool power_button_long_press_hold() {
-  BoardState state = remoteStats.state;
+  BoardState state = stats_snapshot().state;
   if (state == BOARD_STATE_RUNNING || state == BOARD_STATE_RUNNING_FLYWHEEL || state == BOARD_STATE_RUNNING_TILTBACK ||
       state == BOARD_STATE_RUNNING_UPSIDEDOWN || state == BOARD_STATE_RUNNING_WHEELSLIP) {
     ESP_LOGI(TAG, "Power button long press hold detected. Ignoring.");
@@ -435,8 +434,8 @@ void power_management_task(void *pvParameters) {
       last_time = current_time;
     }
 
-    if (remoteStats.remoteBatteryVoltage < MIN_BATTERY_VOLTAGE && !is_power_connected) {
-      ESP_LOGW(TAG, "Battery voltage too low: %d mV", remoteStats.remoteBatteryVoltage);
+    if (stats_snapshot().remoteBatteryVoltage < MIN_BATTERY_VOLTAGE && !is_power_connected) {
+      ESP_LOGW(TAG, "Battery voltage too low: %d mV", stats_snapshot().remoteBatteryVoltage);
       buzzer_set_tone(NOTE_ERROR, ERROR_NOTE_DURATION);
       vTaskDelay(pdMS_TO_TICKS(ERROR_NOTE_DURATION)); // Allow time for the note to play
 
@@ -445,8 +444,8 @@ void power_management_task(void *pvParameters) {
     }
 
     // Todo - Check battery voltage and enter sleep if too low
-    // if (remoteStats.remoteBatteryVoltage <= MIN_BATTERY_VOLTAGE && !is_power_connected) {
-    //   ESP_LOGW(TAG, "Battery voltage too low: %d mV", remoteStats.remoteBatteryVoltage);
+    // if (stats_snapshot().remoteBatteryVoltage <= MIN_BATTERY_VOLTAGE && !is_power_connected) {
+    //   ESP_LOGW(TAG, "Battery voltage too low: %d mV", stats_snapshot().remoteBatteryVoltage);
     //   play_note(NOTE_ERROR, 1000);
     //   // If battery is too low, enter sleep immediately
     //   enter_sleep_internal();
@@ -518,7 +517,7 @@ void power_management_init() {
   case ESP_SLEEP_WAKEUP_EXT1:
     ESP_LOGI(TAG, "Woken up by external signal on EXT1.");
     // Proceed to check if the button is still pressed
-    if (input_pins_button_enabled() && (wakeup_pin_mask & BIT64(input_pin_settings.btn1_gpio))) {
+    if (input_pins_button_enabled() && (wakeup_pin_mask & BIT64(settings_get_pins().btn1_gpio))) {
       if (!check_button_press()) {
         enter_sleep_internal();
         return;

@@ -1,6 +1,6 @@
 #include "imu_driver.h"
 #include "esp_log.h"
-#include "remote/settings.h"
+#include "remote/settings_snapshot.h"
 #if IMU_QMI8658
   #include "imu/qmi8658/imu_driver_qmi8658.hpp"
 #endif
@@ -42,9 +42,10 @@ void imu_driver_get_raw_data(imu_data_t *data) {
 void imu_driver_get_data(imu_data_t *data) {
   imu_driver_get_raw_data(data);
   // Apply calibration offsets
-  data->accel_x -= imu_calibration.accel_x_offset;
-  data->accel_y -= imu_calibration.accel_y_offset;
-  data->accel_z -= imu_calibration.accel_z_offset;
+  const ImuCalibrationSettings calibration = settings_get_imu();
+  data->accel_x -= calibration.accel_x_offset;
+  data->accel_y -= calibration.accel_y_offset;
+  data->accel_z -= calibration.accel_z_offset;
 
   float ax = data->accel_x;
   float ay = data->accel_y;
@@ -53,22 +54,22 @@ void imu_driver_get_data(imu_data_t *data) {
   float gy = data->gyro_y;
   float gz = data->gyro_z;
 
-  if (imu_calibration.swap_xy) {
+  if (calibration.swap_xy) {
     ax = data->accel_y;
     ay = data->accel_x;
     gx = data->gyro_y;
     gy = data->gyro_x;
   }
 
-  if (imu_calibration.invert_x) {
+  if (calibration.invert_x) {
     ax = -ax;
     gx = -gx;
   }
-  if (imu_calibration.invert_y) {
+  if (calibration.invert_y) {
     ay = -ay;
     gy = -gy;
   }
-  if (imu_calibration.invert_z) {
+  if (calibration.invert_z) {
     az = -az;
     gz = -gz;
   }

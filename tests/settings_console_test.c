@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #define IMU_ENABLED 1
+#include "../firmware/modules/config/include/remote/settings_types.h"
 #include "../firmware/src/remote/input_settings.h"
 #include "../firmware/src/remote/settings_api.h"
-#include "../firmware/src/remote/settings_types.h"
 #define STICK_MIN_VAL 0
 #define STICK_MAX_VAL 4095
 #define STICK_MID_VAL 2048
@@ -28,8 +28,12 @@ static bool device_present[13];
 static const char *device_keys[] = {
     "bl_level",    "screen_rotation", "theme_color",    "battery_display", "sec_stat_disp", "hbm_mode", "auto_off_time",
     "pocket_mode", "temp_units",      "distance_units", "startup_sound",   "stats_dp",      "led_mode"};
-bool display_supports_hbm(void) { return supports_hbm; }
-bool led_is_supported(void) { return supports_led; }
+bool display_supports_hbm(void) {
+  return supports_hbm;
+}
+bool led_is_supported(void) {
+  return supports_led;
+}
 esp_err_t nvs_read_int(const char *key, uint32_t *value) {
   for (size_t i = 0; i < 13; ++i) {
     if (!strcmp(device_keys[i], key) && device_present[i]) {
@@ -41,7 +45,7 @@ esp_err_t nvs_read_int(const char *key, uint32_t *value) {
 }
 static int refreshes;
 static DeviceSettings previous_refresh;
-void display_refresh_device_settings(const DeviceSettings *previous) {
+void ui_refresh_device_settings(const DeviceSettings *previous) {
   previous_refresh = *previous;
   ++refreshes;
 }
@@ -51,7 +55,9 @@ static unsigned char input_blob[128];
 static size_t input_blob_size;
 static bool blob_write_fails, commit_error_after_write;
 static int timer_resets;
-void reset_sleep_timer(void) { ++timer_resets; }
+void reset_sleep_timer(void) {
+  ++timer_resets;
+}
 esp_err_t nvs_write_blob(const char *key, void *value, size_t size) {
   assert(!strcmp(key, "input_state") && size <= sizeof(input_blob));
   if (blob_write_fails) {
@@ -75,8 +81,12 @@ static int writes, applies;
 static bool fail_write, fail_apply;
 static bool fail_pin_write;
 static uint32_t saved_pins[4];
-char *get_wifi_ssid(void) { return ssid; }
-char *get_wifi_password(void) { return password; }
+char *get_wifi_ssid(void) {
+  return ssid;
+}
+char *get_wifi_password(void) {
+  return password;
+}
 esp_err_t nvs_write_str(const char *key, const char *value) {
   if (fail_write) {
     return -1;
@@ -121,9 +131,15 @@ esp_err_t nvs_write_int(const char *key, uint32_t value) {
   assert(false);
   return -1;
 }
-uint64_t input_pins_adc_capable_mask(void) { return (1ULL << 1) | (1ULL << 2); }
-uint64_t input_pins_assignable_mask(void) { return (1ULL << 1) | (1ULL << 2) | (1ULL << 3); }
-uint64_t input_pins_button_capable_mask(void) { return 1ULL << 3; }
+uint64_t input_pins_adc_capable_mask(void) {
+  return (1ULL << 1) | (1ULL << 2);
+}
+uint64_t input_pins_assignable_mask(void) {
+  return (1ULL << 1) | (1ULL << 2) | (1ULL << 3);
+}
+uint64_t input_pins_button_capable_mask(void) {
+  return 1ULL << 3;
+}
 size_t input_pins_warnings(const InputPinSettings *p, char *out, size_t n) {
   (void)p;
   (void)n;
@@ -166,6 +182,121 @@ esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, i
   pairing_settings.default_index = default_index;
   ++pairing_replacements;
   return ESP_OK;
+}
+#include "../firmware/modules/settings/include/remote/settings_state.h"
+SettingsSnapshot settings_snapshot(void) {
+  return (SettingsSnapshot){device_settings, input_pin_settings, calibration_settings, imu_calibration,
+                            pairing_settings};
+}
+DeviceSettings settings_get_device(void) {
+  return device_settings;
+}
+InputPinSettings settings_get_pins(void) {
+  return input_pin_settings;
+}
+CalibrationSettings settings_get_calibration(void) {
+  return calibration_settings;
+}
+bool settings_set_calibration(const CalibrationSettings *calibration) {
+  calibration_settings = *calibration;
+  return true;
+}
+bool settings_update_device(const DeviceSettings *patch, uint32_t mask) {
+  if (mask & SETTINGS_DEVICE_BL_LEVEL)
+    device_settings.bl_level = patch->bl_level;
+  if (mask & SETTINGS_DEVICE_SCREEN_ROTATION)
+    device_settings.screen_rotation = patch->screen_rotation;
+  if (mask & SETTINGS_DEVICE_AUTO_OFF_TIME)
+    device_settings.auto_off_time = patch->auto_off_time;
+  if (mask & SETTINGS_DEVICE_TEMP_UNITS)
+    device_settings.temp_units = patch->temp_units;
+  if (mask & SETTINGS_DEVICE_DISTANCE_UNITS)
+    device_settings.distance_units = patch->distance_units;
+  if (mask & SETTINGS_DEVICE_STARTUP_SOUND)
+    device_settings.startup_sound = patch->startup_sound;
+  if (mask & SETTINGS_DEVICE_THEME_COLOR)
+    device_settings.theme_color = patch->theme_color;
+  if (mask & SETTINGS_DEVICE_BATTERY_DISPLAY)
+    device_settings.battery_display = patch->battery_display;
+  if (mask & SETTINGS_DEVICE_SECONDARY_STAT_DISPLAY)
+    device_settings.secondary_stat_display = patch->secondary_stat_display;
+  if (mask & SETTINGS_DEVICE_POCKET_MODE)
+    device_settings.pocket_mode = patch->pocket_mode;
+  if (mask & SETTINGS_DEVICE_DOUBLE_PRESS_ACTION)
+    device_settings.double_press_action = patch->double_press_action;
+  if (mask & SETTINGS_DEVICE_HBM_MODE)
+    device_settings.hbm_mode = patch->hbm_mode;
+  if (mask & SETTINGS_DEVICE_LED_MODE)
+    device_settings.led_mode = patch->led_mode;
+  return true;
+}
+PairingSettings settings_get_pairing(void) {
+  return pairing_settings;
+}
+bool settings_set_bl_level(uint8_t value) {
+  DeviceSettings patch = {0};
+  patch.bl_level = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_BL_LEVEL);
+}
+bool settings_set_screen_rotation(ScreenRotation value) {
+  DeviceSettings patch = {0};
+  patch.screen_rotation = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_SCREEN_ROTATION);
+}
+bool settings_set_auto_off_time(AutoOffOptions value) {
+  DeviceSettings patch = {0};
+  patch.auto_off_time = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_AUTO_OFF_TIME);
+}
+bool settings_set_temp_units(TempUnits value) {
+  DeviceSettings patch = {0};
+  patch.temp_units = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_TEMP_UNITS);
+}
+bool settings_set_distance_units(DistanceUnits value) {
+  DeviceSettings patch = {0};
+  patch.distance_units = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_DISTANCE_UNITS);
+}
+bool settings_set_startup_sound(StartupSoundOptions value) {
+  DeviceSettings patch = {0};
+  patch.startup_sound = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_STARTUP_SOUND);
+}
+bool settings_set_theme_color(uint32_t value) {
+  DeviceSettings patch = {0};
+  patch.theme_color = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_THEME_COLOR);
+}
+bool settings_set_battery_display(BoardBatteryDisplayOption value) {
+  DeviceSettings patch = {0};
+  patch.battery_display = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_BATTERY_DISPLAY);
+}
+bool settings_set_secondary_stat_display(SecondaryStatDisplayOption value) {
+  DeviceSettings patch = {0};
+  patch.secondary_stat_display = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_SECONDARY_STAT_DISPLAY);
+}
+bool settings_set_pocket_mode(PocketModeOptions value) {
+  DeviceSettings patch = {0};
+  patch.pocket_mode = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_POCKET_MODE);
+}
+bool settings_set_double_press_action(StatsDoublePressAction value) {
+  DeviceSettings patch = {0};
+  patch.double_press_action = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_DOUBLE_PRESS_ACTION);
+}
+bool settings_set_hbm_mode(HbmModeOptions value) {
+  DeviceSettings patch = {0};
+  patch.hbm_mode = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_HBM_MODE);
+}
+bool settings_set_led_mode(LedModeOptions value) {
+  DeviceSettings patch = {0};
+  patch.led_mode = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_LED_MODE);
 }
 #include "remote/input_settings.c"
 #include "remote/settings_api.c"
@@ -340,7 +471,8 @@ static void test_records_and_pairing(void) {
       "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":1,\"secret\":1,\"vehicle\":0,"
       "\"extra\":1}]}",
       "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":2,\"channel\":1,\"secret\":1,\"vehicle\":0}]}",
-      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":128,\"secret\":1,\"vehicle\":0}]}",
+      "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":128,\"secret\":1,\"vehicle\":0}]"
+      "}",
       "{\"paired_boards\":[{\"mac\":\"AA:BB:CC:DD:EE:00\",\"transport\":0,\"channel\":1,\"secret\":1,\"vehicle\":0},"
       "{\"mac\":\"aa:bb:cc:dd:ee:00\",\"transport\":0,\"channel\":1,\"secret\":1,\"vehicle\":0}]}",
       "{\"paired_boards\":[{},{},{},{},{},{}]}",

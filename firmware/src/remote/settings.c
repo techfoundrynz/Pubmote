@@ -1,17 +1,19 @@
 #include "settings.h"
 #include "config.h"
 #include "connection.h"
-#include "display.h"
 #include "esp_log.h"
+#include "esp_now.h"
 #include "esp_system.h"
-#include "espnow.h"
 #include "input_settings.h"
 #include "nvs_flash.h"
 #include "powermanagement.h"
 #include "remote/adc.h"
+#include "remote/espnow.h"
 #include "remote/remoteinputs.h"
+#include "remote/settings_state.h"
+#include "remote/settings_store.h"
+#include "remote/stats.h"
 #include "settings_api.h"
-#include "stats.h"
 #include "string.h"
 #include <colors.h>
 #include <stdio.h>
@@ -20,8 +22,14 @@ _Static_assert(PAIRED_MAC_BYTES == ESP_NOW_ETH_ALEN, "Paired device layout is pe
 
 static const char *TAG = "PUBREMOTE-SETTINGS";
 
-// Define the NVS namespace
-#define STORAGE_NAMESPACE "nvs"
+static uint8_t transport_channel_get(void) {
+  return settings_get_pairing().channel;
+}
+
+static void transport_channel_set(uint8_t channel) {
+  settings_set_channel(channel);
+}
+
 #define BL_LEVEL_KEY "bl_level"
 #define BL_LEVEL_DEFAULT 200
 #define SCREEN_ROTATION_KEY "screen_rotation"
@@ -36,64 +44,11 @@ static const StatsDoublePressAction DEFAULT_DOUBLE_PRESS_ACTION = DOUBLE_PRESS_A
 // Solid theme colour - the behaviour before led_mode was configurable
 static const LedModeOptions DEFAULT_LED_MODE = LED_MODE_SOLID;
 
-DeviceSettings device_settings = {
-    .bl_level = BL_LEVEL_DEFAULT,
-    .screen_rotation = SCREEN_ROTATION_0,
-    .auto_off_time = DEFAULT_AUTO_OFF_TIME,
-    .temp_units = TEMP_UNITS_CELSIUS,
-    .distance_units = DISTANCE_UNITS_METRIC,
-    .startup_sound = STARTUP_SOUND_BEEP,
-    .theme_color = COLOR_PRIMARY,
-    .battery_display = DEFAULT_BATTERY_DISPLAY,
-    .secondary_stat_display = SECONDARY_STAT_DUTY,
-    .pocket_mode = DEFAULT_POCKET_MODE,
-    .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
-    .hbm_mode = HBM_MODE_OFF,
-    .led_mode = DEFAULT_LED_MODE,
-};
-
-CalibrationSettings calibration_settings = {
-    .x_min = STICK_MIN_VAL,
-    .x_max = STICK_MAX_VAL,
-    .y_min = STICK_MIN_VAL,
-    .y_max = STICK_MAX_VAL,
-    .x_center = STICK_MID_VAL,
-    .y_center = STICK_MID_VAL,
-    .deadband = STICK_DEADBAND,
-    .expo = STICK_EXPO,
-    .invert_x = INVERT_X_AXIS,
-    .invert_y = INVERT_Y_AXIS,
-};
-
-InputPinSettings input_pin_settings = {
-    .js_x_gpio = INPUT_PIN_DISABLED,
-    .js_y_gpio = INPUT_PIN_DISABLED,
-    .btn1_gpio = INPUT_PIN_DISABLED,
-    .btn1_active_level = JOYSTICK_BUTTON_LEVEL,
-};
-
-ImuCalibrationSettings imu_calibration = {
-    .accel_x_offset = 0.0f,
-    .accel_y_offset = 0.0f,
-    .accel_z_offset = 0.0f,
-    .invert_x = IMU_INVERT_X,
-    .invert_y = IMU_INVERT_Y,
-    .invert_z = IMU_INVERT_Z,
-    .swap_xy = IMU_SWAP_XY,
-};
-
-PairingSettings pairing_settings = {
-    .secret_code = DEFAULT_PAIRING_SECRET_CODE,
-    .remote_addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, // Use 0xFF for -1 as uint8_t is unsigned
-    .channel = 1,
-    .default_index = -1,
-};
-
 static int find_paired_index(const uint8_t mac[ESP_NOW_ETH_ALEN]) {
-  for (int i = 0; i < pairing_settings.device_count; i++) {
-    if (is_same_mac(pairing_settings.devices[i].mac, (uint8_t *)mac)) {
+  PairingSettings pairing = settings_get_pairing();
+  for (int i = 0; i < pairing.device_count; ++i) {
+    if (is_same_mac(pairing.devices[i].mac, (uint8_t *)mac))
       return i;
-    }
   }
   return -1;
 }
@@ -103,100 +58,59 @@ bool is_paired_mac(const uint8_t *mac) {
 }
 
 void set_default_device_index(int8_t idx) {
-  if (idx >= 0 && idx < pairing_settings.device_count) {
-    pairing_settings.default_index = idx;
-    memcpy(pairing_settings.remote_addr, pairing_settings.devices[idx].mac, ESP_NOW_ETH_ALEN);
-    pairing_settings.channel = pairing_settings.devices[idx].channel;
-    pairing_settings.secret_code = pairing_settings.devices[idx].secret_code;
-    remoteStats.vehicleType = pairing_settings.devices[idx].vehicle_type;
+  if (settings_select_device(idx)) {
+    PairedDevice device;
+    if (get_paired_device(idx, &device))
+      stats_set_vehicle_type(device.vehicle_type);
     stats_update();
   }
 }
 
-static void ensure_current_in_device_list_and_set_default() {
-  if (is_same_mac(pairing_settings.remote_addr, (uint8_t *)DEFAULT_PEER_ADDR)) {
-    return;
+static void ensure_current_in_device_list_and_set_default(void) {
+  settings_remember_active_peer();
+  PairingSettings pairing = settings_get_pairing();
+  if (pairing.default_index >= 0) {
+    stats_set_vehicle_type(pairing.devices[pairing.default_index].vehicle_type);
+    stats_update();
   }
-
-  // Ensure current remote_addr/channel are in the devices list and set as default
-  if (pairing_settings.device_count > MAX_PAIRED_DEVICES) {
-    pairing_settings.device_count = MAX_PAIRED_DEVICES;
-  }
-  int idx = find_paired_index(pairing_settings.remote_addr);
-  if (idx < 0) {
-    // Add new if space, else replace the oldest (index 0)
-    if (pairing_settings.device_count < MAX_PAIRED_DEVICES) {
-      idx = pairing_settings.device_count++;
-    }
-    else {
-      idx = 0;
-    }
-    memcpy(pairing_settings.devices[idx].mac, pairing_settings.remote_addr, ESP_NOW_ETH_ALEN);
-    pairing_settings.devices[idx].vehicle_type = 0;
-  }
-  pairing_settings.devices[idx].secret_code = pairing_settings.secret_code;
-  pairing_settings.devices[idx].channel = pairing_settings.channel;
-  set_default_device_index(idx);
 }
 
 bool delete_paired_device_index(uint8_t idx) {
-  if (idx >= pairing_settings.device_count) {
+  PairedDevice device;
+  if (!get_paired_device(idx, &device) || !settings_remove_device(idx))
     return false;
+  esp_now_del_peer(device.mac);
+  PairingSettings pairing = settings_get_pairing();
+  if (!pairing.device_count) {
+    connection_update_pairing_state(PAIRING_STATE_UNPAIRED);
+    connection_update_state(CONNECTION_STATE_DISCONNECTED);
   }
-
-  // Delete from ESP-NOW peer list if it exists
-  esp_now_del_peer(pairing_settings.devices[idx].mac);
-
-  // Shift elements left to remove idx
-  if (idx < pairing_settings.device_count - 1) {
-    memmove(&pairing_settings.devices[idx], &pairing_settings.devices[idx + 1],
-            (pairing_settings.device_count - idx - 1) * sizeof(PairedDevice));
+  else if (pairing.default_index >= 0) {
+    stats_set_vehicle_type(pairing.devices[pairing.default_index].vehicle_type);
+    stats_update();
   }
-  pairing_settings.device_count--;
-
-  // Adjust default index
-  if (pairing_settings.default_index == (int8_t)idx) {
-    if (pairing_settings.device_count > 0) {
-      set_default_device_index(0);
-    }
-    else {
-      pairing_settings.default_index = -1;
-      memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
-      pairing_settings.channel = 1;
-      pairing_settings.secret_code = DEFAULT_PAIRING_SECRET_CODE;
-      pairing_state = PAIRING_STATE_UNPAIRED;
-      connection_update_state(CONNECTION_STATE_DISCONNECTED);
-    }
-  }
-  else if (pairing_settings.default_index > (int8_t)idx) {
-    pairing_settings.default_index -= 1;
-  }
-
-  // Persist changes
   save_pairing_data();
   return true;
 }
 
-uint8_t get_paired_device_count() {
-  return pairing_settings.device_count;
+uint8_t get_paired_device_count(void) {
+  return settings_get_pairing().device_count;
 }
 
-int8_t get_default_device_index() {
-  return pairing_settings.default_index;
+int8_t get_default_device_index(void) {
+  return settings_get_pairing().default_index;
 }
 
 bool get_paired_device(uint8_t idx, PairedDevice *out_device) {
-  if (out_device == NULL) {
+  PairingSettings pairing = settings_get_pairing();
+  if (!out_device || idx >= pairing.device_count)
     return false;
-  }
-  if (idx >= pairing_settings.device_count) {
-    return false;
-  }
-  *out_device = pairing_settings.devices[idx];
+  *out_device = pairing.devices[idx];
   return true;
 }
 
 bool set_active_paired_device(uint8_t idx) {
+  PairingSettings pairing_settings = settings_get_pairing();
   if (idx >= pairing_settings.device_count) {
     return false;
   }
@@ -205,209 +119,8 @@ bool set_active_paired_device(uint8_t idx) {
   return true;
 }
 
-static esp_err_t nvs_write(const char *key, void *value, nvs_type_t type, size_t length) {
-  nvs_handle_t nvs_handle;
-  esp_err_t err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &nvs_handle);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
-    return err;
-  }
-
-  switch (type) {
-  case NVS_TYPE_I8:
-    err = nvs_set_i8(nvs_handle, key, *(int8_t *)value);
-    break;
-  case NVS_TYPE_U8:
-    err = nvs_set_u8(nvs_handle, key, *(uint8_t *)value);
-    break;
-  case NVS_TYPE_I16:
-    err = nvs_set_i16(nvs_handle, key, *(int16_t *)value);
-    break;
-  case NVS_TYPE_U16:
-    err = nvs_set_u16(nvs_handle, key, *(uint16_t *)value);
-    break;
-  case NVS_TYPE_I32:
-    err = nvs_set_i32(nvs_handle, key, *(int32_t *)value);
-    break;
-  case NVS_TYPE_U32:
-    err = nvs_set_u32(nvs_handle, key, *(uint32_t *)value);
-    break;
-  case NVS_TYPE_I64:
-    err = nvs_set_i64(nvs_handle, key, *(int64_t *)value);
-    break;
-  case NVS_TYPE_U64:
-    err = nvs_set_u64(nvs_handle, key, *(uint64_t *)value);
-    break;
-  case NVS_TYPE_STR:
-    err = nvs_set_str(nvs_handle, key, (char *)value);
-    break;
-  case NVS_TYPE_BLOB:
-    err = nvs_set_blob(nvs_handle, key, value, length);
-    break;
-  default:
-    ESP_LOGE(TAG, "Unsupported data type!");
-    err = ESP_ERR_INVALID_ARG;
-  }
-
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to write!");
-    nvs_close(nvs_handle);
-    return err;
-  }
-  else {
-    ESP_LOGI(TAG, "Write done");
-  }
-
-  err = nvs_commit(nvs_handle);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to commit!");
-    nvs_close(nvs_handle);
-    return err;
-  }
-  else {
-    ESP_LOGI(TAG, "Commit done");
-  }
-
-  nvs_close(nvs_handle);
-  return err;
-}
-
-// Function to read from NVS
-static esp_err_t nvs_read(const char *key, void *value, nvs_type_t type, size_t length) {
-  nvs_handle_t nvs_handle;
-  esp_err_t err = nvs_open(STORAGE_NAMESPACE, NVS_READONLY, &nvs_handle);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
-    return err;
-  }
-
-  switch (type) {
-  case NVS_TYPE_I8:
-    err = nvs_get_i8(nvs_handle, key, (int8_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %d", *(int8_t *)value);
-    }
-    break;
-  case NVS_TYPE_U8:
-    err = nvs_get_u8(nvs_handle, key, (uint8_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %u", *(uint8_t *)value);
-    }
-    break;
-  case NVS_TYPE_I16:
-    err = nvs_get_i16(nvs_handle, key, (int16_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %d", *(int16_t *)value);
-    }
-    break;
-  case NVS_TYPE_U16:
-    err = nvs_get_u16(nvs_handle, key, (uint16_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %u", *(uint16_t *)value);
-    }
-    break;
-  case NVS_TYPE_I32:
-    err = nvs_get_i32(nvs_handle, key, (int32_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %ld", *(int32_t *)value);
-    }
-    break;
-  case NVS_TYPE_U32:
-    err = nvs_get_u32(nvs_handle, key, (uint32_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %lu", *(uint32_t *)value);
-    }
-    break;
-  case NVS_TYPE_I64:
-    err = nvs_get_i64(nvs_handle, key, (int64_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %lld", *(int64_t *)value);
-    }
-    break;
-  case NVS_TYPE_U64:
-    err = nvs_get_u64(nvs_handle, key, (uint64_t *)value);
-    if (err == ESP_OK) {
-      ESP_LOGI(TAG, "Read done, value = %llu", *(uint64_t *)value);
-    }
-    break;
-  case NVS_TYPE_STR: {
-    size_t required_size;
-    // Get the size of the string first
-    err = nvs_get_str(nvs_handle, key, NULL, &required_size);
-    if (err == ESP_OK) {
-      // Guard the caller's buffer: the stored string length is independent of
-      // whatever the caller sized its buffer from (e.g. a separate length key),
-      // so a mismatch/corruption must not overflow it. length==0 means unknown
-      // (legacy callers) - fall back to trusting NVS.
-      if (length != 0 && required_size > length) {
-        ESP_LOGE(TAG, "NVS string '%s' (%u bytes) exceeds caller buffer (%u) - refusing", key, (unsigned)required_size,
-                 (unsigned)length);
-        err = ESP_ERR_INVALID_SIZE;
-        break;
-      }
-      // Read directly into the caller buffer - no intermediate alloc/copy
-      err = nvs_get_str(nvs_handle, key, (char *)value, &required_size);
-      if (err == ESP_OK) {
-        ESP_LOGI(TAG, "Read done, value = %s", (char *)value);
-      }
-    }
-    break;
-  }
-  case NVS_TYPE_BLOB:
-    err = nvs_get_blob(nvs_handle, key, value, &length);
-    break;
-  default:
-    ESP_LOGE(TAG, "Unsupported data type!");
-    err = ESP_ERR_INVALID_ARG;
-  }
-
-  switch (err) {
-  case ESP_OK:
-    ESP_LOGI(TAG, "Read done");
-    break;
-  case ESP_ERR_NVS_NOT_FOUND: // Never saved; callers fall back to defaults
-    break;
-  default:
-    ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
-  }
-
-  nvs_close(nvs_handle);
-  return err;
-}
-
-// Function to write an integer to NVS
-esp_err_t nvs_write_int(const char *key, uint32_t value) {
-  return nvs_write(key, &value, NVS_TYPE_U32, 0);
-}
-
-esp_err_t nvs_write_str(const char *key, const char *value) {
-  return nvs_write(key, (void *)value, NVS_TYPE_STR, strlen(value) + 1);
-}
-
-esp_err_t nvs_read_str(const char *key, char *out_value, size_t *length) {
-  return nvs_read(key, out_value, NVS_TYPE_STR, *length);
-}
-
-// Function to write a blob to NVS
-esp_err_t nvs_write_blob(const char *key, void *value, size_t length) {
-  return nvs_write(key, value, NVS_TYPE_BLOB, length);
-}
-
-// Function to read an integer from NVS
-esp_err_t nvs_read_int(const char *key, uint32_t *value) {
-  return nvs_read(key, value, NVS_TYPE_U32, 0);
-}
-
-// Function to read a blob from NVS
-esp_err_t nvs_read_blob(const char *key, void *value, size_t length) {
-  return nvs_read(key, value, NVS_TYPE_BLOB, length);
-}
-
-esp_err_t reset_all_settings() {
-  return nvs_flash_erase();
-}
-
 static uint8_t get_auto_off_time_minutes() {
+  DeviceSettings device_settings = settings_get_device();
   switch (device_settings.auto_off_time) {
   case AUTO_OFF_DISABLED:
     return 0;
@@ -431,6 +144,7 @@ uint64_t get_auto_off_ms() {
 }
 
 bool is_pocket_mode_enabled() {
+  DeviceSettings device_settings = settings_get_device();
   return device_settings.pocket_mode == POCKET_MODE_ENABLED;
 }
 
@@ -448,18 +162,7 @@ esp_err_t save_wifi_ssid(const char *ssid) {
 }
 
 bool set_current_default_device_secret(uint32_t secret_code) {
-  if (pairing_settings.default_index >= 0 && pairing_settings.default_index < pairing_settings.device_count) {
-    pairing_settings.devices[pairing_settings.default_index].secret_code = secret_code;
-    pairing_settings.secret_code = secret_code; // keep legacy field in sync
-    return true;
-  }
-  int idx = find_paired_index(pairing_settings.remote_addr);
-  if (idx >= 0) {
-    pairing_settings.devices[idx].secret_code = secret_code;
-    pairing_settings.secret_code = secret_code;
-    return true;
-  }
-  return false;
+  return settings_set_saved_secret(secret_code);
 }
 
 esp_err_t save_wifi_password(const char *password) {
@@ -530,6 +233,7 @@ esp_err_t save_pairing_data() {
   ESP_LOGI(TAG, "Saving pairing data...");
   // Ensure device list reflects current default
   ensure_current_in_device_list_and_set_default();
+  PairingSettings pairing_settings = settings_get_pairing();
 
   // Save multi-device info
   esp_err_t err = nvs_write_int("paired_count", pairing_settings.device_count);
@@ -563,6 +267,9 @@ esp_err_t save_pairing_data() {
 }
 
 esp_err_t save_input_calibration() {
+  SettingsSnapshot snapshot = settings_snapshot();
+  InputPinSettings input_pin_settings = snapshot.pins;
+  CalibrationSettings calibration_settings = snapshot.calibration;
   esp_err_t result = settings_store_input_state(&input_pin_settings, &calibration_settings);
   if (result != ESP_OK) {
     ESP_LOGE(TAG, "Failed to save input calibration: %s", esp_err_to_name(result));
@@ -592,10 +299,13 @@ void input_pins_load_defaults(InputPinSettings *out) {
 }
 
 void reset_axis_calibration(bool reset_x, bool reset_y) {
-  settings_reset_calibration(&calibration_settings, reset_x, reset_y);
+  CalibrationSettings calibration = settings_get_calibration();
+  settings_reset_calibration(&calibration, reset_x, reset_y);
+  settings_set_calibration(&calibration);
 }
 
 esp_err_t save_imu_calibration() {
+  ImuCalibrationSettings imu_calibration = settings_get_imu();
   esp_err_t result;
   result = nvs_write_int("imu_off_x", (int32_t)(imu_calibration.accel_x_offset * 1000.0f));
   if (result != ESP_OK)
@@ -622,11 +332,14 @@ esp_err_t save_imu_calibration() {
 }
 
 void settings_apply_imu_calibration(const ImuCalibrationSettings *imu) {
-  imu_calibration = *imu;
-  save_imu_calibration();
+  if (settings_set_imu(imu))
+    save_imu_calibration();
 }
 
 esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, int8_t default_index) {
+  PairingSettings pairing_settings = settings_get_pairing();
+  if (count > MAX_PAIRED_DEVICES || default_index < -1 || default_index >= (int8_t)count || (count && !devices))
+    return ESP_ERR_INVALID_ARG;
   for (uint8_t i = 0; i < pairing_settings.device_count; ++i) {
     bool kept = false;
     for (uint8_t j = 0; j < count && !kept; ++j) {
@@ -640,7 +353,10 @@ esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, i
   memcpy(pairing_settings.devices, devices, count * sizeof(PairedDevice));
   pairing_settings.device_count = count;
   if (default_index >= 0) {
-    set_default_device_index(default_index);
+    pairing_settings.default_index = default_index;
+    memcpy(pairing_settings.remote_addr, devices[default_index].mac, PAIRED_MAC_BYTES);
+    pairing_settings.channel = devices[default_index].channel;
+    pairing_settings.secret_code = devices[default_index].secret_code;
   }
   else {
     pairing_settings.default_index = -1;
@@ -648,9 +364,13 @@ esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, i
     pairing_settings.channel = 1;
     pairing_settings.secret_code = DEFAULT_PAIRING_SECRET_CODE;
   }
+  if (!settings_publish_pairing(&pairing_settings))
+    return ESP_ERR_INVALID_ARG;
+  if (default_index >= 0)
+    stats_set_vehicle_type(devices[default_index].vehicle_type);
   esp_err_t err = save_pairing_data();
   connection_refresh_pairing_state();
-  if (pairing_state == PAIRING_STATE_PAIRED) {
+  if (connection_get_pairing_state() == PAIRING_STATE_PAIRED) {
     connection_switch_comms_mode(settings_get_active_comms_mode());
     connection_connect_to_default_peer();
   }
@@ -675,6 +395,60 @@ static esp_err_t init_nvs() {
 
 // Function to initialize settings object, reading from NVS
 esp_err_t settings_init() {
+  DeviceSettings device_settings = {
+      .bl_level = BL_LEVEL_DEFAULT,
+      .screen_rotation = SCREEN_ROTATION_0,
+      .auto_off_time = DEFAULT_AUTO_OFF_TIME,
+      .temp_units = TEMP_UNITS_CELSIUS,
+      .distance_units = DISTANCE_UNITS_METRIC,
+      .startup_sound = STARTUP_SOUND_BEEP,
+      .theme_color = COLOR_PRIMARY,
+      .battery_display = DEFAULT_BATTERY_DISPLAY,
+      .secondary_stat_display = SECONDARY_STAT_DUTY,
+      .pocket_mode = DEFAULT_POCKET_MODE,
+      .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
+      .hbm_mode = HBM_MODE_OFF,
+      .led_mode = DEFAULT_LED_MODE,
+  };
+
+  CalibrationSettings calibration_settings = {
+      .x_min = STICK_MIN_VAL,
+      .x_max = STICK_MAX_VAL,
+      .y_min = STICK_MIN_VAL,
+      .y_max = STICK_MAX_VAL,
+      .x_center = STICK_MID_VAL,
+      .y_center = STICK_MID_VAL,
+      .deadband = STICK_DEADBAND,
+      .expo = STICK_EXPO,
+      .invert_x = INVERT_X_AXIS,
+      .invert_y = INVERT_Y_AXIS,
+  };
+
+  InputPinSettings input_pin_settings = {
+      .js_x_gpio = INPUT_PIN_DISABLED,
+      .js_y_gpio = INPUT_PIN_DISABLED,
+      .btn1_gpio = INPUT_PIN_DISABLED,
+      .btn1_active_level = JOYSTICK_BUTTON_LEVEL,
+  };
+
+  ImuCalibrationSettings imu_calibration = {
+      .accel_x_offset = 0.0f,
+      .accel_y_offset = 0.0f,
+      .accel_z_offset = 0.0f,
+      .invert_x = IMU_INVERT_X,
+      .invert_y = IMU_INVERT_Y,
+      .invert_z = IMU_INVERT_Z,
+      .swap_xy = IMU_SWAP_XY,
+  };
+
+  PairingSettings pairing_settings = {
+      .secret_code = DEFAULT_PAIRING_SECRET_CODE,
+      .remote_addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, // Use 0xFF for -1 as uint8_t is unsigned
+      .channel = 1,
+      .default_index = -1,
+  };
+
+  comms_bind_channel_config(transport_channel_get, transport_channel_set);
   ESP_LOGI(TAG, "Initializing settings...");
   esp_err_t err = init_nvs();
   if (err != ESP_OK) {
@@ -827,7 +601,7 @@ esp_err_t settings_init() {
            ESP_NOW_ETH_ALEN);
     pairing_settings.channel = pairing_settings.devices[pairing_settings.default_index].channel;
     pairing_settings.secret_code = pairing_settings.devices[pairing_settings.default_index].secret_code;
-    remoteStats.vehicleType = pairing_settings.devices[pairing_settings.default_index].vehicle_type;
+    stats_set_vehicle_type(pairing_settings.devices[pairing_settings.default_index].vehicle_type);
   }
   else {
     memcpy(pairing_settings.remote_addr, DEFAULT_PEER_ADDR, sizeof(DEFAULT_PEER_ADDR));
@@ -835,10 +609,16 @@ esp_err_t settings_init() {
     pairing_settings.secret_code = DEFAULT_PAIRING_SECRET_CODE;
   }
 
+  if (pairing_settings.default_index < -1 || pairing_settings.default_index >= (int8_t)pairing_settings.device_count)
+    pairing_settings.default_index = -1;
+  SettingsSnapshot initial = {device_settings, input_pin_settings, calibration_settings, imu_calibration,
+                              pairing_settings};
+  settings_state_init(&initial);
   return ESP_OK;
 }
 
 CommsType settings_get_board_comms_mode(int8_t index) {
+  PairingSettings pairing_settings = settings_get_pairing();
   if (index >= 0 && index < pairing_settings.device_count) {
     if (pairing_settings.devices[index].channel & 0x80) {
       return COMMS_TYPE_BLE;
@@ -848,5 +628,9 @@ CommsType settings_get_board_comms_mode(int8_t index) {
 }
 
 CommsType settings_get_active_comms_mode(void) {
-  return settings_get_board_comms_mode(pairing_settings.default_index);
+  PairingSettings pairing_settings = settings_get_pairing();
+  int8_t index = pairing_settings.default_index;
+  return index >= 0 && index < pairing_settings.device_count && (pairing_settings.devices[index].channel & 0x80)
+             ? COMMS_TYPE_BLE
+             : COMMS_TYPE_ESPNOW;
 }

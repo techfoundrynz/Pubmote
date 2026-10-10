@@ -50,16 +50,19 @@ class RadioTests(unittest.TestCase):
                          'esp_err_t wifi_connect_to_network_cancellable('],
                 'radio_session': ['static esp_err_t stop_workers(', 'static esp_err_t start_workers(', 'static esp_err_t begin_session(',
                                   'static esp_err_t end_session('],
-                'espnow': ['static esp_err_t espnow_driver_init(', 'static esp_err_t espnow_driver_deinit(',
+                'espnow': ['void comms_bind_channel_config(', 'static uint8_t initial_channel(',
+                           'static void update_initial_channel(',
+                           'static esp_err_t espnow_driver_init(', 'static esp_err_t espnow_driver_deinit(',
                            'esp_err_t espnow_prepare_wifi('],
             }.items():
-                path = ROOT / 'firmware/src/remote' / ('comms_ble.c' if name == 'ble' else f'{name}.c')
+                base = 'firmware/modules/transport/src' if name in ('ble', 'espnow') else 'firmware/src/remote'
+                path = ROOT / base / ('comms_ble.c' if name == 'ble' else f'{name}.c')
                 source = path.read_text(encoding='utf-8')
                 (temporary / f'{name}_functions.inc').write_text(
                     '\n\n'.join(function(source, signature) for signature in signatures), encoding='utf-8')
-            comms = (ROOT / 'firmware/src/remote/comms.c').read_text(encoding='utf-8')
+            comms = (ROOT / 'firmware/modules/transport/src/comms.c').read_text(encoding='utf-8')
             (temporary / 'comms_functions.inc').write_text(function(comms, 'esp_err_t comms_select_driver('), encoding='utf-8')
-            ota = (ROOT / 'firmware/src/ota/update_client.c').read_text(encoding='utf-8')
+            ota = (ROOT / 'firmware/modules/ota/src/update_client.c').read_text(encoding='utf-8')
             (temporary / 'ota_functions.inc').write_text(
                 '\n\n'.join(function(ota, signature) for signature in [
                     'static bool valid_asset_url(', 'static bool ota_cancelled(', 'esp_err_t apply_ota(']), encoding='utf-8')

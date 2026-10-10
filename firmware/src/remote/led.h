@@ -1,6 +1,6 @@
 #pragma once
 
-#include "settings_types.h"
+#include "remote/settings_types.h"
 #include <stdbool.h>
 #include <stdio.h>
 

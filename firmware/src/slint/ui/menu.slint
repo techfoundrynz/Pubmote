@@ -20,7 +20,7 @@ export component MenuScreen inherits Page {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
     in property <string> connect-label: "Connect";
     in property <bool> pocket-mode-active: false;
-    // Labels rather than indices - hbm_mode_label() in display.cpp and
+    // Labels rather than indices - ui_hbm_mode_label() in ui/device_preferences.cpp and
     // led_mode_label() in led.c own the names, so the enum ordering is not
     // duplicated here where it could silently drift.
     in property <string> hbm-mode-label: "";

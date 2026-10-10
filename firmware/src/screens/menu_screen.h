@@ -1,4 +1,5 @@
 #pragma once
+#include "ui/screen_status.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -6,7 +7,6 @@ extern "C"
 {
 #endif
 
-  bool is_menu_screen_active();
   void setup_menu_properties();
   void teardown_menu_properties();
 

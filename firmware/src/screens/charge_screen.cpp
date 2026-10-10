@@ -2,9 +2,9 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "remote/display.h"
 #include "remote/stats.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 
 static const char *TAG = "PUBREMOTE-CHARGE_SCREEN";
 static TaskHandle_t charge_task_handle = NULL;
@@ -13,8 +13,9 @@ void update_charge_percentage() {
   if (!get_slint_window())
     return;
 
+  const auto percentage = stats_snapshot().remoteBatteryPercentage;
   slint::invoke_from_event_loop(
-      []() { get_slint_window()->global<UiState>().set_charge_percent(remoteStats.remoteBatteryPercentage); });
+      [percentage]() { get_slint_window()->global<UiState>().set_charge_percent(percentage); });
 }
 
 static void charge_task(void *pvParameters) {

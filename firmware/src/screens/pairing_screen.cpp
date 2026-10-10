@@ -2,10 +2,10 @@
 #include "esp_log.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
-#include "remote/display.h"
 #include "remote/led.h"
 #include "remote/settings.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include "utilities/ui_operation.h"
 #include <array>
 #include <cstring>
@@ -55,7 +55,7 @@ static void start_ble_scan() {
   ui_operation_start(
       "Starting Bluetooth scan...",
       []() {
-        comms_disconnect_peer(pairing_settings.remote_addr);
+        comms_disconnect_peer(settings_get_pairing().remote_addr);
         esp_err_t result = comms_init();
         if (result == ESP_OK)
           result = comms_register_discovery_cb(on_device_discovered);
@@ -69,7 +69,7 @@ extern "C" void setup_pairing_properties() {
   led_set_effect_rainbow();
   exit_restored = false;
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
-  pairing_state = PAIRING_STATE_UNPAIRED;
+  connection_update_pairing_state(PAIRING_STATE_UNPAIRED);
   const bool is_ble = comms_get_active_type() == COMMS_TYPE_BLE;
   {
     const auto &state = get_slint_window()->global<UiState>();
@@ -115,7 +115,7 @@ extern "C" void setup_pairing_properties() {
     start_ble_scan();
   else
     ui_operation_start("Starting board search...", []() {
-      esp_err_t result = comms_disconnect_peer(pairing_settings.remote_addr);
+      esp_err_t result = comms_disconnect_peer(settings_get_pairing().remote_addr);
       if (result != ESP_OK && result != ESP_ERR_INVALID_STATE)
         return result;
       return comms_init();
@@ -144,14 +144,14 @@ extern "C" bool pairing_screen_prepare_exit(int target) {
       "Restoring board connection...",
       []() {
         comms_register_discovery_cb(nullptr);
-        comms_disconnect_peer(pairing_settings.remote_addr);
+        comms_disconnect_peer(settings_get_pairing().remote_addr);
         if (get_default_device_index() >= 0) {
           esp_err_t result = connection_switch_comms_mode(settings_get_active_comms_mode());
           if (result != ESP_OK)
             return result;
         }
         connection_refresh_pairing_state();
-        if (pairing_state == PAIRING_STATE_PAIRED && connection_get_auto_reconnect())
+        if (connection_get_pairing_state() == PAIRING_STATE_PAIRED && connection_get_auto_reconnect())
           connection_connect_to_default_peer();
         return ESP_OK;
       },

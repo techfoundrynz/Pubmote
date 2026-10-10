@@ -1,7 +1,9 @@
 #include "input_settings.h"
-#include "../config.h"
+#include "config.h"
+#include "remote/adc.h"
+#include "remote/settings_snapshot.h"
+#include "remote/settings_store.h"
 #include "remoteinputs.h"
-#include "settings.h"
 #include "settings_api.h"
 #include <string.h>
 
@@ -70,8 +72,9 @@ int settings_save_input_pins(const InputPinSettings *pins) {
   if (!pins || input_pins_validate(pins, error, sizeof(error)) != ESP_OK) {
     return ESP_ERR_INVALID_ARG;
   }
-  CalibrationSettings pending = calibration_settings;
-  settings_reset_calibration(&pending, pins->js_x_gpio != input_pin_settings.js_x_gpio,
-                             pins->js_y_gpio != input_pin_settings.js_y_gpio);
+  const SettingsSnapshot snapshot = settings_snapshot();
+  CalibrationSettings pending = snapshot.calibration;
+  settings_reset_calibration(&pending, pins->js_x_gpio != snapshot.pins.js_x_gpio,
+                             pins->js_y_gpio != snapshot.pins.js_y_gpio);
   return settings_store_input_state(pins, &pending);
 }

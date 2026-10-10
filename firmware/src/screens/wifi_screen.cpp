@@ -3,11 +3,11 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
-#include "remote/display.h"
 #include "remote/radio_session.h"
 #include "remote/settings.h"
 #include "remote/wifi.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include "utilities/keypad.h"
 #include "utilities/ui_operation.h"
 #include <algorithm>

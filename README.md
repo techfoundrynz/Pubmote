@@ -70,6 +70,8 @@ Use `pio run -e <environment> -t package` for release ZIP/BIN/ELF artifacts.
 See [firmware builds](docs/firmware-builds.md) for caching, generated-code debugging,
 and benchmark commands.
 See [device diagnostics](docs/device-diagnostics.md) for exporting recent radio/OTA logs and memory metrics.
+See [firmware architecture and ownership](docs/firmware-architecture.md) for component
+boundaries, task contracts, and module review/validation responsibilities.
 
 For desktop development, run `pio run -e simulator -t simulate` on Windows or macOS.
 This opens the real Slint UI with simulated device services and a telemetry control

@@ -7,7 +7,8 @@
 #include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/receiver.h"
-#include "remote/settings.h"
+#include "remote/settings_snapshot.h"
+#include "remote/settings_store.h"
 #include "remote/transmitter.h"
 #include "remote/wifi.h"
 
@@ -59,7 +60,7 @@ static esp_err_t begin_session(void) {
     return ESP_ERR_INVALID_STATE;
   transport = comms_get_active_type();
   auto_reconnect = connection_get_auto_reconnect();
-  reconnect = auto_reconnect && connection_state != CONNECTION_STATE_DISCONNECTED;
+  reconnect = auto_reconnect && connection_get_state() != CONNECTION_STATE_DISCONNECTED;
   owned = true;
   esp_err_t err = stop_workers();
   if (err != ESP_OK)

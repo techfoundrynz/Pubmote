@@ -1,18 +1,12 @@
 #pragma once
+#include "remote/telemetry_types.h"
 #include <esp_err.h>
-#include <esp_lcd_types.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-  typedef enum {
-    CHARGE_STATE_NOT_CHARGING,
-    CHARGE_STATE_CHARGING,
-    CHARGE_STATE_DONE,
-    CHARGE_STATE_UNKNOWN,
-  } RemoteChargeState;
 
   typedef struct {
     uint16_t voltage;              // Battery voltage in mV

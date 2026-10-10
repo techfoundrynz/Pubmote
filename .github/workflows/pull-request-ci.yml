@@ -6,10 +6,15 @@ on:
     paths:
       - 'firmware/**'
       - 'platformio.ini'
+      - 'CMakeLists.txt'
+      - 'prebuild_hook.py'
+      - 'scripts/cmake_inputs.py'
       - 'postbuild_hook.py'
       - 'scripts/install_game.py'
       - 'fs/games/**'
       - 'tests/**'
+      - 'scripts/check_firmware_boundaries.py'
+      - 'docs/firmware-architecture.md'
       - 'firmware_tool/src/services/settingsProtocol.ts'
       - 'firmware_tool/tests/settingsProtocol.test.ts'
       - '.github/workflows/pull-request-ci.yml'
@@ -22,6 +27,19 @@ on:
       - master
 
 jobs:
+  firmware-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check firmware component boundaries
+        run: |
+          python scripts/check_firmware_boundaries.py
+          python -m unittest discover -s tests -p test_firmware_boundaries.py
+          python -m unittest discover -s tests -p test_cmake_inputs.py
+
   build:
     if: github.event.pull_request.draft == false
 

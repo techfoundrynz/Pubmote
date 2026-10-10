@@ -10,6 +10,7 @@ lib/libslint_cpp.a is missing. About a minute a turn instead.
     python scripts/use_local_slint.py                 # default env
     python scripts/use_local_slint.py --env <name>    # a specific one
     python scripts/use_local_slint.py --no-build      # stage an existing build
+    python scripts/use_local_slint.py --slint-dir path/to/slint  # isolated checkout
 
 Caveats:
   - The staged headers and slint-compiler still come from the release. That is fine for
@@ -29,11 +30,18 @@ REPO = Path(__file__).resolve().parents[1]
 SLINT = Path("C:/Repos/slint")
 TARGET = "xtensa-esp32s3-none-elf"
 # Must match SLINT_MCU_FEATURES in the fork's mcu_prebuilt.yaml.
-FEATURES = "freestanding,renderer-software,software-renderer-path"
+FEATURES = "freestanding,renderer-software,software-renderer-path,software-renderer-caches"
 DEFAULT_ENV = "pingumote_esp32s3_touch_amoled_132"
 
 
-def build() -> Path:
+def library_path(slint_dir: Path) -> Path:
+    target_dir = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
+    if not target_dir.is_absolute():
+        target_dir = slint_dir / target_dir
+    return target_dir / TARGET / "release" / "libslint_cpp.a"
+
+
+def build(slint_dir: Path) -> Path:
     cmd = [
         "cargo", "+esp", "rustc", "--release", "-p", "slint-cpp",
         "--crate-type", "staticlib",
@@ -46,9 +54,9 @@ def build() -> Path:
     build_env = os.environ.copy()
     build_env.update(CARGO_INCREMENTAL="false", CARGO_PROFILE_RELEASE_LTO="fat",
                      CARGO_PROFILE_RELEASE_CODEGEN_UNITS="1")
-    if subprocess.run(cmd, cwd=SLINT, env=build_env).returncode != 0:
+    if subprocess.run(cmd, cwd=slint_dir, env=build_env).returncode != 0:
         sys.exit("cargo build failed")
-    lib = SLINT / "target" / TARGET / "release" / "libslint_cpp.a"
+    lib = library_path(slint_dir)
     if not lib.is_file():
         sys.exit(f"expected {lib} to exist after a successful build")
     return lib
@@ -58,9 +66,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--env", default=DEFAULT_ENV)
     ap.add_argument("--no-build", action="store_true")
+    ap.add_argument("--slint-dir", type=Path, default=SLINT, help="Slint source checkout (default: %(default)s)")
     args = ap.parse_args()
 
-    lib = (SLINT / "target" / TARGET / "release" / "libslint_cpp.a") if args.no_build else build()
+    slint_dir = args.slint_dir.resolve()
+    lib = library_path(slint_dir) if args.no_build else build(slint_dir)
     if not lib.is_file():
         sys.exit(f"{lib} does not exist; run without --no-build")
 

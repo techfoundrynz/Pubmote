@@ -1,12 +1,13 @@
 #include "screens/about_screen.h"
 #include "build_metadata.h"
+#include "charge/charge_driver.h"
 #include "config.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "remote/connection.h"
-#include "remote/display.h"
 #include "remote/stats.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include <memory>
 #include <stdio.h>
 #include <string_view>
@@ -58,16 +59,17 @@ extern "C" void update_about_stats() {
     return;
 
   char voltage[16], level[16], internal_free[16], min_ever[16], largest[16], psram[16], current[16];
-  snprintf(voltage, sizeof(voltage), "%.2f V", (float)remoteStats.remoteBatteryVoltage / 1000.0f);
-  snprintf(level, sizeof(level), "%d%%", remoteStats.remoteBatteryPercentage);
-  snprintf(current, sizeof(current), "%u mA", remoteStats.chargeCurrent);
+  const RemoteStats telemetry = stats_snapshot();
+  snprintf(voltage, sizeof(voltage), "%.2f V", (float)telemetry.remoteBatteryVoltage / 1000.0f);
+  snprintf(level, sizeof(level), "%d%%", telemetry.remoteBatteryPercentage);
+  snprintf(current, sizeof(current), "%u mA", telemetry.chargeCurrent);
   snprintf(internal_free, sizeof(internal_free), "%u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
   snprintf(min_ever, sizeof(min_ever), "%u", (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
   snprintf(largest, sizeof(largest), "%u", (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
   snprintf(psram, sizeof(psram), "%u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 
-  const char *state = charge_state_to_string(remoteStats.chargeState);
-  bool show_current = remoteStats.chargeState != CHARGE_STATE_NOT_CHARGING && remoteStats.chargeCurrent > 0;
+  const char *state = charge_state_to_string(telemetry.chargeState);
+  bool show_current = telemetry.chargeState != CHARGE_STATE_NOT_CHARGING && telemetry.chargeCurrent > 0;
 
   if (!stats_model) {
     stats_model = std::make_shared<slint::VectorModel<StatEntry>>();

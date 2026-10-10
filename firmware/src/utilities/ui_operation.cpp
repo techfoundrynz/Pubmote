@@ -1,9 +1,9 @@
 #include "utilities/ui_operation.h"
 #include "esp_system.h"
-#include "remote/display.h"
 #include "remote/powermanagement.h"
 #include "remote/radio_session.h"
 #include "slint_generated/app-window.h"
+#include "ui/slint_window.h"
 #include <atomic>
 #include <new>
 

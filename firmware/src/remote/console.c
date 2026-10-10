@@ -1,3 +1,4 @@
+#include "remote/settings_store.h"
 
 #include "build_metadata.h"
 #include "cJSON.h"

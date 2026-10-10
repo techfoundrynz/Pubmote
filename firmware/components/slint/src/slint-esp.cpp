@@ -3,12 +3,14 @@
 
 #include "slint-esp.h"
 #include "esp_attr.h"
+#include "esp_freertos_hooks.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "slint-platform.h"
+#include <atomic>
 #include <cstring>
 #include <deque>
 #include <mutex>
@@ -25,7 +27,22 @@
 
 static const char *TAG = "slint_platform";
 
-// Defined in display.cpp. Serialises panel IO against the brightness, HBM and sleep commands
+static std::atomic<uint32_t> s_idle_runs{0};
+
+// IDF idle callbacks cannot block.
+// Atomic loads/stores use direct instructions on ESP32-S3.
+static bool slint_idle_hook() {
+  s_idle_runs.store(s_idle_runs.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+  return true;
+}
+
+static void yield_if_idle_needed(bool registered, uint32_t idle_before) {
+  if (!registered || s_idle_runs.load(std::memory_order_relaxed) == idle_before) {
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
+
+// Defined in display/panel.cpp. Serialises panel IO against the brightness, HBM and sleep commands
 // other tasks issue on the same esp_lcd handle.
 extern "C" bool panel_io_lock_acquire(uint32_t timeout_ms);
 extern "C" void panel_io_lock_release();
@@ -231,6 +248,9 @@ void byte_swap_buffer(slint::Rgb8Pixel *ptr, std::size_t len) {
 
 template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
   esp_lcd_panel_disp_on_off(panel_handle, true);
+  const UBaseType_t idle_core = xPortGetCoreID();
+  const bool idle_hook_registered = esp_register_freertos_idle_hook_for_cpu(slint_idle_hook, idle_core) == ESP_OK;
+  ESP_LOGI(TAG, "Idle pacing hook on CPU %u: %s", (unsigned)idle_core, idle_hook_registered ? "enabled" : "fallback");
 
   TickType_t max_ticks_to_wait = portMAX_DELAY;
   bool touch_interrupt = false;
@@ -257,6 +277,7 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
   bool touch_down = false;
 
   while (true) {
+    const uint32_t idle_before = s_idle_runs.load(std::memory_order_relaxed);
 #ifdef TARGET_FPS
     uint32_t start_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
 #endif
@@ -378,7 +399,7 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         extern SemaphoreHandle_t trans_sem;
 
         extern uint16_t *slint_chunk_buffer[SLINT_CHUNK_ACCUMULATORS];
-        extern int slint_chunk_lines; // resolved at init in display.cpp
+        extern int slint_chunk_lines; // resolved at init in display/slint_display.cpp
 
         // One accumulator per dirty rectangle rather than one for the whole frame.
         //
@@ -702,10 +723,10 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
           vTaskDelay(pdMS_TO_TICKS(target_time - elapsed));
         }
         else {
-          vTaskDelay(pdMS_TO_TICKS(1)); // Yield to IDLE to feed task watchdog
+          yield_if_idle_needed(idle_hook_registered, idle_before);
         }
 #else
-        vTaskDelay(pdMS_TO_TICKS(1)); // Yield to IDLE to feed task watchdog
+        yield_if_idle_needed(idle_hook_registered, idle_before);
 #endif
         continue;
       }
@@ -731,6 +752,9 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
     }
   }
 
+  if (idle_hook_registered) {
+    esp_deregister_freertos_idle_hook_for_cpu(slint_idle_hook, idle_core);
+  }
   vTaskDelete(NULL);
 }
 

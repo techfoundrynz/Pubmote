@@ -1,7 +1,6 @@
 #include "transmitter.h"
 #include "build_metadata.h"
 #include "commands.h"
-#include "comms.h"
 #include "config.h"
 #include "connection.h"
 #include "esp_event.h"
@@ -9,14 +8,15 @@
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 #include "input_router.h"
-#include "peers.h"
 #include "receiver.h"
+#include "remote/comms.h"
+#include "remote/protocol.h"
+#include "remote/settings_snapshot.h"
+#include "remote/stats.h"
 #include "remoteinputs.h"
-#include "stats.h"
 #include "time.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <remote/settings.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -49,7 +49,7 @@ static void on_data_sent(const uint8_t *mac_addr, bool success) {
     // log and starve the CPU
     static int64_t last_log_time = 0;
     int64_t now = get_current_time_ms();
-    if (connection_state == CONNECTION_STATE_CONNECTED && now - last_log_time > TX_ERROR_LOG_INTERVAL_MS) {
+    if (connection_get_state() == CONNECTION_STATE_CONNECTED && now - last_log_time > TX_ERROR_LOG_INTERVAL_MS) {
       last_log_time = now;
       ESP_LOGE(TAG, "Failed to send data to %02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2],
                mac_addr[3], mac_addr[4], mac_addr[5]);
@@ -68,7 +68,7 @@ static void transmitter_task(void *pvParameters) {
   uint8_t data[100];
 
   RemoteData last_message = {};
-  ConnectionState last_connection_state = connection_state;
+  ConnectionState last_connection_state = connection_get_state();
   bool should_emit_version = false;
   int version_retries_remaining = 0;
   int64_t last_version_request_time = 0;
@@ -81,16 +81,18 @@ static void transmitter_task(void *pvParameters) {
 
   while (1) {
     esp_task_wdt_reset();
+    const RemoteStats telemetry = stats_snapshot();
+    PairingSettings peer = settings_get_pairing();
     bool tx_failed = false;
     int64_t new_time = get_current_time_ms();
 
-    if (connection_state == CONNECTION_STATE_CONNECTED && last_connection_state != CONNECTION_STATE_CONNECTED) {
+    if (connection_get_state() == CONNECTION_STATE_CONNECTED && last_connection_state != CONNECTION_STATE_CONNECTED) {
       should_emit_version = true;
       version_retries_remaining = 10;
       last_version_request_time = new_time;
     }
-    else if (connection_state == CONNECTION_STATE_CONNECTED && remoteStats.vehicleType == VEHICLE_TYPE_UNSPECIFIED &&
-             !should_emit_version) {
+    else if (connection_get_state() == CONNECTION_STATE_CONNECTED &&
+             telemetry.vehicleType == VEHICLE_TYPE_UNSPECIFIED && !should_emit_version) {
       // Track cadence from arm time (not send time), otherwise every 20ms
       // iteration spent gated by the send pacing would burn a retry
       if (version_retries_remaining > 0 && new_time - last_version_request_time > 500) {
@@ -100,9 +102,9 @@ static void transmitter_task(void *pvParameters) {
       }
     }
 
-    bool should_transmit =
-        (connection_state == CONNECTION_STATE_CONNECTED || connection_state == CONNECTION_STATE_RECONNECTING ||
-         connection_state == CONNECTION_STATE_CONNECTING);
+    bool should_transmit = (connection_get_state() == CONNECTION_STATE_CONNECTED ||
+                            connection_get_state() == CONNECTION_STATE_RECONNECTING ||
+                            connection_get_state() == CONNECTION_STATE_CONNECTING);
 
 #if TEST_MODE
     should_transmit = false;
@@ -117,8 +119,8 @@ static void transmitter_task(void *pvParameters) {
       tx_msg.is_rev = false;
     }
 
-    bool telemetry_stale = new_time - remoteStats.lastUpdated > MAX_UPDATE_DELAY_MS;
-    bool link_settled = connection_state == CONNECTION_STATE_CONNECTED && !telemetry_stale;
+    bool telemetry_stale = new_time - telemetry.lastUpdated > MAX_UPDATE_DELAY_MS;
+    bool link_settled = connection_get_state() == CONNECTION_STATE_CONNECTED && !telemetry_stale;
     bool data_changed = memcmp(&tx_msg, &last_message, sizeof(tx_msg)) != 0;
     bool is_ble = comms_get_active_type() == COMMS_TYPE_BLE;
 
@@ -165,42 +167,26 @@ static void transmitter_task(void *pvParameters) {
     }
 
     if (should_transmit) {
-      uint8_t *mac_addr = pairing_settings.remote_addr;
+      uint8_t *mac_addr = peer.remote_addr;
       if (receiver_lock_channel()) {
         if (should_emit_version) {
           // The version exchange replaces the input packet this tick so the
           // burst stays within the BLE send pacing (max two writes per tick)
 
           // Send remote version to receiver
-          ind = 0;
-          data[ind++] = REM_VERSION;
-          memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
-          ind += sizeof(int32_t);
           uint8_t version[3] = {VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH};
-          memcpy(data + ind, &version, sizeof(version));
-          ind += sizeof(version);
+          ind = protocol_encode_version(data, sizeof(data), peer.secret_code, version);
           comms_send(mac_addr, data, ind);
 
           // Request receiver version
-          ind = 0;
-          data[ind++] = REM_RECEIVER_VERSION;
-          memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
-          ind += sizeof(int32_t);
+          ind = protocol_encode_version_request(data, sizeof(data), peer.secret_code);
           comms_send(mac_addr, data, ind);
 
           should_emit_version = false;
           last_send_time = new_time;
         }
         else {
-          ind = 0;
-          data[ind++] = REM_SET_INPUT_STATE;
-
-          memcpy(data + ind, &pairing_settings.secret_code, sizeof(int32_t));
-          ind += sizeof(int32_t);
-
-          // Copy tx_msg after secret_Code
-          memcpy(data + ind, &tx_msg, sizeof(tx_msg));
-          ind += sizeof(tx_msg);
+          ind = protocol_encode_input(data, sizeof(data), peer.secret_code, &tx_msg);
 
           esp_err_t result = comms_send(mac_addr, data, ind);
 
@@ -212,10 +198,10 @@ static void transmitter_task(void *pvParameters) {
             }
             // Rate-limited: at 50Hz a failure burst would otherwise saturate
             // the serial log and starve the CPU
-            if (connection_state == CONNECTION_STATE_CONNECTED &&
+            if (connection_get_state() == CONNECTION_STATE_CONNECTED &&
                 new_time - last_error_log_time > TX_ERROR_LOG_INTERVAL_MS) {
               last_error_log_time = new_time;
-              uint8_t chann = pairing_settings.channel;
+              uint8_t chann = peer.channel;
               uint8_t peer_chann = comms_get_peer_channel(mac_addr);
               ESP_LOGE(TAG, "Error sending remote data: %d  - Channel: %d, Peer Channel: %d", result, chann,
                        peer_chann);
@@ -235,11 +221,11 @@ static void transmitter_task(void *pvParameters) {
     ind = 0;
     memset(data, 0, sizeof(data));
 
-    last_connection_state = connection_state;
+    last_connection_state = connection_get_state();
     // Only fast-retry failed sends for ESP-NOW while connected: a lost
     // ESP-NOW frame benefits from a quick resend, but a failed BLE write
     // means the stack's TX buffers are full - retrying faster makes it worse
-    bool fast_retry = tx_failed && !is_ble && connection_state == CONNECTION_STATE_CONNECTED;
+    bool fast_retry = tx_failed && !is_ble && connection_get_state() == CONNECTION_STATE_CONNECTED;
     int64_t target_rate = fast_retry ? (TX_RATE_MS / 4) : TX_RATE_MS;
     int64_t elapsed = get_current_time_ms() - new_time;
     if (elapsed >= 0 && elapsed < target_rate) {

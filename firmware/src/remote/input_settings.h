@@ -1,5 +1,5 @@
 #pragma once
-#include "settings_types.h"
+#include "remote/settings_types.h"
 
 #ifdef __cplusplus
 extern "C"

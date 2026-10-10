@@ -1,20 +1,15 @@
 #pragma once
-#include "adc.h"
-#include "driver/gpio.h"
 #include "esp_err.h"
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
-#include <freertos/task.h>
+#include "remote/input_types.h"
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-  // Defined in settings.h
+  // Defined in remote/settings_types.h
   struct InputPinSettings;
 
   // Power management only; screens use input_router.h
@@ -29,14 +24,6 @@ extern "C"
   } ButtonType;
 
   typedef bool (*button_callback_t)(void);
-
-  typedef struct {
-    float js_y;
-    float js_x;
-    bool bt_c;
-    bool bt_z;
-    bool is_rev;
-  } RemoteData;
 
   typedef struct {
     uint16_t x;

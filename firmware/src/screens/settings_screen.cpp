@@ -1,15 +1,16 @@
 #include "screens/settings_screen.h"
 #include "esp_log.h"
-#include "remote/color_utils.h"
 #include "remote/display.h"
 #include "remote/led.h"
 #include "remote/settings.h"
+#include "remote/settings_state.h"
 #include "slint_generated/app-window.h"
+#include "ui/color_utils.h"
+#include "ui/device_preferences.h"
+#include "ui/slint_window.h"
 #include "utilities/ui_operation.h"
 
 static const char *TAG = "PUBREMOTE-SETTINGS_SCREEN";
-
-extern "C" void apply_theme_settings(); // from display.cpp
 
 static std::shared_ptr<slint::Model<slint::SharedString>> build_options_model(SettingOptions options) {
   auto model = std::make_shared<slint::VectorModel<slint::SharedString>>();
@@ -35,6 +36,7 @@ extern "C" void setup_settings_properties() {
     return;
 
   slint::invoke_from_event_loop([]() {
+    const DeviceSettings preferences = settings_get_device();
     const auto &state = get_slint_window()->global<UiState>();
 
     state.set_double_press_options(build_options_model(settings_double_press_options()));
@@ -44,15 +46,15 @@ extern "C" void setup_settings_properties() {
     state.set_distance_units_options(build_options_model(settings_distance_units_options()));
     state.set_startup_sound_options(build_options_model(settings_startup_sound_options()));
 
-    state.set_brightness((float)device_settings.bl_level);
-    state.set_double_press_index(device_settings.double_press_action);
-    state.set_rotation_index(device_settings.screen_rotation);
-    state.set_auto_off_index(device_settings.auto_off_time);
-    state.set_temp_units_index(device_settings.temp_units);
-    state.set_distance_units_index(device_settings.distance_units);
-    state.set_startup_sound_index(device_settings.startup_sound);
+    state.set_brightness((float)preferences.bl_level);
+    state.set_double_press_index(preferences.double_press_action);
+    state.set_rotation_index(preferences.screen_rotation);
+    state.set_auto_off_index(preferences.auto_off_time);
+    state.set_temp_units_index(preferences.temp_units);
+    state.set_distance_units_index(preferences.distance_units);
+    state.set_startup_sound_index(preferences.startup_sound);
 
-    HSVColor hsv = rgb_to_hsv(device_settings.theme_color);
+    HSVColor hsv = rgb_to_hsv(preferences.theme_color);
     state.set_theme_h(hsv.h);
     state.set_theme_s(hsv.s);
     state.set_theme_l(hsv.v);
@@ -111,57 +113,63 @@ extern "C" void handle_settings_save() {
   // We read the modified settings back from Slint
   slint::invoke_from_event_loop([]() {
     const auto &state = get_slint_window()->global<UiState>();
+    DeviceSettings pending = settings_get_device();
 
-    device_settings.bl_level = (uint8_t)state.get_brightness();
+    pending.bl_level = (uint8_t)state.get_brightness();
 
     int index = state.get_double_press_index();
     if (index_in_range(index, settings_double_press_options().count)) {
-      device_settings.double_press_action = (StatsDoublePressAction)index;
+      pending.double_press_action = (StatsDoublePressAction)index;
     }
 
     index = state.get_rotation_index();
     if (index_in_range(index, settings_rotation_options().count)) {
-      device_settings.screen_rotation = (ScreenRotation)index;
+      pending.screen_rotation = (ScreenRotation)index;
     }
 
     index = state.get_auto_off_index();
     if (index_in_range(index, settings_auto_off_options().count)) {
-      device_settings.auto_off_time = (AutoOffOptions)index;
+      pending.auto_off_time = (AutoOffOptions)index;
     }
 
     index = state.get_temp_units_index();
     if (index_in_range(index, settings_temp_units_options().count)) {
-      device_settings.temp_units = (TempUnits)index;
+      pending.temp_units = (TempUnits)index;
     }
 
     index = state.get_distance_units_index();
     if (index_in_range(index, settings_distance_units_options().count)) {
-      device_settings.distance_units = (DistanceUnits)index;
+      pending.distance_units = (DistanceUnits)index;
     }
 
     index = state.get_startup_sound_index();
     if (index_in_range(index, settings_startup_sound_options().count)) {
-      device_settings.startup_sound = (StartupSoundOptions)index;
+      pending.startup_sound = (StartupSoundOptions)index;
     }
 
     float h = state.get_theme_h();
     float s = state.get_theme_s();
     float v = state.get_theme_l();
-    device_settings.theme_color = hsv_to_rgb(h, s, v);
+    pending.theme_color = hsv_to_rgb(h, s, v);
 
     ui_operation_start(
         "Saving settings...",
-        []() {
+        [pending]() {
+          if (!settings_update_device(&pending, SETTINGS_DEVICE_BL_LEVEL | SETTINGS_DEVICE_DOUBLE_PRESS_ACTION |
+                                                    SETTINGS_DEVICE_SCREEN_ROTATION | SETTINGS_DEVICE_AUTO_OFF_TIME |
+                                                    SETTINGS_DEVICE_TEMP_UNITS | SETTINGS_DEVICE_DISTANCE_UNITS |
+                                                    SETTINGS_DEVICE_STARTUP_SOUND | SETTINGS_DEVICE_THEME_COLOR))
+            return ESP_ERR_INVALID_ARG;
           esp_err_t result = save_device_settings();
           if (result == ESP_OK) {
-            display_set_bl_level(device_settings.bl_level);
+            display_set_bl_level(settings_get_device().bl_level);
             led_apply_mode();
           }
           return result;
         },
         []() {
-          display_set_rotation(device_settings.screen_rotation);
-          apply_theme_settings();
+          display_set_rotation(settings_get_device().screen_rotation);
+          ui_apply_theme();
           get_slint_window()->global<UiState>().set_screen(Screen::Menu);
         });
   });

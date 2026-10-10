@@ -17,8 +17,18 @@ typedef struct {
 static struct {
   unsigned channel;
 } pairing_settings = {1};
+typedef uint8_t (*comms_channel_get_cb_t)(void);
+typedef void (*comms_channel_set_cb_t)(uint8_t channel);
+static comms_channel_get_cb_t channel_get;
+static comms_channel_set_cb_t channel_set;
+static uint8_t saved_channel_get(void) {
+  return pairing_settings.channel;
+}
+static void saved_channel_set(uint8_t channel) {
+  pairing_settings.channel = channel;
+}
 static bool is_initialized, shutting_down, now_ready, wifi_ready;
-static int stop_error, deinit_error, now_error, starts;
+static int stop_error, deinit_error, now_error, starts, selected_channel, rejected_channel;
 static int on_espnow_recv, on_espnow_sent;
 static int nvs_flash_init(void) {
   return ESP_OK;
@@ -62,8 +72,10 @@ static int esp_wifi_set_country(const wifi_country_t *country) {
   return ESP_OK;
 }
 static int esp_wifi_set_channel(int channel, int secondary) {
-  (void)channel;
   (void)secondary;
+  selected_channel = channel;
+  if (channel == rejected_channel)
+    return ESP_FAIL;
   return ESP_OK;
 }
 static int esp_now_init(void) {
@@ -105,6 +117,9 @@ static void reset(void) {
   is_initialized = now_ready = wifi_ready = true;
   shutting_down = false;
   stop_error = deinit_error = now_error = starts = 0;
+  selected_channel = rejected_channel = 0;
+  pairing_settings.channel = 6;
+  comms_bind_channel_config(saved_channel_get, saved_channel_set);
 }
 int main(void) {
   host_test_init();
@@ -133,5 +148,22 @@ int main(void) {
   assert(espnow_prepare_wifi() == ESP_OK && !is_initialized && !shutting_down && !wifi_ready);
   reset();
   assert(espnow_prepare_wifi() == ESP_OK && !is_initialized && !now_ready && wifi_ready);
+  for (int channel = 0; channel <= 15; ++channel) {
+    reset();
+    is_initialized = now_ready = wifi_ready = false;
+    pairing_settings.channel = channel;
+    assert(espnow_driver_init() == ESP_OK);
+    int expected = channel >= 1 && channel <= 14 ? channel : 1;
+    assert(selected_channel == expected && pairing_settings.channel == expected);
+  }
+  reset();
+  is_initialized = now_ready = wifi_ready = false;
+  rejected_channel = 6;
+  assert(espnow_driver_init() == ESP_OK);
+  assert(selected_channel == 1 && pairing_settings.channel == 1);
+  reset();
+  is_initialized = now_ready = wifi_ready = false;
+  comms_bind_channel_config(NULL, NULL);
+  assert(espnow_driver_init() == ESP_OK && selected_channel == 1 && pairing_settings.channel == 6);
   puts("ESP-NOW partial teardown refuses false initialization and recovers on retry");
 }

@@ -1,14 +1,8 @@
 #pragma once
-#include "display.h"
-#include "esp_system.h"
-#include "led.h"
-#include "nvs_flash.h"
-#include "settings_types.h"
-
-#include "comms.h"
-#include <esp_now.h>
-#include <esp_wifi.h>
-#include <remote/receiver.h>
+#include "esp_err.h"
+#include "remote/comms.h"
+#include "remote/settings_snapshot.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -17,24 +11,6 @@ extern "C"
 
   // Function to initialize settings (and NVS)
   esp_err_t settings_init();
-
-  // Function to write an integer to NVS
-  esp_err_t nvs_write_int(const char *key, uint32_t value);
-
-  // Function to read an integer from NVS
-  esp_err_t nvs_read_int(const char *key, uint32_t *value);
-
-  // Function to write a string to NVS
-  esp_err_t nvs_write_str(const char *key, const char *value);
-
-  // Function to read a string from NVS
-  esp_err_t nvs_read_str(const char *key, char *out_value, size_t *length);
-
-  // Function to write a byte array to NVS
-  esp_err_t nvs_write_blob(const char *key, void *value, size_t length);
-
-  // Function to read a byte array from NVS
-  esp_err_t nvs_read_blob(const char *key, void *value, size_t length);
 
   esp_err_t save_device_settings();
 
@@ -47,8 +23,6 @@ extern "C"
 
   esp_err_t save_pairing_data();
 
-  esp_err_t reset_all_settings();
-
   esp_err_t save_wifi_ssid(const char *ssid);
 
   esp_err_t save_wifi_password(const char *password);
@@ -57,7 +31,6 @@ extern "C"
 
   char *get_wifi_password();
 
-#define DEFAULT_PAIRING_SECRET_CODE -1
   // The assignment baked in at build time
   void input_pins_load_defaults(InputPinSettings *out);
 
@@ -71,13 +44,6 @@ extern "C"
   SettingOptions settings_distance_units_options();
   SettingOptions settings_startup_sound_options();
 
-  extern CalibrationSettings calibration_settings;
-  extern InputPinSettings input_pin_settings;
-  extern DeviceSettings device_settings;
-  extern PairingSettings pairing_settings;
-  extern ImuCalibrationSettings imu_calibration;
-
-  esp_err_t save_imu_calibration();
   void settings_apply_imu_calibration(const ImuCalibrationSettings *imu);
   // Persists new paired boards and reconnects to the default one.
   esp_err_t settings_replace_pairing(const PairedDevice *devices, uint8_t count, int8_t default_index);
