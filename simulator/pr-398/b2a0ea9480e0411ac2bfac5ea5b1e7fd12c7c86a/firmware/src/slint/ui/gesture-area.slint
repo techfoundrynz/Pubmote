@@ -1,7 +1,8 @@
 // Shared drag/tap gesture handling. Measures in screen space so it works on
 // areas that ride the element being dragged, locks to the dominant axis after
-// a small threshold, and reports deltas relative to the lock point. A pointer
-// grab or a deliberate reversal toward the origin raises drag-cancelled.
+// a small threshold, and reports deltas relative to the lock point. Pointer
+// cancellation cancels an active drag. On release, the drag is cancelled if
+// the latest deliberate direction opposes the remaining displacement.
 export component GestureArea inherits TouchArea {
     in property <length> axis-threshold: 10px;
     callback h-drag(length);
