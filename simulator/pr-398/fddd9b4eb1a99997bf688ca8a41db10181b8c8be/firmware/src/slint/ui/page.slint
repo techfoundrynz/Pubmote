@@ -1,0 +1,41 @@
+import { Theme } from "theme.slint";
+import { PageHeader } from "page-header.slint";
+import { EdgeFade } from "edge-fade.slint";
+
+// Standard page scaffold: fixed header with back/save chevron, body children
+// filling the rest, optional PageFooter as a child. The header and its fade
+// are declared after @children so they render on top of scrolling content.
+export component Page inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle: "";
+    in property <bool> subtitle-show-tail: false;
+    in property <bool> show-back: false;
+    // Height of the screen's footer chrome; a footer seam fade is drawn above it
+    in property <length> footer-inset: 0px;
+    callback back;
+
+    background: Theme.bg;
+
+    VerticalLayout {
+        Rectangle { height: header.height; }
+        @children
+    }
+
+    EdgeFade { y: header.height; }
+
+    if root.footer-inset > 0px: EdgeFade {
+        downward: false;
+        y: root.height - root.footer-inset - self.height;
+    }
+
+    header := PageHeader {
+        x: 0;
+        y: 0;
+        width: 100%;
+        text: root.title;
+        subtitle: root.subtitle;
+        subtitle-show-tail: root.subtitle-show-tail;
+        show-back: root.show-back;
+        back => { root.back(); }
+    }
+}

@@ -1,0 +1,154 @@
+[
+  {
+    "panel": "466,466,0",
+    "density": 1,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect",
+      "gauge centering",
+      "firmware speed formatting",
+      "speed/unit clearance"
+    ]
+  },
+  {
+    "panel": "466,466,0",
+    "density": 1.25,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect",
+      "gauge centering",
+      "firmware speed formatting",
+      "speed/unit clearance"
+    ]
+  },
+  {
+    "panel": "466,466,0",
+    "density": 2,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect",
+      "gauge centering",
+      "firmware speed formatting",
+      "speed/unit clearance"
+    ]
+  },
+  {
+    "panel": "240,240,0",
+    "density": 1,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect",
+      "gauge centering",
+      "firmware speed formatting",
+      "speed/unit clearance"
+    ]
+  },
+  {
+    "panel": "240,240,0",
+    "density": 1.25,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect",
+      "gauge centering",
+      "firmware speed formatting",
+      "speed/unit clearance"
+    ]
+  },
+  {
+    "panel": "240,240,0",
+    "density": 2,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect",
+      "gauge centering",
+      "firmware speed formatting",
+      "speed/unit clearance"
+    ]
+  },
+  {
+    "panel": "410,502,1",
+    "density": 1,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect"
+    ]
+  },
+  {
+    "panel": "410,502,1",
+    "density": 1.25,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect"
+    ]
+  },
+  {
+    "panel": "410,502,1",
+    "density": 2,
+    "status": "passed",
+    "checks": [
+      "load",
+      "DPI buffer sizing",
+      "telemetry",
+      "connection",
+      "touch swipe",
+      "settings",
+      "menu disconnect"
+    ]
+  },
+  {
+    "panel": "report",
+    "status": "passed",
+    "checks": [
+      "changed filter",
+      "wipe slider"
+    ]
+  }
+]

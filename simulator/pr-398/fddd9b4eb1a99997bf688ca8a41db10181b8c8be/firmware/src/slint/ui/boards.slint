@@ -1,0 +1,83 @@
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { Page } from "page.slint";
+
+export struct PairedBoard {
+    mac: string,
+    index: int,
+    is-active: bool,
+    is-ble: bool,
+}
+
+export component BoardsScreen inherits Page {
+    in property <[PairedBoard]> boards: [];
+    callback select-board(int);
+    callback delete-board(int);
+    callback pair-new;
+
+    property <int> delete-mode-index: -1;
+
+    title: "PAIRED BOARDS";
+    show-back: true;
+
+    VerticalLayout {
+        // List body
+        Rectangle {
+            if root.boards.length == 0: VerticalLayout {
+                alignment: center;
+                padding-left: Theme.page-padding-horizontal;
+                padding-right: Theme.page-padding-horizontal;
+                spacing: 12px * Theme.scale;
+                Text {
+                    text: "No boards paired";
+                    color: Theme.text-dim;
+                    font-size: Theme.font-12;
+                    horizontal-alignment: center;
+                }
+
+                AppButton {
+                    variant: "outline";                    text: "Pair New";
+                    clicked => { root.pair-new(); }
+                }
+            }
+
+            if root.boards.length > 0: Flickable {
+                content-height: boards-layout.min-height;
+                boards-layout := VerticalLayout {
+                    // Padding must live on the layout (not the parent
+                    // Rectangle) to actually constrain the rows on screen
+                    padding-top: Theme.seam-size;
+                    padding-left: Theme.page-padding-horizontal;
+                    padding-right: Theme.page-padding-horizontal;
+                    padding-bottom: Theme.scroll-padding-bottom;
+                    spacing: 8px * Theme.scale;
+                    alignment: start;
+
+                    for board in root.boards: AppButton {                        text: board.mac;
+                        right-text: root.delete-mode-index == board.index ? "Delete"
+                            : (board.is-ble ? "BLE" : "ESP-NOW") + (board.is-active ? " ✓" : "");
+                        variant: root.delete-mode-index == board.index ? "outline" : (board.is-active ? "primary" : "secondary");
+                        button-color: root.delete-mode-index == board.index ? "danger" : "standard";
+                        clicked => {
+                            if (root.delete-mode-index == board.index) {
+                                root.delete-board(board.index);
+                                root.delete-mode-index = -1;
+                            } else {
+                                root.delete-mode-index = -1;
+                                root.select-board(board.index);
+                            }
+                        }
+                        long-clicked => {
+                            root.delete-mode-index = board.index;
+                        }
+                    }
+
+                    AppButton {
+                        variant: "outline";                        text: "Pair New";
+                        clicked => { root.pair-new(); }
+                    }
+                }
+            }
+        }
+    }
+}
