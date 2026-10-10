@@ -68,7 +68,7 @@ export global UiState {
     in property <string> speed: "0.0";
     in property <string> speed-unit: "KPH";
     in property <float> speed-fraction: 0;
-    in property <float> duty-fraction: 0;
+    in property <float> utilization-fraction: 0;
     in property <bool> left-pad: false;
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;
@@ -434,7 +434,7 @@ export component AppWindow inherits Window {
         speed: UiState.speed;
         speed-unit: UiState.speed-unit;
         speed-fraction: UiState.speed-fraction;
-        duty-fraction: UiState.duty-fraction;
+        utilization-fraction: UiState.utilization-fraction;
         left-pad: UiState.left-pad;
         right-pad: UiState.right-pad;
         remote-battery: UiState.remote-battery;

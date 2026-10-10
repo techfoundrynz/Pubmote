@@ -102,7 +102,7 @@ extern "C" void stats_update_screen_display() {
     max_speed = telemetry.speed;
   }
   float speed_fraction = telemetry.speed / max_speed;
-  float duty_fraction = (float)stats_utilization(&telemetry) / 100.0f;
+  float utilization_fraction = (float)stats_utilization(&telemetry) / 100.0f;
 
   // 2. Format speed string
   float converted_speed = telemetry.speed;
@@ -239,12 +239,12 @@ extern "C" void stats_update_screen_display() {
     state.set_speed(slint_speed_str);
     state.set_speed_unit(slint_speed_unit);
     static float last_speed_fraction = -1.0f;
-    static float last_duty_fraction = -1.0f;
+    static float last_utilization_fraction = -1.0f;
     if (arc_fraction_moved(speed_fraction, &last_speed_fraction)) {
       state.set_speed_fraction(last_speed_fraction);
     }
-    if (arc_fraction_moved(duty_fraction, &last_duty_fraction)) {
-      state.set_duty_fraction(last_duty_fraction);
+    if (arc_fraction_moved(utilization_fraction, &last_utilization_fraction)) {
+      state.set_utilization_fraction(last_utilization_fraction);
     }
     state.set_left_pad(left_pad);
     state.set_right_pad(right_pad);
