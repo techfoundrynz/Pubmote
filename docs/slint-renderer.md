@@ -72,37 +72,14 @@ platformio run -e pingumote_esp32s3_touch_amoled_132
 The helper stages the local archive and forces relinking.
 Restore the published archive, or clean and rebuild the board environment, after experiments.
 
-## ESP pacing and device benchmarks
+## ESP pacing
 
 Idle-aware pacing is implemented in `firmware/components/slint/src/slint-esp.cpp`.
-It registers an idle hook on the UI task's CPU.
-Over-budget animation frames omit the extra one-tick delay only when that CPU already executed its idle hook during the current iteration.
+Over-budget animation frames omit the extra one-tick delay only when the UI task's CPU ran its idle hook during the current iteration.
 If registration fails or no idle execution is observed, the original delay remains.
 Under-budget pacing and watchdog configuration stay unchanged.
-The production form has no benchmark setter, console switch, or skip counters.
-It is separate from the Slint library release and is needed to reproduce the measured delivery rate.
-
-`menu-scroll-benchmark.patch` temporarily enables TEST_MODE=1, continuous menu scrolling, frame/heap console samples, and optional menu/stats transitions.
-The original header fade and colored, rounded buttons remain enabled.
-For phase logging, temporarily change the backend's `#if SLINT_PERF_LOG` block to `#if 1`.
-
-On the device, reboot, warm up for 22 seconds, and query `render_stats` before and after 90 seconds.
-Delivered FPS is the frame-counter delta divided by the device-time delta.
-Confirm `menu_active=1 stats_active=0`; the inverse draw-time log is not delivered FPS.
-Use `render_soak 1` to alternate menu and live statistics every 30 seconds, and `render_soak 0` to stop.
-
-Flash only the backed-up application partition.
-These experiments use active app1 at `0x700000`; the default upload target is unsuitable for that device.
-Restore the original application and reverse temporary benchmark changes afterward.
-
-The hardened fade-on image measured 48.27 FPS across two 90-second runs.
-See [the performance record](../../docs/render-performance.md#27-renderer-hardening-2026-10-10) for validation and limits.
-
-## Historical experiments
-
-The performance record preserves prototype measurements and review findings.
-Superseded renderer patches, the duplicate pacing patch, and discarded appearance experiments have been removed.
-The original header fade and button fills remain the preferred configuration.
+This backend change is required to reproduce the recorded delivery rate.
+See [performance measurements](render-performance.md#27-renderer-hardening-2026-10-10) for the workload, results, and limits.
 
 ## Firmware gesture regressions
 

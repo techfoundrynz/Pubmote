@@ -24,7 +24,7 @@ The dated sections preserve measurements, rejected experiments, and corrected
 hypotheses. Sections 1–9 describe the initial August 2026 investigation.
 Read subsequent corrections before using an earlier conclusion as guidance.
 Benchmarks from different workloads are not interchangeable.
-See [reproduction and test instructions](../patches/slint/README.md) for current commands.
+See [reproduction and test instructions](slint-renderer.md) for current commands.
 
 ---
 
@@ -1818,7 +1818,7 @@ are ignored local artifacts under `.pio/fps-investigate-20261010/`.
 
 Implemented and tested a value-keyed LRU for plain, non-SDF bitmap-font text
 in an isolated checkout of Slint `mcu-v1.19.3`.
-The [renderer patch and reproduction instructions](../patches/slint/README.md)
+The [renderer source and reproduction instructions](slint-renderer.md)
 are retained for review; PubRemote's firmware release pin remains unchanged.
 
 The cache retains glyph data references and their positions relative to each
@@ -1918,7 +1918,7 @@ comparison images are ignored artifacts under `.pio/slint-text-cache/`.
 The target is delivered FPS during continuous menu scrolling with TEST_MODE=1,
 including the original colored, rounded button backgrounds. Renderer prototypes
 were built in the isolated Slint checkout from section 23. The published release
-pin remains unchanged. [Patch dependencies and reproduction steps](../patches/slint/README.md#reproduce-and-validate)
+pin remains unchanged. [Renderer reproduction steps](slint-renderer.md#reproduce-and-validate)
 are retained for review.
 
 ### Changes and hardware method
@@ -2180,7 +2180,7 @@ Audit logs are ignored local artifacts under `.pio/slint-review-20261010/`.
 
 ## 27. Renderer Hardening (2026-10-10)
 
-The section 26 findings are addressed in the consolidated `patches/slint/embedded-renderer-caches.patch`.
+The section 26 findings are addressed in the Slint fork, released as `mcu-v1.19.4`.
 The original header fade and colored, rounded button backgrounds remain enabled.
 PubRemote's published renderer pin is unchanged.
 

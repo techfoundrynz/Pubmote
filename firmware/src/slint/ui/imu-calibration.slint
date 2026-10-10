@@ -41,8 +41,8 @@ export component ImuCalibrationScreen inherits Page {
             vertical-stretch: 1;
             // Vertical-only: without this the viewport widens to the content
             // min-width and the whole screen pans sideways
-            viewport-width: self.width;
-            viewport-height: body-layout.min-height;
+            content-width: self.width;
+            content-height: body-layout.min-height;
 
             body-layout := VerticalLayout {
                 padding-top: Theme.seam-size;

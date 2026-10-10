@@ -77,10 +77,10 @@ export component ComboBox inherits Rectangle {
             clip: true;
 
             Flickable {
-                viewport-height: items-layout.min-height;
+                content-height: items-layout.min-height;
                 init => {
                     // Bring the selected item into view (centered when possible)
-                    self.viewport-y = -min(
+                    self.content-y = -min(
                         max(0px, root.current-index * (root.item-height + root.item-spacing) + root.list-padding - (root.popup-height - root.item-height) / 2),
                         max(0px, root.content-height - root.popup-height));
                 }

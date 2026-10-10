@@ -48,12 +48,12 @@ export component MenuScreen inherits Page {
     show-back: true;
 
     flick := Flickable {
-        viewport-height: menu-layout.min-height;
+        content-height: menu-layout.min-height;
         init => {
-            self.viewport-y = -root.scroll-offset-y * 1px;
+            self.content-y = -root.scroll-offset-y * 1px;
         }
-        changed viewport-y => {
-            root.scroll-offset-y = -self.viewport-y / 1px;
+        changed content-y => {
+            root.scroll-offset-y = -self.content-y / 1px;
         }
         menu-layout := VerticalLayout {
             padding-top: Theme.seam-size;

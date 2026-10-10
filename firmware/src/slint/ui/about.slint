@@ -125,7 +125,7 @@ export component AboutScreen inherits PagedPage {
         background: Theme.bg;
         flick2 := Flickable {
             interactive: false;
-            viewport-height: debug-layout.min-height;
+            content-height: debug-layout.min-height;
             debug-layout := VerticalLayout {
                 padding-left: Theme.page-padding-horizontal;
                 padding-right: Theme.page-padding-horizontal;
@@ -162,9 +162,9 @@ export component AboutScreen inherits PagedPage {
             v-drag(d) => {
                 if (!self.scrolling) {
                     self.scrolling = true;
-                    self.start-vy = flick2.viewport-y;
+                    self.start-vy = flick2.content-y;
                 }
-                flick2.viewport-y = Math.max(Math.min(0px, flick2.height - debug-layout.min-height),
+                flick2.content-y = Math.max(Math.min(0px, flick2.height - debug-layout.min-height),
                     Math.min(0px, self.start-vy + d));
             }
             v-drag-end(d) => { self.scrolling = false; }

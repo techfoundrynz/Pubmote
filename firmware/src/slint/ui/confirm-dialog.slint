@@ -43,7 +43,7 @@ export component ConfirmDialog inherits Rectangle {
             }
 
             Flickable {
-                viewport-height: message-text.preferred-height;
+                content-height: message-text.preferred-height;
                 height: Math.min(message-text.preferred-height, 60px * Theme.scale);
                 width: 100%;
 
