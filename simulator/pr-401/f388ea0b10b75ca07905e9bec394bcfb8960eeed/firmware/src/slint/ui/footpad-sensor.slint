@@ -1,0 +1,34 @@
+import { Theme } from "theme.slint";
+
+export component FootpadSensor inherits Rectangle {
+    in property <bool> left-active: false;
+    in property <bool> right-active: false;
+    in property <color> active-color: Theme.text;
+    in property <color> inactive-color: Theme.track;
+    in property <length> icon-size: 14px * Theme.scale;
+
+    property <float> s: root.icon-size / 14px;
+
+    width: 15px * root.s;
+    height: 12px * root.s;
+
+    HorizontalLayout {
+        spacing: 1px * root.s;
+
+        // Left half (rounded left side, straighter right side)
+        Rectangle {
+            width: 7px * root.s;
+            height: 12px * root.s;
+            background: root.left-active ? root.active-color : root.inactive-color;
+            border-top-left-radius: 3px * root.s;
+        }
+
+        // Right half (rounded right side, straighter left side)
+        Rectangle {
+            width: 7px * root.s;
+            height: 12px * root.s;
+            background: root.right-active ? root.active-color : root.inactive-color;
+            border-top-right-radius: 3px * root.s;
+        }
+    }
+}
