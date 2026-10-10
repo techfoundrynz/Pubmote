@@ -8,27 +8,27 @@ extern "C"
 #endif
 
   typedef enum {
-    DUTY_STATUS_NONE,
-    DUTY_STATUS_CAUTION,
-    DUTY_STATUS_WARNING,
-    DUTY_STATUS_CRITICAL,
-  } DutyStatus;
+    UTILIZATION_STATUS_NONE,
+    UTILIZATION_STATUS_CAUTION,
+    UTILIZATION_STATUS_WARNING,
+    UTILIZATION_STATUS_CRITICAL,
+  } UtilizationStatus;
 
   typedef enum {
-    DUTY_THRESHOLD_CAUTION = 70,
-    DUTY_THRESHOLD_WARNING = 80,
-    DUTY_THRESHOLD_CRITICAL = 90,
-  } DutyStatusThreshold;
+    UTILIZATION_THRESHOLD_CAUTION = 70,
+    UTILIZATION_THRESHOLD_WARNING = 80,
+    UTILIZATION_THRESHOLD_CRITICAL = 90,
+  } UtilizationStatusThreshold;
 
   typedef enum {
-    DUTY_COLOR_NONE = 0,
-    DUTY_COLOR_CAUTION = LED_COLOR_CAUTION,
-    DUTY_COLOR_WARNING = LED_COLOR_WARNING,
-    DUTY_COLOR_CRITICAL = LED_COLOR_CRITICAL,
-  } DutyStatusColor;
+    UTILIZATION_COLOR_NONE = 0,
+    UTILIZATION_COLOR_CAUTION = LED_COLOR_CAUTION,
+    UTILIZATION_COLOR_WARNING = LED_COLOR_WARNING,
+    UTILIZATION_COLOR_CRITICAL = LED_COLOR_CRITICAL,
+  } UtilizationStatusColor;
 
-  DutyStatus get_duty_status(uint8_t duty);
-  DutyStatusColor get_duty_color(DutyStatus status);
+  UtilizationStatus get_utilization_status(uint8_t utilization);
+  UtilizationStatusColor get_utilization_color(UtilizationStatus status);
   void vehicle_monitor_init();
   void vehicle_monitor_deinit();
 

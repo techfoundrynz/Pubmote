@@ -636,7 +636,7 @@ pub(crate) fn tick(ui: &ComponentInstance, controls: &ComponentInstance, seconds
     set(ui, "speed", text(&speed_text(speed, miles)));
     set(ui, "speed-unit", text(if miles { "MPH" } else { "KPH" }));
     set(ui, "speed-fraction", (speed / 60.0).clamp(0.0, 1.0));
-    set(ui, "duty-fraction", (speed / 65.0).clamp(0.0, 1.0));
+    set(ui, "utilization-fraction", (speed / 65.0).clamp(0.0, 1.0));
     set(ui, "is-connected", connected);
     set(ui, "connection-state", if connected { 2 } else { 0 });
     set(

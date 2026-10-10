@@ -24,9 +24,9 @@ export component AppButton inherits Rectangle {
         return Theme.accent;
     }
 
-    height: 30px * Theme.scale;
-    border-radius: 12px * Theme.scale;
-    
+    height: 34px * Theme.scale;
+    border-radius: root.height / 3;
+
     // Always have a 2px border to prevent layout shifts on focus
     border-width: 2px;
     border-color: f-scope.has-focus || (root.strong-press-feedback && touch.pressed) ? Theme.text : (root.variant == "outline" ? Theme.text : transparent);
@@ -90,7 +90,7 @@ export component AppButton inherits Rectangle {
             }
         }
 
-        if root.right-text != "" : Text {
+        if root.right-text != "": Text {
             text: root.right-text;
             color: !root.enabled ? Theme.text-dim :
                 root.variant == "ghost" ? Theme.text-dim :

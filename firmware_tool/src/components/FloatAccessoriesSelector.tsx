@@ -77,6 +77,18 @@ export function FloatAccessoriesSelector() {
       ],
       releaseType: ReleaseType.Nightly,
     },
+    {
+      version: 'v4.1.0',
+      date: '10/11/2026',
+      variants: [
+        {
+          zipUrl: '/float_accessories/float_accessories-4.1.0.vescpkg',
+          date: '10/11/2026',
+          variant: 'float_accessories-4.1.0.vescpkg',
+        },
+      ],
+      releaseType: ReleaseType.Nightly,
+    },
   ] as FirmwareVersion[];
 
   const versionOptions = versions.flatMap((version) =>

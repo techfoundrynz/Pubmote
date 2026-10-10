@@ -11,7 +11,7 @@ export component RoundStats inherits Rectangle {
     in property <string> speed: "0.0";
     in property <string> speed-unit: "KPH";
     in property <float> speed-fraction: 0;
-    in property <float> duty-fraction: 0;
+    in property <float> utilization-fraction: 0;
     in property <bool> left-pad: false;
     in property <bool> right-pad: false;
     in property <int> remote-battery: 100;
@@ -31,9 +31,9 @@ export component RoundStats inherits Rectangle {
     callback secondary-stat-left-clicked();
     callback board-battery-clicked();
 
-    property <brush> duty-color: root.duty-fraction >= 0.90 ? Theme.color-critical :
-        root.duty-fraction >= 0.80 ? Theme.color-warning :
-        root.duty-fraction >= 0.70 ? Theme.color-caution :
+    property <brush> utilization-color: root.utilization-fraction >= 0.90 ? Theme.color-critical :
+        root.utilization-fraction >= 0.80 ? Theme.color-warning :
+        root.utilization-fraction >= 0.70 ? Theme.color-caution :
         Theme.color-active;
 
     property <bool> was-long-pressed: false;
@@ -63,9 +63,9 @@ export component RoundStats inherits Rectangle {
         start-angle: 140deg;
         span-angle: 260deg;
         track-color: Theme.track;
-        indicator-color: root.duty-color;
+        indicator-color: root.utilization-color;
         reverse: true;
-        value: root.duty-fraction;
+        value: root.utilization-fraction;
     }
 
     // --- Content overlay (ui_StatsContent) ---

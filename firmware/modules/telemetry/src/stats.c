@@ -21,6 +21,8 @@ void stats_publish_board(const BoardTelemetry *reading, int64_t timestamp) {
   state.lastUpdated = timestamp;
   state.speed = reading->speed;
   state.dutyCycle = reading->dutyCycle;
+  state.phaseUtilization = reading->phaseUtilization;
+  state.batteryUtilization = reading->batteryUtilization;
   state.speedUnit = SPEED_UNIT_KMH;
   state.tempUnit = TEMP_UNIT_CELSIUS;
   state.batteryVoltage = reading->batteryVoltage;
@@ -52,6 +54,17 @@ void stats_set_vehicle_type(uint8_t vehicle_type) {
   state.vehicleType = vehicle_type;
   portEXIT_CRITICAL(&state_lock);
 }
+uint8_t stats_utilization(const RemoteStats *stats) {
+  int best = stats->dutyCycle;
+  const int terms[] = {stats->phaseUtilization, stats->batteryUtilization};
+  for (unsigned i = 0; i < sizeof(terms) / sizeof(terms[0]); ++i) {
+    int mag = terms[i] < 0 ? -terms[i] : terms[i];
+    if (mag > best)
+      best = mag;
+  }
+  return (uint8_t)(best > 100 ? 100 : best);
+}
+
 void stats_set_duty_cycle(uint8_t duty_cycle) {
   portENTER_CRITICAL(&state_lock);
   state.dutyCycle = duty_cycle;

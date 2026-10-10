@@ -4,12 +4,21 @@
 class ChargeScreenState {
   bool connected = false;
   bool pending = false;
+  bool initialized = false;
   bool power_off_on_unplug;
 
 public:
   explicit ChargeScreenState(bool charger_wake = false) : power_off_on_unplug(charger_wake) {
   }
   void update(bool powered) {
+    if (!initialized) {
+      // USB already present during reset/button wake is the boot baseline,
+      // not a new connection. Only a charger wake should open the screen.
+      initialized = true;
+      connected = powered;
+      pending = powered && power_off_on_unplug;
+      return;
+    }
     if (!powered)
       pending = false;
     else if (!connected)

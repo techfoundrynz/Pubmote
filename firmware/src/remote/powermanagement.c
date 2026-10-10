@@ -520,61 +520,34 @@ void power_management_init() {
   ESP_ERROR_CHECK(charge_driver_init());
   sleep_timer_init(sleep_timer_expired);
   vTaskDelay(pdMS_TO_TICKS(50)); // Allow time for peripherals to initialize
-  esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+  const uint32_t wakeup_causes = esp_sleep_get_wakeup_causes();
   uint64_t wakeup_pin_mask = esp_sleep_get_ext1_wakeup_status();
   power_state_update();
 
-  ESP_LOGI(TAG, "Wake-up reason: %d", wakeup_reason);
-  switch (wakeup_reason) {
-  case ESP_SLEEP_WAKEUP_EXT0:
-    ESP_LOGI(TAG, "Woken up by external signal on EXT0.");
-    // Proceed to check if the button is still pressed
-
+  ESP_LOGI(TAG, "Wake-up sources: 0x%lx", (unsigned long)wakeup_causes);
+  const bool ext1_wake = (wakeup_causes & BIT(ESP_SLEEP_WAKEUP_EXT1)) != 0;
+  // A deliberate button wake takes priority over a simultaneous PMU interrupt.
+  if (ext1_wake && input_pins_button_enabled() && (wakeup_pin_mask & BIT64(settings_get_pins().btn1_gpio))) {
+    ESP_LOGI(TAG, "Woken up by power button.");
+    if (!check_button_press()) {
+      enter_sleep_internal();
+      return;
+    }
+  }
 #ifdef PMU_INT
-    // Use PMU as secondary wake source if available
+  else if ((wakeup_causes & BIT(ESP_SLEEP_WAKEUP_EXT0)) || (ext1_wake && (wakeup_pin_mask & BIT64(PMU_INT)))) {
     ESP_LOGI(TAG, "Woken up by PMU interrupt.");
     if (!check_pmu_should_wake(power_was_connected)) {
-      enter_sleep_internal();
       return;
     }
+  }
 #endif
-
-    break;
-  case ESP_SLEEP_WAKEUP_EXT1:
-    ESP_LOGI(TAG, "Woken up by external signal on EXT1.");
-    // Proceed to check if the button is still pressed
-    if (input_pins_button_enabled() && (wakeup_pin_mask & BIT64(settings_get_pins().btn1_gpio))) {
-      if (!check_button_press()) {
-        enter_sleep_internal();
-        return;
-      }
-    }
-#ifdef PMU_INT
-    else if (wakeup_pin_mask & BIT64(PMU_INT)) {
-      // Use PMU as secondary wake source if available
-      ESP_LOGI(TAG, "Woken up by PMU interrupt.");
-      if (!check_pmu_should_wake(power_was_connected)) {
-        enter_sleep_internal();
-        return;
-      }
-    }
-#endif
-    else {
-      enter_sleep_internal();
-      return;
-    }
-
-    break;
-  case ESP_SLEEP_WAKEUP_TIMER:
-  case ESP_SLEEP_WAKEUP_TOUCHPAD:
-  case ESP_SLEEP_WAKEUP_ULP:
-  case ESP_SLEEP_WAKEUP_GPIO:
-  case ESP_SLEEP_WAKEUP_UART:
-    // Handle other wake-up sources if necessary
-    break;
-  default:
+  else if (ext1_wake) {
+    enter_sleep_internal();
+    return;
+  }
+  else {
     ESP_LOGI(TAG, "Not a deep sleep wakeup or other wake-up sources.");
-    break;
   }
   // Bind empty long press hold so we can mark event as handled
   unbind_power_button();

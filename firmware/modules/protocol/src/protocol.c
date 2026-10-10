@@ -22,6 +22,9 @@ static void write_float(uint8_t *p, float value) {
   memcpy(&bits, &value, sizeof(bits));
   write_le32(p, bits);
 }
+static int8_t clamp_pct(int8_t v) {
+  return v > 100 ? 100 : (v < -100 ? -100 : v);
+}
 bool protocol_decode_board(const uint8_t *data, size_t length, uint32_t expected_secret, BoardTelemetry *out) {
   if (!data || !out || length != PROTOCOL_BOARD_DATA_BYTES || read_be32(data) != expected_secret)
     return false;
@@ -29,14 +32,16 @@ bool protocol_decode_board(const uint8_t *data, size_t length, uint32_t expected
   float speed = read_be16(data + 15) / 10.0;
   result.speed = (float)(fabs(speed) * 3.6);
   result.batteryVoltage = read_be16(data + 11) / 10.0;
-  result.batteryPercentage = (uint8_t)((float)data[30] / 2.0);
+  result.batteryPercentage = (uint8_t)((float)data[32] / 2.0);
   float duty = (float)data[19] / 100.0 - 0.5;
   result.dutyCycle = (uint8_t)(fabs(duty) * 100);
-  result.motorTemp = (float)data[25] / 2.0;
-  result.controllerTemp = (float)data[24] / 2.0;
+  result.phaseUtilization = clamp_pct((int8_t)data[20]);
+  result.batteryUtilization = clamp_pct((int8_t)data[21]);
+  result.motorTemp = (float)data[27] / 2.0;
+  result.controllerTemp = (float)data[26] / 2.0;
   result.state = (BoardState)data[9];
   result.switchState = (SwitchState)data[10];
-  uint32_t distance = read_le32(data + 20);
+  uint32_t distance = read_le32(data + 22);
   memcpy(&result.tripDistance, &distance, sizeof(distance));
   *out = result;
   return true;
