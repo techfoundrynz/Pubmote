@@ -12,6 +12,7 @@ import { ArcGauge } from "arc-gauge.slint";
 export component ChargeScreen inherits Rectangle {
     in property <int> battery-percent: 0;
     in property <string> charge-label: "Charging";
+    in property <string> time-estimate: "";
     callback dismissed();
     background: Theme.bg;
 
@@ -46,6 +47,12 @@ export component ChargeScreen inherits Rectangle {
             font-size: Theme.font-14;
             font-weight: Theme.w-medium;
             font-family: Theme.font-mono;
+            horizontal-alignment: center;
+        }
+        if root.time-estimate != "": Text {
+            text: root.time-estimate;
+            color: Theme.text-dim;
+            font-size: Theme.font-11;
             horizontal-alignment: center;
         }
         Text {

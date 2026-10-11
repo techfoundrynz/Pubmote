@@ -2,6 +2,27 @@
 #include <cassert>
 
 int main() {
+  ChargeScreenIdleState idle;
+  assert(!idle.update(30000)); // No timeout off the charge page.
+  idle.enter(1000);
+  assert(!idle.is_blanked());
+  assert(!idle.wake(2000)); // A visible tap can still dismiss the page.
+  assert(!idle.update(30999));
+  assert(idle.update(31000));
+  assert(idle.is_blanked());
+  assert(!idle.wake_for_event(31050, 30999)); // Movement queued before blanking is stale.
+  assert(!idle.update(32000));                // Blank once, not on every poll.
+  assert(idle.wake_for_event(40000, 39950));  // Fresh movement wakes without dismissing.
+  assert(!idle.is_blanked());
+  assert(!idle.update(69999));
+  assert(idle.update(70000));                 // Waking starts a fresh 30-second window.
+  assert(!idle.wake_for_event(70050, 39950)); // An old queued movement cannot wake again.
+  idle.exit();
+  assert(!idle.is_blanked() && !idle.wake(71000));
+  assert(!idle.update(100000));
+  idle.enter(110000);
+  assert(!idle.update(139999)); // Re-entry has a fresh timeout.
+  assert(idle.update(140000));
   ChargeScreenState screen;
   screen.update(false);
   assert(!screen.should_show(false));
@@ -53,6 +74,10 @@ int main() {
 
   ChargeScreenState charger_wake(true);
   charger_wake.update(true);
+  for (int i = 0; i < 10; ++i) {
+    charger_wake.update(true);
+    assert(!charger_wake.should_show(false, false)); // Keep the boot splash visible.
+  }
   assert(charger_wake.should_show(false));
   assert(!charger_wake.should_power_off());
   charger_wake.presented(); // Showing the screen is not a user dismissal.

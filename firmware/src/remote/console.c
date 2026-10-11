@@ -1,3 +1,4 @@
+#include "remote/radio_session.h"
 #include "remote/settings_store.h"
 
 #include "build_metadata.h"
@@ -158,17 +159,30 @@ static void register_shutdown_command() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
+static esp_err_t erase_settings(void *context) {
+  (void)context;
+  return radio_session_reset_settings();
+}
+
+static void erase_finished(esp_err_t result, void *context) {
+  (void)context;
+  if (result != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to erase flash: %s", esp_err_to_name(result));
+    return;
+  }
+  ESP_LOGI(TAG, "Flash memory erased successfully.");
+  esp_restart();
+}
+
 static int erase_command(int argc, char **argv) {
   (void)argc;
   (void)argv;
   ESP_LOGI(TAG, "Erasing flash memory...");
-  esp_err_t err = reset_all_settings();
+  esp_err_t err = radio_session_run(erase_settings, erase_finished, NULL);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to erase flash: %s", esp_err_to_name(err));
+    ESP_LOGE(TAG, "Failed to queue flash erase: %s", esp_err_to_name(err));
     return -1;
   }
-  ESP_LOGI(TAG, "Flash memory erased successfully.");
-  esp_restart();
   return 0;
 }
 

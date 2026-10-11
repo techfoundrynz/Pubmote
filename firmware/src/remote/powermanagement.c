@@ -2,6 +2,7 @@
 #include "adc.h"
 #include "buzzer.h"
 #include "charge/charge_driver.h"
+#include "charge/charge_time.h"
 #include "config.h"
 #include "connection.h"
 #include "display.h"
@@ -10,6 +11,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
+#include "esp_system.h"
 #include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "gpio_detection.h"
@@ -54,6 +56,32 @@ bool power_management_woke_for_charging(void) {
 }
 
 static volatile bool shutdown_initiated = false; // Flag for triggering shutdown sequence
+static atomic_bool shipping_requested = false;
+static atomic_bool shipping_error = false;
+// Survives a software restart if cutoff failed after peripheral shutdown.
+RTC_NOINIT_ATTR static uint32_t shipping_error_marker;
+#define SHIPPING_ERROR_MARKER 0x53484950
+
+esp_err_t power_management_enter_shipping_mode() {
+  if (!charge_driver_supports_shipping_mode())
+    return ESP_ERR_NOT_SUPPORTED;
+  if (power_management_is_power_connected() || shutdown_initiated)
+    return ESP_ERR_INVALID_STATE;
+  atomic_store(&shipping_requested, true);
+  return ESP_OK;
+}
+
+bool power_management_take_shipping_error() {
+  static bool checked_restart = false; // UI task only.
+  bool failed = atomic_exchange(&shipping_error, false);
+  if (!checked_restart) {
+    checked_restart = true;
+    if (esp_reset_reason() == ESP_RST_SW && shipping_error_marker == SHIPPING_ERROR_MARKER)
+      failed = true;
+    shipping_error_marker = 0;
+  }
+  return failed;
+}
 
 #ifdef PMU_INT
 static QueueHandle_t pmu_evt_queue = NULL;
@@ -67,6 +95,7 @@ static void IRAM_ATTR pmu_isr_handler(void *arg) {
 
 static void power_state_update() {
   RemotePowerState powerState = get_power_state();
+  charge_time_sample(&powerState);
   uint8_t percentage = battery_mv_to_percent(powerState.voltage);
   stats_publish_power(powerState.voltage, percentage, powerState.chargeState, powerState.current);
   ESP_LOGD(TAG, "Battery volts: %u %d", powerState.voltage, percentage);
@@ -336,7 +365,7 @@ void power_management_preinit() {
 #endif
 }
 
-static void enter_sleep_internal() {
+static void enter_sleep_internal(bool shipping) {
   // The whole sleep-entry sequence takes a few seconds - restart the watchdog
   // window so it can't fire mid-shutdown (no-op if caller unsubscribed)
   esp_task_wdt_reset();
@@ -382,6 +411,21 @@ static void enter_sleep_internal() {
 
   // Must come after the last power_state_update - it turns off the PMU ADC
   charge_driver_deinit();
+  if (shipping) {
+    // This write normally removes system power immediately. If USB arrived or
+    // I2C failed, reboot to restore peripherals and report that storage failed.
+    const esp_err_t result = charge_driver_enter_shipping_mode();
+    if (result != ESP_OK) {
+      ESP_LOGE(TAG, "Shipping mode failed: %s", esp_err_to_name(result));
+      shipping_error_marker = SHIPPING_ERROR_MARKER;
+      esp_restart();
+    }
+    vTaskDelay(pdMS_TO_TICKS(500));
+    // A successful BATFET write must actually remove power on supported boards.
+    ESP_LOGE(TAG, "Shipping mode did not remove system power");
+    shipping_error_marker = SHIPPING_ERROR_MARKER;
+    esp_restart();
+  }
 #ifdef PMU_INT
   await_pmu_int_reset();
 #endif
@@ -415,9 +459,20 @@ void power_management_task(void *pvParameters) {
   while (1) {
     esp_task_wdt_reset();
 
+    if (atomic_exchange(&shipping_requested, false)) {
+      // Recheck on the owning task before doing any peripheral shutdown.
+      power_state_update();
+      if (is_power_connected)
+        atomic_store(&shipping_error, true);
+      else {
+        shutdown_initiated = true;
+        enter_sleep_internal(true);
+      }
+    }
+
     if (shutdown_initiated) {
       ESP_LOGI(TAG, "Shutdown initiated. Entering sleep.");
-      enter_sleep_internal();
+      enter_sleep_internal(false);
     }
 
     // If the button driver or UI is wedged, the normal long-press path never
@@ -428,7 +483,7 @@ void power_management_task(void *pvParameters) {
       }
       else if (esp_timer_get_time() - force_sleep_hold_start > FORCE_SLEEP_HOLD_US) {
         ESP_LOGW(TAG, "Button held for %d s. Forcing shutdown.", (int)(FORCE_SLEEP_HOLD_US / 1000000));
-        enter_sleep_internal();
+        enter_sleep_internal(false);
       }
     }
     else {
@@ -498,7 +553,7 @@ static bool check_pmu_should_wake(bool last_powered) {
       buzzer_set_tone(NOTE_ERROR, PMU_INT_NOTE_DURATION);
       vTaskDelay(pdMS_TO_TICKS(PMU_INT_NOTE_DURATION)); // Allow time for the note to play
     }
-    enter_sleep_internal();
+    enter_sleep_internal(false);
     return false;
   }
   return true;
@@ -518,6 +573,7 @@ void power_management_init() {
 
   bool power_was_connected = is_power_connected;
   ESP_ERROR_CHECK(charge_driver_init());
+  charge_time_init();
   sleep_timer_init(sleep_timer_expired);
   vTaskDelay(pdMS_TO_TICKS(50)); // Allow time for peripherals to initialize
   const uint32_t wakeup_causes = esp_sleep_get_wakeup_causes();
@@ -530,7 +586,7 @@ void power_management_init() {
   if (ext1_wake && input_pins_button_enabled() && (wakeup_pin_mask & BIT64(settings_get_pins().btn1_gpio))) {
     ESP_LOGI(TAG, "Woken up by power button.");
     if (!check_button_press()) {
-      enter_sleep_internal();
+      enter_sleep_internal(false);
       return;
     }
   }
@@ -543,7 +599,7 @@ void power_management_init() {
   }
 #endif
   else if (ext1_wake) {
-    enter_sleep_internal();
+    enter_sleep_internal(false);
     return;
   }
   else {

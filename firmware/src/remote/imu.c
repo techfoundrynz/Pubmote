@@ -5,11 +5,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "imu/imu_driver.h"
+#include "imu/movement_detector.h"
 #include "imu/raise_detector.h"
 #include "utilities/psram_task.h"
 
 #if IMU_ENABLED
 static raise_detector_t raise_detector;
+static movement_detector_t movement_detector;
 #endif
 
 static const char *TAG = "PUBREMOTE-IMU";
@@ -24,34 +26,47 @@ static volatile bool imu_running = false;
 #if IMU_ENABLED
   #define MAX_IMU_CALLBACKS 4
 static imu_gesture_cb_t gesture_callbacks[MAX_IMU_CALLBACKS] = {NULL};
+static portMUX_TYPE gesture_callbacks_lock = portMUX_INITIALIZER_UNLOCKED;
 
 esp_err_t imu_register_gesture_callback(imu_gesture_cb_t cb) {
+  portENTER_CRITICAL(&gesture_callbacks_lock);
   for (int i = 0; i < MAX_IMU_CALLBACKS; i++) {
     if (gesture_callbacks[i] == cb) {
+      portEXIT_CRITICAL(&gesture_callbacks_lock);
       return ESP_OK; // already registered
     }
     if (gesture_callbacks[i] == NULL) {
       gesture_callbacks[i] = cb;
+      portEXIT_CRITICAL(&gesture_callbacks_lock);
       return ESP_OK;
     }
   }
+  portEXIT_CRITICAL(&gesture_callbacks_lock);
   return ESP_ERR_NO_MEM;
 }
 
 esp_err_t imu_unregister_gesture_callback(imu_gesture_cb_t cb) {
+  portENTER_CRITICAL(&gesture_callbacks_lock);
   for (int i = 0; i < MAX_IMU_CALLBACKS; i++) {
     if (gesture_callbacks[i] == cb) {
       gesture_callbacks[i] = NULL;
+      portEXIT_CRITICAL(&gesture_callbacks_lock);
       return ESP_OK;
     }
   }
+  portEXIT_CRITICAL(&gesture_callbacks_lock);
   return ESP_ERR_NOT_FOUND;
 }
 
 static void trigger_gesture_callbacks(imu_gesture_t gesture) {
+  imu_gesture_cb_t callbacks[MAX_IMU_CALLBACKS];
+  portENTER_CRITICAL(&gesture_callbacks_lock);
+  for (int i = 0; i < MAX_IMU_CALLBACKS; i++)
+    callbacks[i] = gesture_callbacks[i];
+  portEXIT_CRITICAL(&gesture_callbacks_lock);
   for (int i = 0; i < MAX_IMU_CALLBACKS; i++) {
-    if (gesture_callbacks[i] != NULL) {
-      gesture_callbacks[i](gesture);
+    if (callbacks[i] != NULL) {
+      callbacks[i](gesture);
     }
   }
 }
@@ -75,6 +90,10 @@ static void imu_get_data() {
   }
 
   uint64_t now_ms = esp_timer_get_time() / 1000;
+  if (movement_detector_update(&movement_detector, now_ms, imu_data.accel_x, imu_data.accel_y, imu_data.accel_z,
+                               imu_data.accel_valid)) {
+    trigger_gesture_callbacks(IMU_GESTURE_MOVED);
+  }
   bool raised = raise_detector_update(&raise_detector, now_ms, imu_data.accel_x, imu_data.accel_y, imu_data.accel_z,
                                       imu_data.accel_valid);
   #if DEBUG_IMU
@@ -116,6 +135,7 @@ void imu_init() {
   }
 
   raise_detector_reset(&raise_detector);
+  movement_detector_reset(&movement_detector);
   imu_should_run = true;
   imu_task_handle = create_psram_task(imu_task, "imu_task", 4096, NULL, 2, &imu_task_tcb, &imu_task_stack);
 #endif

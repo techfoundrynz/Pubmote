@@ -31,3 +31,9 @@ belongs to `modules/protocol`. Display responsibilities are split between
 `display/panel.cpp` (hardware), `display/slint_display.cpp` (platform/tasks/DMA),
 `ui/navigation.cpp` (screen lifecycle) and `ui/device_preferences.cpp` (presentation).
 Workers query cached screen state through `ui/screen_status.h`.
+
+Charging-time rules belong to `modules/charge_estimator`. The application's
+`charge/charge_time.c` owns boot loading, power-task sampling, atomic estimate
+publication and copied profile saves on the maintenance worker. Successful
+factory reset disables those saves until reboot. Screen formatting stays in
+`screens/charge_screen.cpp`; the estimator cannot depend on those adapters.

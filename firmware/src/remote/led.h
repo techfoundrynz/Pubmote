@@ -15,13 +15,13 @@ extern "C"
     uint8_t b;
   } RGB;
 
-  // PULSE and RAINBOW are not user-selectable modes - they back the startup
-  // animation and the pairing screen respectively.
+  // Startup, pairing, and charging effects are temporary rather than settings.
   typedef enum {
     LED_EFFECT_NONE,
     LED_EFFECT_PULSE,
     LED_EFFECT_SOLID,
-    LED_EFFECT_RAINBOW
+    LED_EFFECT_RAINBOW,
+    LED_EFFECT_CHARGING
   } LedEffect;
 
   void led_init();
@@ -31,6 +31,15 @@ extern "C"
   void led_set_effect_pulse(uint32_t color);
   void led_set_effect_rainbow();
   void led_set_effect_none();
+  typedef enum {
+    LED_CHARGING_NONE = -1,
+    LED_CHARGING_ACTIVE,
+    LED_CHARGING_COMPLETE,
+    LED_CHARGING_POWERED
+  } LedChargingState;
+  // Temporary charging-page override. NONE resumes the underlying effect.
+  // The user-selected OFF mode stays dark.
+  void led_set_effect_charging(LedChargingState state);
 
   // Apply the effect selected by settings_get_device().led_mode. Use this to return
   // the LED to its resting behaviour after a temporary override (pairing,

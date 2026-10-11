@@ -37,6 +37,15 @@ RemotePowerState get_power_state() {
 #endif
 }
 
+bool charge_driver_get_diagnostics(ChargeDiagnostics *diagnostics) {
+#if PMU_SY6970
+  return sy6970_get_diagnostics(diagnostics);
+#else
+  (void)diagnostics;
+  return false;
+#endif
+}
+
 char *charge_state_to_string(RemoteChargeState state) {
   switch (state) {
   case CHARGE_STATE_NOT_CHARGING:
@@ -129,5 +138,21 @@ void charge_driver_deinit() {
   sy6970_charge_driver_deinit();
 #elif PMU_AXP2101
   axp2101_charge_driver_deinit();
+#endif
+}
+
+bool charge_driver_supports_shipping_mode() {
+#if PMU_SY6970
+  return true;
+#else
+  return false;
+#endif
+}
+
+esp_err_t charge_driver_enter_shipping_mode() {
+#if PMU_SY6970
+  return sy6970_enter_protection_mode();
+#else
+  return ESP_ERR_NOT_SUPPORTED;
 #endif
 }

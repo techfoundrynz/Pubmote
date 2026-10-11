@@ -8,7 +8,10 @@
 #define XPOWERS_CHIP_SY6970
 #include "XPowersLib.h"
 #include "config.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
 #include "remote/i2c.h"
+#include <atomic>
 #include <charge/charge_driver.h>
 #include <driver/gpio.h>
 
@@ -20,6 +23,16 @@ static const char *TAG = "PUBREMOTE-CHARGE_DRIVER_SY6970";
 
 // SY6970 instance
 static XPowersPPM PPM;
+static portMUX_TYPE fault_lock = portMUX_INITIALIZER_UNLOCKED;
+static int16_t sampled_fault_latched = -1;
+static int16_t sampled_fault_current = -1;
+static uint32_t fault_sample_ms = 0;
+static int16_t last_fault = 0;
+static uint32_t last_fault_ms = 0;
+static ChargeDiagnostics cached_diagnostics = {};
+static std::atomic<bool> diagnostics_requested(false);
+
+static void refresh_diagnostics();
 
 static int sy6970_read_reg(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, uint8_t len) {
   esp_err_t result = i2c_read(device_addr, reg_addr, data, len, 500);
@@ -45,16 +58,17 @@ static esp_err_t set_ir_compensation(uint8_t resistance_mohm, uint8_t clamp_mv) 
   // Calculate register values
   uint8_t bat_comp = resistance_mohm / 20;
   uint8_t vclamp = clamp_mv / 32;
-  uint8_t treg = 3; // Keep 120°C default
 
   // Read current register to preserve other settings
-  uint8_t current_reg08 = PPM.readRegister(0x08);
+  int current_reg08 = PPM.readRegister(0x08);
+  if (current_reg08 < 0)
+    return ESP_FAIL;
 
   // Update only the IR compensation bits
   uint8_t new_reg08 = (current_reg08 & 0x03) | (bat_comp << 5) | (vclamp << 2);
 
   // Write back
-  bool success = PPM.writeRegister(0x08, new_reg08);
+  bool success = PPM.writeRegister(0x08, new_reg08) == 0;
 
   if (success) {
     ESP_LOGI(TAG, "IR Compensation set: %dmΩ, Clamp: %dmV\n", bat_comp * 20, vclamp * 32);
@@ -64,9 +78,17 @@ static esp_err_t set_ir_compensation(uint8_t resistance_mohm, uint8_t clamp_mv) 
 }
 
 esp_err_t sy6970_enter_protection_mode() {
+  const int power = PPM.readRegister(0x0B);
+  const int config = PPM.readRegister(0x09);
+  if (power < 0 || config < 0) {
+    return ESP_FAIL;
+  }
+  if (power & 0x04) {
+    return ESP_ERR_INVALID_STATE;
+  }
   ESP_LOGI(TAG, "Entering shipping mode (power down)");
-  PPM.shutdown();
-  return ESP_OK;
+  // Immediate BATFET cutoff, preserving unrelated timer/reset configuration.
+  return PPM.writeRegister(0x09, (config & ~0x08) | 0x20) == 0 ? ESP_OK : ESP_FAIL;
 }
 
 static esp_err_t set_advanced_charging_config() {
@@ -218,16 +240,41 @@ extern "C" RemotePowerState sy6970_get_power_state() {
   // and DPDM source classification. An OTG output is not a charger input.
   const int power_status = PPM.readRegister(0x0B);
   state.isPowered = power_status >= 0 && (power_status & 0x04) != 0;
-  state.isFault = PPM.getFaultStatus() != 0;
-
-  if (state.isFault) {
-    static uint8_t last_fault_status = 0;
-    uint8_t current_fault_status = PPM.getFaultStatus();
-    if (current_fault_status != last_fault_status) {
-      ESP_LOGW(TAG, "SY6970 fault detected! Fault status: 0x%02X. Charge status: %s", current_fault_status,
-               PPM.getChargeStatusString());
-      last_fault_status = current_fault_status;
-    }
+  // Record entry into powered-but-not-charging without requiring a console
+  // request or reboot. Do not restart charging or bypass a protection fault.
+  static int previous_power_status = -1;
+  if (power_status != previous_power_status && state.isPowered && state.chargeState != CHARGE_STATE_CHARGING &&
+      state.chargeState != CHARGE_STATE_DONE) {
+    uint8_t input = 0, config = 0, limits = 0;
+    const int reg00 = i2c_read(SY6970_ADDR, 0x00, &input, 1, 100) == ESP_OK ? input : -1;
+    const int reg03 = i2c_read(SY6970_ADDR, 0x03, &config, 1, 100) == ESP_OK ? config : -1;
+    const int reg13 = i2c_read(SY6970_ADDR, 0x13, &limits, 1, 100) == ESP_OK ? limits : -1;
+    ESP_LOGW(TAG, "USB powered but not charging: REG00=%d REG03=%d REG0B=%d REG13=%d (-1=read failed)", reg00, reg03,
+             power_status, reg13);
+  }
+  previous_power_status = power_status;
+  // The first read reports latched faults; the second reports current faults.
+  // Preserve both: a transient fault may have cleared by the second read.
+  const int fault_latched = PPM.readRegister(0x0C);
+  const int fault_current = PPM.readRegister(0x0C);
+  const uint32_t sampled_at = (uint32_t)(esp_timer_get_time() / 1000);
+  portENTER_CRITICAL(&fault_lock);
+  sampled_fault_latched = fault_latched;
+  sampled_fault_current = fault_current;
+  fault_sample_ms = sampled_at;
+  if (fault_latched > 0 || fault_current > 0) {
+    last_fault = fault_latched > 0 ? fault_latched : fault_current;
+    last_fault_ms = sampled_at;
+  }
+  portEXIT_CRITICAL(&fault_lock);
+  state.isFault = fault_latched > 0 || fault_current > 0;
+  static int previous_latched = 0;
+  static int previous_current = 0;
+  if (fault_latched != previous_latched || fault_current != previous_current) {
+    ESP_LOGW(TAG, "Charger fault registers: latched=%d current=%d (-1=read failed), charge=%d", fault_latched,
+             fault_current, (int)state.chargeState);
+    previous_latched = fault_latched;
+    previous_current = fault_current;
   }
 
   ESP_LOGD(TAG,
@@ -238,7 +285,53 @@ extern "C" RemotePowerState sy6970_get_power_state() {
   log_registers();
 #endif
 
+  if (diagnostics_requested.exchange(false))
+    refresh_diagnostics();
+
   return state;
+}
+
+static void refresh_diagnostics() {
+  ChargeDiagnostics sample = {};
+  auto *diagnostics = &sample;
+  diagnostics->chip = "SY6970";
+  diagnostics->sample_ms = (uint32_t)(esp_timer_get_time() / 1000);
+  portENTER_CRITICAL(&fault_lock);
+  diagnostics->fault_latched = sampled_fault_latched;
+  diagnostics->fault_current = sampled_fault_current;
+  diagnostics->fault_sample_ms = fault_sample_ms;
+  diagnostics->last_fault = last_fault;
+  diagnostics->last_fault_ms = last_fault_ms;
+  portEXIT_CRITICAL(&fault_lock);
+  // Read configuration/status without writes or consuming fault latches.
+  // This runs on the power task. Bound diagnostic timeouts so a missing
+  // device cannot add seconds of delay to routine power management.
+  for (uint8_t reg = 0; reg < 0x15; ++reg) {
+    uint8_t value = 0;
+    if (reg == 0x0C)
+      diagnostics->registers[reg] = diagnostics->fault_current;
+    else
+      diagnostics->registers[reg] = i2c_read(SY6970_ADDR, reg, &value, 1, 20) == ESP_OK ? value : -1;
+  }
+  portENTER_CRITICAL(&fault_lock);
+  cached_diagnostics = sample;
+  portEXIT_CRITICAL(&fault_lock);
+}
+
+extern "C" bool sy6970_get_diagnostics(ChargeDiagnostics *diagnostics) {
+  if (!diagnostics)
+    return false;
+  portENTER_CRITICAL(&fault_lock);
+  *diagnostics = cached_diagnostics;
+  portEXIT_CRITICAL(&fault_lock);
+  if (diagnostics->sample_ms == 0) {
+    diagnostics->chip = "SY6970";
+    diagnostics->fault_latched = diagnostics->fault_current = -1;
+    for (auto &reg : diagnostics->registers)
+      reg = -1;
+  }
+  diagnostics_requested.store(true);
+  return true;
 }
 
 void sy6970_disable_watchdog() {

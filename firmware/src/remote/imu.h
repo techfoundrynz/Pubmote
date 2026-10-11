@@ -10,6 +10,7 @@ extern "C"
     IMU_GESTURE_LOWERED,
     IMU_GESTURE_RAISED,
     IMU_GESTURE_DOUBLE_TAP,
+    IMU_GESTURE_MOVED,
   } imu_gesture_t;
 
   typedef void (*imu_gesture_cb_t)(imu_gesture_t gesture);

@@ -1,4 +1,5 @@
 #pragma once
+#include <esp_err.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,6 +16,8 @@ extern "C"
   bool power_management_is_power_connected();
   bool power_management_woke_for_charging();
   void enter_sleep();
+  esp_err_t power_management_enter_shipping_mode();
+  bool power_management_take_shipping_error();
 
   typedef enum {
     CHARGING,

@@ -4,6 +4,7 @@
 #include "config.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "remote/connection.h"
 #include "remote/stats.h"
 #include "slint_generated/app-window.h"
@@ -16,6 +17,66 @@ static const char *TAG = "PUBREMOTE-ABOUT_SCREEN";
 // Accessed only from the Slint event loop. The UI retains the outgoing model
 // during its exit animation after our reference is released.
 static std::shared_ptr<slint::VectorModel<StatEntry>> stats_model;
+static bool stats_has_current = false;
+
+static const char *const charger_labels[] = {"USB power", "Source",      "Charge enabled",
+                                             "Mode",      "Input limit", "Input regulation",
+                                             "Fault now", "Last fault",  "Sample age"};
+static constexpr size_t charger_row_count = sizeof(charger_labels) / sizeof(charger_labels[0]);
+
+static void format_fault(char *text, size_t size, int fault) {
+  if (fault < 0) {
+    snprintf(text, size, "Read error");
+    return;
+  }
+  if (fault == 0) {
+    snprintf(text, size, "None");
+    return;
+  }
+  const char *reason = fault & 0x80             ? "Watchdog"
+                       : fault & 0x40           ? "Boost"
+                       : (fault & 0x30) == 0x10 ? "Input"
+                       : (fault & 0x30) == 0x20 ? "Thermal"
+                       : (fault & 0x30) == 0x30 ? "Timer"
+                       : fault & 0x08           ? "Battery"
+                       : fault & 0x07           ? "Temperature"
+                                                : "Unknown";
+  // Keep the complete bitmask even if more than one fault is set.
+  snprintf(text, size, "%s (0x%02X)", reason, fault);
+}
+
+static void format_charger_rows(const ChargeDiagnostics &status, char values[charger_row_count][32]) {
+  for (size_t i = 0; i < charger_row_count; ++i)
+    snprintf(values[i], 32, "%s", status.sample_ms ? "Read error" : "Reading...");
+  if (!status.sample_ms)
+    return;
+  const int input = status.registers[0x00];
+  const int config = status.registers[0x03];
+  const int power = status.registers[0x0B];
+  const int limits = status.registers[0x13];
+  if (power >= 0) {
+    static const char *const sources[] = {"None",         "USB host", "USB CDP",     "USB DCP",
+                                          "High voltage", "Adapter",  "Nonstandard", "OTG"};
+    snprintf(values[0], 32, "%s", power & 0x04 ? "Good" : "Not good");
+    snprintf(values[1], 32, "%s", sources[(power >> 5) & 7]);
+  }
+  if (config >= 0)
+    snprintf(values[2], 32, "%s", config & 0x10 ? "Yes" : "No");
+  if (input >= 0 && config >= 0)
+    snprintf(values[3], 32, "%s", input & 0x80 ? "Input off (HIZ)" : config & 0x20 ? "OTG" : "Normal");
+  if (input >= 0)
+    snprintf(values[4], 32, "%d mA", 100 + (input & 0x3F) * 50);
+  if (limits >= 0)
+    snprintf(values[5], 32, "%s",
+             (limits & 0xC0) == 0xC0 ? "Voltage + current"
+             : limits & 0x80         ? "Voltage"
+             : limits & 0x40         ? "Current"
+                                     : "None");
+  format_fault(values[6], 32, status.fault_current);
+  format_fault(values[7], 32, status.last_fault);
+  snprintf(values[8], 32, "%lu s",
+           (unsigned long)(((uint32_t)(esp_timer_get_time() / 1000) - status.sample_ms) / 1000));
+}
 
 void update_about_version_info() {
   if (!get_slint_window())
@@ -70,6 +131,11 @@ extern "C" void update_about_stats() {
 
   const char *state = charge_state_to_string(telemetry.chargeState);
   bool show_current = telemetry.chargeState != CHARGE_STATE_NOT_CHARGING && telemetry.chargeCurrent > 0;
+  ChargeDiagnostics charger;
+  const bool show_charger = charge_driver_get_diagnostics(&charger);
+  char charger_values[charger_row_count][32];
+  if (show_charger)
+    format_charger_rows(charger, charger_values);
 
   if (!stats_model) {
     stats_model = std::make_shared<slint::VectorModel<StatEntry>>();
@@ -84,13 +150,19 @@ extern "C" void update_about_stats() {
     add_row(stats_model, "Min ever", min_ever);
     add_row(stats_model, "Largest block", largest);
     add_row(stats_model, "PSRAM free", psram);
+    stats_has_current = show_current;
+    if (show_charger) {
+      add_header(stats_model, charger.chip);
+      for (size_t i = 0; i < charger_row_count; ++i)
+        add_row(stats_model, charger_labels[i], charger_values[i]);
+    }
     get_slint_window()->global<UiState>().set_about_stats(stats_model);
     return;
   }
 
   // Preserve the model and row instances; only charge-current visibility changes
   // the list structure. Memory counters can change on every refresh.
-  bool had_current = stats_model->row_count() == 10;
+  bool had_current = stats_has_current;
   if (show_current && !had_current) {
     StatEntry entry;
     entry.label = "Current";
@@ -101,6 +173,7 @@ extern "C" void update_about_stats() {
   else if (!show_current && had_current) {
     stats_model->erase(4);
   }
+  stats_has_current = show_current;
   update_row(1, voltage);
   update_row(2, level);
   update_row(3, state);
@@ -111,6 +184,11 @@ extern "C" void update_about_stats() {
   update_row(memory_start + 1, min_ever);
   update_row(memory_start + 2, largest);
   update_row(memory_start + 3, psram);
+  if (show_charger) {
+    const size_t charger_start = memory_start + 5;
+    for (size_t i = 0; i < charger_row_count; ++i)
+      update_row(charger_start + i, charger_values[i]);
+  }
 }
 
 extern "C" void setup_about_properties() {
@@ -120,6 +198,7 @@ extern "C" void setup_about_properties() {
 
 extern "C" void teardown_about_properties() {
   stats_model.reset();
+  stats_has_current = false;
 }
 
 // Slint event handlers

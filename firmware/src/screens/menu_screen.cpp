@@ -1,13 +1,11 @@
 #include "screens/menu_screen.h"
 #include "config.h"
 #include "esp_log.h"
-#include "esp_system.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/led.h"
 #include "remote/powermanagement.h"
-#include "remote/radio_session.h"
 #include "remote/settings.h"
 #include "remote/settings_state.h"
 #include "remote/stats.h"
@@ -19,20 +17,11 @@
 
 static const char *TAG = "PUBREMOTE-MENU_SCREEN";
 
-static bool confirm_reset = false;
-
 enum PendingAction {
   PENDING_NONE,
-  PENDING_SHUTDOWN,
-  PENDING_RESET
+  PENDING_SHUTDOWN
 };
 static PendingAction pending_action = PENDING_NONE;
-
-extern "C" void handle_menu_shutdown_long_press() {
-  confirm_reset = !confirm_reset;
-  slint::invoke_from_event_loop(
-      []() { get_slint_window()->global<UiState>().set_shutdown_text(confirm_reset ? "Factory reset?" : "Shutdown"); });
-}
 
 // stats_update() fires at telemetry rate (20Hz+) while connected. Posting to
 // the Slint event loop on every tick invalidates and re-renders the menu (and
@@ -75,20 +64,14 @@ extern "C" void setup_menu_properties() {
 
   const auto &state = get_slint_window()->global<UiState>();
 
-  confirm_reset = false;
   pending_action = PENDING_NONE;
   menu_last_connection_state = -1; // Force a repaint on (re)entry
   menu_update_pending.store(false);
-  state.set_shutdown_text("Shutdown");
-  state.on_menu_shutdown_long_press([]() { handle_menu_shutdown_long_press(); });
 
   state.on_confirm_dialog_accepted([]() {
     slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_show_confirm_dialog(false); });
     const PendingAction action = pending_action;
-    if (action == PENDING_RESET) {
-      ui_operation_start("Resetting settings...", radio_session_reset_settings, []() { esp_restart(); });
-    }
-    else if (action == PENDING_SHUTDOWN) {
+    if (action == PENDING_SHUTDOWN) {
       ui_operation_start(
           "Shutting down...", []() { return ESP_OK; },
           []() {
@@ -104,10 +87,6 @@ extern "C" void setup_menu_properties() {
     slint::invoke_from_event_loop([]() {
       const auto &state = get_slint_window()->global<UiState>();
       state.set_show_confirm_dialog(false);
-      if (confirm_reset) {
-        confirm_reset = false;
-        state.set_shutdown_text("Shutdown");
-      }
     });
     pending_action = PENDING_NONE;
   });
@@ -217,19 +196,10 @@ extern "C" void handle_menu_shutdown() {
   ESP_LOGI(TAG, "Shutdown button pressed");
   slint::invoke_from_event_loop([]() {
     const auto &state = get_slint_window()->global<UiState>();
-    if (confirm_reset) {
-      pending_action = PENDING_RESET;
-      state.set_confirm_dialog_title("Factory Reset");
-      state.set_confirm_dialog_message("This will wipe all settings. Proceed?");
-      state.set_confirm_dialog_confirm_text("Reset");
-      state.set_confirm_dialog_variant("danger");
-    }
-    else {
-      pending_action = PENDING_SHUTDOWN;
-      state.set_confirm_dialog_title("Power Off");
-      state.set_confirm_dialog_message("Are you sure you want to turn off the remote?");
-      state.set_confirm_dialog_confirm_text("Shutdown");
-    }
+    pending_action = PENDING_SHUTDOWN;
+    state.set_confirm_dialog_title("Power Off");
+    state.set_confirm_dialog_message("Are you sure you want to turn off the remote?");
+    state.set_confirm_dialog_confirm_text("Shutdown");
     state.set_show_confirm_dialog(true);
   });
 }
@@ -242,7 +212,6 @@ extern "C" void teardown_menu_properties() {
     return;
   // Synchronously, for the same reason as teardown_boards_properties
   const auto &state = get_slint_window()->global<UiState>();
-  state.on_menu_shutdown_long_press([]() {});
   state.on_confirm_dialog_accepted([]() {});
   state.on_confirm_dialog_rejected([]() {});
 }

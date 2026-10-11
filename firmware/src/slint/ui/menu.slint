@@ -6,15 +6,9 @@
 //   About, Shutdown. Each lv_btn is 42px tall, 100% width.
 
 import { Theme } from "theme.slint";
-import { AppButton } from "app-button.slint";
+import { MenuButton } from "menu-button.slint";
 import { Page } from "page.slint";
 import { Icons } from "icons.slint";
-
-// Menu rows stay taller than the standard button
-component MenuButton inherits AppButton {
-    height: 42px * Theme.scale;
-    variant: "ghost";
-}
 
 export component MenuScreen inherits Page {
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
@@ -27,7 +21,6 @@ export component MenuScreen inherits Page {
     in property <bool> hbm-mode-supported: false;
     in property <string> led-mode-label: "";
     in property <bool> led-mode-supported: false;
-    in property <string> shutdown-text: "Shutdown";
     in-out property <int> scroll-offset-y: 0;
     in property <bool> imu-supported: false;
     in property <bool> joystick-supported: false;
@@ -42,7 +35,6 @@ export component MenuScreen inherits Page {
     callback wifi;
     callback imu-calibration;
     callback shutdown;
-    callback shutdown-long-press;
 
     title: "MENU";
     show-back: true;
@@ -133,11 +125,10 @@ export component MenuScreen inherits Page {
             }
 
             MenuButton {
-                text: root.shutdown-text;
+                text: "Shutdown";
                 icon: Icons.power;
                 right-text: "";
                 clicked => { root.shutdown(); }
-                long-clicked => { root.shutdown-long-press(); }
             }
         }
     }

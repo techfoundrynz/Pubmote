@@ -186,10 +186,21 @@ fn edit_wifi(ui: &ComponentInstance, secret: bool) {
 /// instead of silently becoming an inert button.
 fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args: &[Value]) {
     match name {
-        "screen-changed" => {}
+        "screen-changed" | "extras-refresh" => {
+            set(ui, "shipping-mode-supported", true);
+            set(
+                ui,
+                "shipping-mode-available",
+                !boolean(controls.get_property("charging").unwrap()),
+            );
+        }
         // The controls window supplies charge telemetry; screen selection is manual.
         "charge-poll" => {
-            set(ui, "charge-percent", controls.get_property("remote-battery").unwrap());
+            set(
+                ui,
+                "charge-percent",
+                controls.get_property("remote-battery").unwrap(),
+            );
             set(
                 ui,
                 "charge-label",
@@ -205,7 +216,7 @@ fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args
                 screen(ui, "stats");
             }
         }
-        "splash-tapped" | "menu-back" => screen(ui, "stats"),
+        "splash-exit" | "menu-back" => screen(ui, "stats"),
         "stats-swiped-down"
         | "about-back"
         | "boards-back"
@@ -221,8 +232,10 @@ fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args
             screen(ui, "wifi");
         }
         "open-imu-calibration" => screen(ui, "imu-calibration"),
+        "open-extras" => screen(ui, "extras"),
+        "extras-back" => screen(ui, "about"),
         "open-games" => screen(ui, "games"),
-        "games-back" => screen(ui, "about"),
+        "games-back" => screen(ui, "extras"),
         "game-back" => screen(ui, "games"),
         "menu-connect" => {
             let connected = !boolean(controls.get_property("connected").unwrap());
@@ -258,7 +271,27 @@ fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args
                 }),
             );
         }
-        "menu-shutdown-long-press" => set(ui, "shutdown-text", text("Factory reset?")),
+        "extras-factory-reset" => {
+            set(ui, "confirm-dialog-title", text("Factory reset"));
+            set(
+                ui,
+                "confirm-dialog-message",
+                text("This will wipe all settings. Proceed?"),
+            );
+            set(ui, "confirm-dialog-confirm-text", text("Reset"));
+            set(ui, "confirm-dialog-variant", text("danger"));
+            set(ui, "show-confirm-dialog", true);
+        }
+        "extras-shipping-mode" => {
+            set(ui, "confirm-dialog-title", text("Shipping mode"));
+            set(
+                ui,
+                "confirm-dialog-message",
+                text("Disconnect battery power for storage? Connect USB to wake it again."),
+            );
+            set(ui, "confirm-dialog-confirm-text", text("Enter"));
+            set(ui, "show-confirm-dialog", true);
+        }
         "menu-shutdown" => {
             set(ui, "confirm-dialog-title", text("Simulated power off"));
             set(
@@ -510,6 +543,7 @@ pub(crate) fn initialize(
         "button-supported",
         "hbm-mode-supported",
         "led-mode-supported",
+        "shipping-mode-supported",
     ] {
         set(ui, name, true);
     }
@@ -614,7 +648,11 @@ fn speed_text(speed: f64, miles: bool) -> String {
     // Match stats_screen.cpp: snap signed zero and drop the decimal once the
     // reading rounds to 10. The device deliberately limits readout width.
     let converted = speed as f32 * if miles { 0.621371_f32 } else { 1.0 };
-    let converted = if converted.abs() < 0.05 { 0.0 } else { converted };
+    let converted = if converted.abs() < 0.05 {
+        0.0
+    } else {
+        converted
+    };
     if (converted * 10.0).round() / 10.0 >= 10.0 {
         format!("{converted:.0}")
     } else {
@@ -786,6 +824,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .unwrap();
         }
+        ui.invoke_global("UiState", "open-extras", &[])?;
+        assert!(matches!(get(&ui, "screen"), Value::EnumerationValue(_, name) if name == "extras"));
+        ui.invoke_global("UiState", "open-games", &[])?;
+        ui.invoke_global("UiState", "games-back", &[])?;
+        assert!(matches!(get(&ui, "screen"), Value::EnumerationValue(_, name) if name == "extras"));
+        ui.invoke_global("UiState", "extras-back", &[])?;
+        assert!(matches!(get(&ui, "screen"), Value::EnumerationValue(_, name) if name == "about"));
         controls.set_property("remote-battery", 73.into())?;
         controls.set_property("charging", true.into())?;
         screen(&ui, "charge");
@@ -809,8 +854,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         set(&ui, "distance-units-index", 1);
         tick(&ui, &controls, 0.0);
         assert_eq!(string(get(&ui, "speed")), "25");
-        for (speed, expected) in [(0.0, "0.0"), (-0.01, "0.0"), (8.8, "8.8"),
-                                  (9.94, "9.9"), (9.95, "10"), (28.0, "28"), (28.8, "29")] {
+        for (speed, expected) in [
+            (0.0, "0.0"),
+            (-0.01, "0.0"),
+            (8.8, "8.8"),
+            (9.94, "9.9"),
+            (9.95, "10"),
+            (28.0, "28"),
+            (28.8, "29"),
+        ] {
             assert_eq!(speed_text(speed, false), expected);
         }
         ui.invoke_global("UiState", "wifi-manual", &[])?;
@@ -840,6 +892,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "about",
             "update",
             "charge",
+            "extras",
             "games",
         ] {
             screen(&ui, name);
@@ -898,6 +951,8 @@ fn capture_scenarios(
         "update",
         "charge",
         "charge-full",
+        "charge-estimate",
+        "extras",
         "games",
         "shutdown-dialog",
     ] {
@@ -920,10 +975,19 @@ fn capture_scenarios(
         if name == "charge-full" {
             controls.set_property("remote-battery", 100.into())?;
         }
+        if name == "charge" || name == "charge-estimate" {
+            controls.set_property("charging", true.into())?;
+        }
         tick(&ui, &controls, 0.0);
+        if name == "charge-full" {
+            set(&ui, "charge-label", text("Charged"));
+        }
+        if name == "charge-estimate" {
+            set(&ui, "charge-time-estimate", text("About 40 min remaining"));
+        }
         let target = match name {
             "stats-disconnected" | "stats-low-battery" => "stats",
-            "charge-full" => "charge",
+            "charge-full" | "charge-estimate" => "charge",
             "boards-empty" => {
                 boards(&ui, false);
                 "boards"

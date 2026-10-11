@@ -29,6 +29,8 @@ spellings such as `remote/comms.h` remain stable. Vendored code stays in
   configuration value types, with no transport, UI or scheduler dependency.
 - `settings_store`: typed NVS persistence; accepts values supplied by callers
   and does not apply runtime preferences or call hardware.
+- `charge_estimator`: portable charging-time learning and prediction; callers
+  supply telemetry and own model/session records, with no hardware, UI or storage dependency.
 - Application (`firmware/src`): boot, device services, lifecycle coordination,
   hardware integration and Slint presentation; consumes those components.
 
