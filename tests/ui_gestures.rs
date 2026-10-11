@@ -12,6 +12,8 @@ impl slint::platform::Platform for Platform {
 slint::slint! {
     import { GestureArea } from "../firmware/src/slint/ui/gesture-area.slint";
     import { Pager } from "../firmware/src/slint/ui/pager.slint";
+    import { ComboBox } from "../firmware/src/slint/ui/combo-box.slint";
+    import { Theme } from "../firmware/src/slint/ui/theme.slint";
     import { AppWindow, UiState, Screen } from "../firmware/src/slint/app-window.slint";
     export { UiState, Screen }
     export component PagerTest inherits Window {
@@ -24,6 +26,18 @@ slint::slint! {
         }
     }
     export component AppTest inherits AppWindow { }
+    export component ComboTest inherits Window {
+        width: 466px; height: 466px;
+        in property <[string]> options;
+        in-out property <int> index <=> combo.current-index;
+        out property <int> selections: 0;
+        init => { Theme.is-square-mode = true; }
+        combo := ComboBox {
+            x: 50px; y: 30px; width: 300px;
+            model: root.options;
+            selected(value) => { root.selections += 1; }
+        }
+    }
     export component ProbeTest inherits Window {
         width: 466px; height: 466px;
         out property <int> drag-calls: 0;
@@ -129,4 +143,39 @@ fn reversing_swipes_cancels_page_and_menu_navigation() {
         "moves after release must not continue the drag"
     );
     probe.hide().unwrap();
+}
+
+#[test]
+fn dropdown_drag_does_not_select_and_next_tap_still_works() {
+    slint::platform::set_platform(Box::new(Platform)).unwrap();
+    for option_count in [3, 12] {
+        for points in [
+            vec![(150., 140.), (150., 160.), (150., 160.)],
+            vec![(150., 140.), (150., 165.), (150., 140.), (150., 140.)],
+            vec![(150., 220.), (150., 180.), (150., 140.), (150., 140.)],
+            // The release position alone must also reject a drag.
+            vec![(150., 140.), (150., 165.)],
+        ] {
+            let _w = window();
+            let ui = ComboTest::new().unwrap();
+            ui.set_options(slint::ModelRc::new(slint::VecModel::from(
+                (0..option_count)
+                    .map(|i| format!("Option {i}").into())
+                    .collect::<Vec<_>>(),
+            )));
+            ui.show().unwrap();
+            swipe(&ui, &[(150., 60.), (150., 60.)]);
+            swipe(&ui, &points);
+            assert_eq!(ui.get_selections(), 0, "{option_count} options: {points:?}");
+            assert_eq!(ui.get_index(), 0);
+            // Tap inside a visible row, away from the gaps exposed by scrolling.
+            swipe(&ui, &[(150., 130.), (152., 132.), (152., 132.)]);
+            assert_eq!(
+                ui.get_selections(),
+                1,
+                "{option_count} options, tap after drag: {points:?}"
+            );
+            ui.hide().unwrap();
+        }
+    }
 }
