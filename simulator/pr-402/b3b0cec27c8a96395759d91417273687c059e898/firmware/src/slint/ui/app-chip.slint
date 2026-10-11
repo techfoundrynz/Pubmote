@@ -1,0 +1,49 @@
+import { Theme } from "theme.slint";
+
+// Reusable tag/chip component with border and press interactions.
+export component AppChip inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: false;
+    in property <bool> active: false;
+    in property <color> accent-color: Theme.accent;
+    callback clicked;
+
+    // Layout configuration
+    height: 24px * Theme.scale;
+    border-radius: self.height / 2;
+    // Border uses the accent-color when enabled, and Theme.track when disabled
+    border-width: 1.5px * Theme.scale;
+    border-color: root.accent-color;
+
+    // Background uses the same opacity (transparentize(0.7), i.e., 30% opacity)
+    // for the background (of the accent-color) of the ghost button variant for press.
+    // If active, it stays at a lower opacity (e.g., 15% / transparentize(0.85)) when not pressed.
+    background: !root.enabled ? transparent :
+        touch.pressed ? root.accent-color.transparentize(0.7) :
+        root.active ? root.accent-color.transparentize(0.85) : transparent;
+
+    // Smooth touch/press/active transitions
+    animate background { duration: 150ms; }
+    animate border-color { duration: 150ms; }
+
+    HorizontalLayout {
+        padding-left: 12px * Theme.scale;
+        padding-right: 12px * Theme.scale;
+        alignment: LayoutAlignment.center;
+
+        Text {
+            text: root.text;
+            color: Theme.text;
+            font-size: Theme.font-10;
+            font-weight: Theme.w-semibold;
+            vertical-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
