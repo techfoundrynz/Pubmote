@@ -1,6 +1,7 @@
 #include "screens/menu_screen.h"
 #include "config.h"
 #include "esp_log.h"
+#include "imu/pose_brightness.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
 #include "remote/display.h"
@@ -99,8 +100,8 @@ extern "C" void setup_menu_properties() {
   }
 
   state.set_pocket_mode_active(is_pocket_mode_enabled());
-  state.set_hbm_mode_label(ui_hbm_mode_label(settings_get_device().hbm_mode));
-  state.set_hbm_mode_supported(display_supports_hbm());
+  state.set_dimming_mode_label(ui_dimming_mode_label(settings_get_device().dimming_mode));
+  state.set_dimming_mode_supported(IMU_ENABLED || display_supports_hbm());
   state.set_led_mode_label(led_mode_label(settings_get_device().led_mode));
   state.set_led_mode_supported(led_is_supported());
 
@@ -141,22 +142,17 @@ extern "C" void handle_menu_pocket_mode() {
   ui_save_quietly([]() { return save_device_settings(); });
 }
 
-extern "C" void handle_menu_toggle_hbm() {
-  if (!display_supports_hbm()) {
+extern "C" void handle_menu_toggle_dimming() {
+  if (!IMU_ENABLED && !display_supports_hbm()) {
     return;
   }
-  ESP_LOGI(TAG, "HBM mode button pressed");
-#if IMU_ENABLED
-  settings_set_hbm_mode((HbmModeOptions)((settings_get_device().hbm_mode + 1) % HBM_MODE_COUNT));
-#else
-  if (settings_get_device().hbm_mode == HBM_MODE_OFF) {
-    settings_set_hbm_mode(HBM_MODE_ON);
-  }
-  else {
-    settings_set_hbm_mode(HBM_MODE_OFF);
-  }
-#endif
-  display_set_hbm(settings_get_device().hbm_mode == HBM_MODE_ON);
+  ESP_LOGI(TAG, "Dimming button pressed");
+  DimmingModeOptions mode = settings_get_device().dimming_mode;
+  do {
+    mode = (DimmingModeOptions)((mode + 1) % DIMMING_MODE_COUNT);
+  } while (!pose_brightness_mode_supported(mode, IMU_ENABLED, display_supports_hbm()));
+  settings_set_dimming_mode(mode);
+  display_set_hbm(mode == DIMMING_MODE_HBM_ALWAYS);
   setup_menu_properties();
   ui_save_quietly([]() { return save_device_settings(); });
 }

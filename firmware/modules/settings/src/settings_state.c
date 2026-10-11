@@ -53,7 +53,7 @@ bool settings_update_device(const DeviceSettings *patch, uint32_t mask) {
   if ((mask & SETTINGS_DEVICE_DOUBLE_PRESS_ACTION) &&
       (uint32_t)patch->double_press_action > DOUBLE_PRESS_ACTION_COUNT - 1)
     return false;
-  if ((mask & SETTINGS_DEVICE_HBM_MODE) && (uint32_t)patch->hbm_mode > HBM_MODE_COUNT - 1)
+  if ((mask & SETTINGS_DEVICE_DIMMING_MODE) && (uint32_t)patch->dimming_mode > DIMMING_MODE_COUNT - 1)
     return false;
   if ((mask & SETTINGS_DEVICE_LED_MODE) && (uint32_t)patch->led_mode > LED_MODE_COUNT - 1)
     return false;
@@ -80,8 +80,8 @@ bool settings_update_device(const DeviceSettings *patch, uint32_t mask) {
     state.device.pocket_mode = patch->pocket_mode;
   if (mask & SETTINGS_DEVICE_DOUBLE_PRESS_ACTION)
     state.device.double_press_action = patch->double_press_action;
-  if (mask & SETTINGS_DEVICE_HBM_MODE)
-    state.device.hbm_mode = patch->hbm_mode;
+  if (mask & SETTINGS_DEVICE_DIMMING_MODE)
+    state.device.dimming_mode = patch->dimming_mode;
   if (mask & SETTINGS_DEVICE_LED_MODE)
     state.device.led_mode = patch->led_mode;
   portEXIT_CRITICAL(&state_lock);
@@ -280,10 +280,10 @@ bool settings_set_double_press_action(StatsDoublePressAction value) {
   patch.double_press_action = value;
   return settings_update_device(&patch, SETTINGS_DEVICE_DOUBLE_PRESS_ACTION);
 }
-bool settings_set_hbm_mode(HbmModeOptions value) {
+bool settings_set_dimming_mode(DimmingModeOptions value) {
   DeviceSettings patch = {0};
-  patch.hbm_mode = value;
-  return settings_update_device(&patch, SETTINGS_DEVICE_HBM_MODE);
+  patch.dimming_mode = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_DIMMING_MODE);
 }
 bool settings_set_led_mode(LedModeOptions value) {
   DeviceSettings patch = {0};

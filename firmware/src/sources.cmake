@@ -17,7 +17,7 @@ set(app_sources
     "imu/imu_driver.c"
     "imu/movement_detector.c"
     "imu/raise_detector.c"
-    "imu/hbm_switch.c"
+    "imu/brightness_switch.c"
     "imu/qmi8658/imu_driver_qmi8658.cpp"
     "main.c"
     "remote/adc.c"

@@ -4,7 +4,7 @@
 extern "C"
 {
 #endif
-  const char *ui_hbm_mode_label(HbmModeOptions mode);
+  const char *ui_dimming_mode_label(DimmingModeOptions mode);
   void ui_set_input_support(bool supported);
   void ui_apply_theme(void);
   void ui_refresh_device_settings(const DeviceSettings *previous);

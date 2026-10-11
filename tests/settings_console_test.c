@@ -25,9 +25,10 @@ static const char *fail_device_key;
 static int device_writes;
 static uint32_t device_values[13];
 static bool device_present[13];
-static const char *device_keys[] = {
-    "bl_level",    "screen_rotation", "theme_color",    "battery_display", "sec_stat_disp", "hbm_mode", "auto_off_time",
-    "pocket_mode", "temp_units",      "distance_units", "startup_sound",   "stats_dp",      "led_mode"};
+static const char *device_keys[] = {"bl_level",      "screen_rotation", "theme_color",   "battery_display",
+                                    "sec_stat_disp", "dimming_mode",    "auto_off_time", "pocket_mode",
+                                    "temp_units",    "distance_units",  "startup_sound", "stats_dp",
+                                    "led_mode"};
 bool display_supports_hbm(void) {
   return supports_hbm;
 }
@@ -224,8 +225,8 @@ bool settings_update_device(const DeviceSettings *patch, uint32_t mask) {
     device_settings.pocket_mode = patch->pocket_mode;
   if (mask & SETTINGS_DEVICE_DOUBLE_PRESS_ACTION)
     device_settings.double_press_action = patch->double_press_action;
-  if (mask & SETTINGS_DEVICE_HBM_MODE)
-    device_settings.hbm_mode = patch->hbm_mode;
+  if (mask & SETTINGS_DEVICE_DIMMING_MODE)
+    device_settings.dimming_mode = patch->dimming_mode;
   if (mask & SETTINGS_DEVICE_LED_MODE)
     device_settings.led_mode = patch->led_mode;
   return true;
@@ -288,10 +289,10 @@ bool settings_set_double_press_action(StatsDoublePressAction value) {
   patch.double_press_action = value;
   return settings_update_device(&patch, SETTINGS_DEVICE_DOUBLE_PRESS_ACTION);
 }
-bool settings_set_hbm_mode(HbmModeOptions value) {
+bool settings_set_dimming_mode(DimmingModeOptions value) {
   DeviceSettings patch = {0};
-  patch.hbm_mode = value;
-  return settings_update_device(&patch, SETTINGS_DEVICE_HBM_MODE);
+  patch.dimming_mode = value;
+  return settings_update_device(&patch, SETTINGS_DEVICE_DIMMING_MODE);
 }
 bool settings_set_led_mode(LedModeOptions value) {
   DeviceSettings patch = {0};
@@ -496,9 +497,10 @@ static void test_records_and_pairing(void) {
 static void test_device_preferences(void) {
   assert(settings_save_device_preferences() == ESP_OK);
   assert(device_writes == 13);
-  assert(save("{\"bl_level\":10,\"screen_rotation\":3,\"theme_color\":16777215,\"battery_display\":1,\"sec_stat_disp\":"
-              "2,\"hbm_mode\":2,\"auto_off_time\":5,\"pocket_mode\":1,\"temp_units\":1,\"distance_units\":1,\"startup_"
-              "sound\":2,\"stats_dp\":1,\"led_mode\":2}") == 0);
+  assert(
+      save("{\"bl_level\":10,\"screen_rotation\":3,\"theme_color\":16777215,\"battery_display\":1,\"sec_stat_disp\":"
+           "2,\"dimming_mode\":2,\"auto_off_time\":5,\"pocket_mode\":1,\"temp_units\":1,\"distance_units\":1,\"startup_"
+           "sound\":2,\"stats_dp\":1,\"led_mode\":2}") == 0);
   assert(device_writes == 26);
   assert(timer_resets == 1);
   assert(device_settings.bl_level == 10 && device_settings.theme_color == 16777215);
@@ -522,7 +524,7 @@ static void test_device_preferences(void) {
                        "{\"distance_units\":2}",
                        "{\"startup_sound\":3}",
                        "{\"stats_dp\":2}",
-                       "{\"hbm_mode\":3}",
+                       "{\"dimming_mode\":5}",
                        "{\"led_mode\":3}",
                        "{\"battery_display\":2}",
                        "{\"sec_stat_disp\":3}",
@@ -543,12 +545,14 @@ static void test_device_preferences(void) {
   assert(refreshes == 2 && previous_refresh.bl_level == 10);
   fail_device_key = NULL;
   supports_hbm = supports_led = false;
-  assert(save("{\"hbm_mode\":1}") != 0);
+  assert(save("{\"dimming_mode\":1}") == 0); // Dimming also works on displays without HBM.
+  assert(save("{\"dimming_mode\":3}") != 0);
+  assert(save("{\"dimming_mode\":4}") != 0);
   assert(save("{\"led_mode\":1}") != 0);
   metadata = settings_describe_json();
   assert(metadata);
   values = cJSON_GetObjectItemCaseSensitive(metadata, "values");
-  assert(!cJSON_GetObjectItemCaseSensitive(values, "hbm_mode"));
+  assert(cJSON_GetObjectItemCaseSensitive(values, "dimming_mode")->valueint == DIMMING_MODE_DIM);
   assert(!cJSON_GetObjectItemCaseSensitive(values, "led_mode"));
   cJSON_Delete(metadata);
   supports_hbm = supports_led = true;

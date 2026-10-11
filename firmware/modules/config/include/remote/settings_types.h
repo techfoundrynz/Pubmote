@@ -25,14 +25,17 @@ typedef enum {
   SCREEN_ROTATION_COUNT // Sentinel - keep last
 } ScreenRotation;
 
-// High Brightness Mode, saved as the hbm_mode device preference and cycled from
+// Display behavior: pose modes apply to Stats; permanent HBM applies to all pages.
+// Saved as the dimming_mode device preference and cycled from
 // the main menu. Order is the cycle order shown to the user.
 typedef enum {
-  HBM_MODE_OFF,
-  HBM_MODE_ON,
-  HBM_MODE_RAISED, // Driven by the raise-to-view gesture, requires an IMU
-  HBM_MODE_COUNT   // Sentinel - keep last
-} HbmModeOptions;
+  DIMMING_MODE_OFF,
+  DIMMING_MODE_DIM,        // Half saved brightness when lowered; requires an IMU
+  DIMMING_MODE_SCREEN_OFF, // Zero brightness when lowered; requires an IMU
+  DIMMING_MODE_HBM,        // HBM when raised, saved brightness when lowered
+  DIMMING_MODE_HBM_ALWAYS, // Permanent HBM on supported displays
+  DIMMING_MODE_COUNT       // Sentinel - keep last
+} DimmingModeOptions;
 
 // User-selectable LED behaviour, saved as the led_mode device preference and
 // cycled from the main menu. Order is the cycle order shown to the user, and
@@ -108,7 +111,7 @@ typedef struct {
   SecondaryStatDisplayOption secondary_stat_display;
   PocketModeOptions pocket_mode;
   StatsDoublePressAction double_press_action;
-  HbmModeOptions hbm_mode;
+  DimmingModeOptions dimming_mode;
   LedModeOptions led_mode;
 } DeviceSettings;
 

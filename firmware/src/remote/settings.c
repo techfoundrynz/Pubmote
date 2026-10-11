@@ -4,10 +4,12 @@
 #include "esp_log.h"
 #include "esp_now.h"
 #include "esp_system.h"
+#include "imu/pose_brightness.h"
 #include "input_settings.h"
 #include "nvs_flash.h"
 #include "powermanagement.h"
 #include "remote/adc.h"
+#include "remote/display.h"
 #include "remote/espnow.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings_state.h"
@@ -407,7 +409,7 @@ esp_err_t settings_init() {
       .secondary_stat_display = SECONDARY_STAT_DUTY,
       .pocket_mode = DEFAULT_POCKET_MODE,
       .double_press_action = DEFAULT_DOUBLE_PRESS_ACTION,
-      .hbm_mode = HBM_MODE_OFF,
+      .dimming_mode = DIMMING_MODE_OFF,
       .led_mode = DEFAULT_LED_MODE,
   };
 
@@ -502,16 +504,15 @@ esp_err_t settings_init() {
                                             ? (StatsDoublePressAction)temp_setting_value
                                             : DEFAULT_DOUBLE_PRESS_ACTION;
 
-  device_settings.hbm_mode =
-      nvs_read_int("hbm_mode", &temp_setting_value) == ESP_OK ? (HbmModeOptions)temp_setting_value : HBM_MODE_OFF;
-  if (device_settings.hbm_mode >= HBM_MODE_COUNT) {
-    device_settings.hbm_mode = HBM_MODE_OFF;
+  if (nvs_read_int("dimming_mode", &temp_setting_value) == ESP_OK)
+    device_settings.dimming_mode = (DimmingModeOptions)temp_setting_value;
+  else
+    device_settings.dimming_mode = DIMMING_MODE_OFF;
+  if (device_settings.dimming_mode >= DIMMING_MODE_COUNT) {
+    device_settings.dimming_mode = DIMMING_MODE_OFF;
   }
-#if !IMU_ENABLED
-  if (device_settings.hbm_mode == HBM_MODE_RAISED) {
-    device_settings.hbm_mode = HBM_MODE_OFF;
-  }
-#endif
+  if (!pose_brightness_mode_supported(device_settings.dimming_mode, IMU_ENABLED, display_supports_hbm()))
+    device_settings.dimming_mode = DIMMING_MODE_OFF;
 
   device_settings.led_mode =
       nvs_read_int("led_mode", &temp_setting_value) == ESP_OK ? (LedModeOptions)temp_setting_value : DEFAULT_LED_MODE;
