@@ -18,7 +18,7 @@ The charge screen can show an approximate time remaining, rounded up to five min
 
 Learning continues whether the charge screen is open or closed. Each uninterrupted segment ending in the charger's actual Done state updates the voltage/current ranges observed in that segment; unplugged or faulted sessions are discarded. The latest completed charge is blended into existing history, and ranges unused for more than eight learned completions stop contributing. A consistently large change across several ranges replaces the old profile, allowing it to adapt to a replacement battery. This is an approximation based on prior conditions, not a guaranteed completion time.
 
-The learned profile is saved only after a qualifying completed charge and survives restart. Factory reset clears it and prevents pending profile saves from restoring erased history.
+The learned profile is saved only after a qualifying completed charge and survives restart. Factory reset clears it and prevents pending profile saves from restoring erased history. Both Extras' Factory reset and the console `erase` command use the guarded maintenance-worker reset; reboot occurs only after a successful erase.
 
 On Pingumote, SY6970 PG_STAT (register 0x0B, bit 2) detects valid charger input independently of ADC conversions and DPDM source classification. Its active-low interrupt on GPIO14 is armed as EXT0 before deep sleep; the configured power button remains EXT1. Shutdown disables charger ADC/watchdog first, waits for the interrupt to settle, and arms charger wake only when the pin is inactive. The pin returns to digital GPIO mode at the start of the next boot. Only a disconnected-to-connected power change accepts a PMU wake; detach, charging-complete, and fault interrupts return to sleep.
 

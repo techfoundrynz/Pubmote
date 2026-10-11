@@ -6,6 +6,7 @@ import tempfile
 import unittest
 
 from test_charge_diagnostics import ROOT, without_includes
+from test_radio import function
 
 
 STUBS = r'''
@@ -21,7 +22,7 @@ typedef int esp_err_t;
 #define ESP_FAIL -1
 static void test_log(const char *tag, const char *format, ...) { (void)tag; (void)format; }
 #define ESP_LOGW(...) test_log(__VA_ARGS__)
-enum { CHARGE_STATE_CHARGING, CHARGE_STATE_DONE };
+enum { CHARGE_STATE_UNKNOWN, CHARGE_STATE_CHARGING, CHARGE_STATE_DONE };
 typedef struct {
   uint16_t voltage, current;
   int chargeState;
@@ -64,6 +65,23 @@ static void drain(void) {
 '''
 
 SCENARIOS = r'''
+static void missing_current(unsigned start) {
+  for (unsigned t = 0; t <= 90; ++t) {
+    clock_us = (int64_t)(start + t) * 1000000;
+    RemotePowerState power = adc_get_power_state();
+    assert(power.current == 0 && power.chargeState == CHARGE_STATE_UNKNOWN);
+    charge_time_sample(&power);
+    assert(!charge_time_remaining_seconds() && !queued_context);
+    // A PMU with charging flags but no current measurement is also unsupported.
+    power.isPowered = true;
+    power.chargeState = CHARGE_STATE_CHARGING;
+    charge_time_sample(&power);
+    assert(!charge_time_remaining_seconds() && !queued_context);
+  }
+  RemotePowerState done = {4200, 0, CHARGE_STATE_DONE, true, false};
+  charge_time_sample(&done);
+  assert(!queued_context);
+}
 static void sample(unsigned seconds, bool done) {
   clock_us = (int64_t)seconds * 1000000;
   RemotePowerState power = {4200, done ? 0 : 100,
@@ -78,6 +96,8 @@ static void cycle(unsigned start) {
 }
 int main(void) {
   charge_time_init();
+  missing_current(0);
+  assert(!model.generation && !writes);
   for (unsigned t = 0; t <= 90; ++t) {
     sample(t, false);
     assert(!writes && !queued_context && !charge_time_remaining_seconds());
@@ -92,6 +112,8 @@ int main(void) {
   assert(writes == 1);
   charge_time_init(); // A restart reloads history.
   assert(model.generation == 1);
+  missing_current(100);
+  assert(model.generation == 1 && writes == 1); // Even loaded history must stay hidden.
   for (unsigned t = 0; t <= 20; ++t) sample(200 + t, false);
   assert(charge_time_remaining_seconds() > 0 && writes == 1);
   charge_estimator_session_reset(&session);
@@ -122,9 +144,60 @@ int main(void) {
 }
 '''
 
+CONSOLE_STUBS = r'''
+#include <assert.h>
+#include <stddef.h>
+typedef int esp_err_t;
+#define ESP_OK 0
+#define ESP_FAIL -1
+#define ESP_LOGI(...) ((void)0)
+#define ESP_LOGE(...) ((void)0)
+static unsigned resets, reboots;
+static int queue_result, reset_result;
+static esp_err_t (*queued_work)(void *);
+static void (*queued_done)(esp_err_t, void *);
+static esp_err_t radio_session_reset_settings(void) { ++resets; return reset_result; }
+static void esp_restart(void) { ++reboots; }
+static esp_err_t radio_session_run(esp_err_t (*work)(void *),
+                                  void (*done)(esp_err_t, void *), void *context) {
+  assert(!context);
+  if (queue_result != ESP_OK) return queue_result;
+  queued_work = work; queued_done = done;
+  return ESP_OK;
+}
+'''
+
+CONSOLE_SCENARIOS = r'''
+int main(void) {
+  queue_result = ESP_FAIL;
+  assert(erase_command(0, NULL) == -1 && !resets && !reboots);
+  queue_result = ESP_OK;
+  assert(erase_command(0, NULL) == 0 && !resets && !reboots);
+  reset_result = ESP_FAIL;
+  queued_done(queued_work(NULL), NULL);
+  assert(resets == 1 && !reboots); // Failed erase never reboots.
+  assert(erase_command(0, NULL) == 0 && resets == 1);
+  reset_result = ESP_OK;
+  queued_done(queued_work(NULL), NULL);
+  assert(resets == 2 && reboots == 1);
+}
+'''
+
 
 @unittest.skipUnless(shutil.which("gcc"), "requires a host C compiler")
 class ChargeEstimatorTest(unittest.TestCase):
+    def test_console_reset_uses_guarded_worker(self):
+        with tempfile.TemporaryDirectory(prefix="pubremote-charge-reset-") as directory:
+            source, executable = Path(directory) / "test.c", Path(directory) / "test"
+            console = (ROOT / "firmware/src/remote/console.c").read_text(encoding="utf-8")
+            handlers = "\n".join(function(console, signature) for signature in
+                                 ["static esp_err_t erase_settings(", "static void erase_finished(",
+                                  "static int erase_command("])
+            source.write_text(CONSOLE_STUBS + handlers + CONSOLE_SCENARIOS, encoding="utf-8")
+            subprocess.run(["gcc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-UNDEBUG",
+                            str(source), "-o", str(executable)], check=True)
+            subprocess.run([str(executable)], check=True)
+
     def test_learning_and_adaptation(self):
         with tempfile.TemporaryDirectory(prefix="pubremote-estimator-") as directory:
             executable = Path(directory) / "test"
@@ -141,6 +214,9 @@ class ChargeEstimatorTest(unittest.TestCase):
             source.write_text(STUBS + without_includes(ROOT / "firmware/modules/charge_estimator/include/charge/charge_estimator.h")
                               + "\n" + without_includes(ROOT / "firmware/modules/charge_estimator/src/charge_estimator.c")
                               + "\n" + without_includes(ROOT / "firmware/src/charge/charge_time.c")
+                              + "\nstatic uint16_t adc_get_battery_voltage(void) { return 4200; }\n"
+                              + function((ROOT / "firmware/src/charge/adc/charge_driver_adc.c").read_text(encoding="utf-8"),
+                                         "RemotePowerState adc_get_power_state(")
                               + SCENARIOS, encoding="utf-8")
             subprocess.run(["gcc", "-std=c11", "-Wall", "-Wextra", "-UNDEBUG",
                             "-Werror", str(source), "-o", str(executable)], check=True)

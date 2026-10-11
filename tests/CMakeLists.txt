@@ -16,7 +16,7 @@ set(FIRMWARE_REMOTE "${CMAKE_SOURCE_DIR}/../firmware/src/remote")
 foreach(src input_settings.c settings_api.c settings_console.c sleep_timer.c)
   configure_file("${FIRMWARE_REMOTE}/${src}" "${STAGED}/remote/${src}" COPYONLY)
 endforeach()
-foreach(stub config.h remote/settings.h remote/settings_store.h remote/adc.h remote/remoteinputs.h remote/display.h remote/led.h ui/device_preferences.h)
+foreach(stub config.h remote/settings.h remote/settings_store.h remote/adc.h remote/remoteinputs.h remote/display.h remote/led.h remote/powermanagement.h ui/device_preferences.h)
   configure_file("${CMAKE_SOURCE_DIR}/shadow/${stub}" "${STAGED}/${stub}" COPYONLY)
 endforeach()
 
