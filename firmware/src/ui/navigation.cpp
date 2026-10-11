@@ -37,7 +37,7 @@ extern "C"
   void handle_menu_back();
   void handle_menu_connect();
   void handle_menu_pocket_mode();
-  void handle_menu_toggle_hbm();
+  void handle_menu_toggle_dimming();
   void handle_menu_toggle_led();
   void handle_open_settings();
   void handle_open_input_calibration();
@@ -265,7 +265,7 @@ static void connect_callbacks() {
   state.on_menu_back([]() { handle_menu_back(); });
   state.on_menu_connect([]() { handle_menu_connect(); });
   state.on_menu_pocket_mode([]() { handle_menu_pocket_mode(); });
-  state.on_menu_toggle_hbm([]() { handle_menu_toggle_hbm(); });
+  state.on_menu_toggle_dimming([]() { handle_menu_toggle_dimming(); });
   state.on_menu_toggle_led([]() { handle_menu_toggle_led(); });
   state.on_open_settings([]() { handle_open_settings(); });
   state.on_open_input_calibration([]() { handle_open_input_calibration(); });

@@ -9,6 +9,8 @@ extern "C"
 
   void setup_stats_properties();
   void teardown_stats_properties();
+  // UI-task preference refresh; preserves current Stats pose and mode.
+  void stats_screen_refresh_brightness();
 
 #ifdef __cplusplus
 }

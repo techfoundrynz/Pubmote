@@ -7,16 +7,21 @@
 #include "remote/stats.h"
 #include "screens/charge_screen.h"
 #include "screens/settings_screen.h"
+#include "screens/stats_screen.h"
 #include "ui/slint_window.h"
 #include <algorithm>
-extern "C" const char *ui_hbm_mode_label(HbmModeOptions mode) {
+extern "C" const char *ui_dimming_mode_label(DimmingModeOptions mode) {
   switch (mode) {
-  case HBM_MODE_OFF:
+  case DIMMING_MODE_OFF:
     return "Off";
-  case HBM_MODE_ON:
-    return "On";
-  case HBM_MODE_RAISED:
-    return "Raised";
+  case DIMMING_MODE_DIM:
+    return "50%";
+  case DIMMING_MODE_SCREEN_OFF:
+    return "Screen off";
+  case DIMMING_MODE_HBM:
+    return "HBM raised";
+  case DIMMING_MODE_HBM_ALWAYS:
+    return "HBM always";
   default:
     return "Off";
   }
@@ -86,18 +91,23 @@ extern "C" void ui_refresh_device_settings(const DeviceSettings *previous) {
     const DeviceSettings preferences = settings_get_device();
     const bool blanked =
         get_slint_window()->global<UiState>().get_screen() == Screen::Charge && charge_screen_display_blanked();
-    display_set_bl_level(blanked ? 0 : preferences.bl_level);
+    if (get_slint_window()->global<UiState>().get_screen() == Screen::Stats)
+      stats_screen_refresh_brightness();
+    else
+      display_set_bl_level(blanked ? 0 : preferences.bl_level);
     if (old.screen_rotation != preferences.screen_rotation) {
       display_set_rotation(preferences.screen_rotation);
     }
-    if (old.hbm_mode != preferences.hbm_mode) {
-      display_set_hbm(!blanked && preferences.hbm_mode == HBM_MODE_ON);
+    if (get_slint_window()->global<UiState>().get_screen() != Screen::Stats) {
+      const bool hbm = !blanked && preferences.dimming_mode == DIMMING_MODE_HBM_ALWAYS;
+      if (display_get_hbm() != hbm)
+        display_set_hbm(hbm);
     }
     ui_apply_theme();
     led_apply_mode();
     const auto &state = get_slint_window()->global<UiState>();
     state.set_pocket_mode_active(is_pocket_mode_enabled());
-    state.set_hbm_mode_label(ui_hbm_mode_label(preferences.hbm_mode));
+    state.set_dimming_mode_label(ui_dimming_mode_label(preferences.dimming_mode));
     state.set_led_mode_label(led_mode_label(preferences.led_mode));
     stats_update();
   });

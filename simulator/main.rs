@@ -249,12 +249,18 @@ fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args
             "pocket-mode-active",
             !boolean(get(ui, "pocket-mode-active")),
         ),
-        "menu-toggle-hbm" => {
+        "menu-toggle-dimming" => {
             set(
                 ui,
-                "hbm-mode-label",
-                text(if string(get(ui, "hbm-mode-label")) == "Off" {
-                    "On"
+                "dimming-mode-label",
+                text(if string(get(ui, "dimming-mode-label")) == "Off" {
+                    "50%"
+                } else if string(get(ui, "dimming-mode-label")) == "50%" {
+                    "Screen off"
+                } else if string(get(ui, "dimming-mode-label")) == "Screen off" {
+                    "HBM raised"
+                } else if string(get(ui, "dimming-mode-label")) == "HBM raised" {
+                    "HBM always"
                 } else {
                     "Off"
                 }),
@@ -541,14 +547,14 @@ pub(crate) fn initialize(
         "joystick-x-supported",
         "joystick-y-supported",
         "button-supported",
-        "hbm-mode-supported",
+        "dimming-mode-supported",
         "led-mode-supported",
         "shipping-mode-supported",
     ] {
         set(ui, name, true);
     }
     for (name, value) in [
-        ("hbm-mode-label", "Off"),
+        ("dimming-mode-label", "Off"),
         ("led-mode-label", "Off"),
         ("speed-unit", "KPH"),
         ("secondary-stat-left-label", "Temp"),
@@ -842,6 +848,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         controls.set_property("charging", false.into())?;
         ui.invoke_global("UiState", "charge-poll", &[])?;
         assert_eq!(string(get(&ui, "charge-label")), "Power connected");
+        set(&ui, "dimming-mode-label", text("Off"));
+        for label in ["50%", "Screen off", "HBM raised", "HBM always", "Off"] {
+            ui.invoke_global("UiState", "menu-toggle-dimming", &[])?;
+            assert_eq!(string(get(&ui, "dimming-mode-label")), label);
+        }
         controls.set_property("connected", false.into())?;
         tick(&ui, &controls, 0.0);
         assert!(!boolean(get(&ui, "is-connected")));

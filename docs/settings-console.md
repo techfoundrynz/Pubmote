@@ -32,7 +32,7 @@ Device preferences include brightness (10?255), rotation, theme colour, battery
 and secondary-stat display, high brightness mode, auto-off, pocket mode, units,
 startup sound, double-press action, and LED behaviour. Their descriptors share
 persistence with `save_device_settings()`. Option labels are title case (the
-on-device menu uses its own compact labels); unsupported HBM and LED modes cannot be selected.
+on-device menu uses its own compact labels); unsupported dimming and LED modes cannot be selected.
 
 Joystick calibration (`stick_*`), IMU calibration (`imu_*`), the paired boards
 (`paired_boards`, a list of MAC, connection, channel, pairing code and vehicle)

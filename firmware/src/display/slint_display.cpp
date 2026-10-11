@@ -101,12 +101,7 @@ static void slint_event_loop(void *pvParameters) {
   vTaskDelay(pdMS_TO_TICKS(350));
   ESP_LOGI(TAG, "Restoring target backlight level: %d", settings_get_device().bl_level);
   display_set_bl_level(settings_get_device().bl_level);
-  if (settings_get_device().hbm_mode == HBM_MODE_ON) {
-    display_set_hbm(true);
-  }
-  else {
-    display_set_hbm(false);
-  }
+  display_set_hbm(settings_get_device().dimming_mode == DIMMING_MODE_HBM_ALWAYS);
 
   // Subscribe this task to the task watchdog and feed it from a Slint timer:
   // timers are dispatched by the event loop itself, so a wedged event loop

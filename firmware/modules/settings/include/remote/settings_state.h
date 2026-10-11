@@ -43,8 +43,8 @@ extern "C"
   bool settings_set_pocket_mode(PocketModeOptions value);
 #define SETTINGS_DEVICE_DOUBLE_PRESS_ACTION (1u << 10)
   bool settings_set_double_press_action(StatsDoublePressAction value);
-#define SETTINGS_DEVICE_HBM_MODE (1u << 11)
-  bool settings_set_hbm_mode(HbmModeOptions value);
+#define SETTINGS_DEVICE_DIMMING_MODE (1u << 11)
+  bool settings_set_dimming_mode(DimmingModeOptions value);
 #define SETTINGS_DEVICE_LED_MODE (1u << 12)
   bool settings_set_led_mode(LedModeOptions value);
 #ifdef __cplusplus

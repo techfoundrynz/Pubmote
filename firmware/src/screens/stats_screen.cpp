@@ -2,7 +2,8 @@
 #include "config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "imu/hbm_switch.h"
+#include "imu/brightness_switch.h"
+#include "imu/pose_brightness.h"
 #include "remote/connection.h"
 #include "remote/display.h"
 #include "remote/imu.h"
@@ -27,6 +28,10 @@
 #include <string.h>
 
 static const char *TAG = "PUBREMOTE-STATS_SCREEN";
+static brightness_switch_t pose_brightness_switch;
+static bool stats_raised = false; // UI task only.
+static std::atomic<uint32_t> stats_session{0};
+static void update_stats_brightness(bool immediate);
 static float max_speed = 40.0f;
 
 // The dials are full-screen-sized items and Slint tracks dirty regions per item
@@ -230,12 +235,7 @@ extern "C" void stats_update_screen_display() {
 
     const auto &state = get_slint_window()->global<UiState>();
 
-    // Centrally force HBM off if a confirm dialog is open and HBM was triggered by raise
-    if (preferences.hbm_mode == HBM_MODE_RAISED && display_get_hbm()) {
-      if (state.get_show_confirm_dialog()) {
-        display_set_hbm(false);
-      }
-    }
+    update_stats_brightness(false);
 
     state.set_speed(slint_speed_str);
     state.set_speed_unit(slint_speed_unit);
@@ -273,27 +273,39 @@ static void double_press_handler() {
   }
 }
 
-static hbm_switch_t raised_hbm_switch;
+static void update_stats_brightness(bool immediate) {
+  if (!get_slint_window() || get_slint_window()->global<UiState>().get_screen() != Screen::Stats)
+    return;
+  const auto preferences = settings_get_device();
+  const bool dialog = get_slint_window()->global<UiState>().get_show_confirm_dialog() || ui_processing_active();
+  const uint8_t level = pose_brightness_level(preferences.dimming_mode, preferences.bl_level, stats_raised,
+                                              is_pocket_mode_enabled(), dialog, IMU_ENABLED);
+  const bool hbm = pose_brightness_hbm(preferences.dimming_mode, stats_raised, is_pocket_mode_enabled(), dialog,
+                                       IMU_ENABLED, display_supports_hbm());
+  // Dialogs, explicit setting changes and disabling dimming must restore normal
+  // brightness immediately rather than waiting out the pose bounce guard.
+  if (immediate || dialog || is_pocket_mode_enabled() || preferences.dimming_mode == DIMMING_MODE_OFF)
+    brightness_switch_reset(&pose_brightness_switch);
+  // 256 represents panel HBM, outside the normal 0..255 brightness range.
+  const uint16_t current = display_get_hbm() ? 256 : display_get_bl_level();
+  const uint16_t requested = hbm ? 256 : level;
+  if (brightness_switch_should_change(&pose_brightness_switch, current, requested, esp_timer_get_time() / 1000) ||
+      (current == requested && display_get_bl_level() != level)) {
+    display_set_bl_level(level);
+    if (display_get_hbm() != hbm)
+      display_set_hbm(hbm);
+  }
+}
 
-static bool set_raised_hbm(bool active) {
-  if (!hbm_switch_should_change(&raised_hbm_switch, display_get_hbm(), active, esp_timer_get_time() / 1000))
-    return false;
-  display_set_hbm(active);
-  return true;
+extern "C" void stats_screen_refresh_brightness() {
+  update_stats_brightness(true);
 }
 
 static void apply_imu_pose(bool raised) {
-  if (settings_get_device().hbm_mode != HBM_MODE_RAISED || !display_supports_hbm() || is_pocket_mode_enabled()) {
-    return;
-  }
-  if (raised && get_slint_window()->global<UiState>().get_show_confirm_dialog()) {
-    return;
-  }
-  if (set_raised_hbm(raised)) {
-    ESP_LOGI(TAG, "%s",
-             raised ? "Raise-to-HBM: viewing position detected. Enabling HBM." : "Remote lowered. Disabling HBM.");
-  }
-  if (raised) {
+  stats_raised = raised;
+  update_stats_brightness(false);
+  if (raised && settings_get_device().dimming_mode != DIMMING_MODE_OFF && !is_pocket_mode_enabled() &&
+      !get_slint_window()->global<UiState>().get_show_confirm_dialog() && !ui_processing_active()) {
     reset_sleep_timer();
   }
 }
@@ -309,12 +321,13 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
     return;
   static std::atomic<bool> latest_raised{false};
   static std::atomic<bool> pending{false};
+  const uint32_t session = stats_session.load();
   latest_raised.store(gesture == IMU_GESTURE_RAISED);
   if (pending.exchange(true))
     return;
-  slint::invoke_from_event_loop([]() {
+  slint::invoke_from_event_loop([session]() {
     pending.store(false);
-    if (!is_stats_screen_active() || !get_slint_window())
+    if (session != stats_session.load() || !is_stats_screen_active() || !get_slint_window())
       return;
     apply_imu_pose(latest_raised.load());
   });
@@ -322,7 +335,12 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
 
 // Registration functions called from main flow (replaces LVGL loaded events)
 extern "C" void setup_stats_properties() {
-  hbm_switch_reset(&raised_hbm_switch);
+  stats_session.fetch_add(1);
+  stats_raised = false;
+  brightness_switch_reset(&pose_brightness_switch);
+  update_stats_brightness(true);
+  // The provisional lowered entry state must not delay the first real pose.
+  brightness_switch_reset(&pose_brightness_switch);
   ui_update_pending.store(false);
   stats_register_update_cb(stats_update_screen_display);
   input_router_claim(INPUT_ACTION_DOUBLE_PRESS, double_press_handler, INPUT_ONCE);
@@ -359,12 +377,12 @@ extern "C" void setup_stats_properties() {
 }
 
 extern "C" void teardown_stats_properties() {
+  stats_session.fetch_add(1);
   ui_save_quietly_flush();
   stats_unregister_update_cb(stats_update_screen_display);
   imu_unregister_gesture_callback(handle_imu_gesture);
-  if (settings_get_device().hbm_mode == HBM_MODE_RAISED) {
-    display_set_hbm(false);
-  }
+  display_set_hbm(settings_get_device().dimming_mode == DIMMING_MODE_HBM_ALWAYS);
+  display_set_bl_level(settings_get_device().bl_level);
 }
 
 extern "C" void handle_splash_exit() {

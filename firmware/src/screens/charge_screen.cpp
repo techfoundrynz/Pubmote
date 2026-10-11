@@ -27,7 +27,7 @@ static uint64_t now_ms() {
 static void restore_display_preferences() {
   const auto preferences = settings_get_device();
   display_set_bl_level(preferences.bl_level);
-  display_set_hbm(preferences.hbm_mode == HBM_MODE_ON);
+  display_set_hbm(preferences.dimming_mode == DIMMING_MODE_HBM_ALWAYS);
 }
 
 static bool wake_charge_display(uint64_t event_ms) {

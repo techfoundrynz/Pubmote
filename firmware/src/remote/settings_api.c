@@ -1,6 +1,7 @@
 #include "settings_api.h"
 #include "cJSON.h"
 #include "config.h"
+#include "imu/pose_brightness.h"
 #include "input_settings.h"
 #include "powermanagement.h"
 #include "remote/display.h"
@@ -46,10 +47,10 @@ DEFINE_SETTING_OPTIONS(settings_distance_units_options, DISTANCE_UNITS_LABELS, D
 static const char *const STARTUP_SOUND_LABELS[] = {"Disabled", "Beep", "Melody"};
 DEFINE_SETTING_OPTIONS(settings_startup_sound_options, STARTUP_SOUND_LABELS, STARTUP_SOUND_COUNT)
 
-static const char *const HBM_LABELS[] = {"Off", "On", "Raised"};
-_Static_assert(sizeof(HBM_LABELS) / sizeof(HBM_LABELS[0]) == HBM_MODE_COUNT, "HBM_LABELS out of sync");
-static SettingOptions hbm_options(void) {
-  return (SettingOptions){HBM_LABELS, display_supports_hbm() ? (IMU_ENABLED ? HBM_MODE_COUNT : 2) : 1};
+static const char *const DIMMING_LABELS[] = {"Off", "50%", "Screen off", "HBM raised", "HBM always"};
+_Static_assert(sizeof(DIMMING_LABELS) / sizeof(DIMMING_LABELS[0]) == DIMMING_MODE_COUNT, "DIMMING_LABELS out of sync");
+static SettingOptions dimming_options(void) {
+  return (SettingOptions){DIMMING_LABELS, DIMMING_MODE_COUNT};
 }
 
 static const char *const LED_LABELS[] = {"Off", "Solid", "Alerts"};
@@ -84,7 +85,7 @@ DEFINE_DEVICE_ACCESSORS(screen_rotation, screen_rotation, ScreenRotation)
 DEFINE_DEVICE_ACCESSORS(theme_color, theme_color, uint32_t)
 DEFINE_DEVICE_ACCESSORS(battery_display, battery_display, BoardBatteryDisplayOption)
 DEFINE_DEVICE_ACCESSORS(sec_stat_disp, secondary_stat_display, SecondaryStatDisplayOption)
-DEFINE_DEVICE_ACCESSORS(hbm_mode, hbm_mode, HbmModeOptions)
+DEFINE_DEVICE_ACCESSORS(dimming_mode, dimming_mode, DimmingModeOptions)
 DEFINE_DEVICE_ACCESSORS(auto_off_time, auto_off_time, AutoOffOptions)
 DEFINE_DEVICE_ACCESSORS(pocket_mode, pocket_mode, PocketModeOptions)
 DEFINE_DEVICE_ACCESSORS(temp_units, temp_units, TempUnits)
@@ -264,13 +265,14 @@ static const SettingDescriptor fields[] = {
      .read_number = read_sec_stat_disp,
      .apply_number = apply_sec_stat_disp,
      .options = secondary_options},
-    {.key = "hbm_mode",
-     .label = "High brightness mode",
+    {.key = "dimming_mode",
+     .label = "Dimming",
      .group = "Display",
-     .description = "Raised mode follows the raise-to-view gesture",
-     .read_number = read_hbm_mode,
-     .apply_number = apply_hbm_mode,
-     .options = hbm_options},
+     .description = "Pose modes apply to Stats and require an IMU. HBM requires a supported display; HBM always "
+                    "applies across pages",
+     .read_number = read_dimming_mode,
+     .apply_number = apply_dimming_mode,
+     .options = dimming_options},
     {.key = "auto_off_time",
      .label = "Auto-off timeout",
      .group = "Power",
@@ -386,6 +388,9 @@ static bool allowed_number(const SettingDescriptor *field, double value) {
   if (!isfinite(value) || floor(value) != value) {
     return false;
   }
+  if (field->options == dimming_options)
+    return value >= 0 && value < DIMMING_MODE_COUNT &&
+           pose_brightness_mode_supported((DimmingModeOptions)(int)value, IMU_ENABLED, display_supports_hbm());
   if (field->read_number || field->read_record || field->default_board) {
     return value >= (double)field->minimum &&
            (field->options ? value < field->options().count : value <= (double)field->maximum);
@@ -401,7 +406,7 @@ int settings_save_device_preferences(void) {
   for (size_t i = 0; i < FIELD_COUNT; ++i) {
     if (fields[i].read_number && !allowed_number(&fields[i], fields[i].read_number(&snapshot.device))) {
       // Unsupported optional hardware has no effect, but keep its stored mode.
-      if (!((fields[i].options == hbm_options && fields[i].read_number(&snapshot.device) < HBM_MODE_COUNT) ||
+      if (!((fields[i].options == dimming_options && fields[i].read_number(&snapshot.device) < DIMMING_MODE_COUNT) ||
             (fields[i].options == led_options && fields[i].read_number(&snapshot.device) < LED_MODE_COUNT))) {
         return ESP_ERR_INVALID_ARG;
       }
@@ -610,6 +615,9 @@ static cJSON *describe_field(const SettingDescriptor *field) {
     if (field->options) {
       SettingOptions choices = field->options();
       for (int i = 0; i < choices.count; ++i) {
+        if (field->options == dimming_options &&
+            !pose_brightness_mode_supported((DimmingModeOptions)i, IMU_ENABLED, display_supports_hbm()))
+          continue;
         if (!add_option(options, i, choices.labels[i])) {
           goto fail;
         }
@@ -661,7 +669,7 @@ cJSON *settings_describe_json(void) {
   }
   for (size_t i = 0; i < FIELD_COUNT; ++i) {
     const SettingDescriptor *field = &fields[i];
-    if ((field->options == hbm_options && !display_supports_hbm()) ||
+    if ((field->options == dimming_options && !IMU_ENABLED && !display_supports_hbm()) ||
         (field->options == led_options && !led_is_supported())) {
       continue;
     }
