@@ -543,10 +543,12 @@ void power_management_task(void *pvParameters) {
 static bool check_pmu_should_wake(bool last_powered) {
   await_pmu_int_reset();
   power_state_update();
-  if (is_power_connected && !last_powered) {
+  // The saved state may still be powered if USB was unplugged during sleep.
+  // Accept live input power regardless of the state recorded before sleep.
+  if (is_power_connected) {
     woke_for_charging = true;
     buzzer_set_tone(NOTE_SUCCESS, PMU_INT_NOTE_DURATION);
-    // Power was connected after last sleep - continue to normal operation
+    // Input power is good - continue to the charge screen.
   }
   else {
     if (!is_power_connected && last_powered) {

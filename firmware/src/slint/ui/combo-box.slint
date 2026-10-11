@@ -62,6 +62,8 @@ export component ComboBox inherits Rectangle {
     }
 
     popup := PopupWindow {
+        // Scrolling must leave the list open; item taps close it explicitly.
+        close-policy: close-on-click-outside;
         x: root.round-screen ? (Theme.panel-width - root.width) / 2 - root.absolute-position.x : 0;
         y: root.round-screen ? (Theme.panel-height - root.popup-height) / 2 - root.absolute-position.y
                              : (root.opens-up ? -(root.popup-height + root.popup-gap) : root.height + root.popup-gap);
@@ -76,7 +78,7 @@ export component ComboBox inherits Rectangle {
             border-color: Theme.track;
             clip: true;
 
-            Flickable {
+            list := Flickable {
                 content-height: items-layout.min-height;
                 init => {
                     // Bring the selected item into view (centered when possible)
@@ -103,7 +105,39 @@ export component ComboBox inherits Rectangle {
                         }
 
                         item-touch := TouchArea {
+                            property <bool> tap-eligible: false;
+                            property <length> press-x;
+                            property <length> press-y;
+                            property <length> press-content-y;
+
+                            // Measure in screen space: the row itself moves while scrolling.
+                            // Once a gesture becomes a drag, returning to its start is no tap.
+                            function check-drag() {
+                                if (Math.abs(self.absolute-position.x + self.mouse-x - self.press-x) > 10px
+                                    || Math.abs(self.absolute-position.y + self.mouse-y - self.press-y) > 10px
+                                    || Math.abs(list.content-y - self.press-content-y) > 10px) {
+                                    self.tap-eligible = false;
+                                }
+                            }
+                            pointer-event(event) => {
+                                if (event.kind == PointerEventKind.cancel) {
+                                    self.tap-eligible = false;
+                                } else if (event.button == PointerEventButton.left) {
+                                    if (event.kind == PointerEventKind.down) {
+                                        self.press-x = self.absolute-position.x + self.mouse-x;
+                                        self.press-y = self.absolute-position.y + self.mouse-y;
+                                        self.press-content-y = list.content-y;
+                                        self.tap-eligible = true;
+                                    } else if (event.kind == PointerEventKind.up) {
+                                        self.tap-eligible = false;
+                                    }
+                                }
+                            }
+                            moved => { self.check-drag(); }
                             clicked => {
+                                self.check-drag();
+                                if (!self.tap-eligible) { return; }
+                                self.tap-eligible = false;
                                 root.current-index = idx;
                                 root.selected(item);
                                 popup.close();
