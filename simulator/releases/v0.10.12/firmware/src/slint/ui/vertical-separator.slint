@@ -1,0 +1,10 @@
+import { Theme } from "theme.slint";
+
+export component VerticalSeparator inherits Rectangle {
+    in property <length> size;
+    
+    width: 2px * Theme.scale;
+    height: root.size;
+    background: Theme.track;
+    border-radius: 1px * Theme.scale;
+}
