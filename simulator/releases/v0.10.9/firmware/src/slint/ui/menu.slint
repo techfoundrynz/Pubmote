@@ -1,0 +1,144 @@
+// MenuScreen — faithful reproduction of ui_MenuScreen.
+//
+// LVGL: ui_MenuContent (column SPACE_BETWEEN) -> ui_MenuBody (scrollable column,
+// pad 40, row gap 10) with buttons in this exact order:
+//   Back, Connect (hidden), Enable Pocket Mode, Settings, Calibration, Pairing,
+//   About, Shutdown. Each lv_btn is 42px tall, 100% width.
+
+import { Theme } from "theme.slint";
+import { AppButton } from "app-button.slint";
+import { Page } from "page.slint";
+import { Icons } from "icons.slint";
+
+// Menu rows stay taller than the standard button
+component MenuButton inherits AppButton {
+    height: 42px * Theme.scale;
+    variant: "ghost";
+}
+
+export component MenuScreen inherits Page {
+    in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
+    in property <string> connect-label: "Connect";
+    in property <bool> pocket-mode-active: false;
+    // Labels rather than indices - ui_hbm_mode_label() in ui/device_preferences.cpp and
+    // led_mode_label() in led.c own the names, so the enum ordering is not
+    // duplicated here where it could silently drift.
+    in property <string> hbm-mode-label: "";
+    in property <bool> hbm-mode-supported: false;
+    in property <string> led-mode-label: "";
+    in property <bool> led-mode-supported: false;
+    in property <string> shutdown-text: "Shutdown";
+    in-out property <int> scroll-offset-y: 0;
+    in property <bool> imu-supported: false;
+    in property <bool> joystick-supported: false;
+    callback connect;
+    callback pocket-mode;
+    callback toggle-hbm;
+    callback toggle-led;
+    callback settings;
+    callback calibration;
+    callback pairing;
+    callback about;
+    callback wifi;
+    callback imu-calibration;
+    callback shutdown;
+    callback shutdown-long-press;
+
+    title: "MENU";
+    show-back: true;
+
+    flick := Flickable {
+        content-height: menu-layout.min-height;
+        init => {
+            self.content-y = -root.scroll-offset-y * 1px;
+        }
+        changed content-y => {
+            root.scroll-offset-y = -self.content-y / 1px;
+        }
+        menu-layout := VerticalLayout {
+            padding-top: Theme.seam-size;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-bottom: Theme.scroll-padding-bottom;
+            spacing: 6px * Theme.scale;
+
+            if root.show-connect: MenuButton {
+                text: root.connect-label;
+                icon: Icons.radio;
+                right-text: "";
+                clicked => { root.connect(); }
+            }
+
+            MenuButton {
+                text: "Pocket mode";
+                icon: Icons.lock;
+                right-text: root.pocket-mode-active ? "On" : "Off";
+                clicked => { root.pocket-mode(); }
+            }
+
+            if root.hbm-mode-supported: MenuButton {
+                text: "HBM mode";
+                icon: Icons.sun;
+                right-text: root.hbm-mode-label;
+                clicked => { root.toggle-hbm(); }
+            }
+
+            if root.led-mode-supported: MenuButton {
+                text: "LED mode";
+                icon: Icons.lightbulb;
+                right-text: root.led-mode-label;
+                clicked => { root.toggle-led(); }
+            }
+
+            MenuButton {
+                text: "Settings";
+                icon: Icons.settings;
+                right-text: "\u{203a}";
+                clicked => { root.settings(); }
+            }
+
+            if root.joystick-supported: MenuButton {
+                text: "Inputs";
+                icon: Icons.joystick;
+                right-text: "\u{203a}";
+                clicked => { root.calibration(); }
+            }
+
+            if root.imu-supported: MenuButton {
+                text: "IMU";
+                icon: Icons.axis-3d;
+                right-text: "\u{203a}";
+                clicked => { root.imu-calibration(); }
+            }
+
+            MenuButton {
+                text: "Pairing";
+                icon: Icons.bluetooth;
+                right-text: "\u{203a}";
+                clicked => { root.pairing(); }
+            }
+
+            MenuButton {
+                text: "Wi-Fi";
+                icon: Icons.radio;
+                right-text: "\u{203a}";
+                clicked => { root.wifi(); }
+            }
+
+            MenuButton {
+                text: "About";
+                icon: Icons.info;
+                right-text: "\u{203a}";
+                clicked => { root.about(); }
+            }
+
+            MenuButton {
+                text: root.shutdown-text;
+                icon: Icons.power;
+                right-text: "";
+                clicked => { root.shutdown(); }
+                long-clicked => { root.shutdown-long-press(); }
+            }
+        }
+    }
+}
