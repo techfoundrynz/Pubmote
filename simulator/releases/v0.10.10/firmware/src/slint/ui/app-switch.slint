@@ -1,0 +1,32 @@
+import { Theme } from "theme.slint";
+
+export component AppSwitch inherits Rectangle {
+    in-out property <bool> checked: false;
+    callback toggled;
+    
+    height: round(36px / 1px * Theme.scale) * 1px;
+    width: round(64px / 1px * Theme.scale) * 1px;
+    border-radius: self.height / 2;
+    background: root.checked ? Theme.accent : Theme.track;
+    
+    animate background { duration: 150ms; }
+    
+    thumb := Rectangle {
+        width: root.height - round(8px / 1px * Theme.scale) * 1px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: Theme.text;
+        
+        x: root.checked ? root.width - self.width - round(4px / 1px * Theme.scale) * 1px : round(4px / 1px * Theme.scale) * 1px;
+        y: round((root.height - self.height) / 1px / 2) * 1px;
+        
+        animate x { duration: 150ms; easing: ease-out; }
+    }
+    
+    TouchArea {
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled();
+        }
+    }
+}
