@@ -106,9 +106,14 @@ static esp_err_t transmitter_start() {
 static esp_err_t connection_start() {
   return reset_step("start-manager", &manager_running, true);
 }
+static bool charge_persistence_enabled = true;
 static esp_err_t reset_all_settings() {
   assert(!manager_running && !rx_running && !tx_running);
+  assert(!charge_persistence_enabled);
   return reset_step("erase");
+}
+static void charge_time_set_persistence_enabled(bool enabled) {
+  charge_persistence_enabled = enabled;
 }
 #define pdMS_TO_TICKS(ms) (ms)
 #define ESP_LOGE(...) ((void)0)
@@ -194,12 +199,15 @@ int main() {
   assert(!ui_processing_active() && !slint::delayed);
   rx_running = tx_running = manager_running = true;
   assert(radio_session_reset_settings() == ESP_OK);
+  assert(!charge_persistence_enabled);
   assert(reset_calls == "stop-manager stop-tx stop-rx erase ");
   for (const char *step : {"stop-manager", "stop-tx", "stop-rx", "erase"}) {
     reset_failure = step;
     reset_calls.clear();
+    charge_persistence_enabled = true;
     rx_running = tx_running = manager_running = true;
     assert(radio_session_reset_settings() == ESP_ERR_TIMEOUT);
+    assert(charge_persistence_enabled);
     if (reset_failure != "erase")
       assert(reset_calls.find("erase") == std::string::npos);
     assert(rx_running && tx_running && manager_running);

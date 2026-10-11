@@ -4,11 +4,13 @@
 #include "remote/imu.h"
 #include "remote/input_router.h"
 #include "remote/input_settings.h"
+#include "remote/powermanagement.h"
 #include "remote/remoteinputs.h"
 #include "remote/settings_snapshot.h"
 #include "screens/about_screen.h"
 #include "screens/boards_screen.h"
 #include "screens/charge_screen.h"
+#include "screens/extras_screen.h"
 #include "screens/game_screen.h"
 #include "screens/games_screen.h"
 #include "screens/imu_calibration_screen.h"
@@ -30,7 +32,7 @@
 // Declarations of screen handlers implemented in other files
 extern "C"
 {
-  void handle_splash_tapped();
+  void handle_splash_exit();
   void handle_stats_swiped_down();
   void handle_menu_back();
   void handle_menu_connect();
@@ -178,6 +180,9 @@ static void connect_callbacks() {
     cached_active_screen.store(screen);
     if (prev != screen) {
       // Exit hooks
+      if (prev == Screen::Charge) {
+        teardown_charge_properties();
+      }
       if (prev == Screen::Wifi) {
         teardown_wifi_properties();
       }
@@ -197,6 +202,9 @@ static void connect_callbacks() {
         teardown_game_properties();
       }
 
+      if (prev == Screen::Extras) {
+        teardown_extras_properties();
+      }
       if (prev == Screen::About) {
         teardown_about_properties();
       }
@@ -205,6 +213,9 @@ static void connect_callbacks() {
       input_router_restore_defaults();
 
       // Enter hooks
+      if (screen == Screen::Charge) {
+        setup_charge_properties();
+      }
       if (screen == Screen::Wifi) {
         setup_wifi_properties();
       }
@@ -235,6 +246,9 @@ static void connect_callbacks() {
       else if (screen == Screen::Boards) {
         setup_boards_properties();
       }
+      else if (screen == Screen::Extras) {
+        setup_extras_properties();
+      }
       else if (screen == Screen::Games) {
         setup_games_properties();
       }
@@ -244,7 +258,7 @@ static void connect_callbacks() {
     }
   });
 
-  state.on_splash_tapped([]() { handle_splash_tapped(); });
+  state.on_splash_exit([]() { handle_splash_exit(); });
   state.on_charge_poll([]() { poll_charge_screen(); });
   state.on_charge_tapped([]() { handle_charge_tapped(); });
   state.on_stats_swiped_down([]() { handle_stats_swiped_down(); });
@@ -274,6 +288,11 @@ static void connect_callbacks() {
   state.on_about_check_updates([]() { handle_about_check_updates(); });
   state.on_about_back([]() { handle_about_back(); });
   state.on_about_refresh([]() { update_about_stats(); });
+  state.on_open_extras([]() { handle_open_extras(); });
+  state.on_extras_back([]() { handle_extras_back(); });
+  state.on_extras_refresh([]() { update_extras_properties(); });
+  state.on_extras_factory_reset([]() { handle_extras_factory_reset(); });
+  state.on_extras_shipping_mode([]() { handle_extras_shipping_mode(); });
   state.on_update_primary([]() { handle_update_primary(); });
   state.on_update_secondary([]() { handle_update_secondary(); });
   state.on_update_selected([](int index) { handle_update_selected(index); });
@@ -289,6 +308,8 @@ static void connect_callbacks() {
 }
 
 void ui_navigation_init(int reset_reason) {
+  if (power_management_take_shipping_error())
+    get_slint_window()->global<UiState>().set_boot_notice("Shipping mode failed. Unplug USB and try again.");
   // Surface unexpected reboots (panic / watchdog / brownout) as a dismissable
   // dialog so crashes don't go unnoticed as a silent restart
   switch (reset_reason) {
@@ -317,7 +338,9 @@ void ui_navigation_init(int reset_reason) {
 }
 void ui_navigation_prepare_shutdown(void) {
   imu_unregister_gesture_callback(handle_imu_gesture);
+  imu_unregister_gesture_callback(handle_charge_imu_gesture);
 }
 void ui_navigation_shutdown(void) {
   teardown_about_properties();
+  teardown_extras_properties();
 }

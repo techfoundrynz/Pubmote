@@ -5,6 +5,7 @@
 #include "remote/remoteinputs.h"
 #include "remote/settings.h"
 #include "remote/stats.h"
+#include "screens/charge_screen.h"
 #include "screens/settings_screen.h"
 #include "ui/slint_window.h"
 #include <algorithm>
@@ -83,12 +84,14 @@ extern "C" void ui_refresh_device_settings(const DeviceSettings *previous) {
       return;
     }
     const DeviceSettings preferences = settings_get_device();
-    display_set_bl_level(preferences.bl_level);
+    const bool blanked =
+        get_slint_window()->global<UiState>().get_screen() == Screen::Charge && charge_screen_display_blanked();
+    display_set_bl_level(blanked ? 0 : preferences.bl_level);
     if (old.screen_rotation != preferences.screen_rotation) {
       display_set_rotation(preferences.screen_rotation);
     }
     if (old.hbm_mode != preferences.hbm_mode) {
-      display_set_hbm(preferences.hbm_mode == HBM_MODE_ON);
+      display_set_hbm(!blanked && preferences.hbm_mode == HBM_MODE_ON);
     }
     ui_apply_theme();
     led_apply_mode();

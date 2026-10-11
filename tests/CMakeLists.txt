@@ -36,6 +36,16 @@ else()
 endif()
 
 enable_testing()
+add_executable(charge_estimator_test charge_estimator_test.c
+  ../firmware/modules/charge_estimator/src/charge_estimator.c)
+target_include_directories(charge_estimator_test PRIVATE ../firmware/modules/charge_estimator/include)
+set_target_properties(charge_estimator_test PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED YES)
+if(MSVC)
+  target_compile_options(charge_estimator_test PRIVATE /UNDEBUG /W4)
+else()
+  target_compile_options(charge_estimator_test PRIVATE -UNDEBUG -Wall -Wextra -Werror)
+endif()
+add_test(NAME charge_estimator COMMAND charge_estimator_test)
 add_subdirectory(imu)
 add_test(NAME settings_console COMMAND settings_console_test)
 

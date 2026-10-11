@@ -21,8 +21,10 @@ static _Atomic(vprintf_like_t) previous_sink = vprintf;
 static bool capture_tag(const char *record) {
   // Capture known connectivity tags only; settings/console logs may contain secrets.
   static const char *const tags[] = {
-      "PUBREMOTE-BLE-DRV:",    "PUBMOTE-WIFI:",          "PUBMOTE-OTA:",        "PUBREMOTE-UPDATE_SCREEN:",
-      "PUBREMOTE-CONNECTION:", "PUBREMOTE-TRANSMITTER:", "PUBREMOTE-RECEIVER:", "PUBREMOTE-MEM:",
+      "PUBREMOTE-BLE-DRV:",         "PUBMOTE-WIFI:",         "PUBMOTE-OTA:",
+      "PUBREMOTE-UPDATE_SCREEN:",   "PUBREMOTE-CONNECTION:", "PUBREMOTE-TRANSMITTER:",
+      "PUBREMOTE-RECEIVER:",        "PUBREMOTE-MEM:",        "PUBREMOTE-CHARGE_DRIVER_SY6970:",
+      "PUBREMOTE-POWERMANAGEMENT:",
   };
   const char *tag = strchr(record, ')');
   if (!tag)

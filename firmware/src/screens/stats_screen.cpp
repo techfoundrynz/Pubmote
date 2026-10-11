@@ -15,6 +15,7 @@
 #include "remote/stats.h"
 #include "remote/time.h"
 #include "remote/vehicle_state.h"
+#include "screens/charge_screen.h"
 #include "slint_generated/app-window.h"
 #include "ui/screen_status.h"
 #include "ui/slint_window.h"
@@ -304,6 +305,8 @@ extern "C" void handle_imu_gesture(imu_gesture_t gesture) {
     reset_sleep_timer();
     return;
   }
+  if (gesture != IMU_GESTURE_RAISED && gesture != IMU_GESTURE_LOWERED)
+    return;
   static std::atomic<bool> latest_raised{false};
   static std::atomic<bool> pending{false};
   latest_raised.store(gesture == IMU_GESTURE_RAISED);
@@ -364,9 +367,17 @@ extern "C" void teardown_stats_properties() {
   }
 }
 
-extern "C" void handle_splash_tapped() {
-  ESP_LOGI(TAG, "Splash screen tapped");
-  slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Stats); });
+extern "C" void handle_splash_exit() {
+  ESP_LOGI(TAG, "Splash screen finished");
+  slint::invoke_from_event_loop([]() {
+    const auto &state = get_slint_window()->global<UiState>();
+    if (state.get_screen() != Screen::Splash) {
+      return;
+    }
+    charge_screen_finish_boot();
+    if (state.get_screen() == Screen::Splash)
+      state.set_screen(Screen::Stats);
+  });
 }
 
 extern "C" void handle_menu_back() {

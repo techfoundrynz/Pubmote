@@ -19,6 +19,7 @@
 #include <led_strip_types.h>
 #include <math.h>
 #include <nvs.h>
+#include <stdatomic.h>
 
 static const char *TAG = "PUBREMOTE-LED";
 
@@ -30,6 +31,7 @@ static TaskHandle_t led_task_handle = NULL;
   #define LEDC_TIMER LEDC_TIMER_2
   #define LED_STRIP_RMT_RES_HZ (10 * 1000 * 1000)
 static led_strip_handle_t led_strip = NULL;
+static atomic_int charging_state = LED_CHARGING_NONE;
 
 static uint8_t brightness_level = 255; // Brightness setting for the LED strip
 static uint8_t current_brightness = 0; // Effective brightness for the animation
@@ -111,11 +113,24 @@ static void apply_led_effect() {
 
   // Calculate the target color based on current settings
   RGB target_color = adjustBrightness(rgb, current_brightness / 255.0);
+  const int charging = atomic_load(&charging_state);
+  if (charging != LED_CHARGING_NONE) {
+    RGB color = charging == LED_CHARGING_COMPLETE ? (RGB){32, 255, 64} : (RGB){255, 96, 0};
+    float level = charging == LED_CHARGING_COMPLETE ? 0.3f : 0.2f;
+    if (charging == LED_CHARGING_ACTIVE) {
+      // One gentle breath every two seconds, independent of UI poll rate.
+      float phase = (esp_timer_get_time() % 2000000) / 2000000.0f;
+      level = 0.12f + 0.28f * (0.5f - 0.5f * cosf(phase * 6.2831853f));
+    }
+    target_color = settings_get_device().led_mode == LED_MODE_OFF
+                       ? (RGB){0, 0, 0}
+                       : adjustBrightness(color, level * brightness_level / 255.0f);
+  }
   RGB final_color = target_color;
 
   // Check if we happen to be in a transition
   int64_t now = esp_timer_get_time();
-  if (now < transition_start_time + TRANSITION_DURATION_US) {
+  if (charging == LED_CHARGING_NONE && now < transition_start_time + TRANSITION_DURATION_US) {
     float progress = (float)(now - transition_start_time) / TRANSITION_DURATION_US;
     if (progress < 0.0f) {
       progress = 0.0f;
@@ -236,6 +251,12 @@ static void no_effect() {
   vTaskDelay(pdMS_TO_TICKS(ANIMATION_DELAY_MS));
 }
 
+static void charging_effect() {
+  // Leave the underlying color/effect intact for restoration on page exit.
+  apply_led_effect();
+  vTaskDelay(pdMS_TO_TICKS(ANIMATION_DELAY_MS));
+}
+
 static esp_timer_handle_t led_startup_off_timer = NULL;
 
 static void startup_effect_stop(void *arg) {
@@ -270,22 +291,27 @@ static void play_startup_effect() {
 
 static void led_task(void *pvParameters) {
   while (true) {
-    if (current_effect == LED_EFFECT_PULSE) {
+    const LedEffect effect = atomic_load(&charging_state) != LED_CHARGING_NONE ? LED_EFFECT_CHARGING : current_effect;
+    if (effect == LED_EFFECT_CHARGING) {
+      charging_effect();
+      continue;
+    }
+    if (effect == LED_EFFECT_PULSE) {
       pulse_effect();
       continue;
     }
 
-    if (current_effect == LED_EFFECT_SOLID) {
+    if (effect == LED_EFFECT_SOLID) {
       solid_effect();
       continue;
     }
 
-    if (current_effect == LED_EFFECT_RAINBOW) {
+    if (effect == LED_EFFECT_RAINBOW) {
       rainbow_effect();
       continue;
     }
 
-    if (current_effect == LED_EFFECT_NONE) {
+    if (effect == LED_EFFECT_NONE) {
       no_effect();
       continue;
     }
@@ -300,6 +326,14 @@ static void led_task(void *pvParameters) {
   led_task_handle = NULL;
 }
 #endif
+
+void led_set_effect_charging(LedChargingState state) {
+#if LED_ENABLED
+  const int previous = atomic_exchange(&charging_state, state);
+  if (previous != LED_CHARGING_NONE && state == LED_CHARGING_NONE)
+    trigger_transition();
+#endif
+}
 
 void led_set_effect_solid(uint32_t color) {
 #if LED_ENABLED

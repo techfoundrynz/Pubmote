@@ -13,7 +13,7 @@ extern "C" void handle_open_games() {
 extern "C" void handle_games_back() {
   slint::invoke_from_event_loop([]() {
     if (get_slint_window())
-      get_slint_window()->global<UiState>().set_screen(Screen::About);
+      get_slint_window()->global<UiState>().set_screen(Screen::Extras);
   });
 }
 extern "C" void setup_games_properties() {

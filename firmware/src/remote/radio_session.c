@@ -1,4 +1,5 @@
 #include "remote/radio_session.h"
+#include "charge/charge_time.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -45,8 +46,12 @@ esp_err_t radio_session_reset_settings(void) {
   // Quiesce board workers so telemetry/channel persistence cannot recreate
   // settings between the erase and the delayed reboot.
   esp_err_t result = stop_workers();
-  if (result == ESP_OK)
+  if (result == ESP_OK) {
+    charge_time_set_persistence_enabled(false);
     result = reset_all_settings();
+    if (result != ESP_OK)
+      charge_time_set_persistence_enabled(true);
+  }
   if (result != ESP_OK) {
     vTaskDelay(pdMS_TO_TICKS(20));
     esp_err_t restored = start_workers();

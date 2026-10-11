@@ -35,11 +35,26 @@ enum class TimerMode {
   SingleShot
 };
 struct Timer {
+  inline static Timer *owner = nullptr;
+  bool running() const {
+    return owner == this;
+  }
+  void stop() {
+    if (owner == this) {
+      owner = nullptr;
+      delayed = {};
+    }
+  }
   void start(TimerMode, std::chrono::milliseconds delay, std::function<void()> callback) {
     if (delay.count() < 1)
       throw "Timer must have a positive delay";
     last_delay = delay.count();
-    delayed = std::move(callback);
+    owner = this;
+    delayed = [this, callback = std::move(callback)]() {
+      if (owner == this)
+        owner = nullptr;
+      callback();
+    };
   }
 };
 inline void invoke_from_event_loop(std::function<void()> callback) {
