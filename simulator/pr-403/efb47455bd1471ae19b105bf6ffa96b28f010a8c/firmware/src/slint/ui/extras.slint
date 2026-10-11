@@ -1,0 +1,45 @@
+import { Theme } from "theme.slint";
+import { MenuButton } from "menu-button.slint";
+import { Page } from "page.slint";
+
+export component ExtrasScreen inherits Page {
+    in property <bool> shipping-mode-supported: false;
+    in property <bool> shipping-mode-available: false;
+    callback factory-reset;
+    callback shipping-mode;
+    callback arcade;
+    title: "EXTRAS";
+    show-back: true;
+
+    Flickable {
+        content-height: actions.min-height;
+        actions := VerticalLayout {
+            padding-top: Theme.seam-size;
+            padding-left: Theme.page-padding-horizontal;
+            padding-right: Theme.page-padding-horizontal;
+            padding-bottom: Theme.scroll-padding-bottom;
+            spacing: 6px * Theme.scale;
+
+            MenuButton {
+                text: "Factory reset";
+                clicked => { root.factory-reset(); }
+            }
+            if root.shipping-mode-supported: MenuButton {
+                text: "Shipping mode";
+                enabled: root.shipping-mode-available;
+                clicked => { root.shipping-mode(); }
+            }
+            if root.shipping-mode-supported && !root.shipping-mode-available: Text {
+                text: "Unplug USB to enter shipping mode";
+                color: Theme.text-dim;
+                font-size: Theme.font-11;
+                wrap: word-wrap;
+            }
+            MenuButton {
+                text: "Arcade";
+                right-text: "\u{203a}";
+                clicked => { root.arcade(); }
+            }
+        }
+    }
+}
