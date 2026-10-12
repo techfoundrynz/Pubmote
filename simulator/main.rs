@@ -1,7 +1,7 @@
 //! Desktop service doubles bound to the firmware's unmodified Slint UI.
 use slint::{Model, ModelRc, Timer, TimerMode, VecModel};
 use slint_interpreter::{
-    Brush, Color, Compiler, ComponentHandle, ComponentInstance, Image, Rgb8Pixel,
+    Brush, Color, Compiler, ComponentHandle, ComponentInstance, Image, Rgba8Pixel,
     SharedPixelBuffer, Struct, Value,
 };
 use std::{
@@ -575,7 +575,7 @@ pub(crate) fn initialize(
     set(ui, "theme-s", 86);
     set(ui, "theme-l", 95);
     for (name, values) in [
-        ("double-press-options", vec!["Open menu", "None"]),
+        ("double-press-options", vec!["None", "Open menu"]),
         ("rotation-options", vec!["0°", "90°", "180°", "270°"]),
         (
             "auto-off-options",
@@ -601,6 +601,27 @@ pub(crate) fn initialize(
     apply_settings(ui);
     let weak = ui.as_weak();
     let cweak = controls.as_weak();
+    let focus_weak = weak.clone();
+    let focus_binding = ui.set_global_callback("Navigation", "focus-next", move |_| {
+        if let Some(ui) = focus_weak.upgrade() { send_key(&ui, slint::platform::Key::Tab); }
+        Value::Void
+    });
+    if let Err(error) = focus_binding {
+        if !BASELINE.get() { panic!("Navigation: {error:?}"); }
+    }
+    let focus_weak = weak.clone();
+    let directional_binding = ui.set_global_callback("Navigation", "focus-step", move |args| {
+        if let Some(ui) = focus_weak.upgrade() {
+            let steps = (number(args[0].clone()) as i32).clamp(-32, 32);
+            for _ in 0..steps.abs() {
+                send_key(&ui, if steps < 0 { slint::platform::Key::Backtab } else { slint::platform::Key::Tab });
+            }
+        }
+        Value::Void
+    });
+    if let Err(error) = directional_binding {
+        if !BASELINE.get() { panic!("Navigation: {error:?}"); }
+    }
     let callbacks: Vec<_> = ui
         .definition()
         .global_callbacks("UiState")
@@ -620,19 +641,32 @@ pub(crate) fn initialize(
     }
     let gradient = ui.set_global_callback("ColorSliderGenerator", "generate-track", |args| {
         let n = |i: usize| number(args[i].clone());
-        let width = n(0).clamp(1.0, 1200.0) as u32;
-        let height = n(1).clamp(1.0, 1200.0) as u32;
-        let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(width, height);
+        let width = n(0).ceil().clamp(1.0, 1200.0) as u32;
+        let height = n(1).ceil().clamp(1.0, 1200.0) as u32;
+        let mut pixels = SharedPixelBuffer::<Rgba8Pixel>::new(width, height);
+        let radius = height as f64 / 2.0;
         for (i, pixel) in pixels.make_mut_slice().iter_mut().enumerate() {
-            let fraction = (i as u32 % width) as f64 / width.saturating_sub(1).max(1) as f64;
+            let x = (i as u32 % width) as f64;
+            let y = (i as u32 / width) as f64;
+            // Match firmware color_utils.cpp: transparency forms the track's
+            // rounded ends; the Slint Image itself has rectangular bounds.
+            let dx = if x < radius { x - radius }
+                else if x > width as f64 - radius { x - (width as f64 - radius) }
+                else { 0.0 };
+            let dy = y - radius;
+            if dx * dx + dy * dy > radius * radius {
+                *pixel = Rgba8Pixel::new(0, 0, 0, 0);
+                continue;
+            }
+            let fraction = x / width.saturating_sub(1).max(1) as f64;
             let color = hsv(
                 if n(2) == 0.0 { fraction * 360.0 } else { n(3) },
                 if n(2) == 1.0 { fraction } else { n(4) / 100.0 },
                 if n(2) == 2.0 { fraction } else { n(5) / 100.0 },
             );
-            *pixel = Rgb8Pixel::new(color.red(), color.green(), color.blue());
+            *pixel = Rgba8Pixel::new(color.red(), color.green(), color.blue(), 255);
         }
-        Value::Image(Image::from_rgb8(pixels))
+        Value::Image(Image::from_rgba8(pixels))
     });
     if let Err(error) = gradient {
         if !BASELINE.get() {
@@ -648,6 +682,27 @@ pub(crate) fn initialize(
             Value::Void
         })
         .unwrap();
+    let weak = ui.as_weak();
+    controls.set_callback("input", move |args| {
+        if let Some(ui) = weak.upgrade() {
+            let key = match number(args[0].clone()) as i32 {
+                0 => slint::platform::Key::UpArrow,
+                1 => slint::platform::Key::DownArrow,
+                2 => slint::platform::Key::Return,
+                4 => slint::platform::Key::LeftArrow,
+                5 => slint::platform::Key::RightArrow,
+                _ => slint::platform::Key::Escape,
+            };
+            send_key(&ui, key);
+        }
+        Value::Void
+    }).unwrap();
+}
+
+fn send_key(ui: &ComponentInstance, key: slint::platform::Key) {
+    let text: slint::SharedString = key.into();
+    ui.window().dispatch_event(slint::platform::WindowEvent::KeyPressed { text: text.clone() });
+    ui.window().dispatch_event(slint::platform::WindowEvent::KeyReleased { text });
 }
 
 fn speed_text(speed: f64, miles: bool) -> String {
@@ -966,7 +1021,22 @@ fn capture_scenarios(
         "extras",
         "games",
         "shutdown-dialog",
+        "menu-focus",
+        "settings-focus",
+        "settings-edit",
+        "settings-options-focus",
+        "settings-options-edit",
+        "settings-color-focus",
+        "settings-color-edit",
+        "settings-pages-focus",
+        "header-focus",
+        "keyboard-focus",
+        "switch-focus",
+        "shutdown-focus",
     ] {
+        if BASELINE.get() && (name.ends_with("-focus") || name.ends_with("-edit")) {
+            continue;
+        }
         let ui = load(
             &ui_root.join("firmware/src/slint/app-window.slint"),
             "AppWindow",
@@ -997,13 +1067,20 @@ fn capture_scenarios(
             set(&ui, "charge-time-estimate", text("About 40 min remaining"));
         }
         let target = match name {
+            "menu-focus" | "header-focus" | "shutdown-focus" => "menu",
+            "settings-focus" | "settings-edit" | "settings-options-focus" | "settings-options-edit"
+                | "settings-color-focus" | "settings-color-edit" | "settings-pages-focus" => "settings",
+            "switch-focus" => {
+                set(&ui, "show-invert-switch", true);
+                "input-calibration"
+            }
             "stats-disconnected" | "stats-low-battery" => "stats",
             "charge-full" | "charge-estimate" => "charge",
             "boards-empty" => {
                 boards(&ui, false);
                 "boards"
             }
-            "wifi-keyboard" => {
+            "wifi-keyboard" | "keyboard-focus" => {
                 edit_wifi(&ui, true);
                 set(&ui, "wifi-value", text("secret"));
                 set(&ui, "wifi-masked-value", text("******"));
@@ -1032,6 +1109,42 @@ fn capture_scenarios(
         }
         ui.show()?;
         i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+        if name.ends_with("-focus") || name.ends_with("-edit") {
+            // Instantiate the controls and settle the transition before moving focus.
+            let _ = ui.window().take_snapshot()?;
+            i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+            match name {
+                "shutdown-focus" => {
+                    handle(&ui, &controls, "menu-shutdown", &[]);
+                    let _ = ui.window().take_snapshot()?;
+                    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(40));
+                    send_key(&ui, slint::platform::Key::Tab);
+                }
+                "header-focus" => {
+                    send_key(&ui, slint::platform::Key::Backtab);
+                }
+                "switch-focus" => {
+                    // This page starts at its first inversion switch.
+                }
+                _ => {
+                    // Pages start at the first body control after Back.
+                    if name == "settings-pages-focus" || name.contains("-options-") || name.contains("-color-") {
+                        send_key(&ui, slint::platform::Key::Tab);
+                        if name != "settings-pages-focus" {
+                            send_key(&ui, slint::platform::Key::Return);
+                            for _ in 0..if name.contains("-color-") { 7 } else { 1 } {
+                                send_key(&ui, slint::platform::Key::Tab);
+                                i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(300));
+                            }
+                            send_key(&ui, slint::platform::Key::Return);
+                            send_key(&ui, slint::platform::Key::Backtab);
+                        }
+                    }
+                    if name.ends_with("-edit") { send_key(&ui, slint::platform::Key::Return); }
+                }
+            }
+            i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(200));
+        }
         if name == "shutdown-dialog" {
             handle(&ui, &controls, "menu-shutdown", &[]);
         }

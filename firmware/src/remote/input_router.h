@@ -7,7 +7,8 @@ extern "C"
 {
 #endif
 
-  // Stick and double-press routing. Clicks reach Slint as Return instead, and long press stays
+  // Up/down defaults to focus traversal; double-press defaults to Escape/back.
+  // Clicks reach Slint as Return instead, and long press stays
   // with power management so no screen can take power-off. Screens claim in their setup hook;
   // defaults are restored on every screen change.
   typedef enum {
@@ -47,7 +48,8 @@ extern "C"
   // Call at a steady rate from a UI-priority task, never the control input task
   void input_router_poll_stick(float x, float y);
 
-  // Cleared on every screen change like other claims; the getter also honours pocket mode
+  // Cleared on every screen change; forwarding waits for a calibrated neutral
+  // stick sample after the claim. The getter also honours pocket mode.
   void input_router_claim_board_forwarding();
   bool input_router_forwards_to_board();
 

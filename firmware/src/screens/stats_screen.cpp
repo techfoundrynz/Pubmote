@@ -266,11 +266,20 @@ extern "C" void stats_update_screen_display() {
   });
 }
 
-// Double press navigates to Menu Screen
+// Double press follows the saved action; overlays still receive Escape/back.
 static void double_press_handler() {
-  if (settings_get_device().double_press_action == DOUBLE_PRESS_ACTION_OPEN_MENU) {
-    slint::invoke_from_event_loop([]() { get_slint_window()->global<UiState>().set_screen(Screen::Menu); });
-  }
+  const bool open_menu = settings_get_device().double_press_action == DOUBLE_PRESS_ACTION_OPEN_MENU;
+  slint::invoke_from_event_loop([open_menu]() {
+    if (!get_slint_window() || ui_processing_active()) { return; }
+    const auto &state = get_slint_window()->global<UiState>();
+    if (state.get_show_confirm_dialog() || state.get_calibration_prompt() ||
+        state.get_boot_notice() != "" || state.get_operation_error() != "") {
+      get_slint_window()->window().dispatch_key_press_event(slint::SharedString(slint::platform::key_codes::Escape));
+      get_slint_window()->window().dispatch_key_release_event(slint::SharedString(slint::platform::key_codes::Escape));
+    } else if (open_menu && state.get_screen() == Screen::Stats) {
+      state.set_screen(Screen::Menu);
+    }
+  });
 }
 
 static void update_stats_brightness(bool immediate) {
@@ -347,6 +356,8 @@ extern "C" void setup_stats_properties() {
   // The stick is throttle here, not focus
   input_router_claim(INPUT_ACTION_STICK_UP, NULL, INPUT_ONCE);
   input_router_claim(INPUT_ACTION_STICK_DOWN, NULL, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_LEFT, NULL, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_STICK_RIGHT, NULL, INPUT_ONCE);
   input_router_claim_board_forwarding();
   imu_register_gesture_callback(handle_imu_gesture);
 

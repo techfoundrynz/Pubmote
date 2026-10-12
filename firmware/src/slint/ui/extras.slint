@@ -22,6 +22,7 @@ export component ExtrasScreen inherits Page {
 
             MenuButton {
                 text: "Factory reset";
+                first-in-group: !root.show-back;
                 clicked => { root.factory-reset(); }
             }
             if root.shipping-mode-supported: MenuButton {
@@ -37,6 +38,7 @@ export component ExtrasScreen inherits Page {
             }
             MenuButton {
                 text: "Arcade";
+                last-in-group: true;
                 right-text: "\u{203a}";
                 clicked => { root.arcade(); }
             }

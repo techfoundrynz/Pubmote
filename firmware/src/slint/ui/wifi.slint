@@ -5,6 +5,7 @@ import { Keyboard } from "keyboard.slint";
 
 export struct WifiNetwork { ssid: string, detail: string }
 export component WifiScreen inherits Rectangle {
+    in property <bool> navigation-active: true;
     in property <[WifiNetwork]> networks;
     in property <string> status;
     in property <string> saved;
@@ -28,8 +29,10 @@ export component WifiScreen inherits Rectangle {
     callback done;
     callback cancel;
     if !root.editing: Page {
+        navigation-active: root.navigation-active;
         title: "WI-FI";
         show-back: true;
+        back-is-only: root.busy;
         back => { root.back(); }
         Flickable {
             content-height: content.min-height;
@@ -51,11 +54,12 @@ export component WifiScreen inherits Rectangle {
                     enabled: !root.busy;
                     clicked => { root.select(idx); }
                 }
-                AppButton { text: "Other network"; variant: "secondary"; enabled: !root.busy; clicked => { root.manual(); } }
+                AppButton { text: "Other network"; last-in-group: true; variant: "secondary"; enabled: !root.busy; clicked => { root.manual(); } }
             }
         }
     }
     if root.editing: Keyboard {
+        navigation-active: root.navigation-active;
         keys: root.keys;
         value: root.value;
         masked-value: root.masked-value;

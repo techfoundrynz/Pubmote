@@ -18,7 +18,7 @@ export global Theme {
     in-out property <bool> is-square-mode: false;
 
     // Standard page paddings
-    out property <length> header-height: 46px * root.scale;
+    out property <length> header-height: 36px * root.scale;
     // Fixed so Page can place the footer seam fade; equals the footer's natural
     // height (button 30 + padding 4 + 18)
     out property <length> footer-height: 52px * root.scale;
@@ -37,6 +37,10 @@ export global Theme {
     in-out property <color> primary-button-text: #ffffff;
     out property <color> track: #414141;         // 0x414141 arc track / borders
     out property <color> shadow: #000000BF;      // elevation drop shadows
+    // mix() weights the first color: keep the ring blue and fills subdued.
+    out property <color> focus-color: root.accent.mix(root.text, 0.8);
+    out property <color> focus-fill: root.accent.mix(root.bg, 0.24);
+    out property <color> edit-fill: root.accent.mix(root.bg, 0.4);
 
     // Status colors
     out property <color> color-caution: #ffc145;

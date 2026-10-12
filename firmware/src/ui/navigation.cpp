@@ -136,11 +136,18 @@ static void nav_dispatch_key(std::u8string_view key) {
 }
 
 static void nav_focus_next() {
-  nav_dispatch_key(slint::platform::key_codes::Tab);
+  nav_dispatch_key(input_pins_x_enabled() ? slint::platform::key_codes::DownArrow : slint::platform::key_codes::Tab);
 }
 
 static void nav_focus_previous() {
-  nav_dispatch_key(slint::platform::key_codes::Backtab);
+  nav_dispatch_key(input_pins_x_enabled() ? slint::platform::key_codes::UpArrow : slint::platform::key_codes::Backtab);
+}
+
+static void nav_left() { nav_dispatch_key(slint::platform::key_codes::LeftArrow); }
+static void nav_right() { nav_dispatch_key(slint::platform::key_codes::RightArrow); }
+
+static void nav_back() {
+  nav_dispatch_key(slint::platform::key_codes::Escape);
 }
 
 extern "C" void ui_dispatch_activate() {
@@ -153,6 +160,20 @@ extern "C" void ui_dispatch_activate_edge(bool pressed) {
 
 static void connect_callbacks() {
   const auto &state = get_slint_window()->global<UiState>();
+  get_slint_window()->global<Navigation>().on_focus_next([]() {
+    if (!get_slint_window() || ui_processing_active()) { return; }
+    const auto key = slint::SharedString(slint::platform::key_codes::Tab);
+    get_slint_window()->window().dispatch_key_press_event(key);
+    get_slint_window()->window().dispatch_key_release_event(key);
+  });
+  get_slint_window()->global<Navigation>().on_focus_step([](int steps) {
+    if (!get_slint_window() || ui_processing_active()) { return; }
+    const auto key = slint::SharedString(steps < 0 ? slint::platform::key_codes::Backtab : slint::platform::key_codes::Tab);
+    for (int remaining = std::abs(std::clamp(steps, -32, 32)); remaining > 0; --remaining) {
+      get_slint_window()->window().dispatch_key_press_event(key);
+      get_slint_window()->window().dispatch_key_release_event(key);
+    }
+  });
 
   state.set_show_fps(SHOW_FPS);
   state.set_imu_supported(IMU_ENABLED);
@@ -163,6 +184,9 @@ static void connect_callbacks() {
 
   input_router_set_default(INPUT_ACTION_STICK_DOWN, nav_focus_next, input_repeat(750, 500));
   input_router_set_default(INPUT_ACTION_STICK_UP, nav_focus_previous, input_repeat(750, 500));
+  input_router_set_default(INPUT_ACTION_STICK_LEFT, nav_left, input_repeat(750, 500));
+  input_router_set_default(INPUT_ACTION_STICK_RIGHT, nav_right, input_repeat(750, 500));
+  input_router_set_default(INPUT_ACTION_DOUBLE_PRESS, nav_back, INPUT_ONCE);
 
   state.on_screen_changed([](Screen screen) {
     Screen prev = cached_active_screen.load();

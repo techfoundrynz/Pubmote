@@ -8,6 +8,7 @@
 
 import { Theme } from "theme.slint";
 import { ArcGauge } from "arc-gauge.slint";
+import { NavigationFocus } from "navigation-focus.slint";
 
 export component ChargeScreen inherits Rectangle {
     in property <int> battery-percent: 0;
@@ -15,6 +16,13 @@ export component ChargeScreen inherits Rectangle {
     in property <string> time-estimate: "";
     callback dismissed();
     background: Theme.bg;
+    NavigationFocus {
+        first-in-group: true;
+        last-in-group: true;
+        width: 100%; height: 100%;
+        init => { self.focus(); }
+        activated => { root.dismissed(); }
+    }
 
     // Full-circle charge dial, starting at 12 o'clock.
     ArcGauge {
@@ -56,7 +64,7 @@ export component ChargeScreen inherits Rectangle {
             horizontal-alignment: center;
         }
         Text {
-            text: "Tap to dismiss";
+            text: "Tap or click to dismiss";
             color: Theme.text-dim;
             font-size: Theme.font-11;
             horizontal-alignment: center;

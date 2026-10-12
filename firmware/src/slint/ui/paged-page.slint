@@ -10,6 +10,8 @@ import { Pager, PagerDots } from "pager.slint";
 export component PagedPage inherits Page {
     in-out property <int> current-page: 0;
     in property <int> total-pages: 2;
+    in property <bool> page-has-focusable-content: true;
+    back-is-only: !root.page-has-focusable-content && root.total-pages <= 1;
 
     property <length> dots-footer: 24px * Theme.scale;
     footer-inset: dots-footer;
@@ -35,7 +37,9 @@ export component PagedPage inherits Page {
             padding-bottom: 6px * Theme.scale;
 
             PagerDots {
-                current-page: root.current-page;
+                first-in-group: !root.show-back && !root.page-has-focusable-content;
+                last-in-group: true;
+                current-page <=> root.current-page;
                 total-pages: root.total-pages;
             }
         }

@@ -6,6 +6,7 @@ export component GamesScreen inherits Page {
     callback launch(int);
     title: "ARCADE";
     show-back: true;
+    back-is-only: root.games.length == 0;
     VerticalLayout {
         Flickable {            content-height: games-layout.min-height;
             games-layout := VerticalLayout {
@@ -20,6 +21,8 @@ export component GamesScreen inherits Page {
                     horizontal-alignment: center; wrap: word-wrap;
                 }
                 for title[index] in root.games: AppButton {
+                    first-in-group: !root.show-back && index == 0;
+                    last-in-group: index == root.games.length - 1;
                     text: title; variant: "secondary";
                     clicked => { root.launch(index); }
                 }

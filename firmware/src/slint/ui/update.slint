@@ -28,6 +28,7 @@ export component UpdateScreen inherits Page {
 
     title: "UPDATE";
     show-back: true;
+    back-is-only: !root.primary-enabled && (!root.show-dropdown || root.updates.length == 0);
     footer-inset: footer.height;
     back => { root.secondary(); }
 
@@ -47,6 +48,8 @@ export component UpdateScreen inherits Page {
                 }
 
                 if root.show-dropdown: ComboBox {
+                    first-in-group: !root.show-back;
+                    last-in-group: !root.primary-enabled;
                     model: root.updates;
                     selected(i) => { root.update-selected(self.current-index); }
                 }
@@ -56,6 +59,8 @@ export component UpdateScreen inherits Page {
         // ui_UpdateFooter (25%)
         footer := PageFooter {
             AppButton {
+                first-in-group: !root.show-back && (!root.show-dropdown || root.updates.length == 0);
+                last-in-group: true;
                 text: root.primary-text;
                 enabled: root.primary-enabled;
                 clicked => { root.primary(); }
