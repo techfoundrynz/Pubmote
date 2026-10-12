@@ -82,6 +82,7 @@ UI PRs also get a browser simulator and a visual comparison report at
 at `https://pubmote.com/simulator/releases/<tag>/`.
 
 See [Wi-Fi menu and keyboard](docs/wifi-menu.md) for on-device network setup and text entry.
+See [joystick navigation](docs/joystick-navigation.md) for using the UI with up/down and one button.
 
 ### Slint live preview
 

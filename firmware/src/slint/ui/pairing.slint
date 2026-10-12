@@ -73,6 +73,7 @@ export component PairingScreen inherits Page {
                     }
 
                     AppButton {
+                        first-in-group: true;
                         variant: "outline";
                         text: "Retry";
                         clicked => { root.retry-scan(); }
@@ -96,7 +97,8 @@ export component PairingScreen inherits Page {
                         padding-bottom: Theme.scroll-padding-bottom;
                         spacing: 6px * Theme.scale;
                         alignment: start;
-                        for device in root.discovered-devices: AppButton {
+                        for device[idx] in root.discovered-devices: AppButton {
+                            first-in-group: idx == 0;
                             text: device.name;
                             variant: "secondary";
                             clicked => { root.select-device(device.index); }
@@ -109,6 +111,8 @@ export component PairingScreen inherits Page {
         // ui_PairingFooter (25%)
         footer := PageFooter {
             AppButton {
+                first-in-group: !root.is-ble-scan || (root.scan-error == "" && root.discovered-devices.length == 0);
+                last-in-group: true;
                 text: root.action-text;
                 clicked => { root.action(); }
             }

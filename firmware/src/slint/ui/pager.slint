@@ -1,23 +1,45 @@
 import { Theme } from "theme.slint";
 import { GestureArea } from "gesture-area.slint";
+import { NavigationFocus } from "navigation-focus.slint";
 
 // Page indicator dots; lives in the page footer next to the Pager body
 export component PagerDots inherits Rectangle {
-    in property <int> current-page: 0;
+    in-out property <int> current-page: 0;
     in property <int> total-pages: 2;
+    in property <bool> first-in-group: false;
+    in property <bool> last-in-group: false;
     property <length> dot: round(4px / 1px * Theme.scale) * 1px;
+    height: 16px * Theme.scale;
+    nav := NavigationFocus {
+        width: 100%; height: 100%;
+        available: root.total-pages > 1;
+        adjustable: true;
+        horizontal-adjusts: true;
+        horizontal-adjustment: -1;
+        first-in-group: root.first-in-group;
+        last-in-group: root.last-in-group;
+        adjusted(direction) => { root.current-page = clamp(root.current-page - direction, 0, root.total-pages - 1); }
+    }
 
+    Rectangle {
+        width: root.total-pages * 8px * Theme.scale + 12px * Theme.scale;
+        height: 100%;
+        x: (root.width - self.width) / 2;
+        border-radius: self.height / 2;
+        background: nav.has-focus ? (nav.editing ? Theme.edit-fill : Theme.focus-fill) : transparent;
+    }
     HorizontalLayout {
         alignment: center;
-        spacing: round(4px / 1px * Theme.scale) * 1px;
+        spacing: round(2px / 1px * Theme.scale) * 1px;
 
         for i in root.total-pages: VerticalLayout {
             alignment: center;
+            width: 6px * Theme.scale;
             Rectangle {
-                width: root.dot;
-                height: root.dot;
+                width: i == root.current-page && nav.has-focus ? 6px * Theme.scale : root.dot;
+                height: i == root.current-page && nav.editing ? 6px * Theme.scale : root.dot;
                 border-radius: round(root.dot / 1px / 2) * 1px;
-                background: i == root.current-page ? Theme.accent : Theme.track;
+                background: i == root.current-page ? (nav.has-focus ? Theme.focus-color : Theme.accent) : Theme.track;
             }
         }
     }

@@ -1,4 +1,5 @@
 import { Theme } from "theme.slint";
+import { NavigationFocus } from "navigation-focus.slint";
 
 // Reusable tag/chip component with border and press interactions.
 export component AppChip inherits Rectangle {
@@ -13,12 +14,18 @@ export component AppChip inherits Rectangle {
     border-radius: self.height / 2;
     // Border uses the accent-color when enabled, and Theme.track when disabled
     border-width: 1.5px * Theme.scale;
-    border-color: root.accent-color;
+    border-color: nav.has-focus ? Theme.focus-color : root.accent-color;
+    nav := NavigationFocus {
+        width: 100%; height: 100%;
+        available: root.enabled;
+        activated => { root.clicked(); }
+    }
 
     // Background uses the same opacity (transparentize(0.7), i.e., 30% opacity)
     // for the background (of the accent-color) of the ghost button variant for press.
     // If active, it stays at a lower opacity (e.g., 15% / transparentize(0.85)) when not pressed.
     background: !root.enabled ? transparent :
+        nav.has-focus ? Theme.focus-fill :
         touch.pressed ? root.accent-color.transparentize(0.7) :
         root.active ? root.accent-color.transparentize(0.85) : transparent;
 

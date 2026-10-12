@@ -1,4 +1,6 @@
 import { Theme } from "theme.slint";
+import { NavigationFocus } from "navigation-focus.slint";
+import { FocusHalo } from "focus-halo.slint";
 
 export global ColorSliderGenerator {
     pure callback generate-track(length, length, int, float, float, float) -> image;
@@ -8,9 +10,26 @@ export component ColorSlider inherits Rectangle {
     in-out property <float> hue: 0;   // 0..360
     in-out property <float> sat: 100; // 0..100
     in-out property <float> lit: 50;  // 0..100
+    in property <bool> first-in-group: false;
     
     // mode: 0=Hue, 1=Sat, 2=Lit
     property <int> mode: 0;
+    nav := NavigationFocus {
+        width: 100%; height: 100%;
+        adjustable: true;
+        first-in-group: root.first-in-group;
+        activated => {
+            // Click through each channel, then leave editing after lightness.
+            if (self.editing) { root.mode = 0; }
+            else if (root.mode < 2) { root.mode += 1; self.editing = true; }
+        }
+        adjusted(direction) => {
+            let value = clamp(root.value + direction * (root.mode == 0 ? 5 : 2), 0, root.maximum);
+            if (root.mode == 0) { root.hue = value; }
+            else if (root.mode == 1) { root.sat = value; }
+            else { root.lit = value; }
+        }
+    }
     
     property <float> value: root.mode == 0 ? root.hue : (root.mode == 1 ? root.sat : root.lit);
     property <float> minimum: 0;
@@ -44,12 +63,20 @@ export component ColorSlider inherits Rectangle {
             }
             
             // Thumb
+            FocusHalo {
+                x: thumb.x - 4px * Theme.scale;
+                y: thumb.y - 4px * Theme.scale;
+                width: thumb.width + 8px * Theme.scale;
+                height: self.width;
+                active: nav.has-focus;
+                editing: nav.editing;
+            }
             thumb := Rectangle {
                 width: round(28px / 1px * Theme.scale) * 1px; // Slightly smaller to look better on a thick track
                 height: round(28px / 1px * Theme.scale) * 1px;
                 border-radius: self.width / 2;
                 border-width: round(3px / 1px * Theme.scale) * 1px;
-                border-color: #ffffff;
+                border-color: nav.has-focus ? Theme.focus-color : Theme.text;
                 background: root.current-color;
                 
                 // Position logic
@@ -103,8 +130,9 @@ export component ColorSlider inherits Rectangle {
         }
 
         Text {
-            text: root.mode == 0 ? "Mode: Hue (Hold to cycle)" : (root.mode == 1 ? "Mode: Saturation (Hold to cycle)" : "Mode: Lightness (Hold to cycle)");
-            color: Theme.text;
+            text: (root.mode == 0 ? "Hue" : root.mode == 1 ? "Saturation" : "Lightness")
+                + (nav.editing ? " · Up/down · Click next" : " · Click to edit · Hold to cycle");
+            color: nav.has-focus ? Theme.focus-color : Theme.text-dim;
             font-size: Theme.font-14;
             horizontal-alignment: center;
             overflow: elide;

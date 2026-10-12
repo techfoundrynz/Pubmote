@@ -56,6 +56,7 @@ export component MenuScreen inherits Page {
 
             if root.show-connect: MenuButton {
                 text: root.connect-label;
+                first-in-group: !root.show-back;
                 icon: Icons.radio;
                 right-text: "";
                 clicked => { root.connect(); }
@@ -63,6 +64,7 @@ export component MenuScreen inherits Page {
 
             MenuButton {
                 text: "Pocket mode";
+                first-in-group: !root.show-back && !root.show-connect;
                 icon: Icons.lock;
                 right-text: root.pocket-mode-active ? "On" : "Off";
                 clicked => { root.pocket-mode(); }
@@ -126,6 +128,7 @@ export component MenuScreen inherits Page {
 
             MenuButton {
                 text: "Shutdown";
+                last-in-group: true;
                 icon: Icons.power;
                 right-text: "";
                 clicked => { root.shutdown(); }

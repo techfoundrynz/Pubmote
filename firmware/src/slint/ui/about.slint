@@ -13,6 +13,7 @@ import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
 import { PagedPage } from "paged-page.slint";
 import { GestureArea } from "gesture-area.slint";
+import { NavigationFocus } from "navigation-focus.slint";
 
 // One line of the diagnostics page. A header carries only a label and titles the group
 // below it; everything else is a label on the left and its value on the right.
@@ -77,6 +78,13 @@ export component AboutScreen inherits PagedPage {
             spacing: 10px * Theme.scale;
             alignment: center;
             Rectangle {
+                border-radius: 8px * Theme.scale;
+                background: version-focus.has-focus ? Theme.focus-fill : transparent;
+                version-focus := NavigationFocus {
+                    first-in-group: !root.show-back;
+                    width: 100%; height: 100%;
+                    activated => { root.count-version-tap(); }
+                }
                 Text {
                     width: 100%;
                     text: root.version-info;
@@ -152,6 +160,34 @@ export component AboutScreen inherits PagedPage {
             }
         }
 
+        Rectangle {
+            width: 100%; height: 100%;
+            Rectangle {
+                x: Theme.page-padding-horizontal - 10px * Theme.scale;
+                y: (parent.height - self.height) / 2;
+                width: 3px * Theme.scale;
+                height: 48px * Theme.scale;
+                border-radius: self.width / 2;
+                background: debug-focus.has-focus ? Theme.focus-color : transparent;
+            }
+            Text {
+                x: parent.width - Theme.page-padding-horizontal;
+                height: 100%;
+                text: debug-focus.has-focus ? "↕" : "";
+                color: debug-focus.editing ? Theme.focus-color : Theme.accent;
+                font-size: Theme.font-14;
+                vertical-alignment: center;
+            }
+            debug-focus := NavigationFocus {
+                first-in-group: !root.show-back;
+                width: 100%; height: 100%;
+                adjustable: true;
+                adjusted(direction) => {
+                    flick2.content-y = clamp(flick2.content-y + direction * 40px * Theme.scale,
+                        min(0px, flick2.height - flick2.content-height), 0px);
+                }
+            }
+        }
         GestureArea {
             width: 100%;
             height: 100%;

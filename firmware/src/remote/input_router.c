@@ -15,6 +15,7 @@ typedef struct {
 static Binding defaults[INPUT_ACTION_COUNT];
 static Binding current[INPUT_ACTION_COUNT];
 static bool forwards_to_board;
+static bool board_forwarding_requested;
 
 // Survives screen changes so a stick held through a transition doesn't fire on arrival
 static InputAction x_latch = INPUT_ACTION_COUNT;
@@ -44,6 +45,7 @@ void input_router_claim(InputAction action, input_action_cb_t cb, InputRepeat re
 void input_router_restore_defaults() {
   memcpy(current, defaults, sizeof(current));
   forwards_to_board = false;
+  board_forwarding_requested = false;
 }
 
 bool input_router_dispatch(InputAction action) {
@@ -59,7 +61,8 @@ bool input_router_is_claimed(InputAction action) {
 }
 
 void input_router_claim_board_forwarding() {
-  forwards_to_board = true;
+  board_forwarding_requested = true;
+  forwards_to_board = false;
 }
 
 bool input_router_forwards_to_board() {
@@ -106,6 +109,12 @@ static void drive_axis(float value, InputAction negative, InputAction positive, 
 
 // Positive js_y is UP (throttle), as the LVGL-era encoder nav had it
 void input_router_poll_stick(float x, float y) {
+  // Navigation can return to Stats with the stick still held. Require the
+  // calibrated deadband (exact zero), rather than the UI release threshold,
+  // before sending that stick to the board.
+  if (board_forwarding_requested && !forwards_to_board && x == 0.0f && y == 0.0f) {
+    forwards_to_board = true;
+  }
   const int64_t now_us = esp_timer_get_time();
   drive_axis(x, INPUT_ACTION_STICK_LEFT, INPUT_ACTION_STICK_RIGHT, &x_latch, &x_next_repeat_us, now_us);
   drive_axis(y, INPUT_ACTION_STICK_DOWN, INPUT_ACTION_STICK_UP, &y_latch, &y_next_repeat_us, now_us);

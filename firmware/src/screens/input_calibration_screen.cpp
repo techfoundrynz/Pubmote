@@ -69,6 +69,16 @@ static void update_calibration_ui_strings() {
   if (!get_slint_window())
     return;
 
+  // Navigation is available before/after measurement, including expo and inversion.
+  const bool measuring = calibration_step >= CALIBRATION_STEP_CENTER && calibration_step <= CALIBRATION_STEP_DEADBAND;
+  input_router_restore_defaults();
+  if (measuring) {
+    input_router_claim(INPUT_ACTION_STICK_UP, NULL, INPUT_ONCE);
+    input_router_claim(INPUT_ACTION_STICK_DOWN, NULL, INPUT_ONCE);
+    input_router_claim(INPUT_ACTION_STICK_LEFT, NULL, INPUT_ONCE);
+    input_router_claim(INPUT_ACTION_STICK_RIGHT, NULL, INPUT_ONCE);
+  }
+
   const char *step_label = "";
   const char *primary_label = "Next";
 
@@ -102,6 +112,7 @@ static void update_calibration_ui_strings() {
     const auto &state = get_slint_window()->global<UiState>();
     state.set_input_calibration_step(step_label);
     state.set_input_calibration_primary_text(primary_label);
+    state.set_input_calibration_measuring(measuring);
     state.set_show_expo_slider(calibration_step == CALIBRATION_STEP_EXPO);
     state.set_show_invert_switch(calibration_step == CALIBRATION_STEP_STICK_FLAGS);
     if (calibration_step == CALIBRATION_STEP_EXPO) {
@@ -175,12 +186,6 @@ static void calibration_task(void *pvParameters) {
 
 extern "C" void setup_input_calibration_properties() {
   calibration_step = CALIBRATION_STEP_START;
-
-  // The stick is being measured, so it must not move focus
-  input_router_claim(INPUT_ACTION_STICK_UP, NULL, INPUT_ONCE);
-  input_router_claim(INPUT_ACTION_STICK_DOWN, NULL, INPUT_ONCE);
-  input_router_claim(INPUT_ACTION_STICK_LEFT, NULL, INPUT_ONCE);
-  input_router_claim(INPUT_ACTION_STICK_RIGHT, NULL, INPUT_ONCE);
 
   // Load current values
   calibration_data = settings_get_calibration();

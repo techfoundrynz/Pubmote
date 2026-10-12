@@ -1,5 +1,6 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
+import { Navigation } from "navigation-focus.slint";
 
 export struct GameLabel { text: string, font: int, color: color, mono: bool, bold: bool, height: float, cells: [color], cell: float, wrap: bool }
 export struct GameDraw {
@@ -69,8 +70,11 @@ export component GameScreen inherits Rectangle {
     }
     keys := FocusScope {
         enabled: root.active;
+        focus-on-tab-navigation: root.active && !Navigation.modal && !Navigation.blocked;
         init => { self.focus(); }
         key-pressed(e) => {
+            if (Navigation.modal || Navigation.blocked) { return reject; }
+            if e.text == Key.Backtab || (e.text == Key.Tab && e.modifiers.shift) { return accept; }
             if e.text == Key.Return { root.event(0, 0, 0); return accept; }
             reject
         }
@@ -102,6 +106,7 @@ export component GameScreen inherits Rectangle {
             x: root.positions[index].x * root.width / 100; y: root.positions[index].y * root.height / 100;
             width: root.positions[index].w * root.width / 100; height: root.positions[index].h * root.height / 100;
             text: "Exit"; variant: "secondary";
+            last-in-group: true;
             enabled: root.active; clicked => { root.back(); }
         }
     }
@@ -109,6 +114,7 @@ export component GameScreen inherits Rectangle {
         x: (parent.width - self.width) / 2; y: Math.round(parent.height * 0.96 / 1px) * 1px - self.height;
         width: Math.round(parent.width * 0.26 / 1px) * 1px; height: Math.round(parent.height * 0.10 / 1px) * 1px;
         text: "Exit"; variant: "secondary";
+        last-in-group: true;
         enabled: root.active; clicked => { root.back(); }
     }
 }

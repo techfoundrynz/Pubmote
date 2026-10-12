@@ -22,6 +22,18 @@ export component InputCalibrationScreen inherits Page {
     in property <string> readout-text: "X: 0.0 | Y: 0.0";
     in property <string> step-text: "Press start to begin calibration";
     in property <string> primary-text: "Start";
+    in property <bool> measuring: false;
+    property <bool> focus-primary: root.measuring;
+    changed measuring => { if (root.measuring) { root.focus-primary = true; } }
+    Timer {
+        interval: 280ms;
+        running: root.focus-primary;
+        triggered => {
+            if (!primary-button.navigation-enabled) { return; }
+            primary-button.focus();
+            if (primary-button.has-focus) { root.focus-primary = false; }
+        }
+    }
     in property <float> joystick-x: 0;   // -1..1
     in property <float> joystick-y: 0;   // -1..1
     in property <bool> show-expo-slider: false;
@@ -61,6 +73,7 @@ export component InputCalibrationScreen inherits Page {
                 width: 100%;
                 height: root.dial;
                 AppSlider {
+                    first-in-group: !root.show-back;
                     width: 80%;
                     x: (parent.width - self.width) / 2;
                     y: (parent.height - self.height) / 2;
@@ -89,6 +102,7 @@ export component InputCalibrationScreen inherits Page {
                         }
 
                         AppSwitch {
+                            first-in-group: !root.show-back && !root.show-expo-slider;
                             checked <=> root.invert-x;
                         }
                     }
@@ -104,6 +118,7 @@ export component InputCalibrationScreen inherits Page {
                         }
 
                         AppSwitch {
+                            first-in-group: !root.show-back && !root.show-expo-slider && !root.x-axis-supported;
                             checked <=> root.invert-y;
                         }
                     }
@@ -136,7 +151,9 @@ export component InputCalibrationScreen inherits Page {
 
         // ui_CalibrationFooter (25%)
         footer := PageFooter {
-            AppButton {
+            primary-button := AppButton {
+                first-in-group: !root.show-back && !root.show-expo-slider && (!root.show-invert-switch || (!root.x-axis-supported && !root.y-axis-supported));
+                last-in-group: true;
                 text: root.primary-text;
                 clicked => { root.primary(); }
             }

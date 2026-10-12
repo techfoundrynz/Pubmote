@@ -61,12 +61,19 @@ export component ConfirmDialog inherits Rectangle {
                 spacing: 8px * Theme.scale;
                 alignment: stretch;
                 
-                if root.show-cancel: AppButton {
+                if root.show-cancel: cancel-button := AppButton {
+                    modal-control: true;
+                    initial-focus: true;
+                    first-in-group: true;
                     text: root.cancel-text;
                     variant: root.cancel-variant;
                     button-color: root.cancel-button-color;                    clicked => { root.cancelled(); }
                 }
-                AppButton {
+                confirm-button := AppButton {
+                    modal-control: true;
+                    initial-focus: !root.show-cancel;
+                    first-in-group: !root.show-cancel;
+                    last-in-group: true;
                     text: root.confirm-text;
                     variant: root.confirm-button-variant;
                     button-color: root.confirm-variant;                    clicked => { root.confirmed(); }

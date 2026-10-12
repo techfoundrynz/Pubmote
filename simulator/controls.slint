@@ -1,4 +1,4 @@
-import { Slider, CheckBox, ComboBox } from "std-widgets.slint";
+import { Slider, CheckBox, ComboBox, Button } from "std-widgets.slint";
 export component SimulatorControls inherits Window {
     title: "PubRemote — simulated hardware";
     width: 420px;
@@ -15,6 +15,7 @@ export component SimulatorControls inherits Window {
     in-out property <bool> right-pad: true;
     in-out property <bool> animate: true;
     callback navigate(string);
+    callback input(int);
     VerticalLayout {
         padding: 16px;
         spacing: 10px;
@@ -22,6 +23,16 @@ export component SimulatorControls inherits Window {
         ComboBox {
             model: ["stats", "menu", "settings", "boards", "pairing", "wifi", "input-calibration", "imu-calibration", "about", "update", "charge", "games"];
             selected(value) => { root.navigate(value); }
+        }
+        HorizontalLayout {
+            Button { text: "Up"; clicked => { root.input(0); } }
+            Button { text: "Down"; clicked => { root.input(1); } }
+            Button { text: "Left"; clicked => { root.input(4); } }
+            Button { text: "Right"; clicked => { root.input(5); } }
+        }
+        HorizontalLayout {
+            Button { text: "Click"; clicked => { root.input(2); } }
+            Button { text: "Double click"; clicked => { root.input(3); } }
         }
         HorizontalLayout {
             CheckBox { text: "Connected"; checked <=> root.connected; }
@@ -43,6 +54,6 @@ export component SimulatorControls inherits Window {
         Text { text: "Joystick X / Y (calibration input)"; }
         Slider { minimum: -1; maximum: 1; value <=> root.joystick-x; }
         Slider { minimum: -1; maximum: 1; value <=> root.joystick-y; }
-        Text { text: "Click and drag the remote to use touch gestures.\nTab / Shift+Tab moves focus; Enter activates.\nSettings last until this simulator closes."; wrap: word-wrap; }
+        Text { text: "Click and drag the remote to use touch gestures.\nArrow keys navigate; Enter activates.\nTab / Shift+Tab follows single-axis focus order.\nSettings last until this simulator closes."; wrap: word-wrap; }
     }
 }

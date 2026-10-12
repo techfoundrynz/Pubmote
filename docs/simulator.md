@@ -90,7 +90,7 @@ the pinned compiler and prints its path; CI runs this embedded-glyph check too.
 ## PR and release previews
 
 Relevant UI/simulator PRs run the **Simulator previews** workflow. It runs native
-interaction checks, captures 17 fixed scenarios at each of three panel sizes,
+interaction checks, captures screens and focused/editing controls at each of three panel sizes,
 compares them with the PR's base commit, and tests the browser app in Chromium.
 An actual touchscreen swipe, telemetry changes, settings navigation, and menu
 connection toggling are checked in each browser layout.
@@ -166,8 +166,11 @@ Capture diagnostics are saved to `.pio/visual-report/render.log`.
 ## Interaction
 
 Click and drag in the remote window to simulate touch, including the swipe down
-from Stats to Menu. Tab / Shift+Tab moves focus and Enter activates buttons.
-The control window also lets you jump directly to a screen.
+from Stats to Menu. Arrow keys exercise dual-axis navigation: the keyboard moves
+by row/column, and Left/Right adjusts values while editing or changes focused
+page dots. Tab / Shift+Tab follows the sequential single-axis focus order;
+Enter activates and Escape goes back. The control window provides all four
+directions, Click and Double click, and lets you jump directly to a screen.
 
 Disable **Animate ride** to use the speed slider. Change connection state,
 board/remote battery, RSSI, footpads, charging state, and joystick axes while

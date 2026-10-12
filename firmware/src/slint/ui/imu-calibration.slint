@@ -121,6 +121,7 @@ export component ImuCalibrationScreen inherits Page {
                             alignment: center;
 
                             AppButton {
+                                first-in-group: !root.show-back;
                                 text: root.imu-invert-x ? "Inv X: On" : "Inv X: Off";                                variant: root.imu-invert-x ? "primary" : "secondary";
                                 clicked => { root.toggle-invert-x(); }
                             }
@@ -158,6 +159,8 @@ export component ImuCalibrationScreen inherits Page {
         // Save and Cancel buttons / PageFooter - naturally sized
         footer := PageFooter {
             AppButton {
+                first-in-group: !root.show-back && (!root.imu-enabled || !root.show-axis-controls);
+                last-in-group: true;
                 text: root.primary-button-text;
                 clicked => { root.primary(); }
             }

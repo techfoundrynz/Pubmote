@@ -1,23 +1,48 @@
 import { Theme } from "theme.slint";
 import { PageHeader } from "page-header.slint";
 import { EdgeFade } from "edge-fade.slint";
+import { Navigation } from "navigation-focus.slint";
 
 // Standard page scaffold: fixed header with back/save chevron, body children
-// filling the rest, optional PageFooter as a child. The header and its fade
-// are declared after @children so they render on top of scrolling content.
+// filling the rest, optional PageFooter as a child. Declare the header first
+// so focus follows the screen top to bottom; scrolling stays in the body viewport.
 export component Page inherits Rectangle {
     in property <string> title;
     in property <string> subtitle: "";
     in property <bool> subtitle-show-tail: false;
     in property <bool> show-back: false;
+    in property <bool> back-is-only: false;
+    in property <bool> navigation-active: true;
+    property <bool> initial-focus-pending: root.show-back;
+    changed navigation-active => {
+        if (root.navigation-active) { root.initial-focus-pending = root.show-back; }
+    }
     // Height of the screen's footer chrome; a footer seam fade is drawn above it
     in property <length> footer-inset: 0px;
     callback back;
 
     background: Theme.bg;
+    Timer {
+        interval: 20ms;
+        running: root.initial-focus-pending && root.navigation-active;
+        triggered => {
+            if (Navigation.modal || Navigation.blocked) { return; }
+            header.focus();
+            if (!root.back-is-only) { Navigation.focus-next(); }
+            root.initial-focus-pending = false;
+        }
+    }
 
     VerticalLayout {
-        Rectangle { height: header.height; }
+        header := PageHeader {
+            text: root.title;
+            subtitle: root.subtitle;
+            subtitle-show-tail: root.subtitle-show-tail;
+            show-back: root.show-back;
+            first-in-group: true;
+            last-in-group: root.back-is-only;
+            back => { root.back(); }
+        }
         @children
     }
 
@@ -28,14 +53,4 @@ export component Page inherits Rectangle {
         y: root.height - root.footer-inset - self.height;
     }
 
-    header := PageHeader {
-        x: 0;
-        y: 0;
-        width: 100%;
-        text: root.title;
-        subtitle: root.subtitle;
-        subtitle-show-tail: root.subtitle-show-tail;
-        show-back: root.show-back;
-        back => { root.back(); }
-    }
 }
