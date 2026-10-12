@@ -70,8 +70,7 @@ static void update_calibration_ui_strings() {
     return;
 
   // Navigation is available before/after measurement, including expo and inversion.
-  const bool measuring = calibration_step >= CALIBRATION_STEP_CENTER &&
-                         calibration_step <= CALIBRATION_STEP_DEADBAND;
+  const bool measuring = calibration_step >= CALIBRATION_STEP_CENTER && calibration_step <= CALIBRATION_STEP_DEADBAND;
   input_router_restore_defaults();
   if (measuring) {
     input_router_claim(INPUT_ACTION_STICK_UP, NULL, INPUT_ONCE);

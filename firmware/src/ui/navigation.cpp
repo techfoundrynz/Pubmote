@@ -143,8 +143,12 @@ static void nav_focus_previous() {
   nav_dispatch_key(input_pins_x_enabled() ? slint::platform::key_codes::UpArrow : slint::platform::key_codes::Backtab);
 }
 
-static void nav_left() { nav_dispatch_key(slint::platform::key_codes::LeftArrow); }
-static void nav_right() { nav_dispatch_key(slint::platform::key_codes::RightArrow); }
+static void nav_left() {
+  nav_dispatch_key(slint::platform::key_codes::LeftArrow);
+}
+static void nav_right() {
+  nav_dispatch_key(slint::platform::key_codes::RightArrow);
+}
 
 static void nav_back() {
   nav_dispatch_key(slint::platform::key_codes::Escape);
@@ -161,14 +165,19 @@ extern "C" void ui_dispatch_activate_edge(bool pressed) {
 static void connect_callbacks() {
   const auto &state = get_slint_window()->global<UiState>();
   get_slint_window()->global<Navigation>().on_focus_next([]() {
-    if (!get_slint_window() || ui_processing_active()) { return; }
+    if (!get_slint_window() || ui_processing_active()) {
+      return;
+    }
     const auto key = slint::SharedString(slint::platform::key_codes::Tab);
     get_slint_window()->window().dispatch_key_press_event(key);
     get_slint_window()->window().dispatch_key_release_event(key);
   });
   get_slint_window()->global<Navigation>().on_focus_step([](int steps) {
-    if (!get_slint_window() || ui_processing_active()) { return; }
-    const auto key = slint::SharedString(steps < 0 ? slint::platform::key_codes::Backtab : slint::platform::key_codes::Tab);
+    if (!get_slint_window() || ui_processing_active()) {
+      return;
+    }
+    const auto key =
+        slint::SharedString(steps < 0 ? slint::platform::key_codes::Backtab : slint::platform::key_codes::Tab);
     for (int remaining = std::abs(std::clamp(steps, -32, 32)); remaining > 0; --remaining) {
       get_slint_window()->window().dispatch_key_press_event(key);
       get_slint_window()->window().dispatch_key_release_event(key);
