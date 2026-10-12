@@ -11,6 +11,7 @@ export component PageHeader inherits Rectangle {
     in property <bool> first-in-group: false;
     in property <bool> last-in-group: false;
     callback back;
+    out property <bool> has-focus: nav.has-focus;
     forward-focus: nav;
     // Sized by content (e.g. a subtitle), never below the standard strip
     height: Math.max(Theme.header-height, content.min-height);

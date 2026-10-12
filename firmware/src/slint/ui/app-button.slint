@@ -21,9 +21,8 @@ export component AppButton inherits Rectangle {
     // per UI tick until focus succeeds, then leave focus to the user.
     Timer {
         interval: 20ms;
-        running: root.focus-pending;
+        running: root.focus-pending && f-scope.accepts-input;
         triggered => {
-            if (!f-scope.accepts-input) { return; }
             f-scope.focus();
             if (f-scope.has-focus) { root.focus-pending = false; }
         }

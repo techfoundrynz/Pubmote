@@ -1,6 +1,5 @@
 import { Theme } from "theme.slint";
 import { AppButton } from "app-button.slint";
-import { Navigation } from "navigation-focus.slint";
 
 export struct GameLabel { text: string, font: int, color: color, mono: bool, bold: bool, height: float, cells: [color], cell: float, wrap: bool }
 export struct GameDraw {
@@ -66,17 +65,6 @@ export component GameScreen inherits Rectangle {
             font-family: cmd.mono ? Theme.font-mono : Theme.font-default;
             font-weight: cmd.bold ? 600 : 400;
             horizontal-alignment: parent.pos.w == 0 ? left : center; vertical-alignment: parent.pos.h == 0 ? top : center;
-        }
-    }
-    keys := FocusScope {
-        enabled: root.active;
-        focus-on-tab-navigation: root.active && !Navigation.modal && !Navigation.blocked;
-        init => { self.focus(); }
-        key-pressed(e) => {
-            if (Navigation.modal || Navigation.blocked) { return reject; }
-            if e.text == Key.Backtab || (e.text == Key.Tab && e.modifiers.shift) { return accept; }
-            if e.text == Key.Return { root.event(0, 0, 0); return accept; }
-            reject
         }
     }
     TouchArea {

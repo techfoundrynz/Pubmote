@@ -377,6 +377,9 @@ export component AppWindow inherits Window {
     }
 
     changed active-screen => {
+        Navigation.active = false;
+        // Clear outgoing control focus and keep receiving the first input.
+        navigation-root.focus();
         root.view-dragging = false;
         if (root.view-drag == 0) {
             // Not a drag commit; use the full-length transition
@@ -384,6 +387,7 @@ export component AppWindow inherits Window {
         }
         root.view-drag = 0;
         if (self.active-screen == Screen.stats) {
+            root.menu-focus-index = -1;
             UiState.scroll-offset-y = 0;
         }
         root.screen-loaded = false;
@@ -437,10 +441,13 @@ export component AppWindow inherits Window {
     property <bool> navigation-modal: UiState.show-confirm-dialog || UiState.boot-notice != ""
         || UiState.calibration-prompt || UiState.operation-error != "";
     property <bool> navigation-blocked: UiState.processing || root.is-animating;
-    property <bool> ride-navigation-active: UiState.screen == Screen.stats
+    property <bool> root-navigation-active: (UiState.screen == Screen.stats || UiState.screen == Screen.game)
         && !root.navigation-modal && !root.navigation-blocked;
-    changed ride-navigation-active => {
-        if (root.ride-navigation-active) { navigation-root.focus(); }
+    changed root-navigation-active => {
+        if (root.root-navigation-active) {
+            if (UiState.screen == Screen.game) { Navigation.active = false; }
+            navigation-root.focus();
+        }
     }
     changed navigation-modal => { Navigation.modal = root.navigation-modal; }
     changed navigation-blocked => { Navigation.blocked = root.navigation-blocked; }
@@ -450,12 +457,34 @@ export component AppWindow inherits Window {
     }
 
     // All screen controls bubble the double-click/Escape gesture here.
+    property <int> menu-focus-index: -1;
     navigation-root := FocusScope {
     width: 100%; height: 100%;
     focus-on-tab-navigation: false;
-    init => { if (root.ride-navigation-active) { self.focus(); } }
+    // The invisible event scope receives input while controls remain unfocused.
+    init => { self.focus(); }
     capture-key-pressed(event) => {
         if (UiState.processing || root.is-animating) { return accept; }
+        // Gameplay bypasses control focus. Hardware stick directions already
+        // go straight to Lua; keyboard/simulator directions use the same events.
+        if (UiState.screen == Screen.game && !root.navigation-modal) {
+            if (event.text == Key.Return) { UiState.game-event(0, 0, 0); return accept; }
+            if (event.text == Key.UpArrow) { UiState.game-event(1, 0, 0); return accept; }
+            if (event.text == Key.DownArrow) { UiState.game-event(2, 0, 0); return accept; }
+            if (event.text == Key.LeftArrow) { UiState.game-event(3, 0, 0); return accept; }
+            if (event.text == Key.RightArrow) { UiState.game-event(4, 0, 0); return accept; }
+            if (event.text == Key.Tab || event.text == Key.Backtab) { return accept; }
+            return reject;
+        }
+        if (!Navigation.active && (event.text == Key.Tab || event.text == Key.Backtab
+            || event.text == Key.UpArrow || event.text == Key.DownArrow
+            || event.text == Key.LeftArrow || event.text == Key.RightArrow
+            || event.text == Key.Return || event.text == Key.Escape)) {
+            Navigation.active = true;
+            // Allow Back to work immediately, but use other first inputs only
+            // to reveal the screen/dialog's default focus on the next UI tick.
+            if (event.text != Key.Escape) { return accept; }
+        }
         reject
     }
     key-pressed(event) => {
@@ -548,6 +577,7 @@ export component AppWindow inherits Window {
     if UiState.screen == Screen.menu || root.previous-screen == Screen.menu
         || root.view-dragging || root.view-drag != 0: MenuScreen {
         navigation-active: UiState.screen == Screen.menu;
+        focus-index <=> root.menu-focus-index;
         width: 100%;
         height: 100%;
         x: (screen-x(Screen.menu) - root.view-x) * self.width;
@@ -793,6 +823,7 @@ export component AppWindow inherits Window {
     }
 
     if UiState.screen == Screen.charge || root.previous-screen == Screen.charge: ChargeScreen {
+        active: UiState.screen == Screen.charge;
         width: 100%;
         height: 100%;
         x: (screen-x(Screen.charge) - root.view-x) * self.width;
