@@ -11,6 +11,15 @@ import { Page } from "page.slint";
 import { Icons } from "icons.slint";
 
 export component MenuScreen inherits Page {
+    // Stable item IDs preserve selection even when optional rows disappear.
+    in-out property <int> focus-index: -1;
+    initial-focus-steps: root.focus-index < 0 ? 1 :
+        root.focus-index - (root.focus-index >= 1 && !root.show-connect ? 1 : 0)
+        - (root.focus-index >= 3 && !root.dimming-mode-supported ? 1 : 0)
+        - (root.focus-index >= 4 && !root.led-mode-supported ? 1 : 0)
+        - (root.focus-index >= 6 && !root.joystick-supported ? 1 : 0)
+        - (root.focus-index >= 7 && !root.imu-supported ? 1 : 0);
+    header-focused => { root.focus-index = 0; }
     in property <bool> show-connect: false;       // ui_MenuConnectButton (hidden)
     in property <string> connect-label: "Connect";
     in property <bool> pocket-mode-active: false;
@@ -22,6 +31,10 @@ export component MenuScreen inherits Page {
     in property <string> led-mode-label: "";
     in property <bool> led-mode-supported: false;
     in-out property <int> scroll-offset-y: 0;
+    changed scroll-offset-y => {
+        // Also reset a retained menu while its exit animation is running.
+        if (root.scroll-offset-y == 0) { flick.content-y = 0px; }
+    }
     in property <bool> imu-supported: false;
     in property <bool> joystick-supported: false;
     callback connect;
@@ -55,6 +68,7 @@ export component MenuScreen inherits Page {
             spacing: 6px * Theme.scale;
 
             if root.show-connect: MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 1; } }
                 text: root.connect-label;
                 first-in-group: !root.show-back;
                 icon: Icons.radio;
@@ -63,6 +77,7 @@ export component MenuScreen inherits Page {
             }
 
             MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 2; } }
                 text: "Pocket mode";
                 first-in-group: !root.show-back && !root.show-connect;
                 icon: Icons.lock;
@@ -71,6 +86,7 @@ export component MenuScreen inherits Page {
             }
 
             if root.dimming-mode-supported: MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 3; } }
                 text: "Dimming";
                 icon: Icons.sun;
                 right-text: root.dimming-mode-label;
@@ -78,6 +94,7 @@ export component MenuScreen inherits Page {
             }
 
             if root.led-mode-supported: MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 4; } }
                 text: "LED mode";
                 icon: Icons.lightbulb;
                 right-text: root.led-mode-label;
@@ -85,6 +102,7 @@ export component MenuScreen inherits Page {
             }
 
             MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 5; } }
                 text: "Settings";
                 icon: Icons.settings;
                 right-text: "\u{203a}";
@@ -92,6 +110,7 @@ export component MenuScreen inherits Page {
             }
 
             if root.joystick-supported: MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 6; } }
                 text: "Inputs";
                 icon: Icons.joystick;
                 right-text: "\u{203a}";
@@ -99,6 +118,7 @@ export component MenuScreen inherits Page {
             }
 
             if root.imu-supported: MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 7; } }
                 text: "IMU";
                 icon: Icons.axis-3d;
                 right-text: "\u{203a}";
@@ -106,6 +126,7 @@ export component MenuScreen inherits Page {
             }
 
             MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 8; } }
                 text: "Pairing";
                 icon: Icons.bluetooth;
                 right-text: "\u{203a}";
@@ -113,6 +134,7 @@ export component MenuScreen inherits Page {
             }
 
             MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 9; } }
                 text: "Wi-Fi";
                 icon: Icons.radio;
                 right-text: "\u{203a}";
@@ -120,6 +142,7 @@ export component MenuScreen inherits Page {
             }
 
             MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 10; } }
                 text: "About";
                 icon: Icons.info;
                 right-text: "\u{203a}";
@@ -127,6 +150,7 @@ export component MenuScreen inherits Page {
             }
 
             MenuButton {
+                changed has-focus => { if (self.has-focus) { root.focus-index = 11; } }
                 text: "Shutdown";
                 last-in-group: true;
                 icon: Icons.power;

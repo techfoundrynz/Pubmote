@@ -40,6 +40,7 @@ slint::slint! {
         in property <bool> active: true;
         out property <int> clicks: 0;
         out property <int> backs: 0;
+        out property <bool> control-focused <=> available.has-focus;
         Page {
             show-back: true;
             back-is-only: root.empty;
@@ -47,7 +48,7 @@ slint::slint! {
             back => { root.backs += 1; }
             VerticalLayout {
                 AppButton { text: "Disabled"; enabled: false; clicked => { root.clicks += 100; } }
-                AppButton { text: "Available"; enabled: !root.empty; last-in-group: true; clicked => { root.clicks += 1; } }
+                available := AppButton { text: "Available"; enabled: !root.empty; last-in-group: true; clicked => { root.clicks += 1; } }
             }
         }
     }
@@ -144,12 +145,8 @@ fn render(w: &MinimalSoftwareWindow) {
         renderer.render(&mut pixels, 466);
     });
 }
-fn initialize_focus<T: ComponentHandle + 'static>(ui: &T, w: &MinimalSoftwareWindow)
+fn connect_focus<T: ComponentHandle + 'static>(ui: &T)
 where for<'a> Navigation<'a>: slint::Global<'a, T> {
-    let weak = ui.as_weak();
-    ui.global::<Navigation>().on_focus_next(move || {
-        if let Some(ui) = weak.upgrade() { key(&ui, slint::platform::Key::Tab); }
-    });
     let weak = ui.as_weak();
     ui.global::<Navigation>().on_focus_step(move |steps| {
         if let Some(ui) = weak.upgrade() {
@@ -158,6 +155,13 @@ where for<'a> Navigation<'a>: slint::Global<'a, T> {
             }
         }
     });
+}
+fn initialize_focus<T: ComponentHandle + 'static>(ui: &T, w: &MinimalSoftwareWindow)
+where for<'a> Navigation<'a>: slint::Global<'a, T> {
+    connect_focus(ui);
+    // Let initial screen entry reset navigation before opting into focus.
+    settle(w);
+    ui.global::<Navigation>().set_active(true);
     settle(w);
 }
 fn settle(w: &MinimalSoftwareWindow) {
@@ -168,6 +172,216 @@ fn settle(w: &MinimalSoftwareWindow) {
     std::thread::sleep(std::time::Duration::from_millis(25));
     slint::platform::update_timers_and_animations();
     render(w);
+}
+
+#[test]
+fn navigation_focus_waits_for_first_input() {
+    use slint::platform::Key::*;
+    slint::platform::set_platform(Box::new(Platform)).unwrap();
+    let w = window();
+    let page = InitialFocusTest::new().unwrap();
+    connect_focus(&page);
+    page.show().unwrap();
+    settle(&w);
+    assert!(!page.get_control_focused(), "Idle pages must leave controls unfocused");
+    page.global::<Navigation>().set_active(true);
+    settle(&w);
+    assert!(page.get_control_focused());
+    page.hide().unwrap();
+    // Exercise button, single-axis and dual-axis input through the same scope
+    // used by hardware dispatch and the simulator.
+    for first in [Return, Tab, Backtab, UpArrow, DownArrow, LeftArrow, RightArrow] {
+        let connects = Rc::new(std::cell::Cell::new(0));
+        let w = window();
+        let app = AppTest::new().unwrap();
+        let state = app.global::<UiState>();
+        state.set_screen(Screen::Menu);
+        state.set_menu_show_connect(true);
+        let count = connects.clone();
+        state.on_menu_connect(move || count.set(count.get() + 1));
+        // Install traversal callbacks without opting into navigation focus.
+        connect_focus(&app);
+        app.show().unwrap();
+        settle(&w);
+        assert!(!app.global::<Navigation>().get_active());
+        key(&app, first);
+        assert!(app.global::<Navigation>().get_active());
+        assert_eq!(connects.get(), 0, "First input must only reveal focus");
+        settle(&w);
+        key(&app, Return);
+        assert_eq!(connects.get(), 1, "Default control is selected after first input");
+        app.hide().unwrap();
+    }
+    let w = window();
+    let app = AppTest::new().unwrap();
+    let state = app.global::<UiState>();
+    state.set_screen(Screen::Menu);
+    let rejected = Rc::new(std::cell::Cell::new(0));
+    let count = rejected.clone();
+    state.on_confirm_dialog_rejected(move || count.set(count.get() + 1));
+    connect_focus(&app);
+    app.show().unwrap();
+    settle(&w);
+    state.set_show_confirm_dialog(true);
+    settle(&w);
+    assert!(state.get_show_confirm_dialog());
+    assert!(!app.global::<Navigation>().get_active(), "Dialogs must also wait for input");
+    key(&app, Return);
+    assert_eq!(rejected.get(), 0);
+    settle(&w);
+    key(&app, Return);
+    assert_eq!(rejected.get(), 1, "First input selects the dialog's safe Cancel action");
+}
+
+#[test]
+fn navigation_focus_resets_on_screen_changes_and_returning_to_pages() {
+    use slint::platform::Key::*;
+    slint::platform::set_platform(Box::new(Platform)).unwrap();
+    let w = window();
+    let app = AppTest::new().unwrap();
+    let state = app.global::<UiState>();
+    state.set_screen(Screen::Menu);
+    state.set_menu_show_connect(true);
+    let connects = Rc::new(std::cell::Cell::new(0));
+    let count = connects.clone();
+    state.on_menu_connect(move || count.set(count.get() + 1));
+    app.show().unwrap();
+    initialize_focus(&app, &w);
+    key(&app, Return);
+    assert_eq!(connects.get(), 1);
+    for expected in 2..=3 {
+        state.set_screen(Screen::Settings);
+        settle(&w);
+        assert!(!app.global::<Navigation>().get_active());
+        let brightness = state.get_brightness();
+        key(&app, Return); // reveal brightness focus without entering editing
+        settle(&w);
+        key(&app, UpArrow); // moves to Back rather than changing brightness
+        assert_eq!(state.get_brightness(), brightness);
+        assert!(app.global::<Navigation>().get_active());
+        // Returning to a previously visited page also requires fresh input.
+        state.set_screen(Screen::Menu);
+        settle(&w);
+        assert!(!app.global::<Navigation>().get_active());
+        key(&app, Return);
+        assert_eq!(connects.get(), expected - 1);
+        settle(&w);
+        key(&app, Return);
+        assert_eq!(connects.get(), expected);
+    }
+}
+
+#[test]
+fn menu_restores_selected_item_after_returning() {
+    use slint::platform::Key::*;
+    slint::platform::set_platform(Box::new(Platform)).unwrap();
+    let w = window();
+    let app = AppTest::new().unwrap();
+    let state = app.global::<UiState>();
+    state.set_screen(Screen::Menu);
+    state.set_menu_show_connect(true);
+    let settings = Rc::new(std::cell::Cell::new(0));
+    let count = settings.clone();
+    let weak = app.as_weak();
+    state.on_open_settings(move || {
+        count.set(count.get() + 1);
+        weak.upgrade().unwrap().global::<UiState>().set_screen(Screen::Settings);
+    });
+    let weak = app.as_weak();
+    state.on_settings_save(move || {
+        weak.upgrade().unwrap().global::<UiState>().set_screen(Screen::Menu);
+    });
+    app.show().unwrap();
+    initialize_focus(&app, &w);
+    key(&app, Tab); // Pocket mode
+    key(&app, Tab); // Settings
+    for expected in 1..=2 {
+        key(&app, Return);
+        assert_eq!(settings.get(), expected);
+        settle(&w);
+        assert_eq!(state.get_screen(), Screen::Settings);
+        key(&app, Escape); // Back/save returns to menu
+        settle(&w);
+        assert_eq!(state.get_screen(), Screen::Menu);
+        assert!(!app.global::<Navigation>().get_active());
+        if expected == 1 {
+            // Removing a row above Settings must not shift the remembered item.
+            state.set_menu_show_connect(false);
+        }
+        key(&app, Return); // reveal the remembered item, without activation
+        assert_eq!(settings.get(), expected);
+        settle(&w);
+    }
+    key(&app, Return);
+    assert_eq!(settings.get(), 3, "Returning to the menu keeps Settings selected");
+}
+
+#[test]
+fn returning_to_stats_resets_menu_selection_and_scroll() {
+    use slint::platform::Key::*;
+    slint::platform::set_platform(Box::new(Platform)).unwrap();
+    let w = window();
+    let app = AppTest::new().unwrap();
+    let state = app.global::<UiState>();
+    state.set_screen(Screen::Menu);
+    state.set_menu_show_connect(true);
+    let connects = Rc::new(std::cell::Cell::new(0));
+    let count = connects.clone();
+    state.on_menu_connect(move || count.set(count.get() + 1));
+    app.show().unwrap();
+    initialize_focus(&app, &w);
+    for _ in 0..20 { key(&app, Tab); render(&w); }
+    assert!(state.get_scroll_offset_y() > 0, "Lower menu items scroll into view");
+    state.set_screen(Screen::Stats);
+    settle(&w);
+    assert_eq!(state.get_scroll_offset_y(), 0);
+    assert!(!app.global::<Navigation>().get_active());
+    state.set_screen(Screen::Menu);
+    settle(&w);
+    assert_eq!(state.get_scroll_offset_y(), 0, "Menu reopens at the top");
+    key(&app, Return); // reveal default focus
+    assert_eq!(connects.get(), 0);
+    settle(&w);
+    key(&app, Return);
+    assert_eq!(connects.get(), 1, "Menu selection resets to the first available item");
+}
+
+#[test]
+fn gameplay_input_bypasses_ui_focus_and_preserves_exit() {
+    use slint::platform::Key::*;
+    slint::platform::set_platform(Box::new(Platform)).unwrap();
+    let w = window();
+    let app = AppTest::new().unwrap();
+    let state = app.global::<UiState>();
+    state.set_screen(Screen::Game);
+    state.set_game_error("Touch Exit remains available".into());
+    let events = Rc::new(RefCell::new(Vec::new()));
+    let recorded = events.clone();
+    state.on_game_event(move |kind, _, _| recorded.borrow_mut().push(kind));
+    let exits = Rc::new(std::cell::Cell::new(0));
+    let count = exits.clone();
+    state.on_game_back(move || count.set(count.get() + 1));
+    connect_focus(&app);
+    app.show().unwrap();
+    settle(&w);
+    key(&app, Return);
+    assert_eq!(*events.borrow(), vec![0], "First click must reach gameplay");
+    for _ in 0..3 {
+        for direction in [UpArrow, DownArrow, LeftArrow, RightArrow] { key(&app, direction); }
+        key(&app, Tab);
+        key(&app, Backtab);
+        key(&app, Return);
+        assert!(!app.global::<Navigation>().get_active());
+    }
+    assert_eq!(*events.borrow(), vec![0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0]);
+    assert_eq!(exits.get(), 0, "Gameplay input must not activate touch Exit");
+    state.set_processing(true);
+    key(&app, Return);
+    assert_eq!(events.borrow().len(), 16);
+    state.set_processing(false);
+    key(&app, Escape);
+    assert_eq!(exits.get(), 1, "Double click/Escape still exits gameplay");
+    assert!(!app.global::<Navigation>().get_active());
 }
 
 #[test]
@@ -365,9 +579,10 @@ fn keyboard_arrows_follow_rows_columns_and_footer_without_wrapping() {
 fn single_axis_edits_controls_then_returns_to_focus_navigation() {
     use slint::platform::Key::*;
     slint::platform::set_platform(Box::new(Platform)).unwrap();
-    let _w = window();
+    let w = window();
     let ui = NavigationTest::new().unwrap();
     ui.show().unwrap();
+    initialize_focus(&ui, &w);
     key(&ui, Tab); // skips disabled button, focuses slider
     key(&ui, Return);
     key(&ui, Backtab); // up increases
@@ -501,6 +716,8 @@ fn modal_traps_focus_and_processing_blocks_activation() {
     assert_eq!(menu.get(), 0);
     state.set_processing(false);
     settle(&w);
+    key(&app, Return); // first input reveals focus after screen re-entry
+    settle(&w);
     key(&app, Backtab);
     assert_eq!(menu.get(), 0);
     key(&app, Backtab);
@@ -608,6 +825,8 @@ fn single_axis_reaches_scrolled_menu_actions_and_every_keyboard_key() {
     )));
     state.set_wifi_editing(true);
     state.set_screen(Screen::Wifi);
+    settle(&w);
+    key(&app, Return); // first input enables navigation on the new screen
     settle(&w);
     key(&app, Return); // initial keyboard focus is its first key
     for _ in 0..32 { key(&app, Tab); render(&w); key(&app, Return); }

@@ -11,16 +11,27 @@ import { ArcGauge } from "arc-gauge.slint";
 import { NavigationFocus } from "navigation-focus.slint";
 
 export component ChargeScreen inherits Rectangle {
+    in property <bool> active: true;
     in property <int> battery-percent: 0;
     in property <string> charge-label: "Charging";
     in property <string> time-estimate: "";
     callback dismissed();
     background: Theme.bg;
-    NavigationFocus {
+    property <bool> focus-pending: true;
+    changed active => { if (root.active) { root.focus-pending = true; } }
+    Timer {
+        interval: 20ms;
+        running: root.focus-pending && keys.accepts-input;
+        triggered => {
+            keys.focus();
+            if (keys.has-focus) { root.focus-pending = false; }
+        }
+    }
+    keys := NavigationFocus {
+        available: root.active;
         first-in-group: true;
         last-in-group: true;
         width: 100%; height: 100%;
-        init => { self.focus(); }
         activated => { root.dismissed(); }
     }
 

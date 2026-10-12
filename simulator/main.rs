@@ -602,14 +602,6 @@ pub(crate) fn initialize(
     let weak = ui.as_weak();
     let cweak = controls.as_weak();
     let focus_weak = weak.clone();
-    let focus_binding = ui.set_global_callback("Navigation", "focus-next", move |_| {
-        if let Some(ui) = focus_weak.upgrade() { send_key(&ui, slint::platform::Key::Tab); }
-        Value::Void
-    });
-    if let Err(error) = focus_binding {
-        if !BASELINE.get() { panic!("Navigation: {error:?}"); }
-    }
-    let focus_weak = weak.clone();
     let directional_binding = ui.set_global_callback("Navigation", "focus-step", move |args| {
         if let Some(ui) = focus_weak.upgrade() {
             let steps = (number(args[0].clone()) as i32).clamp(-32, 32);

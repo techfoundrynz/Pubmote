@@ -13,6 +13,8 @@ export component Page inherits Rectangle {
     in property <bool> show-back: false;
     in property <bool> back-is-only: false;
     in property <bool> navigation-active: true;
+    in property <int> initial-focus-steps: root.back-is-only ? 0 : 1;
+    callback header-focused;
     property <bool> initial-focus-pending: root.show-back;
     changed navigation-active => {
         if (root.navigation-active) { root.initial-focus-pending = root.show-back; }
@@ -24,11 +26,13 @@ export component Page inherits Rectangle {
     background: Theme.bg;
     Timer {
         interval: 20ms;
-        running: root.initial-focus-pending && root.navigation-active;
+        running: root.initial-focus-pending && root.navigation-active
+            && Navigation.active && !Navigation.modal && !Navigation.blocked;
         triggered => {
-            if (Navigation.modal || Navigation.blocked) { return; }
+            // Snapshot before focusing the header updates remembered selection.
+            let steps = root.initial-focus-steps;
             header.focus();
-            if (!root.back-is-only) { Navigation.focus-next(); }
+            if (steps > 0) { Navigation.focus-step(steps); }
             root.initial-focus-pending = false;
         }
     }
@@ -42,6 +46,7 @@ export component Page inherits Rectangle {
             first-in-group: true;
             last-in-group: root.back-is-only;
             back => { root.back(); }
+            changed has-focus => { if (self.has-focus) { root.header-focused(); } }
         }
         @children
     }
