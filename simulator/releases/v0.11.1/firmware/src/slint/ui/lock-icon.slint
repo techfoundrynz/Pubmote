@@ -1,0 +1,12 @@
+import { Theme } from "theme.slint";
+
+export component LockIcon inherits Image {
+    in property <color> icon-color: Theme.color-caution;
+    in property <length> icon-size: 14px * Theme.scale;
+
+    width: root.icon-size;
+    height: root.icon-size;
+    source: @image-url("../assets/lock.svg");
+    colorize: root.icon-color;
+    image-fit: contain;
+}
