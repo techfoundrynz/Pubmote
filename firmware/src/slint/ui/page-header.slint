@@ -1,5 +1,4 @@
 import { Theme } from "theme.slint";
-import { Icons } from "icons.slint";
 import { NavigationFocus } from "navigation-focus.slint";
 
 export component PageHeader inherits Rectangle {
@@ -7,17 +6,21 @@ export component PageHeader inherits Rectangle {
     in property <string> subtitle: "";
     in property <bool> subtitle-show-tail: false;
     in property <brush> text-color: Theme.accent;
+    in property <brush> subtitle-color: Theme.text-dim;
+    in property <brush> background-color: Theme.bg;
     in property <bool> show-back: false;
     in property <bool> first-in-group: false;
     in property <bool> last-in-group: false;
     callback back;
+    callback touch-position(length, length, bool);
     out property <bool> has-focus: nav.has-focus;
     forward-focus: nav;
     // Sized by content (e.g. a subtitle), never below the standard strip
     height: Math.max(Theme.header-height, content.min-height);
-    background: nav.has-focus ? Theme.focus-fill : Theme.bg;
+    background: nav.has-focus ? Theme.focus-fill : root.background-color;
     nav := NavigationFocus {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         available: root.show-back;
         first-in-group: root.first-in-group;
         last-in-group: root.last-in-group;
@@ -25,7 +28,7 @@ export component PageHeader inherits Rectangle {
     }
 
     // Keeps content clear of the curved top edge on round panels
-    property <length> top-inset: (Theme.is-square-mode ? 0px : 8px) * Theme.scale;
+    property <length> top-inset: (Theme.is-square-mode ? 4px : 12px) * Theme.scale;
 
     content := VerticalLayout {
         alignment: center;
@@ -53,7 +56,7 @@ export component PageHeader inherits Rectangle {
                     width: root.subtitle-show-tail ? Math.max(parent.width, self.preferred-width) : parent.width;
                     x: root.subtitle-show-tail ? parent.width - self.width : 0px;
                     overflow: elide;
-                    color: nav.has-focus ? Theme.text : Theme.text-dim;
+                    color: nav.has-focus ? Theme.text : root.subtitle-color;
                     font-size: Theme.font-12;
                     horizontal-alignment: center;
                 }
@@ -63,18 +66,31 @@ export component PageHeader inherits Rectangle {
 
     // Same gutter treatment as PageFooter: wider on round panels so the
     // chevron stays inside the circle at header height
-    if root.show-back: Text {
-        x: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.5;
-        y: title-text.y;
-        height: title-text.height;
-        text: Icons.chevron-left;
-        font-family: Icons.font-family;
-        color: nav.has-focus ? Theme.focus-color : root.text-color;
-        font-size: Theme.font-14;
-        vertical-alignment: center;
+    if root.show-back: Path {
+        x: Theme.is-square-mode ? Theme.page-padding-horizontal : Theme.page-padding-horizontal * 1.5 + 2px * Theme.scale;
+        y: title-text.y + (title-text.height - self.height) / 2 + 2px * Theme.scale;
+        width: 12px * Theme.scale;
+        height: 14px * Theme.scale;
+        fit: preserve;
+        stroke: nav.has-focus ? Theme.focus-color : root.text-color;
+        stroke-width: 2px * Theme.scale;
+        stroke-line-cap: round;
+        MoveTo { x: 6 * Theme.scale; y: 1 * Theme.scale; }
+        LineTo { x: 1 * Theme.scale; y: 6 * Theme.scale; }
+        LineTo { x: 6 * Theme.scale; y: 11 * Theme.scale; }
     }
 
     if root.show-back: TouchArea {
+        moved => { if self.pressed { root.touch-position(self.mouse-x, self.mouse-y, true); } }
+        pointer-event(event) => {
+            if event.button == PointerEventButton.left {
+                if event.kind == PointerEventKind.down {
+                    root.touch-position(self.mouse-x, self.mouse-y, true);
+                } else if event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel {
+                    root.touch-position(self.mouse-x, self.mouse-y, false);
+                }
+            }
+        }
         clicked => { root.back(); }
     }
 }

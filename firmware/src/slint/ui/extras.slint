@@ -8,6 +8,7 @@ export component ExtrasScreen inherits Page {
     callback factory-reset;
     callback shipping-mode;
     callback arcade;
+    callback display-test;
     title: "EXTRAS";
     show-back: true;
 
@@ -35,6 +36,11 @@ export component ExtrasScreen inherits Page {
                 color: Theme.text-dim;
                 font-size: Theme.font-11;
                 wrap: word-wrap;
+            }
+            MenuButton {
+                text: "Display & touch test";
+                right-text: "\u{203a}";
+                clicked => { root.display-test(); }
             }
             MenuButton {
                 text: "Arcade";

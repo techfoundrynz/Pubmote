@@ -52,7 +52,7 @@ has one global namespace to share with the host.
    |-----|---------|
    | `vehicle-type` | `PUBMOTE_VEHICLE_*` reported to the remote (default unspecified) |
    | `on-control` | Input from the remote |
-   | `get-telemetry` | Returns the 15-element telemetry list |
+   | `get-telemetry` | Returns the 17-element telemetry list |
    | `send-msg` | User-visible message; falls back to `print` when unset |
    | `get-config` / `set-config` / `save-config` | Config access, see keys below |
    | `on-pairing-state` | Called with `PUBMOTE_PAIR_*` on every change |
@@ -109,13 +109,17 @@ A remote paired over BLE is stored with the all-zeros placeholder MAC (`pubmote-
 
 ## Telemetry Format
 
-`get-telemetry` must return a 15-element list, in order:
+`get-telemetry` must return a 17-element list, in order:
 
 ```
 fault-code, pitch-angle, roll-angle, state, switch-state, input-voltage,
-rpm, speed, total-current, duty-cycle, distance-abs, fet-temp, motor-temp,
+rpm, speed, total-current, duty-cycle, phase-utilization, battery-utilization,
+distance-abs, fet-temp, motor-temp,
 odometer, battery-percent (0.0 - 1.0)
 ```
+
+API version 2 adds phase and battery utilization after duty cycle. Both use
+fractions from -1.0 to 1.0; negative values indicate braking or regeneration.
 
 ## Supported Vehicle Types
 

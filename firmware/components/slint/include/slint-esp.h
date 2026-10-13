@@ -13,6 +13,11 @@
   #define SLINT_CHUNK_ACCUMULATORS 3
 #endif
 
+struct SlintTouchPoint {
+  float x;
+  float y;
+};
+
 /**
  * This data structure configures the Slint platform for use with ESP-IDF, in particular
  * the esp_lcd component (
@@ -48,6 +53,9 @@ struct SlintPlatformConfiguration {
   esp_lcd_touch_handle_t touch_handle = nullptr;
   /// Called on the event-loop task when an active touch is released.
   void (*touch_release_callback)() = nullptr;
+  /// All contacts in rotated logical display pixels. The pointer is valid only
+  /// during the callback, on the UI task. An empty frame indicates release.
+  void (*touch_points_callback)(const SlintTouchPoint *, uint8_t) = nullptr;
   slint::platform::SoftwareRenderer::RenderingRotation rotation =
       slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
   /// Swap the 2 bytes of RGB 565 pixels before sending to the display, or turn 24-bit RGB into

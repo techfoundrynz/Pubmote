@@ -31,6 +31,7 @@ import { ProcessingOverlay } from "ui/processing-overlay.slint";
 import { ConfirmDialog } from "ui/confirm-dialog.slint";
 import { BoardsScreen, PairedBoard } from "ui/boards.slint";
 import { ExtrasScreen } from "ui/extras.slint";
+import { DisplayTestScreen, DisplayTouchPoint } from "ui/display-test.slint";
 import { GamesScreen } from "ui/games.slint";
 import { GameScreen, GameDraw, GamePosition } from "ui/game.slint";
 import { EdgeFade } from "ui/edge-fade.slint";
@@ -51,10 +52,14 @@ export enum Screen {
     games,
     game,
     extras,
+    display-test,
 }
 
 // Single binding surface for the firmware.
 export global UiState {
+    in-out property <bool> display-test-hardware-input: false;
+    in-out property <[DisplayTouchPoint]> display-test-points;
+    in-out property <string> display-test-coordinates: "Touch anywhere";
     in-out property <string> operation-error: "";
     in property <bool> processing: false;
     in property <string> processing-message: "Working...";
@@ -365,6 +370,7 @@ export component AppWindow inherits Window {
         if (s == Screen.boards) { return 1; }
         if (s == Screen.update) { return 2; }
         if (s == Screen.extras) { return 2; }
+        if (s == Screen.display-test) { return 3; }
         if (s == Screen.games) { return 3; }
         if (s == Screen.game) { return 4; }
         return 0;
@@ -377,6 +383,11 @@ export component AppWindow inherits Window {
     }
 
     changed active-screen => {
+        if self.active-screen == Screen.display-test {
+            UiState.display-test-points = [];
+            UiState.display-test-coordinates = "Touch anywhere";
+            UiState.display-test-hardware-input = false;
+        }
         Navigation.active = false;
         // Clear outgoing control focus and keep receiving the first input.
         navigation-root.focus();
@@ -441,7 +452,8 @@ export component AppWindow inherits Window {
     property <bool> navigation-modal: UiState.show-confirm-dialog || UiState.boot-notice != ""
         || UiState.calibration-prompt || UiState.operation-error != "";
     property <bool> navigation-blocked: UiState.processing || root.is-animating;
-    property <bool> root-navigation-active: (UiState.screen == Screen.stats || UiState.screen == Screen.game)
+    property <bool> root-navigation-active: (UiState.screen == Screen.stats || UiState.screen == Screen.game
+        || UiState.screen == Screen.display-test)
         && !root.navigation-modal && !root.navigation-blocked;
     changed root-navigation-active => {
         if (root.root-navigation-active) {
@@ -503,6 +515,7 @@ export component AppWindow inherits Window {
         else if (UiState.screen == Screen.boards) { UiState.boards-back(); }
         else if (UiState.screen == Screen.about) { UiState.about-back(); }
         else if (UiState.screen == Screen.extras) { UiState.extras-back(); }
+        else if (UiState.screen == Screen.display-test) { UiState.screen = Screen.extras; }
         else if (UiState.screen == Screen.games) { UiState.games-back(); }
         else if (UiState.screen == Screen.game) { UiState.game-back(); }
         else if (UiState.screen == Screen.update) { UiState.update-secondary(); }
@@ -720,7 +733,19 @@ export component AppWindow inherits Window {
         factory-reset => { UiState.extras-factory-reset(); }
         shipping-mode => { UiState.extras-shipping-mode(); }
         arcade => { UiState.open-games(); }
+        display-test => { UiState.screen = Screen.display-test; }
         back => { UiState.extras-back(); }
+    }
+
+    if UiState.screen == Screen.display-test || root.previous-screen == Screen.display-test: DisplayTestScreen {
+        hardware-input: UiState.display-test-hardware-input;
+        points: UiState.display-test-points;
+        coordinates: UiState.display-test-coordinates;
+        width: 100%; height: 100%;
+        x: (screen-x(Screen.display-test) - root.view-x) * self.width;
+        y: (screen-y(Screen.display-test) - root.view-y) * self.height;
+        active: UiState.screen == Screen.display-test;
+        back => { UiState.screen = Screen.extras; }
     }
 
     if UiState.screen == Screen.games || root.previous-screen == Screen.games: GamesScreen {
@@ -834,7 +859,7 @@ export component AppWindow inherits Window {
         dismissed => { UiState.charge-tapped(); }
     }
 
-    if UiState.show-fps: FpsOverlay {
+    if UiState.show-fps && UiState.screen != Screen.display-test: FpsOverlay {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
         fps: UiState.fps;

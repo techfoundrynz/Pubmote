@@ -109,12 +109,17 @@
     (bufset-i16 buf 16 (floor (* (ix telemetry 7) 10))) ; speed
     (bufset-i16 buf 18 (floor (* (ix telemetry 8) 10))) ; tot-current
     (bufset-u8 buf 20 (floor (* (+ (abs (ix telemetry 9)) 0.5) 100))) ; duty-cycle-now
-    (bufset-f32 buf 21 (ix telemetry 10) 'little-endian) ; distance-abs
-    (bufset-u8 buf 25 (floor (* (ix telemetry 11) 2))) ; fet-temp-filtered
-    (bufset-u8 buf 26 (floor (* (ix telemetry 12) 2))) ; motor-temp-filtered
-    (bufset-u32 buf 27 (ix telemetry 13))    ; odometer
-    (bufset-u8 buf 31 (floor (* (ix telemetry 14) 200))) ; battery-percent-remaining
+    (bufset-i8 buf 21 (pubmote-pct (ix telemetry 10))) ; phase-utilization, negative = braking
+    (bufset-i8 buf 22 (pubmote-pct (ix telemetry 11))) ; battery-utilization, negative = regen
+    (bufset-f32 buf 23 (ix telemetry 12) 'little-endian) ; distance-abs
+    (bufset-u8 buf 27 (floor (* (ix telemetry 13) 2))) ; fet-temp-filtered
+    (bufset-u8 buf 28 (floor (* (ix telemetry 14) 2))) ; motor-temp-filtered
+    (bufset-u32 buf 29 (ix telemetry 15))    ; odometer
+    (bufset-u8 buf 33 (floor (* (ix telemetry 16) 200))) ; battery-percent-remaining
 })
+
+; -1..1 -> -100..100 for an i8 field
+(defun pubmote-pct (x) (to-i (* (max -1.0 (min 1.0 x)) 100)))
 
 ; ---- WiFi channel pinning ------------------------------------------------
 ; ESP-NOW needs both ends on one channel, so station mode gets pinned while the

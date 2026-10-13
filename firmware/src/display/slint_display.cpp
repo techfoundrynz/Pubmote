@@ -18,6 +18,8 @@
 #include "ui/slint_window.h"
 #include "utilities/mem_debug.h"
 #include <atomic>
+#include <cstdio>
+#include <string>
 static const char *TAG = "PUBREMOTE-SLINT-DISPLAY";
 uint16_t *slint_chunk_buffer[SLINT_CHUNK_ACCUMULATORS] = {};
 // Three staging buffers instead of two, so keep each shorter and hold the total roughly where
@@ -35,6 +37,38 @@ AppWindow *get_slint_window() {
 }
 
 static std::atomic<bool> ui_platform_ready(false);
+
+// The platform invokes this on the Slint task after rotating every contact.
+static void display_test_touch_points(const SlintTouchPoint *points, uint8_t count) {
+  if (!get_slint_window())
+    return;
+  const auto &ui = get_slint_window()->global<UiState>();
+  if (ui.get_screen() != Screen::DisplayTest)
+    return;
+  static auto model = std::make_shared<slint::VectorModel<DisplayTouchPoint>>();
+  ui.set_display_test_hardware_input(true);
+  ui.set_display_test_points(model);
+  std::string coordinates;
+  for (uint8_t i = 0; i < count; ++i) {
+    DisplayTouchPoint point{points[i].x, points[i].y};
+    if (i < model->row_count()) {
+      auto previous = model->row_data(i);
+      if (!previous || previous->x != point.x || previous->y != point.y)
+        model->set_row_data(i, point);
+    }
+    else {
+      model->push_back(point);
+    }
+    char text[48];
+    snprintf(text, sizeof(text), "%sX %.0f Y %.0f", i ? "\n" : "", point.x, point.y);
+    coordinates += text;
+  }
+  while (model->row_count() > count)
+    model->erase(model->row_count() - 1);
+  // Keep final coordinates after release; circles show only active contacts.
+  if (count > 0)
+    ui.set_display_test_coordinates(slint::SharedString(coordinates.c_str()));
+}
 
 extern "C"
 {
@@ -60,6 +94,7 @@ static void slint_event_loop(void *pvParameters) {
   config.panel_handle = panel_handle();
   config.touch_handle = panel_touch_handle();
   config.touch_release_callback = reset_sleep_timer;
+  config.touch_points_callback = display_test_touch_points;
   config.byte_swap = false;
 
   // config.buffer1/buffer2 are deliberately left unset: that selects render_by_line
