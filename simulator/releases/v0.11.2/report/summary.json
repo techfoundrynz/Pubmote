@@ -1,0 +1,1152 @@
+{
+  "label": "Simulator visual comparison",
+  "total": 102,
+  "counts": {
+    "changed": 45,
+    "identical": 21,
+    "added": 36
+  },
+  "pixel_threshold": 2,
+  "screens": [
+    {
+      "name": "round-240/about.png",
+      "status": "changed",
+      "changed_pixels": 4292,
+      "percent": 7.451388888888889,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/boards-empty.png",
+      "status": "changed",
+      "changed_pixels": 2280,
+      "percent": 3.958333333333333,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/boards.png",
+      "status": "changed",
+      "changed_pixels": 6506,
+      "percent": 11.29513888888889,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge-estimate.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge-full.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/display-test-multi-touch.png",
+      "status": "changed",
+      "changed_pixels": 57600,
+      "percent": 100.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/display-test.png",
+      "status": "changed",
+      "changed_pixels": 57600,
+      "percent": 100.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/extras.png",
+      "status": "changed",
+      "changed_pixels": 12823,
+      "percent": 22.26215277777778,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/games.png",
+      "status": "changed",
+      "changed_pixels": 2370,
+      "percent": 4.114583333333333,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/header-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/imu-calibration.png",
+      "status": "changed",
+      "changed_pixels": 1912,
+      "percent": 3.319444444444444,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/input-calibration.png",
+      "status": "changed",
+      "changed_pixels": 2869,
+      "percent": 4.980902777777778,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/keyboard-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/menu-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/menu.png",
+      "status": "changed",
+      "changed_pixels": 7681,
+      "percent": 13.335069444444445,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/pairing.png",
+      "status": "changed",
+      "changed_pixels": 2765,
+      "percent": 4.800347222222222,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/settings-color-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-color-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-options-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-options-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-pages-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings.png",
+      "status": "changed",
+      "changed_pixels": 2441,
+      "percent": 4.237847222222222,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/shutdown-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/switch-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/update.png",
+      "status": "changed",
+      "changed_pixels": 3005,
+      "percent": 5.217013888888889,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/wifi-keyboard.png",
+      "status": "changed",
+      "changed_pixels": 8251,
+      "percent": 14.324652777777777,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/wifi.png",
+      "status": "changed",
+      "changed_pixels": 9751,
+      "percent": 16.928819444444446,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-466/about.png",
+      "status": "changed",
+      "changed_pixels": 11063,
+      "percent": 5.094494280609331,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/boards-empty.png",
+      "status": "changed",
+      "changed_pixels": 6616,
+      "percent": 3.046657702296966,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/boards.png",
+      "status": "changed",
+      "changed_pixels": 15733,
+      "percent": 7.2450220118256,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge-estimate.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge-full.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/display-test-multi-touch.png",
+      "status": "changed",
+      "changed_pixels": 217156,
+      "percent": 100.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/display-test.png",
+      "status": "changed",
+      "changed_pixels": 217156,
+      "percent": 100.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/extras.png",
+      "status": "changed",
+      "changed_pixels": 41872,
+      "percent": 19.281990826871002,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/games.png",
+      "status": "changed",
+      "changed_pixels": 6102,
+      "percent": 2.809961502330122,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/header-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/imu-calibration.png",
+      "status": "changed",
+      "changed_pixels": 4946,
+      "percent": 2.2776253016264807,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/input-calibration.png",
+      "status": "changed",
+      "changed_pixels": 7356,
+      "percent": 3.387426550498259,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/keyboard-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/menu-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/menu.png",
+      "status": "changed",
+      "changed_pixels": 20052,
+      "percent": 9.233914789368011,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/pairing.png",
+      "status": "changed",
+      "changed_pixels": 7330,
+      "percent": 3.375453590966863,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/settings-color-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-color-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-options-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-options-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-pages-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings.png",
+      "status": "changed",
+      "changed_pixels": 7678,
+      "percent": 3.535707049310173,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/shutdown-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/switch-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/update.png",
+      "status": "changed",
+      "changed_pixels": 7557,
+      "percent": 3.479986737644827,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/wifi-keyboard.png",
+      "status": "changed",
+      "changed_pixels": 28609,
+      "percent": 13.1743999705281,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/wifi.png",
+      "status": "changed",
+      "changed_pixels": 25263,
+      "percent": 11.633572178526036,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "square-410x502/about.png",
+      "status": "changed",
+      "changed_pixels": 977,
+      "percent": 0.474686619376154,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/boards-empty.png",
+      "status": "changed",
+      "changed_pixels": 1074,
+      "percent": 0.5218151783111457,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/boards.png",
+      "status": "changed",
+      "changed_pixels": 1074,
+      "percent": 0.5218151783111457,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge-estimate.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge-full.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/display-test-multi-touch.png",
+      "status": "changed",
+      "changed_pixels": 205820,
+      "percent": 100.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/display-test.png",
+      "status": "changed",
+      "changed_pixels": 205820,
+      "percent": 100.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/extras.png",
+      "status": "changed",
+      "changed_pixels": 26228,
+      "percent": 12.74317364687591,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/games.png",
+      "status": "changed",
+      "changed_pixels": 1223,
+      "percent": 0.5942085317267515,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/header-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/imu-calibration.png",
+      "status": "changed",
+      "changed_pixels": 510,
+      "percent": 0.24778933048294627,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/input-calibration.png",
+      "status": "changed",
+      "changed_pixels": 945,
+      "percent": 0.4591390535419298,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/keyboard-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/menu-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/menu.png",
+      "status": "changed",
+      "changed_pixels": 809,
+      "percent": 0.3930618987464775,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/pairing.png",
+      "status": "changed",
+      "changed_pixels": 906,
+      "percent": 0.44019045768146925,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/settings-color-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-color-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-options-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-options-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-pages-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings.png",
+      "status": "changed",
+      "changed_pixels": 5982,
+      "percent": 2.9064230881352637,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/shutdown-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/switch-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/update.png",
+      "status": "changed",
+      "changed_pixels": 1078,
+      "percent": 0.5237586240404237,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/wifi-keyboard.png",
+      "status": "changed",
+      "changed_pixels": 25790,
+      "percent": 12.530366339519968,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/wifi.png",
+      "status": "changed",
+      "changed_pixels": 684,
+      "percent": 0.33232921970653967,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    }
+  ]
+}
