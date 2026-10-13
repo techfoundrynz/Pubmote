@@ -119,7 +119,8 @@ template <typename PixelType> struct EspPlatform : public slint::platform::Platf
 
   EspPlatform(const SlintPlatformConfiguration<PixelType> &config)
       : size(config.size), panel_handle(config.panel_handle), touch_handle(config.touch_handle),
-        touch_release_callback(config.touch_release_callback), byte_swap(config.byte_swap), rotation(config.rotation) {
+        touch_release_callback(config.touch_release_callback), touch_points_callback(config.touch_points_callback),
+        byte_swap(config.byte_swap), rotation(config.rotation) {
     task = xTaskGetCurrentTaskHandle();
     active_platform = this;
     set_rotation_callback = [](void *instance, slint::platform::SoftwareRenderer::RenderingRotation rot) {
@@ -145,6 +146,7 @@ private:
   esp_lcd_panel_handle_t panel_handle;
   esp_lcd_touch_handle_t touch_handle;
   void (*touch_release_callback)();
+  void (*touch_points_callback)(const SlintTouchPoint *, uint8_t);
   bool byte_swap;
   slint::platform::SoftwareRenderer::RenderingRotation rotation;
   class EspWindowAdapter *m_window = nullptr;
@@ -327,20 +329,24 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         }
       }
       if (read_touch) {
-        uint16_t touchpad_x[1] = {0};
-        uint16_t touchpad_y[1] = {0};
+        uint16_t touchpad_x[CONFIG_ESP_LCD_TOUCH_MAX_POINTS] = {0};
+        uint16_t touchpad_y[CONFIG_ESP_LCD_TOUCH_MAX_POINTS] = {0};
         uint8_t touchpad_cnt = 0;
 
         /* Read touch controller data */
         esp_lcd_touch_read_data(touch_handle);
 
         /* Get coordinates */
-        bool touchpad_pressed =
-            esp_lcd_touch_get_coordinates(touch_handle, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
+        bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_handle, touchpad_x, touchpad_y, NULL, &touchpad_cnt,
+                                                              CONFIG_ESP_LCD_TOUCH_MAX_POINTS);
 
-        if (touchpad_pressed && touchpad_cnt > 0) {
-          float raw_x = touchpad_x[0];
-          float raw_y = touchpad_y[0];
+        SlintTouchPoint points[CONFIG_ESP_LCD_TOUCH_MAX_POINTS] = {};
+        if (!touchpad_pressed)
+          touchpad_cnt = 0;
+        const float scale_factor = m_window->window().scale_factor();
+        for (uint8_t i = 0; i < touchpad_cnt; ++i) {
+          float raw_x = touchpad_x[i];
+          float raw_y = touchpad_y[i];
           float rotated_x = raw_x;
           float rotated_y = raw_y;
 
@@ -361,10 +367,14 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
             break;
           }
 
-          auto scale_factor = m_window->window().scale_factor();
-          // ESP_LOGI(TAG, "x: %i, y: %i", touchpad_x[0], touchpad_y[0]);
-          last_touch_x = rotated_x / scale_factor;
-          last_touch_y = rotated_y / scale_factor;
+          points[i] = {rotated_x / scale_factor, rotated_y / scale_factor};
+        }
+        if (touch_points_callback)
+          touch_points_callback(points, touchpad_cnt);
+
+        if (touchpad_cnt > 0) {
+          last_touch_x = points[0].x;
+          last_touch_y = points[0].y;
           m_window->window().dispatch_pointer_move_event(slint::LogicalPosition({last_touch_x, last_touch_y}));
           if (!touch_down) {
             m_window->window().dispatch_pointer_press_event(slint::LogicalPosition({last_touch_x, last_touch_y}),

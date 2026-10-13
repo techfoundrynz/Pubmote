@@ -19,7 +19,7 @@
 ;
 ;   vehicle-type      PUBMOTE_VEHICLE_* reported to the remote
 ;   on-control        input from the remote
-;   get-telemetry     returns the 15-element telemetry list
+;   get-telemetry     returns the 17-element telemetry list
 ;   send-msg          user-visible message; falls back to print
 ;   get/set/save-config   config access, see keys below
 ;   on-pairing-state  called with PUBMOTE_PAIR_* on every change
@@ -166,7 +166,7 @@
         (var loop-start-time 0)
         (var loop-end-time 0)
         (var pubmote-loop-delay-sec (/ 1.0 pubmote-loop-delay))
-        (var data (bufcreate 33))
+        (var data (bufcreate 34))
 
         (loopwhile t {
                 (if (pubmote-get-cfg 'pubmote-enabled) {

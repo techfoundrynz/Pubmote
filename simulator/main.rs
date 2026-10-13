@@ -697,6 +697,97 @@ fn send_key(ui: &ComponentInstance, key: slint::platform::Key) {
     ui.window().dispatch_event(slint::platform::WindowEvent::KeyReleased { text });
 }
 
+// Exercise the diagnostic with mock time and rendered pixels, including two
+// simultaneous contacts and removal of individual contacts.
+#[cfg(not(target_arch = "wasm32"))]
+fn verify_display_test(ui: &ComponentInstance) -> Result<(), Box<dyn std::error::Error>> {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    screen(ui, "display-test");
+    let _ = ui.window().take_snapshot()?;
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+    let rgb = |x: u32, y: u32| -> (u8, u8, u8) {
+        let image = ui.window().take_snapshot().unwrap();
+        let p = image.as_slice()[(y * image.width() + x) as usize];
+        (p.r, p.g, p.b)
+    };
+    assert_eq!(rgb(5, 5), (255, 0, 0)); // Transparent standard header.
+    assert_eq!(rgb(5, (ui.window().size().height as f32 * 0.5) as u32), (255, 0, 0));
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(4399));
+    assert_eq!(rgb(5, (ui.window().size().height as f32 * 0.5) as u32), (255, 0, 0));
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(1));
+    assert_eq!(rgb(5, (ui.window().size().height as f32 * 0.5) as u32), (0, 255, 0));
+    for expected in [(0, 0, 255), (255, 255, 255), (0, 0, 0), (255, 0, 0)] {
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(5000));
+        assert_eq!(rgb(5, (ui.window().size().height as f32 * 0.5) as u32), expected);
+    }
+    let size = ui.window().size();
+    let scale = size.width.min(size.height) as f32 / 240.0;
+    let ring_edge = (17.0 * scale - 0.5).floor() as u32;
+    // Edge pixels can be antialiased at fractional theme scales.
+    let assert_edge = |actual: (u8, u8, u8), expected: (u8, u8, u8)| {
+        assert!(actual.0.abs_diff(expected.0) <= 40 && actual.1.abs_diff(expected.1) <= 40
+            && actual.2.abs_diff(expected.2) <= 40, "circle pixel {actual:?}, expected {expected:?}");
+    };
+    let x1 = (size.width as f32 * 0.3).round() as u32;
+    let y1 = (size.height as f32 * 0.5).round() as u32;
+    let x2 = (size.width as f32 * 0.7).round() as u32;
+    let y2 = (size.height as f32 * 0.6).round() as u32;
+    let contact = |x: u32, y: u32| Value::Struct(Struct::from_iter([
+        ("x".into(), Value::Number(x as f64)), ("y".into(), Value::Number(y as f64)),
+    ]));
+    set(ui, "display-test-hardware-input", true);
+    set(ui, "display-test-coordinates", text("X 100 Y 200\nX 200 Y 250"));
+    set(ui, "display-test-points", list(vec![contact(x1, y1), contact(x2, y2)]));
+    assert_edge(rgb(x1 + ring_edge, y1), (255, 255, 255));
+    assert_edge(rgb(x2 + ring_edge, y2), (255, 255, 255));
+    assert_eq!(rgb(x1, y1), (255, 0, 0)); // A circle, with no crosshair.
+    // Contrast follows the background for every active contact.
+    for (background, ink) in [
+        ((0, 255, 0), (0, 0, 0)),
+        ((0, 0, 255), (255, 255, 255)),
+        ((255, 255, 255), (0, 0, 0)),
+        ((0, 0, 0), (255, 255, 255)),
+        ((255, 0, 0), (255, 255, 255)),
+    ] {
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(5000));
+        assert_eq!(rgb(x1, y1), background);
+        assert_edge(rgb(x1 + ring_edge, y1), ink);
+        assert_edge(rgb(x2 + ring_edge, y2), ink);
+    }
+    set(ui, "display-test-points", list(vec![contact(x2, y2)]));
+    assert_edge(rgb(x1 + ring_edge, y1), (255, 0, 0));
+    assert_edge(rgb(x2 + ring_edge, y2), (255, 255, 255));
+    set(ui, "display-test-points", list(vec![]));
+    assert_edge(rgb(x2 + ring_edge, y2), (255, 0, 0));
+    assert_eq!(string(get(ui, "display-test-coordinates")), "X 100 Y 200\nX 200 Y 250");
+    set(ui, "display-test-hardware-input", false);
+    let position = slint::LogicalPosition::new(x1 as f32, y1 as f32);
+    ui.window().dispatch_event(WindowEvent::PointerPressed { position, button: PointerEventButton::Left });
+    assert_edge(rgb(x1 + ring_edge, y1), (255, 255, 255));
+    ui.window().dispatch_event(WindowEvent::PointerReleased { position, button: PointerEventButton::Left });
+    assert_edge(rgb(x1 + ring_edge, y1), (255, 0, 0));
+    let header_x = (size.width as f32 * 0.8).round() as u32;
+    let header_y = (size.height as f32 * 0.05).round() as u32;
+    set(ui, "display-test-hardware-input", true);
+    set(ui, "display-test-points", list(vec![contact(header_x, header_y)]));
+    assert_edge(rgb(header_x + ring_edge, header_y), (255, 255, 255));
+    set(ui, "display-test-points", list(vec![]));
+    set(ui, "display-test-hardware-input", false);
+    let exit = slint::LogicalPosition::new(header_x as f32, header_y as f32);
+    ui.window().dispatch_event(WindowEvent::PointerPressed { position: exit, button: PointerEventButton::Left });
+    assert_edge(rgb(header_x + ring_edge, header_y), (255, 255, 255));
+    ui.window().dispatch_event(WindowEvent::PointerReleased { position: exit, button: PointerEventButton::Left });
+    assert!(matches!(get(ui, "screen"), Value::EnumerationValue(_, name) if name == "extras"));
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+    screen(ui, "display-test");
+    let _ = ui.window().take_snapshot()?;
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+    assert_eq!(rgb(5, (ui.window().size().height as f32 * 0.5) as u32), (255, 0, 0)); // Re-enter starts a new cycle.
+    send_key(ui, slint::platform::Key::Escape);
+    assert!(matches!(get(ui, "screen"), Value::EnumerationValue(_, name) if name == "extras"));
+    Ok(())
+}
+
 fn speed_text(speed: f64, miles: bool) -> String {
     // Match stats_screen.cpp: snap signed zero and drop the decimal once the
     // reading rounds to 10. The device deliberately limits readout width.
@@ -938,6 +1029,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let snapshots = root.join(".pio/simulator/snapshots");
         std::fs::create_dir_all(&snapshots)?;
         ui.show()?;
+        verify_display_test(&ui)?;
         for name in [
             "stats",
             "menu",
@@ -951,6 +1043,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "update",
             "charge",
             "extras",
+            "display-test",
             "games",
         ] {
             screen(&ui, name);
@@ -1011,6 +1104,8 @@ fn capture_scenarios(
         "charge-full",
         "charge-estimate",
         "extras",
+        "display-test",
+        "display-test-multi-touch",
         "games",
         "shutdown-dialog",
         "menu-focus",
@@ -1079,6 +1174,7 @@ fn capture_scenarios(
                 "wifi"
             }
             "shutdown-dialog" => "menu",
+            "display-test-multi-touch" => "display-test",
             _ => name,
         };
         if name == "pairing" {
@@ -1101,6 +1197,15 @@ fn capture_scenarios(
         }
         ui.show()?;
         i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+        if name == "display-test-multi-touch" {
+            set(&ui, "display-test-hardware-input", true);
+            let points = [(width * 0.3, height * 0.5), (width * 0.7, height * 0.6)];
+            set(&ui, "display-test-points", list(points.iter().map(|(x, y)|
+                Value::Struct(Struct::from_iter([("x".into(), (*x).into()), ("y".into(), (*y).into())]))
+            ).collect()));
+            set(&ui, "display-test-coordinates", text(&format!("X {:.0} Y {:.0}\nX {:.0} Y {:.0}",
+                points[0].0, points[0].1, points[1].0, points[1].1)));
+        }
         if name.ends_with("-focus") || name.ends_with("-edit") {
             // Instantiate the controls and settle the transition before moving focus.
             let _ = ui.window().take_snapshot()?;

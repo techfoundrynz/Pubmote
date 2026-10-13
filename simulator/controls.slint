@@ -21,7 +21,7 @@ export component SimulatorControls inherits Window {
         spacing: 10px;
         Text { text: "Real Slint screens • simulated device services"; }
         ComboBox {
-            model: ["stats", "menu", "settings", "boards", "pairing", "wifi", "input-calibration", "imu-calibration", "about", "update", "charge", "games"];
+            model: ["stats", "menu", "settings", "boards", "pairing", "wifi", "input-calibration", "imu-calibration", "about", "update", "charge", "extras", "display-test", "games"];
             selected(value) => { root.navigate(value); }
         }
         HorizontalLayout {

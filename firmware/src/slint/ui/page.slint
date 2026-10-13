@@ -8,6 +8,10 @@ import { Navigation } from "navigation-focus.slint";
 // so focus follows the screen top to bottom; scrolling stays in the body viewport.
 export component Page inherits Rectangle {
     in property <string> title;
+    in property <brush> header-background: Theme.bg;
+    in property <brush> header-text-color: Theme.accent;
+    in property <brush> header-subtitle-color: Theme.text-dim;
+    in property <bool> show-header-fade: true;
     in property <string> subtitle: "";
     in property <bool> subtitle-show-tail: false;
     in property <bool> show-back: false;
@@ -15,6 +19,7 @@ export component Page inherits Rectangle {
     in property <bool> navigation-active: true;
     in property <int> initial-focus-steps: root.back-is-only ? 0 : 1;
     callback header-focused;
+    callback header-touch(length, length, bool);
     property <bool> initial-focus-pending: root.show-back;
     changed navigation-active => {
         if (root.navigation-active) { root.initial-focus-pending = root.show-back; }
@@ -40,18 +45,22 @@ export component Page inherits Rectangle {
     VerticalLayout {
         header := PageHeader {
             text: root.title;
+            background-color: root.header-background;
+            text-color: root.header-text-color;
+            subtitle-color: root.header-subtitle-color;
             subtitle: root.subtitle;
             subtitle-show-tail: root.subtitle-show-tail;
             show-back: root.show-back;
             first-in-group: true;
             last-in-group: root.back-is-only;
             back => { root.back(); }
+            touch-position(x, y, pressed) => { root.header-touch(x, y, pressed); }
             changed has-focus => { if (self.has-focus) { root.header-focused(); } }
         }
         @children
     }
 
-    EdgeFade { y: header.height; }
+    if root.show-header-fade: EdgeFade { y: header.height; }
 
     if root.footer-inset > 0px: EdgeFade {
         downward: false;
