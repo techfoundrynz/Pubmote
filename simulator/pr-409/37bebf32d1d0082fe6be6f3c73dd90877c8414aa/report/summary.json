@@ -1,0 +1,1194 @@
+{
+  "label": "Simulator visual comparison",
+  "total": 105,
+  "counts": {
+    "identical": 63,
+    "changed": 6,
+    "added": 36
+  },
+  "pixel_threshold": 2,
+  "screens": [
+    {
+      "name": "round-240/about.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/boards-empty.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/boards.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge-estimate.png",
+      "status": "changed",
+      "changed_pixels": 3644,
+      "percent": 6.326388888888888,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge-full.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge-no-current.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/charge.png",
+      "status": "changed",
+      "changed_pixels": 2363,
+      "percent": 4.102430555555555,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/display-test-multi-touch.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/display-test.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/extras.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/games.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/header-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/imu-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/input-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/keyboard-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/menu-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/menu.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/pairing.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/settings-color-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-color-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-options-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-options-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings-pages-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/settings.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/shutdown-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/switch-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-240/update.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/wifi-keyboard.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-240/wifi.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        240,
+        240
+      ],
+      "after_size": [
+        240,
+        240
+      ]
+    },
+    {
+      "name": "round-466/about.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/boards-empty.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/boards.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge-estimate.png",
+      "status": "changed",
+      "changed_pixels": 10533,
+      "percent": 4.850430105546243,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge-full.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge-no-current.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/charge.png",
+      "status": "changed",
+      "changed_pixels": 6896,
+      "percent": 3.1755972664812395,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/display-test-multi-touch.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/display-test.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/extras.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/games.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/header-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/imu-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/input-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/keyboard-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/menu-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/menu.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/pairing.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/settings-color-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-color-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-options-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-options-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings-pages-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/settings.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/shutdown-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/switch-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "round-466/update.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/wifi-keyboard.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "round-466/wifi.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        466,
+        466
+      ],
+      "after_size": [
+        466,
+        466
+      ]
+    },
+    {
+      "name": "square-410x502/about.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/boards-empty.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/boards.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge-estimate.png",
+      "status": "changed",
+      "changed_pixels": 8721,
+      "percent": 4.23719755125838,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge-full.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge-no-current.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/charge.png",
+      "status": "changed",
+      "changed_pixels": 5699,
+      "percent": 2.768924302788845,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/display-test-multi-touch.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/display-test.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/extras.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/games.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/header-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/imu-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/input-calibration.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/keyboard-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/menu-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/menu.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/pairing.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/settings-color-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-color-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-options-edit.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-options-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings-pages-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/settings.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/shutdown-dialog.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/shutdown-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/stats-disconnected.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/stats-low-battery.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/stats.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/switch-focus.png",
+      "status": "added",
+      "changed_pixels": null,
+      "percent": null
+    },
+    {
+      "name": "square-410x502/update.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/wifi-keyboard.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    },
+    {
+      "name": "square-410x502/wifi.png",
+      "status": "identical",
+      "changed_pixels": 0,
+      "percent": 0.0,
+      "before_size": [
+        410,
+        502
+      ],
+      "after_size": [
+        410,
+        502
+      ]
+    }
+  ]
+}
