@@ -46,7 +46,7 @@ static InputPinSettings settings_get_pins() {
 static bool input_pins_button_enabled() {
   return true;
 }
-static WakeButtonSample wake_button_sampler_result() {
+extern "C" WakeButtonSample wake_button_sampler_result(void) {
   return sample;
 }
 static bool charge_driver_probe_wake_power(bool *connected) {

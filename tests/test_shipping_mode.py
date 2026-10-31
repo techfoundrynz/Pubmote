@@ -23,6 +23,7 @@ def block(start):
 STUBS = r'''
 #include <atomic>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <sys/time.h>
 using std::atomic_exchange;
