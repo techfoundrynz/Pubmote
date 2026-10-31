@@ -14,6 +14,7 @@ export component ChargeScreen inherits Rectangle {
     in property <bool> active: true;
     in property <int> battery-percent: 0;
     in property <string> charge-label: "Charging";
+    in property <string> charge-current: "";
     in property <string> time-estimate: "";
     callback dismissed();
     background: Theme.bg;
@@ -65,6 +66,13 @@ export component ChargeScreen inherits Rectangle {
             color: Theme.text;
             font-size: Theme.font-14;
             font-weight: Theme.w-medium;
+            font-family: Theme.font-mono;
+            horizontal-alignment: center;
+        }
+        if root.charge-current != "": Text {
+            text: root.charge-current;
+            color: Theme.text-dim;
+            font-size: Theme.font-11;
             font-family: Theme.font-mono;
             horizontal-alignment: center;
         }

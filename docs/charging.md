@@ -4,6 +4,8 @@ The boot splash is shown before entering charging after a charger wake. It waits
 
 Diagnostic console startup and its terminal probe run after leaving the splash. Panel reset and touch initialization overlap haptic initialization, after wake approval.
 
+While charging, the page shows measured charge current in mA when a positive reading is available. Drivers without current measurement omit that line.
+
 The charge page uses the saved display brightness. After 30 seconds it sets brightness to zero and disables high brightness mode, leaving touch active. The first tap while dark restores the saved display settings and starts another 30-second window; it stays on the charge page and does not dismiss a charger-only wake. Tapping while visible dismisses the page. Leaving the page always restores saved display settings. These temporary overrides do not change saved settings.
 
 On devices with an IMU, significant movement while the charge display is dark also restores the saved brightness and starts another 30-second window without dismissing the page or changing charger-only shutdown behavior. Movement detection uses a filtered acceleration change of 0.2 g over two samples, independent of orientation; resting face-up, small vibration, invalid readings, and isolated single-sample spikes do not wake it. Events queued before blanking or from an earlier charge-screen visit are ignored. Movement while visible does not extend the timeout.

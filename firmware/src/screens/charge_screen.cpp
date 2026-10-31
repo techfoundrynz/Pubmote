@@ -63,6 +63,7 @@ static void update_charging_led(RemoteChargeState state) {
 }
 
 extern "C" void setup_charge_properties() {
+  get_slint_window()->global<UiState>().set_charge_current("");
   get_slint_window()->global<UiState>().set_charge_time_estimate("");
   charge_session.fetch_add(1);
   display_idle.enter(now_ms());
@@ -133,6 +134,10 @@ extern "C" void poll_charge_screen() {
     state.set_charge_label(stats.chargeState == CHARGE_STATE_DONE       ? "Charged"
                            : stats.chargeState == CHARGE_STATE_CHARGING ? "Charging"
                                                                         : "Power connected");
+    char current[24] = "";
+    if (powered && stats.chargeState == CHARGE_STATE_CHARGING && stats.chargeCurrent > 0)
+      snprintf(current, sizeof(current), "%u mA", (unsigned)stats.chargeCurrent);
+    state.set_charge_current(current);
     char estimate[48] = "";
     const uint32_t seconds =
         powered && stats.chargeState == CHARGE_STATE_CHARGING ? charge_time_remaining_seconds() : 0;
