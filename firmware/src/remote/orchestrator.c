@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "remote/console.h"
+#include "ui/screen_status.h"
 #include "utilities/mem_debug.h"
 #include "utilities/psram_task.h"
 
@@ -12,6 +13,10 @@ static StaticTask_t orchestrator_tcb;
 static StackType_t *orchestrator_stack;
 
 static void orchestrator_task(void *pvParameters) {
+  // Terminal probing may wait for a host response; leave the splash first.
+  while (is_splash_screen_active())
+    vTaskDelay(pdMS_TO_TICKS(20));
+  console_init();
 #if DEBUG_MEMORY
   int since_report = 0;
 #endif

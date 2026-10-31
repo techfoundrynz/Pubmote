@@ -119,6 +119,18 @@ else()
 endif()
 add_test(NAME haptic_lifecycle COMMAND haptic_lifecycle_test)
 
+stage_production_fragment("${FIRMWARE_REMOTE}/orchestrator.c"
+  "static void orchestrator_task(void *pvParameters)" "void orchestrator_init(void)" "orchestrator_task.inc")
+add_executable(console_boot_test console_boot_test.cpp)
+target_include_directories(console_boot_test PRIVATE "${STAGED}")
+target_compile_features(console_boot_test PRIVATE cxx_std_17)
+if(MSVC)
+  target_compile_options(console_boot_test PRIVATE /UNDEBUG)
+else()
+  target_compile_options(console_boot_test PRIVATE -UNDEBUG)
+endif()
+add_test(NAME console_boot COMMAND console_boot_test)
+
 add_executable(charge_estimator_test charge_estimator_test.c
   ../firmware/modules/charge_estimator/src/charge_estimator.c)
 target_include_directories(charge_estimator_test PRIVATE ../firmware/modules/charge_estimator/include)

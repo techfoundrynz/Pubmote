@@ -2,7 +2,6 @@
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "esp_sleep.h"
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -12,7 +11,6 @@
 #include "remote/buzzer.h"
 #include "remote/comms.h"
 #include "remote/connection.h"
-#include "remote/console.h"
 #include "remote/display.h"
 #include "remote/haptic.h"
 #include "remote/i2c.h"
@@ -90,14 +88,14 @@ void app_main(void) {
   power_management_check_early_wake();
   init_adcs();
   buzzer_init();
-  // Rejected button wakes must not power/calibrate the vibration motor.
-  if (!(esp_sleep_get_wakeup_causes() & BIT(ESP_SLEEP_WAKEUP_EXT1)) ||
-      wake_button_sampler_result() == WAKE_SAMPLE_CONFIRMED)
-    haptic_init();
   led_init();
   MEM_MARK("core peripherals");
   power_management_init();
   esp_task_wdt_reset();
+
+  // Only accepted wakes prepare the panel; reset waits overlap haptic setup.
+  display_prepare();
+  haptic_init();
 
   // Fire startup callbacks once boot is confirmed
   startup_cb();
@@ -145,10 +143,6 @@ void app_main(void) {
   receiver_init();
   transmitter_init();
   MEM_MARK("tx/rx init");
-  console_init();
-
-  MEM_MARK("console_init");
-
 #if TEST_MODE
   test_mode_init();
 #endif

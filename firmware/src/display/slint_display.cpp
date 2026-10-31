@@ -33,6 +33,8 @@ static TaskHandle_t slint_task_handle = NULL;
 static TaskHandle_t slint_input_task_handle = NULL;
 static StaticSemaphore_t first_frame_storage;
 static SemaphoreHandle_t first_frame_complete;
+static StaticSemaphore_t panel_ready_storage;
+static SemaphoreHandle_t panel_ready;
 
 AppWindow *get_slint_window() {
   return slint_window ? &*slint_window : nullptr;
@@ -258,9 +260,18 @@ static bool IRAM_ATTR on_lcd_color_trans_done(esp_lcd_panel_io_handle_t panel_io
   return high_task_awoken == pdTRUE;
 }
 
-extern "C" void display_init() {
+static void prepare_panel_task(void *) {
+  ESP_ERROR_CHECK(panel_init(on_lcd_color_trans_done, nullptr));
+  xSemaphoreGive(panel_ready);
+  vTaskDelete(nullptr);
+}
+
+extern "C" void display_prepare() {
+  if (panel_ready)
+    return;
   ESP_LOGI(TAG, "Initializing Slint display wrapper");
   first_frame_complete = xSemaphoreCreateBinaryStatic(&first_frame_storage);
+  panel_ready = xSemaphoreCreateBinaryStatic(&panel_ready_storage);
 
   // Chunk height must be even. LVGL's rounder_cb aligned BOTH axes to even bounds and had
   // no artifacts; our chunked path only aligns x, so an odd height puts every other chunk
@@ -288,17 +299,27 @@ extern "C" void display_init() {
   // Counting, not binary: the flush keeps several chunk transfers outstanding so rendering
   // overlaps the panel DMA, and a binary semaphore would collapse two completions into one.
   trans_sem = xSemaphoreCreateCounting(SLINT_CHUNK_ACCUMULATORS, 0);
-  ESP_ERROR_CHECK(panel_init(on_lcd_color_trans_done, nullptr));
+  if (xTaskCreate(prepare_panel_task, "panel_init", 4096, nullptr, 1, nullptr) != pdPASS) {
+    ESP_ERROR_CHECK(panel_init(on_lcd_color_trans_done, nullptr));
+    xSemaphoreGive(panel_ready);
+  }
+}
 
-  // Start Slint Event Loop Task in internal SRAM
-  // Must be in internal SRAM because NVS flash writes disable CPU caches, causing cache panics if stack is in PSRAM.
-  xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 16 * 1024, NULL, 20, &slint_task_handle, 1);
+extern "C" void display_init() {
+  display_prepare();
+  ESP_ERROR_CHECK(xSemaphoreTake(panel_ready, pdMS_TO_TICKS(5000)) == pdTRUE ? ESP_OK : ESP_ERR_TIMEOUT);
+
+  // Menu vector paths need about 26 KiB of stack. Keep it in internal SRAM
+  // because NVS writes disable the cache needed to access a PSRAM stack.
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 32 * 1024, NULL, 20,
+                                        &slint_task_handle, 1) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 
   // NOTE: slint_window is created inside slint_event_loop above, so it is not safe to
   // touch UiState here - see connect_callbacks() for properties set once it exists.
 
   // Start Input Polling Task (pinned to core 0, leaving core 1 fully dedicated to the Slint event loop)
-  xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 2048, NULL, 20, &slint_input_task_handle, 0);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 2048, NULL, 20,
+                                        &slint_input_task_handle, 0) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 
   // First-frame scene allocation and Wi-Fi initialization both need internal
   // heap. Serialize those peaks using completion, rather than a fixed delay.

@@ -459,18 +459,23 @@ The 7x7 experiment is a cautionary tale worth keeping: it cut dirty area from 42
 Consecutive chunks of one flush usually share an x range, so this removed one of the two blocking
 param transactions per call: **89us -> 73us**. RASET changes every chunk and cannot be skipped.
 
-### The stack was 5x oversized
+### UI stack sizing
 
-`uxTaskGetStackHighWaterMark` on the UI task: **~10KB peak unrotated, ~28KB rotated**. The 48KB
-was sized for the zeno path rasteriser's single ~19KB frame, which is only reached when rotation
-makes `draw_path_as_arc` bail. It is now chosen from the rotation setting - 24KB unrotated, 48KB
-rotated - read once at init immediately above the task creation, so the two cannot disagree.
+Earlier measurements with `uxTaskGetStackHighWaterMark` found **~10KB peak unrotated, ~28KB
+rotated**, leading to an experiment with rotation-dependent 24KB/48KB stacks. Those idle-screen
+measurements did not cover every vector path: opening the menu reaches the zeno path rasteriser's
+single ~19KB frame even without rotation.
+
+The UI task now uses **32KB of internal SRAM**. A hardware watchpoint caught menu-header path
+rasterisation using about 26KB and overwriting the panel callback beyond the previous 16KB stack.
+Task creation failures are checked explicitly. The stack must stay internal because NVS writes
+disable the cache required to access PSRAM.
 
 **Rotated screens run at ~107ms/frame (9fps)** for the same reason. Supporting rotation in the
 analytic arc is small and would remove both problems: a circle is rotation-invariant, so it needs
 only the centre transformed through `RotationInfo` and `orientation.angle()` added to the start
-angle. `Transform::transformed` and `RenderingRotation::angle()` already exist. That would also
-collapse the conditional stack to a flat 24KB.
+angle. `Transform::transformed` and `RenderingRotation::angle()` already exist. Menu vector paths
+still need to be included when measuring stack requirements.
 
 ### The arc artifact: UNRESOLVED, and narrowing is currently disabled
 

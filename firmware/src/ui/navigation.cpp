@@ -78,6 +78,10 @@ extern "C"
 extern "C" void handle_imu_gesture(imu_gesture_t gesture);
 
 static std::atomic<Screen> cached_active_screen(Screen::Splash);
+extern "C" bool is_splash_screen_active() {
+  return cached_active_screen.load() == Screen::Splash;
+}
+
 extern "C" bool is_stats_screen_active() {
   return cached_active_screen.load() == Screen::Stats;
 }

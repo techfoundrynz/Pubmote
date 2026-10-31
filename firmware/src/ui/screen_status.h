@@ -13,6 +13,7 @@ extern "C"
   bool is_menu_screen_active(void);
   bool is_pairing_screen_active(void);
   bool is_settings_screen_active(void);
+  bool is_splash_screen_active(void);
   bool is_stats_screen_active(void);
   bool is_update_screen_active(void);
 #ifdef __cplusplus
