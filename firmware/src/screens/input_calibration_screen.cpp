@@ -138,17 +138,25 @@ static void calibration_task(void *pvParameters) {
       min_max_data.y_max = joystick_data.y;
 
     // 2. Convert ADC to current axis values (-1.0 to 1.0)
+    // On the axis options step, preview the live toggles so the user can see their effect before saving
+    bool invert_x = calibration_data.invert_x;
+    bool invert_y = calibration_data.invert_y;
+    if (calibration_step == CALIBRATION_STEP_STICK_FLAGS && get_slint_window()) {
+      const auto &state = get_slint_window()->global<UiState>();
+      invert_x = state.get_invert_x();
+      invert_y = state.get_invert_y();
+    }
+
     float curr_x = 0;
     if (input_pins_x_enabled()) {
       curr_x = convert_adc_to_axis(joystick_data.x, calibration_data.x_min, calibration_data.x_center,
-                                   calibration_data.x_max, calibration_data.deadband, calibration_data.expo, false);
+                                   calibration_data.x_max, calibration_data.deadband, calibration_data.expo, invert_x);
     }
 
     float curr_y = 0;
     if (input_pins_y_enabled()) {
       curr_y = convert_adc_to_axis(joystick_data.y, calibration_data.y_min, calibration_data.y_center,
-                                   calibration_data.y_max, calibration_data.deadband, calibration_data.expo,
-                                   calibration_data.invert_y);
+                                   calibration_data.y_max, calibration_data.deadband, calibration_data.expo, invert_y);
     }
 
     // 3. Format header label
