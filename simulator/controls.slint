@@ -2,10 +2,11 @@ import { Slider, CheckBox, ComboBox, Button } from "std-widgets.slint";
 export component SimulatorControls inherits Window {
     title: "PubRemote — simulated hardware";
     width: 420px;
-    height: 620px;
+    height: 680px;
     in-out property <float> speed: 18;
     in-out property <float> battery: 82;
     in-out property <float> remote-battery: 95;
+    in-out property <float> charge-current: 480;
     in-out property <float> rssi: -55;
     in-out property <float> joystick-x: 0;
     in-out property <float> joystick-y: 0;
@@ -44,6 +45,8 @@ export component SimulatorControls inherits Window {
         Slider { minimum: 0; maximum: 100; value <=> root.battery; }
         Text { text: "Remote battery: " + round(root.remote-battery) + "%"; }
         Slider { minimum: 0; maximum: 100; value <=> root.remote-battery; }
+        Text { text: "Charge current: " + round(root.charge-current) + " mA"; }
+        Slider { minimum: 0; maximum: 1000; value <=> root.charge-current; }
         Text { text: "RSSI: " + round(root.rssi) + " dBm"; }
         Slider { minimum: -100; maximum: -20; value <=> root.rssi; }
         HorizontalLayout {

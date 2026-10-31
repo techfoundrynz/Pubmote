@@ -196,6 +196,14 @@ fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args
         }
         // The controls window supplies charge telemetry; screen selection is manual.
         "charge-poll" => {
+            let charging = boolean(controls.get_property("charging").unwrap());
+            let current = number(controls.get_property("charge-current").unwrap()).round() as u32;
+            let current_text = if charging && current > 0 {
+                format!("{current} mA")
+            } else {
+                String::new()
+            };
+            set(ui, "charge-current", text(&current_text));
             set(
                 ui,
                 "charge-percent",
@@ -989,11 +997,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui.invoke_global("UiState", "charge-poll", &[])?;
         assert_eq!(number(get(&ui, "charge-percent")), 73.0);
         assert_eq!(string(get(&ui, "charge-label")), "Charging");
+        assert_eq!(string(get(&ui, "charge-current")), "480 mA");
+        controls.set_property("charge-current", 0.into())?;
+        ui.invoke_global("UiState", "charge-poll", &[])?;
+        assert_eq!(string(get(&ui, "charge-current")), "");
+        controls.set_property("charge-current", 480.into())?;
+        ui.invoke_global("UiState", "charge-poll", &[])?;
+        assert_eq!(string(get(&ui, "charge-current")), "480 mA");
         ui.invoke_global("UiState", "charge-tapped", &[])?;
         assert!(matches!(get(&ui, "screen"), Value::EnumerationValue(_, name) if name == "stats"));
         controls.set_property("charging", false.into())?;
         ui.invoke_global("UiState", "charge-poll", &[])?;
         assert_eq!(string(get(&ui, "charge-label")), "Power connected");
+        assert_eq!(string(get(&ui, "charge-current")), "");
         set(&ui, "dimming-mode-label", text("Off"));
         for label in ["50%", "Screen off", "HBM raised", "HBM always", "Off"] {
             ui.invoke_global("UiState", "menu-toggle-dimming", &[])?;
@@ -1111,6 +1127,7 @@ fn capture_scenarios(
         "charge",
         "charge-full",
         "charge-estimate",
+        "charge-no-current",
         "extras",
         "display-test",
         "display-test-multi-touch",
@@ -1151,8 +1168,11 @@ fn capture_scenarios(
         if name == "charge-full" {
             controls.set_property("remote-battery", 100.into())?;
         }
-        if name == "charge" || name == "charge-estimate" {
+        if name == "charge" || name == "charge-estimate" || name == "charge-no-current" {
             controls.set_property("charging", true.into())?;
+        }
+        if name == "charge-no-current" {
+            controls.set_property("charge-current", 0.into())?;
         }
         tick(&ui, &controls, 0.0);
         if name == "charge-full" {
@@ -1170,7 +1190,7 @@ fn capture_scenarios(
                 "input-calibration"
             }
             "stats-disconnected" | "stats-low-battery" => "stats",
-            "charge-full" | "charge-estimate" => "charge",
+            "charge-full" | "charge-estimate" | "charge-no-current" => "charge",
             "boards-empty" => {
                 boards(&ui, false);
                 "boards"

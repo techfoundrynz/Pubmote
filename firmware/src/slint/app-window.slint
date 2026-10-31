@@ -234,6 +234,7 @@ export global UiState {
     // --- Charge (ui_ChargeScreen) ---
     in property <int> charge-percent: 0;
     in property <string> charge-label: "Charging";
+    in property <string> charge-current: "";
     in property <string> charge-time-estimate: "";
 
     // --- Boot notice (set by firmware when recovering from a crash) ---
@@ -859,6 +860,7 @@ export component AppWindow inherits Window {
         y: (screen-y(Screen.charge) - root.view-y) * self.height;
         battery-percent: UiState.charge-percent;
         charge-label: UiState.charge-label;
+        charge-current: UiState.charge-current;
         time-estimate: UiState.charge-time-estimate;
         dismissed => { UiState.charge-tapped(); }
     }
