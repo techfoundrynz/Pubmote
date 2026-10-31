@@ -1,13 +1,11 @@
 #include "config.h"
 #include "driver/gpio.h"
 #include "esp_err.h"
-#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
-#include "esp_system.h"
 #include "esp_task_wdt.h"
-#include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "games/game_store.h"
 #include "remote/adc.h"
@@ -30,6 +28,8 @@
 #include "remote/test_mode.h"
 #include "remote/transmitter.h"
 #include "remote/vehicle_state.h"
+#include "remote/wake_button_sampler.h"
+#include "ui/navigation.h"
 #include "utilities/diagnostic_log.h"
 #include "utilities/mem_debug.h"
 
@@ -56,6 +56,14 @@ static void configure_log_levels(void) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+#if IMU_ENABLED
+static void init_imu_task(void *finished) {
+  imu_init();
+  xSemaphoreGive((SemaphoreHandle_t)finished);
+  vTaskDelete(NULL);
+}
+#endif
+
 void app_main(void) {
   configure_log_levels();
   if (!diagnostic_log_init())
@@ -70,16 +78,22 @@ void app_main(void) {
   MEM_MARK("app_main entry");
   power_management_preinit();
 
-  // Enable power for core peripherals
+  // The early charger probe needs powered, settled peripheral/I2C rails.
   acc1_power_set_level(1);
+  TickType_t peripheral_power_started = xTaskGetTickCount();
   gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
-  // Core setup
   init_i2c();
   settings_init();
-  init_adcs();
+  wake_button_sampler_finish();
   buttons_init();
+  xTaskDelayUntil(&peripheral_power_started, pdMS_TO_TICKS(50));
+  power_management_check_early_wake();
+  init_adcs();
   buzzer_init();
-  haptic_init();
+  // Rejected button wakes must not power/calibrate the vibration motor.
+  if (!(esp_sleep_get_wakeup_causes() & BIT(ESP_SLEEP_WAKEUP_EXT1)) ||
+      wake_button_sampler_result() == WAKE_SAMPLE_CONFIRMED)
+    haptic_init();
   led_init();
   MEM_MARK("core peripherals");
   power_management_init();
@@ -87,7 +101,7 @@ void app_main(void) {
 
   // Fire startup callbacks once boot is confirmed
   startup_cb();
-// Enable accessories after callbacks
+  // Enable accessories after callbacks.
 #ifdef ACC2_POWER_DEFAULT_LEVEL
   acc2_power_set_level(ACC2_POWER_DEFAULT_LEVEL);
 #endif
@@ -97,9 +111,25 @@ void app_main(void) {
   thumbstick_init();
   MEM_MARK("thumbstick");
   game_store_mount(); // Never formats an existing filesystem on mount failure.
+#if IMU_ENABLED
+  // Overlap IMU setup with panel reset waits; join before starting the radio.
+  StaticSemaphore_t imu_finished_storage;
+  SemaphoreHandle_t imu_finished = xSemaphoreCreateBinaryStatic(&imu_finished_storage);
+  bool imu_started = xTaskCreate(init_imu_task, "imu_init", 4096, imu_finished, 1, NULL) == pdPASS;
+#endif
   display_init();
   MEM_MARK("display_init");
+#if IMU_ENABLED
+  if (imu_started) {
+    ESP_ERROR_CHECK(xSemaphoreTake(imu_finished, pdMS_TO_TICKS(5000)) == pdTRUE ? ESP_OK : ESP_ERR_TIMEOUT);
+  }
+  else {
+    imu_init();
+  }
+  vSemaphoreDelete(imu_finished);
+#else
   imu_init();
+#endif
   MEM_MARK("imu_init");
   vehicle_monitor_init();
   esp_task_wdt_reset();
@@ -109,7 +139,7 @@ void app_main(void) {
   comms_select_driver(boot_comms_mode);
   MEM_MARK("comms driver select");
   ESP_ERROR_CHECK(radio_session_init());
-  comms_init();
+  ESP_ERROR_CHECK(comms_init());
   MEM_MARK("comms_init");
   connection_init();
   receiver_init();
@@ -118,16 +148,15 @@ void app_main(void) {
   console_init();
 
   MEM_MARK("console_init");
-  ESP_LOGI(TAG, "Boot complete");
-
-  // Boot finished - the main task is about to exit, so it must leave the
-  // watchdog. The subscribed long-running tasks take over from here.
-  ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
 
 #if TEST_MODE
   test_mode_init();
 #endif
 
-  // app_main returns here, freeing its stack; the orchestrator takes over the polling.
   orchestrator_init();
+
+  // Runtime tasks take over the watchdog before app_main returns.
+  ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
+  ESP_LOGI(TAG, "Boot complete");
+  ui_navigation_finish_boot();
 }

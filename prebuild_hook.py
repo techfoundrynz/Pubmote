@@ -26,10 +26,16 @@ project_dir = Path(env.subst("$PROJECT_DIR"))
 sys.path.insert(0, str(project_dir / "scripts"))
 from slint_codegen import split_resource_declarations, prepare_font_resources
 from slint_fonts import font_settings as make_font_settings
-from cmake_inputs import CACHE_VARIABLE, cmake_input_fingerprint, invalidate_cmake_cache
+from cmake_inputs import CACHE_VARIABLE, cmake_input_fingerprint, invalidate_cmake_cache, invalidate_bootloader_cache
 build_dir = Path(env.subst("$BUILD_DIR")).resolve()
 generated_dir = build_dir / "slint_generated"
 generated_dir.mkdir(parents=True, exist_ok=True)
+
+# PlatformIO caches the bootloader's CMake model separately from the app. A
+# changed sdkconfig can otherwise rebuild only the app and leave flash mode (or
+# other boot settings) stale in bootloader.bin.
+if invalidate_bootloader_cache(build_dir, project_dir / f"sdkconfig.{env['PIOENV']}"):
+    print("[CMake] SDK settings changed; refreshing bootloader configuration")
 
 # Only metadata consumers rebuild when the date or firmware version changes.
 version = env.GetProjectOption("custom_firmware_version")

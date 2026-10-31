@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from cmake_inputs import CACHE_VARIABLE, cmake_input_fingerprint, invalidate_cmake_cache
+from cmake_inputs import CACHE_VARIABLE, cmake_input_fingerprint, invalidate_cmake_cache, invalidate_bootloader_cache
 
 
 class CMakeInputsTests(unittest.TestCase):
@@ -66,6 +66,47 @@ class CMakeInputsTests(unittest.TestCase):
 
     def test_fresh_build_needs_no_invalidation(self):
         self.assertFalse(invalidate_cmake_cache(self.build, self.fingerprint()))
+
+    def test_sdk_change_refreshes_bootloader_even_after_app_reconfigured(self):
+        sdkconfig = self.root / "sdkconfig.test"
+        sdkconfig.write_text("CONFIG_ESPTOOLPY_FLASHMODE_DIO=y\n")
+        self.assertFalse(invalidate_bootloader_cache(self.build, sdkconfig))
+        cache = self.build / "bootloader" / "CMakeCache.txt"
+        replies = cache.parent / ".cmake/api/v1/reply"
+        replies.mkdir(parents=True)
+        cache.write_text("old bootloader configuration")
+        reply = replies / "codemodel-v2-old.json"
+        reply.write_text("{}")
+        memory = self.build / "memory.ld"
+        memory.write_text("rtc_slow_seg: old SDK layout")
+        self.record()  # The app model can already reflect the new SDK settings.
+        self.assertFalse(invalidate_bootloader_cache(self.build, sdkconfig))
+        self.assertTrue(reply.exists())
+        self.assertTrue(memory.exists())
+        before = sdkconfig.stat()
+        sdkconfig.write_text("CONFIG_ESPTOOLPY_FLASHMODE_QIO=y\n")
+        os.utime(sdkconfig, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.assertTrue(invalidate_bootloader_cache(self.build, sdkconfig))
+        self.assertFalse(cache.exists())
+        self.assertFalse(reply.exists())
+        self.assertFalse(memory.exists())
+        self.assertTrue(self.cache.exists())
+
+    def test_missing_bootloader_cache_also_invalidates_its_api_reply(self):
+        sdkconfig = self.root / "sdkconfig.test"
+        sdkconfig.write_text("CONFIG_ESPTOOLPY_FLASHMODE_QIO=y\n")
+        self.assertFalse(invalidate_bootloader_cache(self.build, sdkconfig))
+        replies = self.build / "bootloader/.cmake/api/v1/reply"
+        replies.mkdir(parents=True)
+        reply = replies / "codemodel-v2-stale.json"
+        reply.write_text("{}")
+        self.assertTrue(invalidate_bootloader_cache(self.build, sdkconfig))
+        self.assertFalse(reply.exists())
+
+    def test_missing_sdkconfig_does_not_touch_build_artifacts(self):
+        self.record()
+        self.assertFalse(invalidate_bootloader_cache(self.build, self.root / "missing"))
+        self.assertTrue(self.cache.exists())
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ extern "C"
 #endif
 
   esp_err_t sy6970_charge_driver_init();
+  bool sy6970_probe_wake_power(bool *connected);
   RemotePowerState sy6970_get_power_state();
   bool sy6970_get_diagnostics(ChargeDiagnostics *diagnostics);
   void sy6970_disable_watchdog();

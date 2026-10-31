@@ -56,6 +56,8 @@ struct SlintPlatformConfiguration {
   /// All contacts in rotated logical display pixels. The pointer is valid only
   /// during the callback, on the UI task. An empty frame indicates release.
   void (*touch_points_callback)(const SlintTouchPoint *, uint8_t) = nullptr;
+  /// Called once on the UI task, after the first frame's panel DMA has completed.
+  void (*first_frame_callback)() = nullptr;
   slint::platform::SoftwareRenderer::RenderingRotation rotation =
       slint::platform::SoftwareRenderer::RenderingRotation::NoRotation;
   /// Swap the 2 bytes of RGB 565 pixels before sending to the display, or turn 24-bit RGB into

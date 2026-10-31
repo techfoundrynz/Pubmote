@@ -400,12 +400,12 @@ extern "C" void teardown_stats_properties() {
 }
 
 extern "C" void handle_splash_exit() {
-  ESP_LOGI(TAG, "Splash screen finished");
   slint::invoke_from_event_loop([]() {
     const auto &state = get_slint_window()->global<UiState>();
-    if (state.get_screen() != Screen::Splash) {
+    if (state.get_screen() != Screen::Splash || !state.get_boot_ready() || !state.get_splash_minimum_elapsed()) {
       return;
     }
+    ESP_LOGI(TAG, "Splash screen finished");
     charge_screen_finish_boot();
     if (state.get_screen() == Screen::Splash)
       state.set_screen(Screen::Stats);

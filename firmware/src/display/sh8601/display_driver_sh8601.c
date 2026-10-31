@@ -47,7 +47,8 @@ const sh8601_lcd_init_cmd_t co5300_lcd_init_cmds[] = {
     {SH8601_W_WDBRIGHTNESSVALHBM, (uint8_t[]){0xFF}, 1, 1},
     {SH8601_W_WDBRIGHTNESSVALNOR, (uint8_t[]){0x00}, 1, 1},
     {SH8601_C_DISPON, (uint8_t[]){0x00}, 0, 10},
-    {SH8601_W_WDBRIGHTNESSVALNOR, (uint8_t[]){0xFF}, 1, 0},
+    // The UI restores brightness after the first complete frame reaches the panel.
+    {SH8601_W_WDBRIGHTNESSVALNOR, (uint8_t[]){0x00}, 1, 0},
     //{SH8601_W_MADCTL, (uint8_t []){0x60}, 1, 0},
 };
 

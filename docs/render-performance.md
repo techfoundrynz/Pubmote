@@ -79,10 +79,11 @@ The walk touches roughly 24 KB of distinct code per item against a 32 KB instruc
 that code is fetched from flash. **Flash runs in DIO mode at 80 MHz — 2-bit, ~20 MB/s.** The
 renderer is instruction-fetch starved.
 
-This cannot be improved on this board:
+The initial investigation recorded these memory-bus constraints:
 
-- **QIO** (4-bit, would roughly double fetch bandwidth): unavailable. The octal PSRAM
-  (`CONFIG_SPIRAM_MODE_OCT`) claims the extra data lines.
+- **QIO** was not enabled for this measurement. The earlier assumption that octal
+  PSRAM prevents quad flash was incorrect: ESP-IDF supports F4R8 at 80 MHz.
+  Section 28 records the later QIO boot measurements on this Pingumote.
 - **120 MHz flash**: rejected by ESP-IDF at compile time —
   `static assertion failed: "FLASH and PSRAM Mode configuration are not supported"`.
 - **Instruction cache**: already at its 32 KB maximum (`CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB`).
@@ -1291,7 +1292,8 @@ PSRAM capacity and aborting during startup. Instructions remain in flash;
 PSRAM stays enabled for application allocations. The instruction-fetch
 optimization below applies to the larger-PSRAM targets.
 
-- Keep CPU at 240 MHz, PSRAM at 80 MHz, and flash at 80 MHz DIO.
+- Keep CPU at 240 MHz and PSRAM/flash at 80 MHz. This migration retained DIO;
+  section 28 subsequently validates QIO on the connected Pingumote only.
 - Octal PSRAM already uses **DDR**. `CONFIG_ESPTOOLPY_FLASH_SAMPLE_MODE_STR`
   describes the separate flash device, not the PSRAM bus. Quad PSRAM uses STR.
 - Octal PSRAM at 120 MHz is **still experimental in IDF 6.1**, with documented

@@ -1,5 +1,6 @@
 #include "ui/navigation.h"
 #include "config.h"
+#include "esp_log.h"
 #include "esp_system.h"
 #include "remote/imu.h"
 #include "remote/input_router.h"
@@ -361,6 +362,15 @@ void ui_navigation_init(int reset_reason) {
   ui_apply_theme();
   poll_charge_screen();
 }
+
+void ui_navigation_finish_boot(void) {
+  slint::invoke_from_event_loop([]() {
+    get_slint_window()->global<UiState>().set_boot_ready(true);
+    ESP_LOGI("PUBREMOTE-BOOT", "All initialization complete");
+    handle_splash_exit();
+  });
+}
+
 void ui_navigation_prepare_shutdown(void) {
   imu_unregister_gesture_callback(handle_imu_gesture);
   imu_unregister_gesture_callback(handle_charge_imu_gesture);

@@ -49,6 +49,7 @@ set(app_sources
     "remote/time.c"
     "remote/transmitter.c"
     "remote/vehicle_state.c"
+    "remote/wake_button_sampler.c"
     "remote/wifi.c"
     "screens/about_screen.cpp"
     "screens/boards_screen.cpp"

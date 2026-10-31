@@ -12,6 +12,8 @@ extern "C"
   void acc2_power_set_level(uint8_t level);
   void reset_sleep_timer();
   void power_management_preinit();
+  // May return directly to sleep before any charger/accessory initialization.
+  void power_management_check_early_wake();
   void power_management_init();
   bool power_management_is_power_connected();
   bool power_management_woke_for_charging();

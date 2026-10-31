@@ -23,9 +23,11 @@ typedef struct {
 // Simple cache for device handles (max 8 devices)
 static device_handle_cache_t device_cache[8];
 static int device_cache_count = 0;
+static StaticSemaphore_t device_cache_mutex_storage;
+static SemaphoreHandle_t device_cache_mutex;
 
 // Helper function to get or create device handle
-static i2c_master_dev_handle_t get_device_handle(uint8_t device_addr) {
+static i2c_master_dev_handle_t get_device_handle_locked(uint8_t device_addr) {
   // Check if we already have a handle for this device
   for (int i = 0; i < device_cache_count; i++) {
     if (device_cache[i].device_addr == device_addr) {
@@ -51,6 +53,15 @@ static i2c_master_dev_handle_t get_device_handle(uint8_t device_addr) {
   }
 
   return NULL;
+}
+
+static i2c_master_dev_handle_t get_device_handle(uint8_t device_addr) {
+  // Boot and runtime workers may discover different devices concurrently.
+  // Serialize cache lookup/insertion; the SDK serializes bus transactions.
+  xSemaphoreTake(device_cache_mutex, portMAX_DELAY);
+  i2c_master_dev_handle_t handle = get_device_handle_locked(device_addr);
+  xSemaphoreGive(device_cache_mutex);
+  return handle;
 }
 
 i2c_master_bus_handle_t i2c_get_bus_handle() {
@@ -130,6 +141,7 @@ esp_err_t i2c_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t 
 }
 
 void init_i2c() {
+  device_cache_mutex = xSemaphoreCreateMutexStatic(&device_cache_mutex_storage);
 #if defined(I2C_SDA) && defined(I2C_SCL)
   // Initialize I2C master bus
   i2c_master_bus_config_t i2c_bus_config = {

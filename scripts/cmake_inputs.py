@@ -30,3 +30,29 @@ def invalidate_cmake_cache(build_dir, fingerprint):
         return False
     cache.unlink()
     return True
+
+
+def invalidate_bootloader_cache(build_dir, sdkconfig):
+    """Refresh bootloader configuration and linker layout when SDK settings change."""
+    build_dir, sdkconfig = Path(build_dir), Path(sdkconfig)
+    if not sdkconfig.is_file():
+        return False
+    # Version the cache contract: v2 also refreshes SDK-dependent linker scripts.
+    fingerprint = b"v2:" + hashlib.sha256(sdkconfig.read_bytes()).hexdigest().encode()
+    recorded = build_dir / "bootloader-sdkconfig.sha256"
+    cache = build_dir / "bootloader" / "CMakeCache.txt"
+    reply_dir = build_dir / "bootloader" / ".cmake" / "api" / "v1" / "reply"
+    changed = not recorded.exists() or recorded.read_bytes() != fingerprint
+    invalidate = (cache.exists() or reply_dir.exists()) and (changed or not cache.exists())
+    if invalidate:
+        cache.unlink(missing_ok=True)
+        # PlatformIO checks the app cache even for the bootloader. Empty its
+        # generated API reply too, so the bootloader code model is regenerated.
+        for reply in reply_dir.glob("*.json"):
+            reply.unlink()
+    if changed:
+        for name in ("memory.ld", "sections.ld"):
+            (build_dir / name).unlink(missing_ok=True)
+        build_dir.mkdir(parents=True, exist_ok=True)
+        recorded.write_bytes(fingerprint)
+    return invalidate
