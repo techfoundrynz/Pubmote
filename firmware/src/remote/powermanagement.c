@@ -21,6 +21,7 @@
 #include "remote/settings_snapshot.h"
 #include "remote/stats.h"
 #include "remote/tones.h"
+#include "remote/wake_button_sampler.h"
 #include "remoteinputs.h"
 #include "sleep_timer.h"
 #include "utilities/number_utils.h"
@@ -46,6 +47,7 @@ static const char *TAG = "PUBREMOTE-POWERMANAGEMENT";
 RTC_DATA_ATTR bool is_power_connected = false; // Store power state across deep sleep
 static atomic_bool power_connected_snapshot = false;
 static bool woke_for_charging = false;
+static bool suppress_sleep_feedback = false;
 
 bool power_management_is_power_connected(void) {
   return atomic_load(&power_connected_snapshot);
@@ -116,16 +118,11 @@ static bool get_button_pressed() {
 }
 
 static bool check_button_press() {
-  uint64_t pressStartTime = esp_timer_get_time();
-  while (get_button_pressed()) { // Check if button is still pressed
-    esp_task_wdt_reset();        // Boot-window watchdog (no-op if caller unsubscribed)
-    if ((esp_timer_get_time() - pressStartTime) >= (CONFIG_BUTTON_LONG_PRESS_TIME_MS * 1000)) {
-      ESP_LOGI(TAG, "Button has been pressed for 2 seconds.");
-      return true;
-    }
-    vTaskDelay(pdMS_TO_TICKS(10)); // Delay to allow for time checking without busy waiting
-  }
-  return false;
+  const bool confirmed = wake_button_sampler_result() == WAKE_SAMPLE_CONFIRMED;
+  if (!confirmed)
+    suppress_sleep_feedback = true;
+  ESP_LOGI(TAG, "ULP wake-button hold: %s", confirmed ? "confirmed" : "rejected");
+  return confirmed;
 }
 
 static esp_err_t enable_wake() {
@@ -365,6 +362,57 @@ void power_management_preinit() {
 #endif
 }
 
+static void begin_deep_sleep(void) {
+  // Initialize libc's time locks before deep-sleep timekeeping suspends the
+  // scheduler; lazy mutex allocation during sleep entry would abort.
+  struct timeval tv_init;
+  gettimeofday(&tv_init, NULL);
+#ifdef PMU_INT
+  await_pmu_int_reset();
+#endif
+  ESP_ERROR_CHECK(enable_wake());
+
+  configure_sleep_pins();
+
+  const InputPinSettings wake_pins = settings_get_pins();
+  ESP_ERROR_CHECK(wake_button_sampler_prepare(wake_pins.btn1_gpio, wake_pins.btn1_active_level));
+
+  ESP_LOGI(TAG, "Entering deep sleep mode");
+  // RTC peripherals stay on so the wake button's internal pull survives sleep
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+  esp_deep_sleep_start();
+}
+
+void power_management_check_early_wake(void) {
+  const uint32_t causes = esp_sleep_get_wakeup_causes();
+  const InputPinSettings pins = settings_get_pins();
+  const uint64_t wake_pins = esp_sleep_get_ext1_wakeup_status();
+  const bool ext1 = (causes & BIT(ESP_SLEEP_WAKEUP_EXT1)) != 0;
+  const bool button_wake = ext1 && input_pins_button_enabled() && (wake_pins & BIT64(pins.btn1_gpio));
+  if (button_wake && wake_button_sampler_result() == WAKE_SAMPLE_CONFIRMED)
+    return;
+  bool pmu_wake = false;
+#ifdef PMU_INT
+  pmu_wake = (causes & BIT(ESP_SLEEP_WAKEUP_EXT0)) || (ext1 && (wake_pins & BIT64(PMU_INT)));
+#endif
+  if (!button_wake && !pmu_wake)
+    return;
+  bool connected;
+  if (!charge_driver_probe_wake_power(&connected))
+    return;
+  if (!button_wake && connected && !is_power_connected)
+    return;
+
+  is_power_connected = connected;
+  atomic_store(&power_connected_snapshot, connected);
+  ESP_LOGI(TAG, "Rejected wake: returning to sleep without charger initialization");
+  while (get_button_pressed()) {
+    esp_task_wdt_reset();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+  begin_deep_sleep();
+}
+
 static void enter_sleep_internal(bool shipping) {
   // The whole sleep-entry sequence takes a few seconds - restart the watchdog
   // window so it can't fire mid-shutdown (no-op if caller unsubscribed)
@@ -373,7 +421,8 @@ static void enter_sleep_internal(bool shipping) {
   // Disable some things so they don't run during wake check
   connection_update_state(CONNECTION_STATE_DISCONNECTED);
   unbind_power_button();
-  haptic_vibrate(HAPTIC_ALERT_750MS);
+  if (!suppress_sleep_feedback)
+    haptic_vibrate(HAPTIC_ALERT_750MS);
 
   // Turn off things
   display_off();
@@ -386,7 +435,8 @@ static void enter_sleep_internal(bool shipping) {
     vTaskDelay(pdMS_TO_TICKS(10));
     ESP_LOGI(TAG, "Waiting for button release before sleep...");
   }
-  vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow effects to finish
+  if (!suppress_sleep_feedback)
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow effects to finish
   esp_task_wdt_reset();
 
   // Each of these waits on a task to exit or talks to an I2C device, and an unresponsive bus
@@ -397,11 +447,6 @@ static void enter_sleep_internal(bool shipping) {
   esp_task_wdt_reset();
   led_deinit(); // Releases the RMT channel so LED_DATA can be latched low
   buzzer_deinit();
-  esp_task_wdt_reset();
-
-  acc1_power_set_level(0);
-  acc2_power_set_level(0);
-
   esp_task_wdt_reset();
 
 #ifdef PMU_INT
@@ -426,17 +471,11 @@ static void enter_sleep_internal(bool shipping) {
     shipping_error_marker = SHIPPING_ERROR_MARKER;
     esp_restart();
   }
-#ifdef PMU_INT
-  await_pmu_int_reset();
-#endif
-  ESP_ERROR_CHECK(enable_wake());
-
-  configure_sleep_pins();
-
-  ESP_LOGI(TAG, "Entering deep sleep mode");
-  // RTC peripherals stay on so the wake button's internal pull survives sleep
-  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
-  esp_deep_sleep_start(); // No code executes after esp_deep_sleep_start()
+  // Keep I2C powered through the final charger status read and shutdown writes.
+  acc1_power_set_level(0);
+  acc2_power_set_level(0);
+  esp_task_wdt_reset();
+  begin_deep_sleep();
 }
 
 static void sleep_timer_expired(void) {
@@ -543,14 +582,17 @@ void power_management_task(void *pvParameters) {
 static bool check_pmu_should_wake(bool last_powered) {
   await_pmu_int_reset();
   power_state_update();
-  // The saved state may still be powered if USB was unplugged during sleep.
-  // Accept live input power regardless of the state recorded before sleep.
-  if (is_power_connected) {
+  // Only a new cable wakes the UI; charge-status/fault IRQs must preserve power-off.
+  if (is_power_connected && !last_powered) {
     woke_for_charging = true;
     buzzer_set_tone(NOTE_SUCCESS, PMU_INT_NOTE_DURATION);
     // Input power is good - continue to the charge screen.
   }
   else {
+    if (is_power_connected && last_powered) {
+      ESP_LOGI(TAG, "Ignoring charger interrupt: USB was already connected before sleep");
+      suppress_sleep_feedback = true;
+    }
     if (!is_power_connected && last_powered) {
       buzzer_set_tone(NOTE_ERROR, PMU_INT_NOTE_DURATION);
       vTaskDelay(pdMS_TO_TICKS(PMU_INT_NOTE_DURATION)); // Allow time for the note to play
@@ -563,17 +605,9 @@ static bool check_pmu_should_wake(bool last_powered) {
 #endif
 
 void power_management_init() {
-  // Workaround for ESP-IDF crash when entering deep sleep.
-  // The timekeeping synchronization function (esp_sync_timekeeping_timers) called
-  // by esp_deep_sleep_start() accesses gettimeofday(), which requires s_time_lock
-  // and s_boot_time_lock. If these locks are not yet initialized, they will be
-  // lazily initialized during deep sleep entry. However, because the RTOS scheduler
-  // is suspended during deep sleep entry, xQueueCreateMutex (called by lock_init_generic)
-  // aborts. Initializing the locks now (when scheduler is running) avoids the crash.
-  struct timeval tv_init;
-  gettimeofday(&tv_init, NULL);
-
-  bool power_was_connected = is_power_connected;
+#ifdef PMU_INT
+  const bool power_was_connected = is_power_connected;
+#endif
   ESP_ERROR_CHECK(charge_driver_init());
   charge_time_init();
   sleep_timer_init(sleep_timer_expired);

@@ -216,7 +216,12 @@ fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args
                 screen(ui, "stats");
             }
         }
-        "splash-exit" | "menu-back" => screen(ui, "stats"),
+        "splash-exit" => {
+            if boolean(get(ui, "boot-ready")) && boolean(get(ui, "splash-minimum-elapsed")) {
+                screen(ui, "stats");
+            }
+        }
+        "menu-back" => screen(ui, "stats"),
         "stats-swiped-down"
         | "about-back"
         | "boards-back"
@@ -309,6 +314,7 @@ fn handle(ui: &ComponentInstance, controls: &ComponentInstance, name: &str, args
         }
         "confirm-dialog-accepted" => {
             set(ui, "show-confirm-dialog", false);
+            set(ui, "splash-minimum-elapsed", false);
             screen(ui, "splash");
         }
         "confirm-dialog-rejected" => set(ui, "show-confirm-dialog", false),
@@ -542,6 +548,8 @@ pub(crate) fn initialize(
     theme(ui, "panel-height", height);
     theme(ui, "is-square-mode", square);
     for name in [
+        "boot-ready",
+        "splash-visible",
         "imu-supported",
         "joystick-supported",
         "joystick-x-supported",

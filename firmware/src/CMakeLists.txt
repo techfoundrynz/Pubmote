@@ -10,7 +10,7 @@ endforeach()
 idf_component_register(
     SRCS ${app_sources} ${slint_sources}
     PRIV_INCLUDE_DIRS "." "${CMAKE_BINARY_DIR}"
-    PRIV_REQUIRES config support transport ota game_store settings telemetry settings_store protocol charge_estimator)
+    PRIV_REQUIRES config support transport ota game_store settings telemetry settings_store protocol charge_estimator ulp)
 # Match espressif/lua's private numeric ABI (32-bit integers and floats).
 target_compile_definitions(${COMPONENT_LIB} PRIVATE LUA_32BITS=1)
 # Retain line/function information without enormous generated variable debug

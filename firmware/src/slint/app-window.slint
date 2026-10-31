@@ -255,6 +255,9 @@ export global UiState {
     // --- Actions (the firmware connects these) ---
     callback screen-changed(Screen);
     callback splash-exit();
+    in-out property <bool> boot-ready: false;
+    in-out property <bool> splash-visible: false;
+    in-out property <bool> splash-minimum-elapsed: false;
     callback charge-poll();
     callback charge-tapped();
     callback stats-swiped-down();
@@ -442,9 +445,10 @@ export component AppWindow inherits Window {
     }
 
     Timer {
-        interval: 1000ms;
-        running: active-screen == Screen.splash;
+        interval: 300ms;
+        running: active-screen == Screen.splash && UiState.splash-visible && !UiState.splash-minimum-elapsed;
         triggered => {
+            UiState.splash-minimum-elapsed = true;
             UiState.splash-exit();
         }
     }

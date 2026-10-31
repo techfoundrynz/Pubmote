@@ -26,6 +26,15 @@ esp_err_t charge_driver_init() {
 #endif
 }
 
+bool charge_driver_probe_wake_power(bool *connected) {
+#if PMU_SY6970
+  return sy6970_probe_wake_power(connected);
+#else
+  (void)connected;
+  return false;
+#endif
+}
+
 RemotePowerState get_power_state() {
   ESP_LOGD(TAG, "Getting battery voltage");
 #if PMU_SY6970

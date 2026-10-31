@@ -5,6 +5,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
+# Include SDK settings in linker-script cache keys to preserve ULP RTC reservations.
+for script in ("memory.ld", "sections.ld"):
+    env.Depends(env.File(f"$BUILD_DIR/{script}"), env.File("$BUILD_DIR/config/sdkconfig.h"))
+
 # Order application compilation after generation even when the implicit scanner
 # has no header to inspect yet on a clean build.
 env.Depends(

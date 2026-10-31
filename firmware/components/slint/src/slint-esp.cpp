@@ -120,7 +120,7 @@ template <typename PixelType> struct EspPlatform : public slint::platform::Platf
   EspPlatform(const SlintPlatformConfiguration<PixelType> &config)
       : size(config.size), panel_handle(config.panel_handle), touch_handle(config.touch_handle),
         touch_release_callback(config.touch_release_callback), touch_points_callback(config.touch_points_callback),
-        byte_swap(config.byte_swap), rotation(config.rotation) {
+        first_frame_callback(config.first_frame_callback), byte_swap(config.byte_swap), rotation(config.rotation) {
     task = xTaskGetCurrentTaskHandle();
     active_platform = this;
     set_rotation_callback = [](void *instance, slint::platform::SoftwareRenderer::RenderingRotation rot) {
@@ -147,6 +147,7 @@ private:
   esp_lcd_touch_handle_t touch_handle;
   void (*touch_release_callback)();
   void (*touch_points_callback)(const SlintTouchPoint *, uint8_t);
+  void (*first_frame_callback)();
   bool byte_swap;
   slint::platform::SoftwareRenderer::RenderingRotation rotation;
   class EspWindowAdapter *m_window = nullptr;
@@ -649,6 +650,14 @@ template <typename PixelType> void EspPlatform<PixelType>::run_event_loop() {
         slint_esp_last_frame_us = (uint32_t)t_total;
         // Not ++: compound ops on volatile are deprecated in C++20
         slint_esp_frame_counter = slint_esp_frame_counter + 1;
+
+        if (first_frame_callback) {
+          auto callback = first_frame_callback;
+          first_frame_callback = nullptr;
+          callback();
+          // Start the splash timer now, without waiting for another input event.
+          xTaskNotifyGive(task);
+        }
 
         // The same split the perf log prints, published for the on-screen overlay:
         // reading it off the panel does not need a serial monitor attached, and the

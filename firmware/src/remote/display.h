@@ -10,6 +10,8 @@ extern "C"
 #endif
 
   uint32_t display_get_frame_count(void);
+  // Begin panel setup without starting UI tasks; display_init joins it.
+  void display_prepare();
   void display_init();
   void display_deinit();
   uint8_t display_get_bl_level();

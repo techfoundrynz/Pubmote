@@ -1,6 +1,10 @@
 # Charging screen and charger wake
 
-The normal one-second boot splash is shown before entering charging after a charger wake (tapping can skip the splash). The charge page uses the saved display brightness. After 30 seconds it sets brightness to zero and disables high brightness mode, leaving touch active. The first tap while dark restores the saved display settings and starts another 30-second window; it stays on the charge page and does not dismiss a charger-only wake. Tapping while visible dismisses the page. Leaving the page always restores saved display settings. These temporary overrides do not change saved settings.
+The boot splash is shown before entering charging after a charger wake. It waits for device initialization and at least 300 ms of visible time; tapping cannot bypass those conditions.
+
+Diagnostic console startup and its terminal probe run after leaving the splash. Panel reset and touch initialization overlap haptic initialization, after wake approval.
+
+The charge page uses the saved display brightness. After 30 seconds it sets brightness to zero and disables high brightness mode, leaving touch active. The first tap while dark restores the saved display settings and starts another 30-second window; it stays on the charge page and does not dismiss a charger-only wake. Tapping while visible dismisses the page. Leaving the page always restores saved display settings. These temporary overrides do not change saved settings.
 
 On devices with an IMU, significant movement while the charge display is dark also restores the saved brightness and starts another 30-second window without dismissing the page or changing charger-only shutdown behavior. Movement detection uses a filtered acceleration change of 0.2 g over two samples, independent of orientation; resting face-up, small vibration, invalid readings, and isolated single-sample spikes do not wake it. Events queued before blanking or from an earlier charge-screen visit are ignored. Movement while visible does not extend the timeout.
 
@@ -22,7 +26,13 @@ The learned profile is saved only after a qualifying completed charge and surviv
 
 On Pingumote, SY6970 PG_STAT (register 0x0B, bit 2) detects valid charger input independently of ADC conversions and DPDM source classification. Its active-low interrupt on GPIO14 is armed as EXT0 before deep sleep; the configured power button remains EXT1. Shutdown disables charger ADC/watchdog first, waits for the interrupt to settle, and arms charger wake only when the pin is inactive. The pin returns to digital GPIO mode at the start of the next boot. Only a disconnected-to-connected power change accepts a PMU wake; detach, charging-complete, and fault interrupts return to sleep.
 
-Wake sources are read as a bitmap. If the power button and PMU wake together, the normal long-press button check takes priority and the boot is treated as a button wake.
+Powering off while USB is already connected keeps the display off. An interrupt with power present both before sleep and after wake is rejected without the shutdown vibration or its effect delay. A detach wake records the disconnected state before sleeping again, allowing a subsequent insertion to open the charging screen. This uses the retained pre-sleep power state; merely detecting live USB power is not sufficient to accept a PMU wake.
+
+Wake sources are read as a bitmap. If the power button and PMU wake together, the button's recorded hold result takes priority. Power-on requires a 500 ms hold; the power-off long press remains one second.
+
+On ESP32-S3, a finite ULP FSM sampler starts from the RTC wake stub and watches the button while the main CPU boots. Fifty calibrated 10 ms samples confirm the hold; an early release cancels it. Either verdict stops the sampler's timer. The application reads that retained result before changing the pin to digital GPIO, so a valid press can be released before the display appears. A missing or incomplete result rejects the wake; elapsed application boot time is not used as a fallback. The sampler is loaded before sleep but does not poll throughout standby. The [ESP-IDF ULP FSM guide](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/system/ulp-fsm.html) describes running GPIO monitoring alongside the main CPU.
+
+Rejected short button wakes are silent: they neither initialize/calibrate the haptic motor nor play shutdown feedback. On SY6970, early wake qualification reads power-good and acknowledges latched interrupts without reprogramming DPDM, charging, ADC or watchdog settings. A rejected button wake or unchanged-power PMU interrupt returns to sleep before enabling accessories or initializing those devices. This avoids a charger reinitialization/interrupt cycle after a short tap while charging. Unsupported or failed status probes retain the normal wake-qualification path.
 
 Hardware validation:
 

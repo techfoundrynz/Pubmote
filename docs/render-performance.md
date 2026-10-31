@@ -79,10 +79,11 @@ The walk touches roughly 24 KB of distinct code per item against a 32 KB instruc
 that code is fetched from flash. **Flash runs in DIO mode at 80 MHz — 2-bit, ~20 MB/s.** The
 renderer is instruction-fetch starved.
 
-This cannot be improved on this board:
+The initial investigation recorded these memory-bus constraints:
 
-- **QIO** (4-bit, would roughly double fetch bandwidth): unavailable. The octal PSRAM
-  (`CONFIG_SPIRAM_MODE_OCT`) claims the extra data lines.
+- **QIO** was not enabled for this measurement. The earlier assumption that octal
+  PSRAM prevents quad flash was incorrect: ESP-IDF supports F4R8 at 80 MHz.
+  Section 28 records the later QIO boot measurements on this Pingumote.
 - **120 MHz flash**: rejected by ESP-IDF at compile time —
   `static assertion failed: "FLASH and PSRAM Mode configuration are not supported"`.
 - **Instruction cache**: already at its 32 KB maximum (`CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB`).
@@ -458,18 +459,23 @@ The 7x7 experiment is a cautionary tale worth keeping: it cut dirty area from 42
 Consecutive chunks of one flush usually share an x range, so this removed one of the two blocking
 param transactions per call: **89us -> 73us**. RASET changes every chunk and cannot be skipped.
 
-### The stack was 5x oversized
+### UI stack sizing
 
-`uxTaskGetStackHighWaterMark` on the UI task: **~10KB peak unrotated, ~28KB rotated**. The 48KB
-was sized for the zeno path rasteriser's single ~19KB frame, which is only reached when rotation
-makes `draw_path_as_arc` bail. It is now chosen from the rotation setting - 24KB unrotated, 48KB
-rotated - read once at init immediately above the task creation, so the two cannot disagree.
+Earlier measurements with `uxTaskGetStackHighWaterMark` found **~10KB peak unrotated, ~28KB
+rotated**, leading to an experiment with rotation-dependent 24KB/48KB stacks. Those idle-screen
+measurements did not cover every vector path: opening the menu reaches the zeno path rasteriser's
+single ~19KB frame even without rotation.
+
+The UI task now uses **32KB of internal SRAM**. A hardware watchpoint caught menu-header path
+rasterisation using about 26KB and overwriting the panel callback beyond the previous 16KB stack.
+Task creation failures are checked explicitly. The stack must stay internal because NVS writes
+disable the cache required to access PSRAM.
 
 **Rotated screens run at ~107ms/frame (9fps)** for the same reason. Supporting rotation in the
 analytic arc is small and would remove both problems: a circle is rotation-invariant, so it needs
 only the centre transformed through `RotationInfo` and `orientation.angle()` added to the start
-angle. `Transform::transformed` and `RenderingRotation::angle()` already exist. That would also
-collapse the conditional stack to a flat 24KB.
+angle. `Transform::transformed` and `RenderingRotation::angle()` already exist. Menu vector paths
+still need to be included when measuring stack requirements.
 
 ### The arc artifact: UNRESOLVED, and narrowing is currently disabled
 
@@ -1291,7 +1297,8 @@ PSRAM capacity and aborting during startup. Instructions remain in flash;
 PSRAM stays enabled for application allocations. The instruction-fetch
 optimization below applies to the larger-PSRAM targets.
 
-- Keep CPU at 240 MHz, PSRAM at 80 MHz, and flash at 80 MHz DIO.
+- Keep CPU at 240 MHz and PSRAM/flash at 80 MHz. This migration retained DIO;
+  section 28 subsequently validates QIO on the connected Pingumote only.
 - Octal PSRAM already uses **DDR**. `CONFIG_ESPTOOLPY_FLASH_SAMPLE_MODE_STR`
   describes the separate flash device, not the PSRAM bus. Quad PSRAM uses STR.
 - Octal PSRAM at 120 MHz is **still experimental in IDF 6.1**, with documented

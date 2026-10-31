@@ -12,6 +12,9 @@
 // Log heap and per-task stack use through boot and at runtime. See utilities/mem_debug.h
 #define DEBUG_MEMORY 0
 
+// Wake-only hold; the normal button long-press (power off) stays independent.
+#define POWER_ON_HOLD_MS 500
+
 #ifndef API_BASE_URL
   #define API_BASE_URL "https://api.pubmote.com"
 #endif

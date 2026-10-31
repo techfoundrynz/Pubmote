@@ -37,6 +37,9 @@ extern "C"
   // Generic interface for charge driver
   char *charge_state_to_string(RemoteChargeState state);
   esp_err_t charge_driver_init();
+  // Wake-only status/IRQ acknowledgement without reconfiguring the charger.
+  // False means unsupported or a failed read; use normal initialization then.
+  bool charge_driver_probe_wake_power(bool *connected);
   RemotePowerState get_power_state();
   // Return the latest cached sample and request a refresh on the power task.
   // A supported board returns sample_ms == 0 while the first read is pending.
