@@ -145,7 +145,6 @@ static void slint_event_loop(void *pvParameters) {
   ui_navigation_init(esp_reset_reason());
   MEM_MARK("post callbacks");
 
-  // Keep the panel dark until its first complete frame, without blocking the UI.
   display_set_bl_level(0);
 
   // Subscribe this task to the task watchdog and feed it from a Slint timer:
@@ -311,15 +310,19 @@ extern "C" void display_init() {
 
   // Menu vector paths need about 26 KiB of stack. Keep it in internal SRAM
   // because NVS writes disable the cache needed to access a PSRAM stack.
-  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 32 * 1024, NULL, 20,
-                                        &slint_task_handle, 1) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
+  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(slint_event_loop, "slint_event_loop", 32 * 1024, NULL, 20, &slint_task_handle,
+                                          1) == pdPASS
+                      ? ESP_OK
+                      : ESP_ERR_NO_MEM);
 
   // NOTE: slint_window is created inside slint_event_loop above, so it is not safe to
   // touch UiState here - see connect_callbacks() for properties set once it exists.
 
   // Start Input Polling Task (pinned to core 0, leaving core 1 fully dedicated to the Slint event loop)
   ESP_ERROR_CHECK(xTaskCreatePinnedToCore(slint_input_task, "slint_input_task", 2048, NULL, 20,
-                                        &slint_input_task_handle, 0) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
+                                          &slint_input_task_handle, 0) == pdPASS
+                      ? ESP_OK
+                      : ESP_ERR_NO_MEM);
 
   // First-frame scene allocation and Wi-Fi initialization both need internal
   // heap. Serialize those peaks using completion, rather than a fixed delay.

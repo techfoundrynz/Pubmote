@@ -4,9 +4,8 @@ void ui_navigation_init(int reset_reason);
 void ui_navigation_prepare_shutdown(void);
 void ui_navigation_shutdown(void);
 
-// Called after device initialization; diagnostic console startup follows splash.
-// Dispatches to the UI task; the visible splash minimum is enforced there.
+// Dispatch device readiness to the UI task; the splash minimum is enforced there.
 #ifdef __cplusplus
 extern "C"
 #endif
-void ui_navigation_finish_boot(void);
+    void ui_navigation_finish_boot(void);

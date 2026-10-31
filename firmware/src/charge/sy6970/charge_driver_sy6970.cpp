@@ -27,8 +27,7 @@ extern "C" bool sy6970_probe_wake_power(bool *connected) {
   uint8_t status, fault;
   // PG_STAT is valid with the ADC off. Two REG0C reads acknowledge the latched
   // and current IRQ without restarting DPDM, charging, ADC or watchdog timers.
-  if (i2c_read(SY6970_ADDR, 0x0B, &status, 1, 20) != ESP_OK ||
-      i2c_read(SY6970_ADDR, 0x0C, &fault, 1, 20) != ESP_OK ||
+  if (i2c_read(SY6970_ADDR, 0x0B, &status, 1, 20) != ESP_OK || i2c_read(SY6970_ADDR, 0x0C, &fault, 1, 20) != ESP_OK ||
       i2c_read(SY6970_ADDR, 0x0C, &fault, 1, 20) != ESP_OK)
     return false;
   *connected = (status & 0x04) != 0;

@@ -2,27 +2,49 @@
 #include <deque>
 #include <functional>
 
-enum class Screen { Splash, Stats, Charge, Menu };
+enum class Screen {
+  Splash,
+  Stats,
+  Charge,
+  Menu
+};
 struct UiState {
   mutable Screen screen = Screen::Splash;
   mutable bool ready = false;
   bool minimum_elapsed = false;
-  Screen get_screen() const { return screen; }
-  void set_screen(Screen value) const { screen = value; }
-  bool get_boot_ready() const { return ready; }
-  void set_boot_ready(bool value) const { ready = value; }
-  bool get_splash_minimum_elapsed() const { return minimum_elapsed; }
+  Screen get_screen() const {
+    return screen;
+  }
+  void set_screen(Screen value) const {
+    screen = value;
+  }
+  bool get_boot_ready() const {
+    return ready;
+  }
+  void set_boot_ready(bool value) const {
+    ready = value;
+  }
+  bool get_splash_minimum_elapsed() const {
+    return minimum_elapsed;
+  }
 };
 static UiState state;
 struct Window {
-  template <typename T> const T &global() { return state; }
+  template <typename T> const T &global() {
+    return state;
+  }
 };
 static Window window;
-static Window *get_slint_window() { return &window; }
-namespace slint {
-static std::deque<std::function<void()>> pending;
-static void invoke_from_event_loop(std::function<void()> callback) { pending.push_back(callback); }
+static Window *get_slint_window() {
+  return &window;
 }
+namespace slint
+{
+static std::deque<std::function<void()>> pending;
+static void invoke_from_event_loop(std::function<void()> callback) {
+  pending.push_back(callback);
+}
+} // namespace slint
 static bool charger_pending;
 static int charge_boot_calls;
 static void charge_screen_finish_boot() {

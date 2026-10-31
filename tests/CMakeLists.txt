@@ -38,7 +38,6 @@ endif()
 
 enable_testing()
 
-# Stage production code for host tests with hardware and UI I/O mocked.
 function(stage_production_fragment source start_marker end_marker output)
   file(READ "${source}" production)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${source}")

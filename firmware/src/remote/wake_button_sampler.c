@@ -9,21 +9,22 @@
 #include "esp_wake_stub.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "sdkconfig.h"
 
 #if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_ULP_COPROC_TYPE_FSM
-#include "esp32s3/rom/rtc.h"
-#include "esp32s3/ulp.h"
-#include "soc/rtc.h"
-#include "soc/rtc_cntl_reg.h"
-#include "soc/rtc_io_reg.h"
-#include "soc/soc.h"
+  #include "esp32s3/rom/rtc.h"
+  #include "esp32s3/ulp.h"
+  #include "soc/rtc.h"
+  #include "soc/rtc_cntl_reg.h"
+  #include "soc/rtc_io_reg.h"
+  #include "soc/soc.h"
 
-#define SAMPLE_PERIOD_US 10000
-#define SAMPLE_COUNT (POWER_ON_HOLD_MS / 10)
-#define SAMPLE_RESULT_WORD 126
-#define SAMPLE_COUNT_WORD 127
-#define SAMPLER_MAGIC 0x57414b45U
-#define SAMPLER_MEM ((volatile uint32_t *)RTC_SLOW_MEM)
+  #define SAMPLE_PERIOD_US 10000
+  #define SAMPLE_COUNT (POWER_ON_HOLD_MS / 10)
+  #define SAMPLE_RESULT_WORD 126
+  #define SAMPLE_COUNT_WORD 127
+  #define SAMPLER_MAGIC 0x57414b45U
+  #define SAMPLER_MEM ((volatile uint32_t *)RTC_SLOW_MEM)
 _Static_assert(CONFIG_ULP_COPROC_RESERVE_MEM >= 512, "Wake sampler needs 512 RTC bytes");
 _Static_assert(POWER_ON_HOLD_MS % 10 == 0, "Wake hold must use whole 10 ms samples");
 
@@ -65,8 +66,7 @@ esp_err_t wake_button_sampler_prepare(int gpio, int active_level) {
   if (gpio > 21 || (active_level != 0 && active_level != 1))
     return ESP_ERR_INVALID_ARG;
 
-  // Each timer tick checks the pin, advances a retained count, then halts.
-  // Either release or SAMPLE_COUNT held samples disables all future ticks.
+  // Sample until release or a confirmed hold, then stop the ULP timer.
   const ulp_insn_t program[] = {
       I_RD_REG(RTC_GPIO_IN_REG, gpio + RTC_GPIO_IN_NEXT_S, gpio + RTC_GPIO_IN_NEXT_S),
       I_SUBI(R0, R0, active_level),
@@ -106,7 +106,7 @@ WakeButtonSample wake_button_sampler_result(void) {
     return WAKE_SAMPLE_UNAVAILABLE;
   uint32_t result = SAMPLER_MEM[SAMPLE_RESULT_WORD] & UINT16_MAX;
   return result >= WAKE_SAMPLE_PENDING && result <= WAKE_SAMPLE_CANCELLED ? (WakeButtonSample)result
-                                                                         : WAKE_SAMPLE_CANCELLED;
+                                                                          : WAKE_SAMPLE_CANCELLED;
 }
 
 void wake_button_sampler_finish(void) {
@@ -126,5 +126,5 @@ void wake_button_sampler_finish(void) {
            (unsigned)(SAMPLER_MEM[SAMPLE_COUNT_WORD] & UINT16_MAX));
 }
 #else
-#error "500 ms overlapping button wake requires ESP32-S3 with ULP FSM enabled"
+  #error "500 ms overlapping button wake requires ESP32-S3 with ULP FSM enabled"
 #endif

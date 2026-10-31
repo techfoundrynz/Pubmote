@@ -8,7 +8,9 @@
 static bool splash;
 static int waits, starts;
 struct PollComplete {};
-static bool is_splash_screen_active() { return splash; }
+static bool is_splash_screen_active() {
+  return splash;
+}
 static void vTaskDelay(int ms) {
   assert(ms == 20 && starts == 0);
   if (++waits == 3)
@@ -32,7 +34,8 @@ int main() {
       orchestrator_task(nullptr);
       assert(false);
     }
-    catch (const PollComplete &) {}
+    catch (const PollComplete &) {
+    }
     assert(starts == 1 && waits == (initially_visible ? 3 : 0));
   }
 }

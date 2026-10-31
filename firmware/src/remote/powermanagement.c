@@ -399,9 +399,9 @@ void power_management_check_early_wake(void) {
     return;
   bool connected;
   if (!charge_driver_probe_wake_power(&connected))
-    return; // Unsupported hardware/read failure retains the full wake check.
+    return;
   if (!button_wake && connected && !is_power_connected)
-    return; // A new USB connection needs normal charger initialization and UI.
+    return;
 
   is_power_connected = connected;
   atomic_store(&power_connected_snapshot, connected);

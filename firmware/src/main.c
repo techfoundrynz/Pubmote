@@ -93,13 +93,12 @@ void app_main(void) {
   power_management_init();
   esp_task_wdt_reset();
 
-  // Only accepted wakes prepare the panel; reset waits overlap haptic setup.
+  // Overlap panel reset with haptic initialization.
   display_prepare();
   haptic_init();
 
   // Fire startup callbacks once boot is confirmed
   startup_cb();
-  // Enable accessories after callbacks.
 #ifdef ACC2_POWER_DEFAULT_LEVEL
   acc2_power_set_level(ACC2_POWER_DEFAULT_LEVEL);
 #endif
@@ -110,7 +109,6 @@ void app_main(void) {
   MEM_MARK("thumbstick");
   game_store_mount(); // Never formats an existing filesystem on mount failure.
 #if IMU_ENABLED
-  // Overlap IMU setup with panel reset waits; join before starting the radio.
   StaticSemaphore_t imu_finished_storage;
   SemaphoreHandle_t imu_finished = xSemaphoreCreateBinaryStatic(&imu_finished_storage);
   bool imu_started = xTaskCreate(init_imu_task, "imu_init", 4096, imu_finished, 1, NULL) == pdPASS;

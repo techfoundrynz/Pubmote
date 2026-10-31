@@ -56,8 +56,7 @@ static i2c_master_dev_handle_t get_device_handle_locked(uint8_t device_addr) {
 }
 
 static i2c_master_dev_handle_t get_device_handle(uint8_t device_addr) {
-  // Boot and runtime workers may discover different devices concurrently.
-  // Serialize cache lookup/insertion; the SDK serializes bus transactions.
+  // Protect device discovery; the SDK serializes bus transactions.
   xSemaphoreTake(device_cache_mutex, portMAX_DELAY);
   i2c_master_dev_handle_t handle = get_device_handle_locked(device_addr);
   xSemaphoreGive(device_cache_mutex);

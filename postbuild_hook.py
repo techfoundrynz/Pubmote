@@ -5,9 +5,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-# PlatformIO's linker preprocessing rules omit their sdkconfig.h dependency.
-# Without it, SCons can restore a memory map for another SDK configuration from
-# the shared cache (for example one with no reserved ULP RTC memory).
+# Include SDK settings in linker-script cache keys to preserve ULP RTC reservations.
 for script in ("memory.ld", "sections.ld"):
     env.Depends(env.File(f"$BUILD_DIR/{script}"), env.File("$BUILD_DIR/config/sdkconfig.h"))
 
