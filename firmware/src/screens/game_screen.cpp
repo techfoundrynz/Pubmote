@@ -613,7 +613,10 @@ static void start_game(char *source, size_t length) {
   input_router_claim(INPUT_ACTION_STICK_DOWN, []() { key(2); }, game_repeat);
   input_router_claim(INPUT_ACTION_STICK_LEFT, []() { key(3); }, game_repeat);
   input_router_claim(INPUT_ACTION_STICK_RIGHT, []() { key(4); }, game_repeat);
-  // The default double-click exits; single activation waits for the gesture window.
+  // Release the default double-click Back so Return goes out on the press edge.
+  // While double-press is claimed, every press waits for release plus the click
+  // window, and rapid gameplay presses turn into an exit. The Exit button exits.
+  input_router_claim(INPUT_ACTION_DOUBLE_PRESS, nullptr, INPUT_ONCE);
   last_tick = esp_timer_get_time();
   render();
 }
