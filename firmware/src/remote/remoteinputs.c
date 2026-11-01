@@ -302,6 +302,20 @@ void thumbstick_init() {
 static bool click_consumed;
 static bool activate_held;
 
+// A press starting within the double-click window of a release, held this long, is a
+// double-hold. Kept well short of the long press, which powers off.
+#define DOUBLE_HOLD_MS 400
+static esp_timer_handle_t double_hold_timer;
+static int64_t last_release_us;
+static volatile bool double_hold_armed;
+
+static void double_hold_cb(void *arg) {
+  if (double_hold_armed && input_router_dispatch(INPUT_ACTION_DOUBLE_HOLD)) {
+    haptic_vibrate(HAPTIC_SOFT_BUZZ);
+  }
+  double_hold_armed = false;
+}
+
 static void button_single_click_cb(void *arg, void *usr_data) {
   ESP_LOGI(TAG, "BUTTON SINGLE CLICK");
   reset_sleep_timer();
@@ -326,6 +340,13 @@ static void button_down_cb(void *arg, void *usr_data) {
   }
 
   click_consumed = handled || !input_router_is_claimed(INPUT_ACTION_DOUBLE_PRESS);
+
+  if (!handled && double_hold_timer && input_router_is_claimed(INPUT_ACTION_DOUBLE_HOLD) &&
+      esp_timer_get_time() - last_release_us <= CONFIG_BUTTON_SHORT_PRESS_TIME_MS * 1000LL) {
+    double_hold_armed = true;
+    esp_timer_stop(double_hold_timer);
+    esp_timer_start_once(double_hold_timer, DOUBLE_HOLD_MS * 1000);
+  }
   if (!handled && click_consumed) {
     activate_held = true;
     ui_dispatch_activate_edge(true);
@@ -342,6 +363,12 @@ static void button_up_cb(void *arg, void *usr_data) {
 
   if (!handled) {
     remote_data.bt_c = 0;
+  }
+
+  last_release_us = esp_timer_get_time();
+  double_hold_armed = false;
+  if (double_hold_timer) {
+    esp_timer_stop(double_hold_timer);
   }
 
   if (activate_held) {
@@ -409,6 +436,11 @@ void buttons_init() {
   iot_button_register_cb(gpio_btn_handle, BUTTON_SINGLE_CLICK, &btn_args, button_single_click_cb, NULL);
   iot_button_register_cb(gpio_btn_handle, BUTTON_DOUBLE_CLICK, &btn_args, button_double_click_cb, NULL);
   iot_button_register_cb(gpio_btn_handle, BUTTON_LONG_PRESS_HOLD, &btn_args, button_long_press_hold_cb, NULL);
+
+  if (!double_hold_timer) {
+    const esp_timer_create_args_t timer_args = {.callback = double_hold_cb, .name = "double_hold"};
+    esp_timer_create(&timer_args, &double_hold_timer);
+  }
 }
 
 void buttons_deinit() {

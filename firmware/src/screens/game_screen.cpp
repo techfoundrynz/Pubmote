@@ -615,8 +615,9 @@ static void start_game(char *source, size_t length) {
   input_router_claim(INPUT_ACTION_STICK_RIGHT, []() { key(4); }, game_repeat);
   // Release the default double-click Back so Return goes out on the press edge.
   // While double-press is claimed, every press waits for release plus the click
-  // window, and rapid gameplay presses turn into an exit. The Exit button exits.
+  // window, and rapid gameplay presses turn into an exit. Click-then-hold exits.
   input_router_claim(INPUT_ACTION_DOUBLE_PRESS, nullptr, INPUT_ONCE);
+  input_router_claim(INPUT_ACTION_DOUBLE_HOLD, []() { handle_game_back(); }, INPUT_ONCE);
   last_tick = esp_timer_get_time();
   render();
 }

@@ -57,7 +57,8 @@ area can be clicked to enter up/down scrolling.
 
 Game input still uses each game's controls. Games release double click so the
 button reaches the game on the press edge rather than after the double-click
-window; the on-screen Exit button leaves the game.
+window. To leave a game, click then press and hold (about 0.4 s, until the buzz),
+or tap the on-screen Exit button. Holding for a full second still powers off.
 Games that use left/right movement still need that axis for gameplay.
 Gameplay disables UI focus navigation; the first button press goes to the game
 immediately. Arrow keys in the simulator also send game
