@@ -2,6 +2,7 @@
 #include "config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
 #include "imu/brightness_switch.h"
 #include "imu/pose_brightness.h"
 #include "remote/connection.h"
@@ -63,6 +64,85 @@ static float snap_zero(float value, float threshold) {
   return fabsf(value) < threshold ? 0.0f : value;
 }
 
+// Gauge feel. Telemetry arrives at 20Hz+ with sample-to-sample jitter, which reads as chatter rather
+// than information. Utilization is a peak indicator, so rises pass straight through and only the
+// fall eases out - spikes stay fully visible, the needle just settles instead of twitching. Speed
+// is genuinely bidirectional, so it gets a short symmetric filter plus a readout that only steps
+// once the value is clearly past the next digit.
+#define UTILIZATION_RELEASE_TAU_MS 200.0f
+// Below this, utilization is idle noise (duty dithering 0-1%, current sensor offset at rest).
+#define UTILIZATION_IDLE_FLOOR 2
+#define SPEED_TAU_MS 80.0f
+// Below this (KPH) the board is parked and any reading is ERPM noise.
+#define SPEED_IDLE_FLOOR 0.5f
+// How far past the shown value, in displayed digits, the filtered speed must move to step the text.
+#define SPEED_TEXT_HYSTERESIS 0.75f
+// Like a car speedo: single-digit steps refresh at most this often so the readout holds still long
+// enough to read, while a jump of SPEED_TEXT_JUMP_STEPS or more digits shows immediately.
+#define SPEED_TEXT_MIN_INTERVAL_US 175000
+#define SPEED_TEXT_JUMP_STEPS 3.0f
+
+// Fed every telemetry sample - including ones the frame dropper skips, so a single-sample spike
+// still lands in the peak - from the telemetry task and from UI-thread refreshes, hence the lock.
+struct GaugeState {
+  bool primed;
+  int64_t last_us;
+  float utilization; // percent, peak-hold with eased release
+  float speed;       // KPH, filtered
+  float shown_speed; // display units, what the readout currently says
+  int64_t shown_us;  // when the readout last stepped
+};
+static GaugeState gauge;
+static portMUX_TYPE gauge_lock = portMUX_INITIALIZER_UNLOCKED;
+
+static float ema_alpha(float dt_ms, float tau_ms) {
+  return 1.0f - expf(-dt_ms / tau_ms);
+}
+
+static void gauge_reset() {
+  portENTER_CRITICAL(&gauge_lock);
+  gauge.primed = false;
+  portEXIT_CRITICAL(&gauge_lock);
+}
+
+static GaugeState gauge_update(const RemoteStats *telemetry, bool imperial) {
+  const int64_t now_us = esp_timer_get_time();
+  portENTER_CRITICAL(&gauge_lock);
+  const int raw_utilization = stats_utilization(telemetry);
+  const float utilization = raw_utilization < UTILIZATION_IDLE_FLOOR ? 0.0f : (float)raw_utilization;
+  const float speed = fabsf(telemetry->speed) < SPEED_IDLE_FLOOR ? 0.0f : telemetry->speed;
+
+  if (!gauge.primed) {
+    gauge.primed = true;
+    gauge.utilization = utilization;
+    gauge.speed = speed;
+    gauge.shown_speed = imperial ? convert_kph_to_mph(speed) : speed;
+  }
+  else {
+    const float dt_ms = (float)(now_us - gauge.last_us) / 1000.0f;
+    if (utilization >= gauge.utilization) {
+      gauge.utilization = utilization;
+    }
+    else {
+      gauge.utilization += (utilization - gauge.utilization) * ema_alpha(dt_ms, UTILIZATION_RELEASE_TAU_MS);
+    }
+    gauge.speed += (speed - gauge.speed) * ema_alpha(dt_ms, SPEED_TAU_MS);
+  }
+  gauge.last_us = now_us;
+
+  const float display_speed = imperial ? convert_kph_to_mph(gauge.speed) : gauge.speed;
+  const float step = fabsf(gauge.shown_speed) >= 10.0f ? 1.0f : 0.1f;
+  const float delta = fabsf(display_speed - gauge.shown_speed);
+  const bool settled = now_us - gauge.shown_us >= SPEED_TEXT_MIN_INTERVAL_US;
+  if (delta >= step * SPEED_TEXT_JUMP_STEPS || (settled && delta >= step * SPEED_TEXT_HYSTERESIS)) {
+    gauge.shown_speed = roundf(display_speed / step) * step;
+    gauge.shown_us = now_us;
+  }
+  const GaugeState snapshot = gauge;
+  portEXIT_CRITICAL(&gauge_lock);
+  return snapshot;
+}
+
 extern "C" void setup_menu_properties(); // from menu_screen.cpp
 extern "C" void teardown_stats_properties();
 
@@ -88,6 +168,11 @@ extern "C" void stats_update_screen_display() {
   if (!get_slint_window())
     return;
 
+  const RemoteStats telemetry = stats_snapshot();
+  const DeviceSettings preferences = settings_get_device();
+  const bool imperial = preferences.distance_units == DISTANCE_UNITS_IMPERIAL;
+  const GaugeState shown = gauge_update(&telemetry, imperial);
+
   // Drop frame if the UI event loop is still processing the last update!
   // This automatically limits the framerate to exactly what the ESP32 can handle,
   // preventing queue growth, memory exhaustion, and touch lag.
@@ -100,22 +185,15 @@ extern "C" void stats_update_screen_display() {
   }
   dropped_updates = 0;
 
-  const RemoteStats telemetry = stats_snapshot();
-  const DeviceSettings preferences = settings_get_device();
-
   // 1. Calculate speed fraction
-  if (telemetry.speed > max_speed) {
-    max_speed = telemetry.speed;
+  if (shown.speed > max_speed) {
+    max_speed = shown.speed;
   }
-  float speed_fraction = telemetry.speed / max_speed;
-  float utilization_fraction = (float)stats_utilization(&telemetry) / 100.0f;
+  float speed_fraction = shown.speed / max_speed;
+  float utilization_fraction = shown.utilization / 100.0f;
 
   // 2. Format speed string
-  float converted_speed = telemetry.speed;
-  if (preferences.distance_units == DISTANCE_UNITS_IMPERIAL) {
-    converted_speed = convert_kph_to_mph(telemetry.speed);
-  }
-  converted_speed = snap_zero(converted_speed, 0.05f);
+  float converted_speed = snap_zero(shown.shown_speed, 0.05f);
   char speed_str[16];
   if (roundf(converted_speed * 10.0f) / 10.0f >= 10.0f) {
     snprintf(speed_str, sizeof(speed_str), "%.0f", converted_speed);
@@ -354,6 +432,7 @@ extern "C" void setup_stats_properties() {
   // The provisional lowered entry state must not delay the first real pose.
   brightness_switch_reset(&pose_brightness_switch);
   ui_update_pending.store(false);
+  gauge_reset();
   stats_register_update_cb(stats_update_screen_display);
   input_router_claim(INPUT_ACTION_DOUBLE_PRESS, double_press_handler, INPUT_ONCE);
   // The stick is throttle here, not focus
