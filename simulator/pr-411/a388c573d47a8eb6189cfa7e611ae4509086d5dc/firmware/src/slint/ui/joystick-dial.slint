@@ -17,9 +17,9 @@ export component JoystickDial inherits Rectangle {
         Rectangle {
             width: parent.width * 0.2;
             height: parent.height * 0.2;
-            // Move within the dial proportionally to the stick.
+            // Move within the dial proportionally to the stick; positive Y is stick up.
             x: Math.round(((parent.width - self.width)/2 / 1px) + clamp(root.joystick-x, -1.0, 1.0) * ((parent.width - self.width)/2 / 1px)) * 1px;
-            y: Math.round(((parent.height - self.height)/2 / 1px) + clamp(root.joystick-y, -1.0, 1.0) * ((parent.height - self.height)/2 / 1px)) * 1px;
+            y: Math.round(((parent.height - self.height)/2 / 1px) - clamp(root.joystick-y, -1.0, 1.0) * ((parent.height - self.height)/2 / 1px)) * 1px;
 
             Rectangle {
                 width: 100%;
