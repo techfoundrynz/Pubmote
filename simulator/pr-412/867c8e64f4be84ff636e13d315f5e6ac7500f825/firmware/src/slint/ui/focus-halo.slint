@@ -1,0 +1,11 @@
+import { Theme } from "theme.slint";
+
+// Focus stays around the movable part of a value control, not its container.
+export component FocusHalo inherits Rectangle {
+    in property <bool> active: false;
+    in property <bool> editing: false;
+    border-radius: self.width / 2;
+    border-width: (root.editing ? 3px : 2px) * Theme.scale;
+    border-color: root.active ? Theme.focus-color : transparent;
+    background: root.active && root.editing ? Theme.edit-fill : transparent;
+}
