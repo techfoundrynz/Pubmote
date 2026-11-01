@@ -1,0 +1,75 @@
+// Shared eligibility for hardware, keyboard and simulator navigation.
+export global Navigation {
+    // Touch alone never opts into control focus. The first navigation key does.
+    in-out property <bool> active: false;
+    in-out property <bool> modal: false;
+    in-out property <bool> blocked: false;
+    // Positive steps traverse forward; negative steps traverse backward.
+    callback focus-step(int);
+}
+
+export component NavigationFocus inherits FocusScope {
+    in property <bool> available: true;
+    in property <bool> modal-control: false;
+    in property <bool> adjustable: false;
+    in property <bool> first-in-group: false;
+    in property <bool> last-in-group: false;
+    in property <bool> directional-navigation: false;
+    in property <bool> horizontal-adjusts: false;
+    in property <int> horizontal-adjustment: 1;
+    in-out property <bool> editing: false;
+    callback activated;
+    callback adjusted(int);
+    callback navigated(int, int);
+    // Keep enabled while covered so Slint still delivers FocusOut and clears
+    // the old highlight. Tab eligibility and activation enforce the active layer.
+    enabled: root.available;
+    out property <bool> accepts-input: Navigation.active && self.enabled && !Navigation.blocked && (Navigation.modal == root.modal-control);
+    focus-on-tab-navigation: root.accepts-input;
+    focus-on-click: false;
+    changed has-focus => { if (!self.has-focus) { root.editing = false; } }
+    key-pressed(event) => {
+        if (!root.accepts-input) { return accept; }
+        let left = event.text == Key.LeftArrow;
+        let right = event.text == Key.RightArrow;
+        let up = event.text == Key.UpArrow;
+        let down = event.text == Key.DownArrow;
+        let previous = event.text == Key.Backtab || (event.text == Key.Tab && event.modifiers.shift) || up || left;
+        let next = (event.text == Key.Tab && !event.modifiers.shift) || down || right;
+        if (root.directional-navigation && (left || right || up || down)) {
+            root.navigated(left ? -1 : right ? 1 : 0, up ? -1 : down ? 1 : 0);
+            return accept;
+        }
+        if (event.text == Key.Return) {
+            if (root.adjustable) { root.editing = !root.editing; }
+            root.activated();
+            return accept;
+        }
+        if (root.adjustable && (root.editing || root.horizontal-adjusts) && (left || right)) {
+            root.adjusted((right ? 1 : -1) * root.horizontal-adjustment);
+            return accept;
+        }
+        if (root.editing && next) {
+            root.adjusted(-1);
+            return accept;
+        }
+        if (root.editing && previous) {
+            root.adjusted(1);
+            return accept;
+        }
+        if (event.text == Key.Escape && root.editing) {
+            root.editing = false;
+            return accept;
+        }
+        // Group endpoints consume traversal rather than letting Slint wrap.
+        if ((root.first-in-group && previous)
+            || (root.last-in-group && next)) {
+            return accept;
+        }
+        if (left || right || up || down) {
+            Navigation.focus-step(previous ? -1 : 1);
+            return accept;
+        }
+        reject
+    }
+}
