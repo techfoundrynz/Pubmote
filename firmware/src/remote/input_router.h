@@ -10,9 +10,11 @@ extern "C"
   // Up/down defaults to focus traversal; double-press defaults to Escape/back.
   // Clicks reach Slint as Return instead, and long press stays
   // with power management so no screen can take power-off. Screens claim in their setup hook;
-  // defaults are restored on every screen change.
+  // defaults are restored on every screen change. Double-hold (click, then press and hold)
+  // has no default and fires well before the long press.
   typedef enum {
     INPUT_ACTION_DOUBLE_PRESS,
+    INPUT_ACTION_DOUBLE_HOLD,
     INPUT_ACTION_STICK_UP,
     INPUT_ACTION_STICK_DOWN,
     INPUT_ACTION_STICK_LEFT,

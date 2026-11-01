@@ -55,11 +55,13 @@ Board rows have a Delete action, so deletion does not require a touch hold.
 About's version area can be clicked five times to open Extras; its diagnostics
 area can be clicked to enter up/down scrolling.
 
-Game input still uses each game's controls. Double click exits the game; recognizing
-this gesture delays a single button action until the double-click window expires.
+Game input still uses each game's controls. Games release double click so the
+button reaches the game on the press edge rather than after the double-click
+window. To leave a game, click then press and hold (about 0.4 s, until the buzz),
+or tap the on-screen Exit button. Holding for a full second still powers off.
 Games that use left/right movement still need that axis for gameplay.
 Gameplay disables UI focus navigation; the first button press goes to the game
-immediately after gesture recognition. Arrow keys in the simulator also send game
+immediately. Arrow keys in the simulator also send game
 direction events. Tab does not select the game's touch Exit button.
 
 In the desktop/browser simulator, the control window provides Up, Down, Left, Right, Click and
