@@ -1,0 +1,8 @@
+{
+  "kind": "tag",
+  "tag": "v0.11.4",
+  "pr": null,
+  "label": "Release v0.11.4",
+  "commit": "df57e06b53a639ea718d92723cace250d3180cea",
+  "base": "ac6cb20857da43027262f6bd7f3c8b237ca8d2d3"
+}
