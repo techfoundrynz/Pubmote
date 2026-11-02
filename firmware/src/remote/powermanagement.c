@@ -127,21 +127,22 @@ static bool check_button_press() {
 
 static esp_err_t enable_wake() {
   const InputPinSettings pins = settings_get_pins();
-  esp_err_t res = ESP_OK;
+  uint64_t ext1_pins = 0;
+  esp_sleep_ext1_wakeup_mode_t ext1_mode = ESP_EXT1_WAKEUP_ANY_LOW;
 
   if (pins.btn1_gpio != INPUT_PIN_DISABLED) {
     const gpio_num_t btn_pin = (gpio_num_t)pins.btn1_gpio;
-    ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(BIT64(btn_pin), pins.btn1_active_level ? ESP_EXT1_WAKEUP_ANY_HIGH
-                                                                                        : ESP_EXT1_WAKEUP_ANY_LOW));
-    if (rtc_gpio_is_valid_gpio(btn_pin)) {
-      if (pins.btn1_active_level) {
-        rtc_gpio_pulldown_en(btn_pin);
-        rtc_gpio_pullup_dis(btn_pin);
-      }
-      else {
-        rtc_gpio_pullup_en(btn_pin);
-        rtc_gpio_pulldown_dis(btn_pin);
-      }
+    if (!rtc_gpio_is_valid_gpio(btn_pin))
+      return ESP_ERR_INVALID_ARG;
+    ext1_pins = BIT64(btn_pin);
+    if (pins.btn1_active_level) {
+      ext1_mode = ESP_EXT1_WAKEUP_ANY_HIGH;
+      rtc_gpio_pulldown_en(btn_pin);
+      rtc_gpio_pullup_dis(btn_pin);
+    }
+    else {
+      rtc_gpio_pullup_en(btn_pin);
+      rtc_gpio_pulldown_dis(btn_pin);
     }
   }
 
@@ -151,16 +152,22 @@ static esp_err_t enable_wake() {
   if (gpio_get_level(PMU_INT) && rtc_gpio_is_valid_gpio(PMU_INT)) {
     rtc_gpio_pullup_en(PMU_INT);
     rtc_gpio_pulldown_dis(PMU_INT);
-    res = esp_sleep_enable_ext0_wakeup(PMU_INT, 0);
-    ESP_ERROR_CHECK(res);
-    ESP_LOGI(TAG, "Charger wake armed on GPIO %d", PMU_INT);
+    if (ext1_mode == ESP_EXT1_WAKEUP_ANY_HIGH) {
+      // ESP32-S3 EXT1 pins share polarity; preserve active-high button mappings.
+      ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(PMU_INT, 0));
+      ESP_LOGI(TAG, "Charger wake armed on GPIO %d using EXT0 (active-high button)", PMU_INT);
+    }
+    else {
+      ext1_pins |= BIT64(PMU_INT);
+      ESP_LOGI(TAG, "Charger wake armed on GPIO %d using EXT1", PMU_INT);
+    }
   }
   else {
     ESP_LOGW(TAG, "Charger interrupt is active or not RTC capable; charger wake not armed");
   }
 #endif
 
-  return res;
+  return ext1_pins ? esp_sleep_enable_ext1_wakeup(ext1_pins, ext1_mode) : ESP_OK;
 }
 
 static bool empty_long_press_hold() {
@@ -331,9 +338,11 @@ static void configure_sleep_pins() {
 // reconfigure their pins. Must run before any peripheral init.
 void power_management_preinit() {
 #ifdef PMU_INT
-  // EXT0 leaves its pad in RTC mode after wake. Restore it before reading
-  // the interrupt, including early boot paths that return straight to sleep.
-  rtc_gpio_deinit(PMU_INT);
+  // Release the EXT1 pad hold before restoring digital GPIO for charger checks.
+  if (rtc_gpio_is_valid_gpio(PMU_INT)) {
+    ESP_ERROR_CHECK(rtc_gpio_hold_dis(PMU_INT));
+    ESP_ERROR_CHECK(rtc_gpio_deinit(PMU_INT));
+  }
   gpio_config_t pmu_input = {.pin_bit_mask = BIT64(PMU_INT),
                              .mode = GPIO_MODE_INPUT,
                              .pull_up_en = GPIO_PULLUP_ENABLE,
@@ -378,8 +387,8 @@ static void begin_deep_sleep(void) {
   ESP_ERROR_CHECK(wake_button_sampler_prepare(wake_pins.btn1_gpio, wake_pins.btn1_active_level));
 
   ESP_LOGI(TAG, "Entering deep sleep mode");
-  // RTC peripherals stay on so the wake button's internal pull survives sleep
-  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+  // EXT1 pad holds retain the pulls; only the EXT0 fallback needs RTC peripherals on.
+  ESP_ERROR_CHECK(esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_AUTO));
   esp_deep_sleep_start();
 }
 

@@ -68,9 +68,10 @@ struct Sleep {};
   throw Sleep{};
 }
 #include "early_wake.inc"
-static bool check(uint32_t sources, bool previous, bool current, WakeButtonSample verdict) {
+static bool check(uint32_t sources, bool previous, bool current, WakeButtonSample verdict,
+                  uint64_t asserted_pins = BIT64(3)) {
   causes = sources;
-  wake_pins = BIT64(3);
+  wake_pins = asserted_pins;
   is_power_connected = previous;
   live_power = current;
   sample = verdict;
@@ -106,6 +107,12 @@ int main() {
   assert(check(BIT(ESP_SLEEP_WAKEUP_EXT1), true, true, WAKE_SAMPLE_CANCELLED));
   assert(!check(BIT(ESP_SLEEP_WAKEUP_EXT1) | BIT(ESP_SLEEP_WAKEUP_EXT0), true, true, WAKE_SAMPLE_CONFIRMED));
   assert(probes == 0); // Deliberate button wake wins over PMU status.
+  assert(check(BIT(ESP_SLEEP_WAKEUP_EXT1), true, true, WAKE_SAMPLE_UNAVAILABLE, BIT64(PMU_INT)));
+  assert(!check(BIT(ESP_SLEEP_WAKEUP_EXT1), false, true, WAKE_SAMPLE_UNAVAILABLE, BIT64(PMU_INT)));
+  assert(check(BIT(ESP_SLEEP_WAKEUP_EXT1), true, false, WAKE_SAMPLE_UNAVAILABLE, BIT64(PMU_INT)));
+  assert(!is_power_connected);
+  assert(!check(BIT(ESP_SLEEP_WAKEUP_EXT1), true, true, WAKE_SAMPLE_CONFIRMED, BIT64(3) | BIT64(PMU_INT)));
+  assert(probes == 0);
   assert(!check(0, true, true, WAKE_SAMPLE_UNAVAILABLE) && probes == 0);
   supported = false;
   assert(!check(BIT(ESP_SLEEP_WAKEUP_EXT0), true, true, WAKE_SAMPLE_UNAVAILABLE));

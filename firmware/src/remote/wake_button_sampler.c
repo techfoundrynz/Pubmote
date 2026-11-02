@@ -14,9 +14,11 @@
 #if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_ULP_COPROC_TYPE_FSM
   #include "esp32s3/rom/rtc.h"
   #include "esp32s3/ulp.h"
+  #include "hal/rtc_io_periph.h"
   #include "soc/rtc.h"
   #include "soc/rtc_cntl_reg.h"
   #include "soc/rtc_io_reg.h"
+  #include "soc/sens_reg.h"
   #include "soc/soc.h"
 
   #define SAMPLE_PERIOD_US 10000
@@ -31,6 +33,18 @@ _Static_assert(POWER_ON_HOLD_MS % 10 == 0, "Wake hold must use whole 10 ms sampl
 static RTC_DATA_ATTR uint32_t sampler_prepared;
 static RTC_DATA_ATTR uint32_t sampler_started;
 static RTC_DATA_ATTR uint32_t sampler_pin_mask;
+static RTC_DATA_ATTR uint32_t sampler_pad_reg;
+static RTC_DATA_ATTR uint32_t sampler_pad_config;
+static RTC_DATA_ATTR uint32_t sampler_hold_mask;
+
+static void RTC_IRAM_ATTR restore_wake_button_input(void) {
+  // RTC peripheral power-down resets the IOMUX clock and pad registers.
+  // Restore the input before releasing HOLD so ULP sees a live button level.
+  SET_PERI_REG_MASK(SENS_SAR_PERI_CLK_GATE_CONF_REG, SENS_IOMUX_CLK_EN);
+  REG_WRITE(sampler_pad_reg, sampler_pad_config);
+  REG_WRITE(RTC_GPIO_ENABLE_W1TC_REG, sampler_pin_mask << RTC_GPIO_ENABLE_W1TC_S);
+  CLEAR_PERI_REG_MASK(RTC_CNTL_PAD_HOLD_REG, sampler_hold_mask);
+}
 
 // Same register sequence as ESP-IDF's ulp_run(), restricted to ROM/RTC code.
 // The ULP runs alongside the ROM bootloader and stops itself after its verdict.
@@ -41,6 +55,7 @@ void RTC_IRAM_ATTR esp_wake_deep_sleep(void) {
       !(REG_GET_FIELD(RTC_CNTL_EXT_WAKEUP1_STATUS_REG, RTC_CNTL_EXT_WAKEUP1_STATUS) & sampler_pin_mask))
     return;
 
+  restore_wake_button_input();
   SET_PERI_REG_MASK(RTC_CNTL_ULP_CP_CTRL_REG, RTC_CNTL_ULP_CP_RESET);
   esp_rom_delay_us(20);
   CLEAR_PERI_REG_MASK(RTC_CNTL_ULP_CP_CTRL_REG, RTC_CNTL_ULP_CP_RESET);
@@ -65,6 +80,11 @@ esp_err_t wake_button_sampler_prepare(int gpio, int active_level) {
     return ESP_OK;
   if (gpio > 21 || (active_level != 0 && active_level != 1))
     return ESP_ERR_INVALID_ARG;
+
+  const rtc_io_desc_t *pad = &rtc_io_desc[gpio];
+  sampler_pad_reg = pad->reg;
+  sampler_pad_config = (REG_READ(pad->reg) & ~((3U << pad->func) | pad->slpsel)) | pad->mux | pad->ie;
+  sampler_hold_mask = pad->hold_force;
 
   // Sample until release or a confirmed hold, then stop the ULP timer.
   const ulp_insn_t program[] = {

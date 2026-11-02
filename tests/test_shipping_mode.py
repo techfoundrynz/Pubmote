@@ -30,7 +30,7 @@ using std::atomic_exchange;
 using std::atomic_store;
 using esp_err_t = int;
 constexpr int ESP_OK = 0, ESP_ERR_NOT_SUPPORTED = -1, ESP_ERR_INVALID_STATE = -2;
-constexpr int ESP_RST_SW = 1, ESP_PD_DOMAIN_RTC_PERIPH = 0, ESP_PD_OPTION_ON = 0;
+constexpr int ESP_RST_SW = 1, ESP_PD_DOMAIN_RTC_PERIPH = 0, ESP_PD_OPTION_AUTO = 1;
 #define ESP_LOGI(...) ((void)0)
 #define ESP_LOGE(...) ((void)0)
 #define ESP_ERROR_CHECK(x) assert((x) == ESP_OK)
@@ -69,7 +69,11 @@ int charge_driver_enter_shipping_mode() {
 [[noreturn]] void esp_restart() { throw Restart{}; }
 void await_pmu_int_reset() {}
 int enable_wake() { assert(!peripheral_powered); ++wake_setup; return ESP_OK; }
-void configure_sleep_pins() {} void esp_sleep_pd_config(int, int) {}
+void configure_sleep_pins() {}
+int esp_sleep_pd_config(int domain, int option) {
+  assert(domain == ESP_PD_DOMAIN_RTC_PERIPH && option == ESP_PD_OPTION_AUTO);
+  return ESP_OK;
+}
 struct InputPinSettings { int btn1_gpio = 3, btn1_active_level = 0; };
 InputPinSettings settings_get_pins() { return {}; }
 int wake_button_sampler_prepare(int, int) { return ESP_OK; }

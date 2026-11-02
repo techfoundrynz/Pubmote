@@ -399,6 +399,11 @@ void buttons_init() {
     return;
   }
 
+  // app_main finishes ULP sampling before releasing the button's RTC configuration.
+  const gpio_num_t btn_pin = (gpio_num_t)btn1_gpio_cfg.gpio_num;
+  if (rtc_gpio_is_valid_gpio(btn_pin))
+    ESP_ERROR_CHECK(rtc_gpio_hold_dis(btn_pin));
+
   iot_button_new_gpio_device(&btn_cfg, &btn1_gpio_cfg, &gpio_btn_handle);
   if (gpio_btn_handle == NULL) {
     ESP_LOGE(TAG, "Button create failed");

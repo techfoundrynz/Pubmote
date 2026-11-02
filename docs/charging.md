@@ -24,7 +24,9 @@ Learning continues whether the charge screen is open or closed. Each uninterrupt
 
 The learned profile is saved only after a qualifying completed charge and survives restart. Factory reset clears it and prevents pending profile saves from restoring erased history. Both Extras' Factory reset and the console `erase` command use the guarded maintenance-worker reset; reboot occurs only after a successful erase.
 
-On Pingumote, SY6970 PG_STAT (register 0x0B, bit 2) detects valid charger input independently of ADC conversions and DPDM source classification. Its active-low interrupt on GPIO14 is armed as EXT0 before deep sleep; the configured power button remains EXT1. Shutdown disables charger ADC/watchdog first, waits for the interrupt to settle, and arms charger wake only when the pin is inactive. The pin returns to digital GPIO mode at the start of the next boot. Only a disconnected-to-connected power change accepts a PMU wake; detach, charging-complete, and fault interrupts return to sleep.
+On Pingumote, SY6970 PG_STAT (register 0x0B, bit 2) detects valid charger input independently of ADC conversions and DPDM source classification. Its active-low interrupt on GPIO14 shares EXT1 with the default active-low power button. RTC peripheral power uses AUTO, allowing that domain to turn off while EXT1 pad holds retain the input configuration and pulls. Shutdown disables charger ADC/watchdog first, waits for the interrupt to settle, and arms charger wake only when the pin is inactive. The PMU pad hold is released before restoring digital GPIO at the next boot. For a button wake, the RTC wake stub restores the input clock and pad configuration and releases HOLD before ULP sampling. The application switches the button back to digital GPIO after sampling finishes. Only a disconnected-to-connected power change accepts a PMU wake; detach, charging-complete, and fault interrupts return to sleep.
+
+Active-high button mappings retain EXT0 for the active-low PMU because ESP32-S3 EXT1 pins share one wake polarity. In that fallback, AUTO keeps RTC peripherals powered so both wake sources remain functional.
 
 Powering off while USB is already connected keeps the display off. An interrupt with power present both before sleep and after wake is rejected without the shutdown vibration or its effect delay. A detach wake records the disconnected state before sleeping again, allowing a subsequent insertion to open the charging screen. This uses the retained pre-sleep power state; merely detecting live USB power is not sufficient to accept a PMU wake.
 
@@ -34,7 +36,13 @@ On ESP32-S3, a finite ULP FSM sampler starts from the RTC wake stub and watches 
 
 Rejected short button wakes are silent: they neither initialize/calibrate the haptic motor nor play shutdown feedback. On SY6970, early wake qualification reads power-good and acknowledges latched interrupts without reprogramming DPDM, charging, ADC or watchdog settings. A rejected button wake or unchanged-power PMU interrupt returns to sleep before enabling accessories or initializing those devices. This avoids a charger reinitialization/interrupt cycle after a short tap while charging. Unsupported or failed status probes retain the normal wake-qualification path.
 
-Hardware validation:
+Hardware validation on Pingumote:
+
+- A short power-button tap stayed dark; a roughly 600 ms hold booted normally with RTC peripheral power on AUTO.
+- Power-off while charging stayed dark. Unplugging USB for five seconds and reconnecting woke through EXT1 and opened the charge screen.
+- A temporary standby audit recorded ULP timer, forced-clock and force-start bits all clear before sleep. The retained sampler result was still pending with zero samples at the next wake, before wake-time sampling began. The audit instrumentation was removed afterward.
+
+Board-level standby-current savings have not been measured.
 
 For an intermittent charging failure on SY6970 boards, open About's battery diagnostics before rebooting or unplugging. Charger and power-management logs remain available through the general `diagnostics` command. The charging-specific console command has been removed.
 

@@ -78,6 +78,35 @@ else()
 endif()
 add_test(NAME wake_hold COMMAND wake_hold_test)
 
+stage_production_fragment("${FIRMWARE_REMOTE}/powermanagement.c"
+  "static esp_err_t enable_wake()" "static bool empty_long_press_hold()" "wake_sources.inc")
+stage_production_fragment("${FIRMWARE_REMOTE}/powermanagement.c"
+  "void power_management_preinit()" "static void begin_deep_sleep(void)" "wake_preinit.inc")
+foreach(target wake_sources_test button_wake_sources_test)
+  add_executable(${target} wake_sources_test.cpp)
+  target_include_directories(${target} PRIVATE "${STAGED}")
+  target_compile_features(${target} PRIVATE cxx_std_20)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(${target} PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME ${target} COMMAND ${target})
+endforeach()
+target_compile_definitions(wake_sources_test PRIVATE PMU_INT=14)
+
+stage_production_fragment("${FIRMWARE_REMOTE}/wake_button_sampler.c"
+  "static void RTC_IRAM_ATTR restore_wake_button_input(void)" "// Same register sequence" "wake_rtc_restore.inc")
+add_executable(wake_rtc_restore_test wake_rtc_restore_test.cpp)
+target_include_directories(wake_rtc_restore_test PRIVATE "${STAGED}")
+target_compile_features(wake_rtc_restore_test PRIVATE cxx_std_17)
+if(MSVC)
+  target_compile_options(wake_rtc_restore_test PRIVATE /UNDEBUG)
+else()
+  target_compile_options(wake_rtc_restore_test PRIVATE -UNDEBUG)
+endif()
+add_test(NAME wake_rtc_restore COMMAND wake_rtc_restore_test)
+
 stage_production_fragment("${CMAKE_SOURCE_DIR}/../firmware/src/remote/powermanagement.c"
   "static bool check_pmu_should_wake(bool last_powered)" "#endif\n\nvoid power_management_init()" "charger_wake.inc")
 add_executable(charger_wake_test charger_wake_test.cpp)
