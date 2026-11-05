@@ -904,6 +904,99 @@ fn load(path: &Path, component: &str) -> Result<ComponentInstance, Box<dyn std::
         .ok_or("UI compilation failed")?
         .create()?)
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+fn verify_boards_delete(
+    root: &Path,
+    ui_root: &Path,
+    width: u32,
+    height: u32,
+    square: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    use std::rc::Rc;
+
+    let ui = load(
+        &ui_root.join("firmware/src/slint/app-window.slint"),
+        "AppWindow",
+    )?;
+    let controls = load(&root.join("simulator/controls.slint"), "SimulatorControls")?;
+    initialize(&ui, &controls, width.into(), height.into(), square);
+    set(
+        &ui,
+        "paired-boards",
+        list(
+            (0..2)
+                .map(|index| {
+                    record(&[
+                        ("mac", text(&format!("00:00:0{}", index + 1))),
+                        ("index", index.into()),
+                        ("is-active", (index == 0).into()),
+                        ("is-ble", (index == 1).into()),
+                    ])
+                })
+                .collect(),
+        ),
+    );
+    let actions = Rc::new(RefCell::new(Vec::new()));
+    for name in ["select-board", "delete-board"] {
+        let actions = actions.clone();
+        ui.set_global_callback("UiState", name, move |args| {
+            actions
+                .borrow_mut()
+                .push((name, number(args[0].clone()) as i32));
+            Value::Void
+        })?;
+    }
+    ui.show()?;
+    screen(&ui, "boards");
+    let _ = ui.window().take_snapshot()?;
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+    let _ = ui.window().take_snapshot()?;
+    let scale = width.min(height) as f32 / 240.0;
+    let press = |row: u32, milliseconds: u64| -> Result<(), Box<dyn std::error::Error>> {
+        let position =
+            slint::LogicalPosition::new(width as f32 * 0.5, (65.0 + row as f32 * 42.0) * scale);
+        ui.window().dispatch_event(WindowEvent::PointerPressed {
+            position,
+            button: PointerEventButton::Left,
+        });
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(milliseconds));
+        ui.window().dispatch_event(WindowEvent::PointerReleased {
+            position,
+            button: PointerEventButton::Left,
+        });
+        let _ = ui.window().take_snapshot()?;
+        Ok(())
+    };
+    press(0, 50)?;
+    press(1, 50)?;
+    assert_eq!(
+        &*actions.borrow(),
+        &[("select-board", 0), ("select-board", 1)]
+    );
+    press(0, 810)?;
+    assert_eq!(actions.borrow().len(), 2, "A hold must only reveal Delete");
+    press(0, 50)?;
+    assert_eq!(actions.borrow().last(), Some(&("delete-board", 0)));
+    press(0, 50)?;
+    assert_eq!(actions.borrow().last(), Some(&("select-board", 0)));
+
+    press(0, 810)?;
+    press(1, 50)?;
+    press(0, 50)?;
+    assert_eq!(
+        &actions.borrow()[4..],
+        &[("select-board", 1), ("select-board", 0)]
+    );
+    press(1, 810)?;
+    assert_eq!(actions.borrow().len(), 6);
+    press(1, 50)?;
+    assert_eq!(actions.borrow().last(), Some(&("delete-board", 1)));
+    ui.hide()?;
+    Ok(())
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().collect();
@@ -1037,6 +1130,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let snapshots = root.join(".pio/simulator/snapshots");
         std::fs::create_dir_all(&snapshots)?;
         ui.show()?;
+        verify_boards_delete(
+            root,
+            ui_root,
+            ui.window().size().width,
+            ui.window().size().height,
+            args.iter().any(|s| s == "--square"),
+        )?;
         verify_display_test(&ui)?;
         for name in [
             "stats",
