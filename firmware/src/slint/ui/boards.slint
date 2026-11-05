@@ -55,32 +55,24 @@ export component BoardsScreen inherits Page {
                     spacing: 8px * Theme.scale;
                     alignment: start;
 
-                    for board[idx] in root.boards: VerticalLayout {
-                        AppButton {
-                            first-in-group: !root.show-back && idx == 0;
-                            text: board.mac;
-                            right-text: root.delete-mode-index == board.index ? "Delete"
-                                : (board.is-ble ? "BLE" : "ESP-NOW") + (board.is-active ? " ✓" : "");
-                            variant: root.delete-mode-index == board.index ? "outline" : (board.is-active ? "primary" : "secondary");
-                            button-color: root.delete-mode-index == board.index ? "danger" : "standard";
-                            clicked => {
-                                if (root.delete-mode-index == board.index) {
-                                    root.delete-board(board.index);
-                                    root.delete-mode-index = -1;
-                                } else {
-                                    root.delete-mode-index = -1;
-                                    root.select-board(board.index);
-                                }
-                            }
-                            long-clicked => {
-                                root.delete-mode-index = board.index;
+                    for board[idx] in root.boards: AppButton {
+                        first-in-group: !root.show-back && idx == 0;
+                        text: board.mac;
+                        right-text: root.delete-mode-index == board.index ? "Delete"
+                            : (board.is-ble ? "BLE" : "ESP-NOW") + (board.is-active ? " ✓" : "");
+                        variant: root.delete-mode-index == board.index ? "outline" : (board.is-active ? "primary" : "secondary");
+                        button-color: root.delete-mode-index == board.index ? "danger" : "standard";
+                        clicked => {
+                            if (root.delete-mode-index == board.index) {
+                                root.delete-board(board.index);
+                                root.delete-mode-index = -1;
+                            } else {
+                                root.delete-mode-index = -1;
+                                root.select-board(board.index);
                             }
                         }
-                        AppButton {
-                            text: "Delete " + board.mac;
-                            variant: "ghost";
-                            button-color: "danger";
-                            clicked => { root.delete-board(board.index); }
+                        long-clicked => {
+                            root.delete-mode-index = board.index;
                         }
                     }
 
