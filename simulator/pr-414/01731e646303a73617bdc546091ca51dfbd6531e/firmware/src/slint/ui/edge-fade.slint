@@ -1,0 +1,14 @@
+import { Theme } from "theme.slint";
+
+// Soft elevation seam (the software renderer ignores drop shadows).
+// Place after the content it should cast over, so it renders on top, and
+// inside the parent's bounds - the software renderer clips to the parent.
+// downward: casts below a header / sheet edge; false casts above a footer.
+export component EdgeFade inherits Rectangle {
+    in property <bool> downward: true;
+    width: 100%;
+    height: Theme.seam-size;
+    background: root.downward
+        ? @linear-gradient(180deg, Theme.shadow 0%, #00000000 100%)
+        : @linear-gradient(0deg, Theme.shadow 0%, #00000000 100%);
+}

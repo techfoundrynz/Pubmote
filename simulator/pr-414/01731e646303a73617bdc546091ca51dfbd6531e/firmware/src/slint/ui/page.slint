@@ -1,0 +1,70 @@
+import { Theme } from "theme.slint";
+import { PageHeader } from "page-header.slint";
+import { EdgeFade } from "edge-fade.slint";
+import { Navigation } from "navigation-focus.slint";
+
+// Standard page scaffold: fixed header with back/save chevron, body children
+// filling the rest, optional PageFooter as a child. Declare the header first
+// so focus follows the screen top to bottom; scrolling stays in the body viewport.
+export component Page inherits Rectangle {
+    in property <string> title;
+    in property <brush> header-background: Theme.bg;
+    in property <brush> header-text-color: Theme.accent;
+    in property <brush> header-subtitle-color: Theme.text-dim;
+    in property <bool> show-header-fade: true;
+    in property <string> subtitle: "";
+    in property <bool> subtitle-show-tail: false;
+    in property <bool> show-back: false;
+    in property <bool> back-is-only: false;
+    in property <bool> navigation-active: true;
+    in property <int> initial-focus-steps: root.back-is-only ? 0 : 1;
+    callback header-focused;
+    callback header-touch(length, length, bool);
+    property <bool> initial-focus-pending: root.show-back;
+    changed navigation-active => {
+        if (root.navigation-active) { root.initial-focus-pending = root.show-back; }
+    }
+    // Height of the screen's footer chrome; a footer seam fade is drawn above it
+    in property <length> footer-inset: 0px;
+    callback back;
+
+    background: Theme.bg;
+    Timer {
+        interval: 20ms;
+        running: root.initial-focus-pending && root.navigation-active
+            && Navigation.active && !Navigation.modal && !Navigation.blocked;
+        triggered => {
+            // Snapshot before focusing the header updates remembered selection.
+            let steps = root.initial-focus-steps;
+            header.focus();
+            if (steps > 0) { Navigation.focus-step(steps); }
+            root.initial-focus-pending = false;
+        }
+    }
+
+    VerticalLayout {
+        header := PageHeader {
+            text: root.title;
+            background-color: root.header-background;
+            text-color: root.header-text-color;
+            subtitle-color: root.header-subtitle-color;
+            subtitle: root.subtitle;
+            subtitle-show-tail: root.subtitle-show-tail;
+            show-back: root.show-back;
+            first-in-group: true;
+            last-in-group: root.back-is-only;
+            back => { root.back(); }
+            touch-position(x, y, pressed) => { root.header-touch(x, y, pressed); }
+            changed has-focus => { if (self.has-focus) { root.header-focused(); } }
+        }
+        @children
+    }
+
+    if root.show-header-fade: EdgeFade { y: header.height; }
+
+    if root.footer-inset > 0px: EdgeFade {
+        downward: false;
+        y: root.height - root.footer-inset - self.height;
+    }
+
+}
